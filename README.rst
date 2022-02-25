@@ -8,10 +8,6 @@
    <br/><br/>
 
 
-
-POSEIDON
-=============
-
 **A Python Package for Multidimensional Atmospheric Retrievals of Exoplanet Spectra**
 
 Welcome to POSEIDON's lair.
