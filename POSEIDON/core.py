@@ -874,9 +874,9 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     err_data = data['err_data']    
 
     # Normalise retrieved planet radius parameter into Jupiter or Earth radii
-    if (radius_unit is 'R_J'):
+    if (radius_unit == 'R_J'):
         R_p_norm = R_J
-    elif (radius_unit is 'R_E'):
+    elif (radius_unit == 'R_E'):
         R_p_norm = R_E
 
     if ('R_p_ref' in prior_ranges):
@@ -967,7 +967,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     prior_types[parameter] = 'uniform'
 
             # Only the stellar T_phot defaults to a Gaussian prior
-            elif (parameter is 'T_phot'):
+            elif (parameter == 'T_phot'):
                 prior_types[parameter] = 'gaussian'
             
             # All other parameters default to uniform priors
@@ -982,7 +982,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_types['log_X']
     if ('Delta_log_X' in prior_types):
         del prior_types['Delta_log_X']
-    if (('T' in prior_types) and (PT_profile is not 'isotherm')):
+    if (('T' in prior_types) and (PT_profile != 'isotherm')):
         del prior_types['T']
 
     CLR_limit_check = 0   # Tracking variable for CLR limit check below
@@ -991,15 +991,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     for parameter in param_names:
 
         # Check that sine parameters are only used for geometry parameters and theta_0_cloud
-        if ((prior_types[parameter] is 'sine') and (parameter not in ['alpha', 'beta', 'theta_0'])):
+        if ((prior_types[parameter] == 'sine') and (parameter not in ['alpha', 'beta', 'theta_0'])):
             raise Exception("Unsupported prior for " + parameter)
 
         # Check that centred-log ratio prior is only used for mixing ratios
-        if ((prior_types[parameter] is 'CLR') and (parameter not in X_param_names)):
+        if ((prior_types[parameter] == 'CLR') and (parameter not in X_param_names)):
             raise Exception("Unsupported prior for " + parameter)
 
         # Check that centred-log ratio is being employed in a 1D model
-        if ((prior_types[parameter] is 'CLR') and (Atmosphere_dimension != 1)):
+        if ((prior_types[parameter] == 'CLR') and (Atmosphere_dimension != 1)):
             raise Exception("CLR prior only supported for 1D models.")
 
         # Check mixing ratio parameter have valid settings
@@ -1009,12 +1009,12 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 raise Exception("Only uniform and CLR priors supported for mixing ratio parameters.")
             
             # Check that centred-log ratio prior is set for all mixing ratio parameters
-            if (('CLR' in prior_types.values()) and (prior_types[parameter] is not 'CLR')):
+            if (('CLR' in prior_types.values()) and (prior_types[parameter] != 'CLR')):
                 raise Exception("When using a CLR prior, all mixing ratio parameters " + 
                                 "must also have a CLR prior")
             
             # Check that all CLR variables have the same lower limit
-            if (prior_types[parameter] is 'CLR'):
+            if (prior_types[parameter] == 'CLR'):
 
                 CLR_limit = prior_ranges[parameter][0]
                 
