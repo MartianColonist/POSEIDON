@@ -20,7 +20,11 @@ The initial public release of POSEIDON contains tutorials on generating model tr
 
 POSEIDON is available under the BSD 3-Clause License. If you use POSEIDON for retrievals, please cite `MacDonald & Madhusudhan (2017) <https://ui.adsabs.harvard.edu/abs/2017MNRAS.469.1979M/abstract>`_. If you only use the forward model, TRIDENT, please cite `MacDonald & Lewis (2022) <https://ui.adsabs.harvard.edu/abs/2021arXiv211105862M/abstract>`_.
 
+.. toctree::
+   :maxdepth: 1
+   :hidden:
 
+   content/installation
 
 .. toctree::
    :maxdepth: 2
