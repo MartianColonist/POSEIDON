@@ -20,8 +20,9 @@ grid folder.
    For Windows users, we recommend installing `Windows Subsystem for Linux (WSL) <https://docs.microsoft.com/en-us/windows/wsl/about>`_
    before proceeding. WSL provides a Linux environment you can use on Windows.
    
-   One of the main modules used by POSEIDON, PyMultiNest, does not support 
-   Windows, but it will work fine if you use WSL to install and run POSEIDON.
+   One of the main modules used by POSEIDON, PyMultiNest, does not natively 
+   support Windows. However, it will work fine if you use WSL to install and 
+   run POSEIDON.
 
 Next, you need to create two new environment variables: one pointing to the 
 directory containing the opacity files and a second to the (unzipped) stellar
@@ -67,3 +68,4 @@ Now all that is left is the clone POSEIDON from GitHub and install the module.
    cd POSEIDON_public
    python setup.py install
 
+And that, splendidly, is all there is to it. Onwards, to the tutorials!
