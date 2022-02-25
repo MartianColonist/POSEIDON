@@ -13,6 +13,7 @@ setup(
     license = 'BSD 3-Clause License',
     packages = find_packages(),
     include_package_data = True,
+    python_requires='<=3.8.12',
     install_requires = ['numpy',
                         'scipy',
                         'matplotlib',
