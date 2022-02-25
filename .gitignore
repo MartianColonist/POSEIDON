@@ -7,5 +7,5 @@ __pycache__
 *.so
 build/
 dist/
-POSEIDON_test.egg-info/
+POSEIDON.egg-info/
 .vscode
