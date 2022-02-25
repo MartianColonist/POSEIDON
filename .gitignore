@@ -1,0 +1,11 @@
+docs/_build/
+docs/_build/html
+docs/content/notebooks/POSEIDON_output
+__pycache__
+.DS_Store
+*~
+*.so
+build/
+dist/
+POSEIDON_test.egg-info/
+.vscode

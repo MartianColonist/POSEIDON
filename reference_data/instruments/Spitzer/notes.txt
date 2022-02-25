@@ -1,0 +1,4 @@
+Band centers in micron: 
+IRAC: 3.6, 4.5, 5.8, 8.0 
+IRS: 16 
+MIPS: 24 

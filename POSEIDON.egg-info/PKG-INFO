@@ -1,0 +1,40 @@
+Metadata-Version: 2.1
+Name: POSEIDON
+Version: 0.2.0
+Summary: Exoplanet atmospheric retrieval package
+Home-page: UNKNOWN
+Author: Ryan J. MacDonald
+Author-email: rmacdonald@astro.cornell.edu
+License: BSD 3-Clause License
+Platform: UNKNOWN
+Description-Content-Type: text/x-rst
+License-File: LICENSE
+
+POSEIDON
+=============
+
+**A Python package for atmospheric retrievals of exoplanet spectra**
+
+Welcome to the repository of POSEIDON.
+
+
+Documentation
+-------------
+
+The code documentation, installation guide, and tutorial can be found at `TO BE ADDED <https://distantworlds.space>`_.
+
+Attribution
+-----------
+
+If you use POSEIDON in your work, please cite the POSEIDON methods papers
+(`MacDonald & Madhusudhan, 2017 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.469.1979M/abstract>`_ and MacDonald & Lewis (in prep)).
+
+License
+-------
+
+Copyright 2022 Ryan J. MacDonald
+
+POSEIDON is available under the BSD 3-Clause License.
+Please see the LICENSE file for more information.
+
+

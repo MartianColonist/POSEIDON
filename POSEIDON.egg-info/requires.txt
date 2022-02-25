@@ -1,0 +1,12 @@
+numpy
+scipy
+matplotlib
+astropy
+h5py
+numba
+pandas
+pysynphot
+mpi4py
+pymultinest
+corner
+spectres
