@@ -66,17 +66,16 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0):
 def create_planet(planet_name, R_p, mass = None, gravity = None, 
                   T_eq = 1400.0, b_p = 0.0):
     '''
-    Initialise the stellar dictionary object used by POSEIDON. The default
-    parameters are for the Sun, with an ascribed T_eff uncertainty of 100 K.
+    Initialise the stellar dictionary object used by POSEIDON.
 
     Args:
         planet_name (str):
             Identifier for planet object (e.g. HD209458b).
         R_p (float): 
             Planetary radius (m).
-        M_p (float):
+        mass (float):
             Planetary mass (kg).
-        g_p (float):
+        gravity (float):
             Planetary gravity corresponding to observed radius (m/s^2).
         T_eq (float):
             Planetary equilibrium temperature (zero albedo) (K). 
