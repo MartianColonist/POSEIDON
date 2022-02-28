@@ -776,7 +776,7 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None)
     # If the user is running the retrieval tutorial, point to the reference data
     if (data_dir == 'Tutorial'):
         data_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
-                                   '..', 'reference_data/observations/WASP-999b/'))
+                                   '.', 'reference_data/observations/WASP-999b/'))
 
     # Convert lists to numpy arrays
     instruments = np.array(instruments)

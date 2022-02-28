@@ -26,7 +26,7 @@ def fwhm_instrument(wl_data, instrument):
 
     # Load reference data directory containing instrument properties
     inst_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
-                               '..', 'reference_data/instruments/'))
+                               '.', 'reference_data/instruments/'))
     
     # For the below instrument modes, FWHM assumed constant as function of wavelength
     if   (instrument == 'STIS_G430'):   
@@ -90,7 +90,7 @@ def init_instrument(wl, wl_data, half_width, instrument):
 
     # Load reference data directory containing instrument properties
     inst_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
-                               '..', 'reference_data/instruments/'))
+                               '.', 'reference_data/instruments/'))
     
     # Identify instrument sensitivity function for desired instrument mode
     if (instrument == 'STIS_G430'):
