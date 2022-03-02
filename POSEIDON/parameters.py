@@ -767,7 +767,7 @@ def unpack_cloud_params(param_names, clouds_state, cloud_model, cloud_dim,
             P_cloud = 100.0   # Set to 100 bar for models without a cloud deck
             
         # If cloud model has patchy gaps
-        if (cloud_dim != '1'):
+        if (cloud_dim != 1):
             phi_c = clouds_state[np.where(cloud_param_names == 'phi_cloud')[0][0]]    
        #     phi_0 = clouds_state[np.where(cloud_param_names == 'phi_0')[0][0]]
             phi_0 = 0.0       # Cloud start position doesn't matter for MacMad17
@@ -791,10 +791,10 @@ def unpack_cloud_params(param_names, clouds_state, cloud_model, cloud_dim,
             kappa_cloud_0 = np.power(10.0, clouds_state[np.where(cloud_param_names == 'log_kappa_cloud')[0][0]])
             P_cloud = np.power(10.0, clouds_state[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
             
-            if (cloud_dim == '1'):
+            if (cloud_dim == 1):
                 f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
 
-            elif (cloud_dim == '2'):
+            elif (cloud_dim == 2):
                 if (TwoD_type == 'E-M'):
                     f_cloud = clouds_state[np.where(cloud_param_names == 'f_cloud')[0][0]]    
                     phi_0 = clouds_state[np.where(cloud_param_names == 'phi_0')[0][0]]
@@ -803,7 +803,7 @@ def unpack_cloud_params(param_names, clouds_state, cloud_model, cloud_dim,
                     f_cloud, phi_0 = 1.0, -90.0    # Uniform axially, not-uniform along ray
                     theta_0 = clouds_state[np.where(cloud_param_names == 'theta_0')[0][0]]
             
-            elif (cloud_dim == '3'):
+            elif (cloud_dim == 3):
                 f_cloud = clouds_state[np.where(cloud_param_names == 'f_cloud')[0][0]]    
                 phi_0 = clouds_state[np.where(cloud_param_names == 'phi_0')[0][0]]
                 theta_0 = clouds_state[np.where(cloud_param_names == 'theta_0')[0][0]]
