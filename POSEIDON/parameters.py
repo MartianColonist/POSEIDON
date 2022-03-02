@@ -731,7 +731,7 @@ def unpack_cloud_params(param_names, clouds_state, cloud_model, cloud_dim,
     if ('log_a' in cloud_param_names):
         enable_haze = 1
     else:
-        enable_deck = 0
+        enable_haze = 0
 
     # Check if a cloud deck is enabled in the cloud model
     if ('log_P_cloud' in cloud_param_names):
