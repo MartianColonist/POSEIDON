@@ -46,7 +46,7 @@ def fwhm_instrument(wl_data, instrument):
     elif(instrument.startswith('JWST')):    
 
         # Find precomputed instrument spectral resolution file
-        res_file = inst_dir + 'JWST/' + instrument + '_resolution.dat'
+        res_file = inst_dir + '/JWST/' + instrument + '_resolution.dat'
         
         # Check that file exists
         if (os.path.isfile(res_file) == False):
