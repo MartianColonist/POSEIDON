@@ -8,4 +8,5 @@ __pycache__
 build/
 dist/
 POSEIDON.egg-info/
+POSEIDON_run/
 .vscode
