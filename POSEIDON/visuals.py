@@ -1109,7 +1109,7 @@ def plot_spectra(spectra, planet, model, data_properties = None,
 
     
     # Write figure to file
-    file_name = output_dir + model_name + '_spectra.pdf'
+    file_name = output_dir + model_name + '_transmission_spectra.pdf'
 
     plt.savefig(file_name, bbox_inches='tight')
 
@@ -1667,3 +1667,111 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
     return fig
 
+
+def plot_stellar_flux(Flux, wl):
+    
+    fig = plt.figure()  
+        
+    ax = plt.gca()
+
+    ax.set_xscale("log")
+
+    ax.xaxis.set_major_formatter(ScalarFormatter())
+
+    ax.plot(wl, Flux, lw=1, alpha=0.8, label=r'Stellar Flux')
+
+    ax.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+    ax.set_ylabel(r'Surface Flux (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+
+    ax.set_xlim([min(wl), max(wl)])
+
+    ax.legend(loc='upper right', shadow=True, prop={'size':10}, ncol=1, frameon=False)
+    
+    return fig
+
+
+def plot_FpFs(planet, model, FpFs, wl, R_to_bin = 100):
+
+    # Unpack model and atmospheric properties
+    planet_name = planet['planet_name']
+    model_name = model['model_name']
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+    # Create y formatting objects
+    ymajorLocator   = MultipleLocator(1.0e-4)
+    ymajorFormatter = ScalarFormatter(useMathText=True)
+    ymajorFormatter.set_powerlimits((0,0))
+    yminorLocator = MultipleLocator(1.0e-5)
+    
+    fig = plt.figure()  
+        
+    ax = plt.gca()
+
+    ax.set_xscale("log")
+
+    # Assign formatter objects to axes
+    ax.xaxis.set_major_formatter(ScalarFormatter())
+    ax.yaxis.set_major_locator(ymajorLocator)
+    ax.yaxis.set_major_formatter(ymajorFormatter)
+    ax.yaxis.set_minor_locator(yminorLocator)
+
+    ax.plot(wl, FpFs, lw=0.5, alpha=0.4, color = 'crimson', label=r'Flux Ratio')
+
+    # Calculate binned wavelength and spectrum grid
+    wl_binned, FpFs_binned = bin_spectrum_fast(wl, FpFs, R_to_bin)
+
+    # Plot binned spectrum
+    ax.plot(wl_binned, FpFs_binned, lw=1.0, alpha=0.8, 
+                color=scale_lightness('crimson', 0.4),
+                label='Flux Ratio' + ' (R = ' + str(R_to_bin) + ')')
+
+    # Decide at which wavelengths to place major tick labels
+    wl_min = min(wl)
+    wl_max = max(wl)
+
+    if (wl_max <= 1.0):
+        wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
+        wl_ticks_2 = np.array([])
+        wl_ticks_3 = np.array([])
+    elif (wl_max <= 2.0):
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+        wl_ticks_3 = np.array([])
+    elif (wl_max <= 3.0):
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
+        wl_ticks_3 = np.array([])
+    else:
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+        wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
+        
+    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3))
+    
+    # Plot wl tick labels
+    ax.set_xticks(wl_ticks)
+
+    ax.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+    ax.set_ylabel(r'$F_{\rm{p}} / F_*$', fontsize = 16)
+
+    ax.set_xlim([min(wl), max(wl)])
+
+    ax.legend(loc='upper left', shadow=True, prop={'size':10}, ncol=1, frameon=False)
+    
+    # Write figure to file
+    file_name = output_dir + model_name + '_emission_spectra.pdf'
+
+    plt.savefig(file_name, bbox_inches='tight')
+
+    return fig

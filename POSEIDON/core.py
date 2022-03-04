@@ -10,6 +10,7 @@ from numba.core.decorators import jit
 import scipy.constants as sc
 import os
 from mpi4py import MPI
+from spectres import spectres
 
 os.environ["OMP_NUM_THREADS"] = "1"
 os.environ['MKL_NUM_THREADS'] = '1'
@@ -17,6 +18,7 @@ os.environ['MKL_NUM_THREADS'] = '1'
 from .constants import R_Sun, R_J, R_E
 
 from .utility import create_directories, write_spectrum, read_data
+from .stellar import planck_lambda
 from .supported_opac import supported_species, supported_cia, inactive_species
 from .parameters import assign_free_params, reformat_log_X, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
@@ -26,13 +28,15 @@ from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
 from .instrument import init_instrument
 from .transmission import TRIDENT
+from .emission import emission_rad_transfer
 
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
 
-def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0):
+def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, 
+                stellar_spectrum = True, grid = 'blackbody'):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
 
@@ -47,6 +51,11 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0):
             Stellar metallicity [log10(Fe/H_star / Fe/H_solar)].
         log_g_s (int):
             Stellar log surface gravity (log10(cm/s^2) by convention).
+        stellar_spectrum (bool):
+            If True, compute a stellar spectrum.
+        grid (string):
+            Stellar model grid to use if 'stellar_spectrum' is True.
+            (Options: blackbody / cbk04 / phoenix).
     
     Returns:
         star (dict):
@@ -54,10 +63,33 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0):
 
     '''
 
+    # Compute stellar spectrum
+    if (stellar_spectrum == True):
+
+        if (grid == 'blackbody'):
+
+            # Create fiducial wavelength grid for blackbody spectrum
+            wl_min = 0.2
+            wl_max = 20.0
+            R = 10000
+
+            # This grid should be broad enough for most applications
+            wl_star = wl_grid_constant_R(wl_min, wl_max, R)
+
+            # Evaluate Planck function at stellar effective temperature
+            B = planck_lambda(T_eff, wl_star)
+
+            # Convert spectral radiance to surface flux
+            F_star = np.pi * B
+
+        else:
+
+            raise Exception("Other stellar grids not yet implemented.")
+
     # Package stellar properties
     star = {'stellar_radius': R_s, 'stellar_T_eff': T_eff, 
             'stellar_T_eff_error': T_eff_error, 'stellar_metallicity': Met, 
-            'stellar_log_g': log_g
+            'stellar_log_g': log_g, 'F_star': F_star, 'wl_star': wl_star
            }
 
     return star
@@ -658,6 +690,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
+    R_p = planet['planet_radius']
     R_s = star['stellar_radius']
 
     # Unpack atmospheric properties needed for radiative transfer
@@ -760,6 +793,27 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
                            enable_deck, enable_haze, b_p, y_p, R_s, f_cloud,
                            phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+
+    # Generate emission spectrum
+    elif (spectrum_type == 'emission'):
+
+        # Compute planet flux
+        F_p = emission_rad_transfer(T, dr, wl, kappa_clear)
+
+        # Load stellar spectrum
+        F_s = star['F_star']
+        wl_s = star['wl_star']
+
+        # Interpolate stellar spectrum onto planet spectrum wavelength grid
+        F_s_interp = spectres(wl, wl_s, F_s)
+
+        # Convert surface fluxes to observed fluxes
+        d = 1   # Set distance to unity for now (since it cancels)
+        F_p_obs = (R_p / d)**2 * F_p
+        F_s_obs = (R_s / d)**2 * F_s_interp
+
+        # Final spectrum is the planet-star flux ratio
+        spectrum = F_p_obs / F_s_obs
 
     # Write spectrum to file
     if (save_spectrum == True):

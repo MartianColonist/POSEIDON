@@ -5,3 +5,4 @@ Forward Model Tutorials
    :maxdepth: 2
 
    notebooks/transmission_basic
+   notebooks/emission_basic
