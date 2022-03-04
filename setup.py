@@ -15,7 +15,7 @@ setup(
     include_package_data = True,
     package_data={'': ['reference_data/*']},
     python_requires='<=3.8.12',
-    install_requires = ['numpy',
+    install_requires = ['numpy<=1.21',
                         'scipy',
                         'matplotlib',
                         'astropy',
