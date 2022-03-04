@@ -271,10 +271,10 @@ def plot_transit(ax, R_p, R_s, r, T, phi, phi_edge, dphi, theta, theta_edge, dth
             ax.text(-0.9*r_pole_max, 0.90*r_pole_max, 'Day', fontsize = 14)
             
             ax.text(-0.9*r_pole_max, 1.07*r_pole_max, 'Star', fontsize = 14)
-            ax.annotate(s='', xy=(-1.1*r_pole_max, 1.02*r_pole_max), xytext=(-0.5*r_pole_max, 1.02*r_pole_max), 
+            ax.annotate(text='', xy=(-1.1*r_pole_max, 1.02*r_pole_max), xytext=(-0.5*r_pole_max, 1.02*r_pole_max), 
                         arrowprops=dict(arrowstyle='->', color='black', alpha=0.8))
             ax.text(0.55*r_pole_max, 1.07*r_pole_max, 'Observer', fontsize = 14)
-            ax.annotate(s='', xy=(0.5*r_pole_max, 1.02*r_pole_max), xytext=(1.1*r_pole_max, 1.02*r_pole_max), 
+            ax.annotate(text='', xy=(0.5*r_pole_max, 1.02*r_pole_max), xytext=(1.1*r_pole_max, 1.02*r_pole_max), 
                         arrowprops=dict(arrowstyle='<-', color='black', alpha=0.8))
 
     return p
