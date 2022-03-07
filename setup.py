@@ -17,7 +17,7 @@ setup(
     python_requires='<=3.8.12',
     install_requires = ['numpy<=1.21',
                         'scipy',
-                        'matplotlib',
+                        'matplotlib>=3.3',
                         'astropy',
                         'h5py',
                         'numba',
