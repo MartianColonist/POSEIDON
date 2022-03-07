@@ -221,7 +221,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             if (parameter not in X_params):
 
                 # Uniform priors
-                if (prior_types[parameter] is 'uniform'):
+                if (prior_types[parameter] == 'uniform'):
 
                     min_value = prior_ranges[parameter][0]
                     max_value = prior_ranges[parameter][1]
@@ -229,7 +229,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                     cube[i] = ((cube[i] * (max_value - min_value)) + min_value)
 
                 # Gaussian priors
-                elif (prior_types[parameter] is 'gaussian'):
+                elif (prior_types[parameter] == 'gaussian'):
 
                     mean = prior_ranges[parameter][0]
                     std = prior_ranges[parameter][1]
@@ -237,7 +237,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                     cube[i] = mean + (std * ndtri(cube[i]))
 
                 # Sine priors
-                elif (prior_types[parameter] is 'sine'):
+                elif (prior_types[parameter] == 'sine'):
 
                     max_value = prior_ranges[parameter][0]
 
@@ -248,7 +248,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                         cube[i] = (180.0/np.pi)*np.arcsin((2.0*cube[i] - 1) * np.sin((np.pi/180.0)*(max_value/2.0)))
 
             # Draw mixing ratio parameters with uniform priors
-            elif ((parameter in X_params) and (prior_types[parameter] is 'uniform')):
+            elif ((parameter in X_params) and (prior_types[parameter] == 'uniform')):
 
                 # Find which chemical species this parameter represents
                 for species_q in param_species:
@@ -471,9 +471,9 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         offset_params, err_inflation_params = split_params(cube, N_params_cum)
 
         # Convert normalised radius drawn by MultiNest back into SI
-        if (radius_unit is 'R_J'):
+        if (radius_unit == 'R_J'):
             R_p_ref *= R_J
-        elif (radius_unit is 'R_E'):
+        elif (radius_unit == 'R_E'):
             R_p_ref *= R_E
 
         #***** Step 2: generate atmosphere corresponding to parameter draw *****#
@@ -615,9 +615,9 @@ def spectra_PT_samples(planet, star, model, opac, output_dir, retrieval_name,
                                                            N_params_cum)
 
         # Convert normalised radius into SI
-        if (radius_unit is 'R_J'):
+        if (radius_unit == 'R_J'):
             R_p_ref *= R_J
-        elif (radius_unit is 'R_E'):
+        elif (radius_unit == 'R_E'):
             R_p_ref *= R_E
 
         # Generate atmosphere corresponding to parameter draw
