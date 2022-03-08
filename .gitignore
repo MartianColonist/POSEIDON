@@ -9,4 +9,6 @@ build/
 dist/
 POSEIDON.egg-info/
 POSEIDON_run/
+inputs/
+run/
 .vscode
