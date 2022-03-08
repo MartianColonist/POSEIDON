@@ -5,15 +5,16 @@ Copyright 2022, Ryan J. MacDonald.
 
 '''
 
+import os
+
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ['MKL_NUM_THREADS'] = "1"
+
 import numpy as np
 from numba.core.decorators import jit
 import scipy.constants as sc
-import os
 from mpi4py import MPI
 from spectres import spectres
-
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ['MKL_NUM_THREADS'] = '1'
 
 from .constants import R_Sun, R_J, R_E
 
