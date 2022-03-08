@@ -16,7 +16,7 @@ Before installing POSEIDON, you will need to download these input files
 Place the two opacity files in a directory of your choice and unzip the stellar 
 grid folder.
 
-.. attention::
+.. note::
    For Windows users, we recommend installing `Windows Subsystem for Linux (WSL) <https://docs.microsoft.com/en-us/windows/wsl/about>`_
    before proceeding. WSL provides a Linux environment you can use on Windows.
    
@@ -42,18 +42,19 @@ On Mac OS, instead use
 
 Now POSEIDON will know where to find the opacity database and stellar models.
 
-
-Step 2: Install PyMultiNest
-___________________________
-
 .. attention::
-   Due to reports of issues configuring MPI with Python 3.9, we recommend 
-   initialising a fresh anaconda environment with Python 3.8 (or earlier) 
-   before installing POSEIDON. You can do this via:
+   Due to reports of issues configuring MPI with Python 3.9 (required by POSEIDON
+   for multi-core retrievals), we recommend installing POSEIDON with Python 3.8 
+   (or earlier). If using anaconda, you can make a fresh environment with 
+   Python 3.8 via:
 
    .. code-block:: bash
 
     conda create --name YOUR_ENV_NAME_HERE python=3.8
+
+
+Step 2: Install PyMultiNest
+___________________________
 
 MultiNest is the main sampling algorithm used for parameter space exploration
 in POSEIDON retrievals. MultiNest has a convenient Python wrapper, PyMultiNest.
@@ -70,10 +71,17 @@ Step 3: Install POSEIDON from GitHub
 ____________________________________
 
 Now all that is left is the clone POSEIDON from GitHub and install the module.
-This can be handled in a single terminal command:
+You can download `POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON_public>`_
+or clone the repository:
 
 .. code-block:: bash
 		
-   pip install git+git://github.com/MartianColonist/POSEIDON_public.git
+   git clone https://github.com/MartianColonist/POSEIDON_public.git
+
+Then navigate into the POSEIDON_public directory and install the package via:
+
+.. code-block:: bash
+		
+   pip install .
 
 And that, splendidly, is all there is to it. Onwards, to the tutorials!
