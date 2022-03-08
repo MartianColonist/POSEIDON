@@ -32,6 +32,10 @@ warnings.filterwarnings("ignore", message="Attempted to set non-positive left " 
                                           "xlim on a log-scaled axis.\n" + 
                                           "Invalid limit will be ignored.")
 
+warnings.filterwarnings("ignore", message="This figure includes Axes that are " +
+                                           "not compatible with tight_layout, " +
+                                           "so results might be incorrect.")
+
 from .utility import confidence_intervals, bin_spectrum_fast, closest_index, \
                      generate_latex_param_names, round_sig_figs, file_name_check
 from .absorption import H_minus_bound_free, H_minus_free_free
