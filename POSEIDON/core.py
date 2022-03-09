@@ -7,8 +7,11 @@ Copyright 2022, Ryan J. MacDonald.
 
 import os
 
-os.environ["OMP_NUM_THREADS"] = "1"
-os.environ['MKL_NUM_THREADS'] = "1"
+# Force a single core to be used by numpy (mpirun handles parallelisation)
+os.environ['OMP_NUM_THREADS'] = '1'
+os.environ['OPENBLAS_NUM_THREADS'] = '1'
+os.environ['MKL_NUM_THREADS'] = '1'
+os.environ['CBLAS_NUM_THREADS'] = '1'
 
 import numpy as np
 from numba.core.decorators import jit
