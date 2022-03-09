@@ -82,6 +82,12 @@ def run_retrieval(planet, star, model, opac, data, priors,
 
         # Write retrieval results to file
         if (rank == 0):
+
+            # Write retrieval runtime to terminal
+            t1 = time.perf_counter()
+            total = round_sig_figs((t1-t0)/3600.0, 2)  # Round to 2 significant figures
+            
+            print('POSEIDON retrieval finished in ' + str(total) + ' hours')
       
             # Write POSEIDON retrieval output files 
             write_MultiNest_results(planet, model, data, output_dir, retrieval_name,
@@ -107,12 +113,6 @@ def run_retrieval(planet, star, model, opac, data, priors,
                                      spec_low1, spec_median, spec_high1, spec_high2)
 
             print("All done! Output files can be found in " + output_dir + "results/")
-
-            # Write retrieval runtime to terminal
-            t1 = time.perf_counter()
-            total = round_sig_figs((t1-t0)/3600.0, 2)  # Round to 2 significant figures
-            
-            print('POSEIDON retrieval finished in ' + str(total) + ' hours')
          
     comm.Barrier()
 
