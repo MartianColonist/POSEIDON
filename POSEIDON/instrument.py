@@ -147,7 +147,7 @@ def init_instrument(wl, wl_data, half_width, instrument):
         
         N_bins = len(wl_data)
         
-        # Compute closest indicies on model grid corresponding to bin edges and centre
+        # Compute closest indices on model grid corresponding to bin edges and centre
         bin_left = np.zeros(N_bins).astype(np.int64)     # Closest index on model grid of left edge of each bin
         bin_cent = np.zeros(N_bins).astype(np.int64)     # Closest index on model grid of centre of each bin
         bin_right = np.zeros(N_bins).astype(np.int64)    # Closest index on model grid of right edge of each bin
@@ -158,7 +158,7 @@ def init_instrument(wl, wl_data, half_width, instrument):
         # For each data point
         for n in range(N_bins):
             
-            # Compute closest indicies on model grid corresponding to bin edges and centre
+            # Compute closest indices on model grid corresponding to bin edges and centre
             bin_left[n] = np.argmin(np.abs(wl - ((wl_data[n] - half_width[n])))) 
             bin_cent[n] = np.argmin(np.abs(wl - (wl_data[n]))) 
             bin_right[n] = np.argmin(np.abs(wl - ((wl_data[n] + half_width[n]))))
@@ -174,7 +174,7 @@ def init_instrument(wl, wl_data, half_width, instrument):
         
         sigma = sigma_um   # Dummy value for return (equal to 0.0)
         
-        # Compute closest indicies on model grid corresponding to bin edges and centre
+        # Compute closest indices on model grid corresponding to bin edges and centre
         bin_left = np.argmin(np.abs(wl - ((wl_data - half_width)))) 
         bin_cent = np.argmin(np.abs(wl - (wl_data))) 
         bin_right = np.argmin(np.abs(wl - ((wl_data + half_width))))
@@ -253,7 +253,7 @@ def bin_spectrum_to_data(spectrum, wl, data_properties):
         else: 
             photometric = False
             
-        # Find start and end indicies of dataset_i in dataset property arrays
+        # Find start and end indices of dataset_i in dataset property arrays
         idx_1 = data_properties['len_data_idx'][i]
         idx_2 = data_properties['len_data_idx'][i+1]
         
@@ -294,163 +294,136 @@ def R_to_wl(R_data, wl_data_min, wl_data_max):
         else: 
             half_width_data[n] = 0.5 * (wl_data[n] - wl_data[n-1])
         
-    return wl_data, half_width_data, N_data
+    return wl_data, half_width_data
 
 
-# TBD: update functions below
+def generate_syn_data_from_user(planet, wl_model, spectrum, data_dir, 
+                                instrument, R_data = 100, err_data = 50, 
+                                wl_start = 1.1, wl_end = 1.8, 
+                                label = None, Gauss_scatter = True):
+    '''
+    ADD DOCSTRING
+    '''
 
-'''
-def generate_syn_data(wl_model, spectrum, wl_start, wl_end, R_data,
-                      err_data, instruments, label, Gauss_scatter = False):
-    ''''''
-    Generates a synthetic dataset in one or more wavelength regions. 
+    print("Creating synthetic data")
+
+    planet_name = planet['planet_name']
     
-    Inputs:
+    if (instrument in ['IRAC1', 'IRAC2']): 
+        is_photometric = True
+    else: 
+        is_photometric = False
     
-    wl_model => model wavelength grid (um)
-    spectrum => model spectrum
-    wl_start => array of left edges for desired data ranges (um)
-    wl_end => array of right edges for desired data ranges (um)
-    R_data => array of spectral resolutions for desired datasets
-    err_data => array of 1-sigma transit depth precisions for desired datasets (ppm)
-    instruments => array of instrument names for each dataset (use 'None' for a flat sensitivity function)
+    # For given R, compute wavelengths of data points and half-bin width 
+    wl_data, half_bin = R_to_wl(R_data, wl_start, wl_end)
+
+    N_data = len(wl_data)
+    
+    # Initialise the instrument properties for the synthetic dataset 
+    sigma, sens, bin_left, \
+    bin_cent, bin_right, norm = init_instrument(wl_model, wl_data, half_bin, 
+                                                instrument)
+    
+    # Compute synthetic binned model points
+    syn_ymodel = make_model_data(spectrum, wl_model, sigma, sens, bin_left, 
+                                    bin_cent, bin_right, norm, is_photometric)
+
+    # Arrays containing synthetic data and 1-sigma errors
+    syn_data = np.zeros(shape=(N_data))
+    syn_err = err_data * 1.0e-6    # Convert ppm to transit depths
+
+    # Open output file where synthetic data will be written
+    if (instrument != 'None'):
+        if (label is None):
+            f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
+                        instrument + '.dat', 'w')
+        else:
+            f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
+                        instrument + '_' + label + '.dat', 'w')
+    else:
+        if (label is None):
+            f = open(data_dir + '/' + planet_name + '_SYNTHETIC_.dat', 'w')
+        else:
+            f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
+                        label + '.dat', 'w')
+            
+    # Add Gaussian errors to binned points to produce synthetic data set
+    for j in range(N_data):
         
-    ''''''
+        if (Gauss_scatter == True):   
+            err = np.random.normal(0.0, syn_err)
+            syn_data[j] = syn_ymodel[j] + err
+        else:
+            syn_data[j] = syn_ymodel[j] 
+
+        f.write('%.6f %.6f %.6e %.6e \n' %(wl_data[j], half_bin[j], 
+                                           syn_data[j], syn_err))
+        
+    f.close()
+
+
+def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
+                                data_properties, label = None, 
+                                Gauss_scatter = True):
+    '''
+    ADD DOCSTRING.
+    '''
            
     print("Creating synthetic data")
-    
-    # Initialise output arrays 
-    wl_data_ALL = np.array([])
-    half_width_data_ALL = np.array([])
-    syn_data_ALL = np.array([])
-    syn_err_ALL = np.array([])
-    syn_ymodel_ALL = np.array([])
-    
-    # Generate synthetic data for each specified instrument
+
+    planet_name = planet['planet_name']
+
+    instruments = data_properties['instruments']
+
     for i in range(len(instruments)):
-        
+                    
         print(instruments[i])
         
-        if (instruments[i] in ['IRAC1', 'IRAC2']): 
-            is_photometric = True
+        if (data_properties['instruments'][i] in ['IRAC1', 'IRAC2']): 
+            photometric = True
         else: 
-            is_photometric = False
+            photometric = False
+
+        # Find start and end indices of dataset_i in dataset property arrays
+        idx_1 = data_properties['len_data_idx'][i]
+        idx_2 = data_properties['len_data_idx'][i+1]
+
+        # Unpack data properties for this dataset 
+        err_data = data_properties['err_data'][idx_1:idx_2]
+        wl_data = data_properties['wl_data'][idx_1:idx_2]
+        half_bin = data_properties['half_bin'][idx_1:idx_2]
+
+        # Compute binned transit depths for dataset_i
+        syn_ymodel = make_model_data(spectrum, wl_model, data_properties['psf_sigma'][idx_1:idx_2], 
+                                    data_properties['sens'][i*len(wl_model):(i+1)*len(wl_model)], 
+                                    data_properties['bin_left'][idx_1:idx_2], 
+                                    data_properties['bin_cent'][idx_1:idx_2], 
+                                    data_properties['bin_right'][idx_1:idx_2],
+                                    data_properties['norm'][idx_1:idx_2], photometric)
         
-        # For a given spectral resolution, compute wavelength locations of each data point and half-bin width 
-        wl_data, half_width_data, N_data = R_to_wl(R_data[i], wl_start[i], wl_end[i])
-  
+        # Find number of data points for dataset_i
         N_data = len(wl_data)
-        
-        # Initialise the instrument properties for the synthetic dataset 
-        sigma, sens, bin_left, \
-        bin_cent, bin_right, norm = init_instrument(wl_model, wl_data, half_width_data, instruments[i])
-        
-        # Compute synthetic binned model points
-        syn_ymodel = make_model_data(spectrum, wl_model, sigma, sens, bin_left, 
-                                     bin_cent, bin_right, half_width_data, norm, is_photometric)
-        
+
         # Arrays containing synthetic data and 1-sigma errors
         syn_data = np.zeros(shape=(N_data))
-        syn_err = np.zeros(shape=(N_data))   
-        
+
         # Open output file where synthetic data will be written
         if (instruments[i] != 'None'):
-            f = open('../../observations/' + planet_name + '/' + planet_name +
-                     '_SYNTHETIC_' + label + '_' + instruments[i] + '.dat','w')
-        else:
-            f = open('../../observations/' + planet_name + '/' + planet_name +
-                     '_SYNTHETIC_' + label + '.dat','w')
-        
-        # Add Gaussian errors to binned points to produce synthetic data set
-        for j in range(N_data):
-            
-            syn_err[j] = err_data[i]*1.0e-6   # Transit depth error for this synthetic dataset (ppm -> transit depth)
-            
-            if (Gauss_scatter == True):   
-                err = np.random.normal(0.0, syn_err[j])   # Random draw with std = syn_err
-                syn_data[j] = syn_ymodel[j] + err
+            if (label is None):
+                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
+                        instruments[i] + '.dat', 'w')
             else:
-                syn_data[j] = syn_ymodel[j] 
-        
-            # Write this datapoint to file
-            f.write('%f %f %e %e \n' %(wl_data[j], half_width_data[j], syn_data[j], syn_err[j]))
-            
-        f.close()
-        
-        # Combine arrays from this dataset with previous synthetic datasets in loop
-        wl_data_ALL = np.concatenate([wl_data_ALL, wl_data])
-        half_width_data_ALL = np.concatenate([half_width_data_ALL, half_width_data])  
-        syn_data_ALL = np.concatenate([syn_data_ALL, syn_data])
-        syn_err_ALL = np.concatenate([syn_err_ALL, syn_err])
-        syn_ymodel_ALL = np.concatenate([syn_ymodel_ALL, syn_ymodel])
-
-    return syn_data_ALL, syn_err_ALL, wl_data_ALL, half_width_data_ALL, syn_ymodel
-
-
-def generate_syn_data_from_file(wl_model, spectrum, instruments, err_files, 
-                                label, Gauss_scatter = False):
-
-    '''''' Generates a synthetic dataset in one or more wavelength regions. 
-    
-        Inputs:
-        
-        wl_model => model wavelength grid (m)
-        spectrum => model spectrum
-        err_files => file containing data wavelengths and error bars
-        instruments => array of instrument names for each dataset (use 'None' for a flat sensitivity function)
-          
-    ''''''
-           
-    print("Creating synthetic data")
-    
-    is_photometric = []
-    
-    wl_data_ALL = np.array([])
-    half_width_data_ALL = np.array([])
-    syn_data_ALL = np.array([])
-    syn_err_ALL = np.array([])
-    syn_ymodel_ALL = np.array([])
-    
-    data_dir = '../../observations/' + planet_name + '/'
-
-    for i in range(len(instruments)):
-        
-        print(instruments[i])
-        
-        if (instruments[i] in ['IRAC1', 'IRAC2']): is_photometric.append(True)
-        else: is_photometric.append(False)
-        
-        # Read error file
-        data = pd.read_csv((data_dir + err_files[i]), sep = ' ', header=None)
-
-        wl_data = np.array(data).T[0]             # Wavelengths of bin centres (um)
-        half_width_data = np.array(data).T[1]     # Bin half widths (um)
-        err_data = np.array(data).T[3]            # Pre-simulated error bars
-        
-        N_data = len(wl_data)
-        
-        # Initialise the instrument properties for the synthetic dataset 
-        sigma, sens, bin_left, bin_cent, bin_right, norm = init_instrument(wl_model, wl_data, half_width_data, instruments[i])
-        
-        # Compute synthetic binned model points
-        syn_ymodel = make_model_data(spectrum, wl_model, sigma, sens, bin_left, bin_cent, bin_right, half_width_data, norm, is_photometric[i])
-        
-        # Arrays containing synthetic data and 1-sigma errors
-        syn_data = np.zeros(shape=(N_data))
-        syn_err = np.zeros(shape=(N_data))   
-                
-        # Open output file where synthetic data will be written
-        if (instruments[i] != 'None'):
-            f = open('../../observations/' + planet_name + '/' + planet_name +
-                     '_SYNTHETIC_' + label + '_' + instruments[i] + '.dat','w')
+                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
+                        instruments[i] + '_' + label + '.dat', 'w')
         else:
-            f = open('../../observations/' + planet_name + '/' + planet_name +
-                     '_SYNTHETIC_' + label + '.dat','w')
+            if (label is None):
+                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_.dat', 'w')
+            else:
+                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
+                        label + '.dat', 'w')
                 
         # Add Gaussian errors to binned points to produce synthetic data set
         for j in range(N_data):
-            
-            syn_err[j] = err_data[j]
             
             if (Gauss_scatter == True):   
                 err = np.random.normal(0.0, err_data[j])
@@ -458,16 +431,10 @@ def generate_syn_data_from_file(wl_model, spectrum, instruments, err_files,
             else:
                 syn_data[j] = syn_ymodel[j] 
 
-            f.write('%f %f %e %e \n' %(wl_data[j], half_width_data[j], syn_data[j], syn_err[j]))
+            f.write('%.6f %.6f %.6e %.6e \n' %(wl_data[j], half_bin[j], 
+                                               syn_data[j], err_data[j]))
             
         f.close()
         
-        wl_data_ALL = np.concatenate([wl_data_ALL, wl_data])
-        half_width_data_ALL = np.concatenate([half_width_data_ALL, half_width_data])  
-        syn_data_ALL = np.concatenate([syn_data_ALL, syn_data])
-        syn_err_ALL = np.concatenate([syn_err_ALL, syn_err])
-        syn_ymodel_ALL = np.concatenate([syn_ymodel_ALL, syn_ymodel])
+    return
 
-    return syn_data_ALL, syn_err_ALL, wl_data_ALL, half_width_data_ALL, syn_ymodel
-
-'''
