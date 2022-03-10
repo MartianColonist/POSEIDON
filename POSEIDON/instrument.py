@@ -307,8 +307,10 @@ def generate_syn_data_from_user(planet, wl_model, spectrum, data_dir,
 
     print("Creating synthetic data")
 
+    # Unpack planet name
     planet_name = planet['planet_name']
     
+    # Check if selected instrument corresponds to a photometric band
     if (instrument in ['IRAC1', 'IRAC2']): 
         is_photometric = True
     else: 
@@ -362,8 +364,8 @@ def generate_syn_data_from_user(planet, wl_model, spectrum, data_dir,
     f.close()
 
 
-def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
-                                data_properties, label = None, 
+def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir, 
+                                data_properties, N_trans = [], label = None, 
                                 Gauss_scatter = True):
     '''
     ADD DOCSTRING.
@@ -371,14 +373,21 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
            
     print("Creating synthetic data")
 
+    # Unpack planet name and instrument names
     planet_name = planet['planet_name']
-
     instruments = data_properties['instruments']
 
+    # Generate dataset for each provided instrument
     for i in range(len(instruments)):
                     
         print(instruments[i])
+
+        if (N_trans == []):
+            N_trans_i = 1     # Use one transit if not specified by user
+        else:
+            N_trans_i = N_trans[i]
         
+        # Check if selected instrument corresponds to a photometric band
         if (data_properties['instruments'][i] in ['IRAC1', 'IRAC2']): 
             photometric = True
         else: 
@@ -411,22 +420,25 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
         if (instruments[i] != 'None'):
             if (label is None):
                 f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
-                        instruments[i] + '.dat', 'w')
+                         instruments[i] + '_N_trans_' + str(N_trans_i) + 
+                         '.dat', 'w')
             else:
                 f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
-                        instruments[i] + '_' + label + '.dat', 'w')
+                        instruments[i] + '_' + label + '_N_trans_' + 
+                        str(N_trans_i) + '.dat', 'w')
         else:
             if (label is None):
-                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_.dat', 'w')
+                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
+                         '_N_trans_' + str(N_trans_i) + '.dat', 'w')
             else:
                 f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
-                        label + '.dat', 'w')
+                         label + '_N_trans_' + str(N_trans_i) + '.dat', 'w')
                 
         # Add Gaussian errors to binned points to produce synthetic data set
         for j in range(N_data):
             
             if (Gauss_scatter == True):   
-                err = np.random.normal(0.0, err_data[j])
+                err = np.random.normal(0.0, (err_data[j]/np.sqrt(N_trans_i)))
                 syn_data[j] = syn_ymodel[j] + err
             else:
                 syn_data[j] = syn_ymodel[j] 
