@@ -806,7 +806,8 @@ def plot_spectra(spectra, planet, model, data_properties = None,
                  plot_full_res = True, bin_spectra = True, R_to_bin = 100, 
                  wl_min = None, wl_max = None, transit_depth_min = None,
                  transit_depth_max = None, show_data = False, 
-                 colour_list = [], spectra_labels = []):
+                 colour_list = [], spectra_labels = [], data_colour_list = [],
+                 data_labels = []):
     ''' 
     Plot a collection of individual model transmission spectra.
     
@@ -822,13 +823,6 @@ def plot_spectra(spectra, planet, model, data_properties = None,
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
 
-    # Unpack data properties (if provided)
-    if (data_properties is not None):
-        ydata = data_properties['ydata']
-        err_data = data_properties['err_data']
-        wl_data = data_properties['wl_data']
-        bin_size = data_properties['half_bin']
-  
     # Quick validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
@@ -844,7 +838,36 @@ def plot_spectra(spectra, planet, model, data_properties = None,
         colours = ['green', 'red', 'blue', 'brown', 'black', 'darkgrey']
     else:
         colours = colour_list
-                
+
+    # Unpack data properties (if provided)
+    if ((data_properties != None) and (show_data == True)):
+
+        datasets = data_properties['datasets']
+        instruments = data_properties['instruments']
+        ydata = data_properties['ydata']
+        err_data = data_properties['err_data']
+        wl_data = data_properties['wl_data']
+        bin_size = data_properties['half_bin']
+
+        # Find number of datasets to plot
+        N_datasets = len(datasets)
+            
+        # Quick validity checks for plotting
+        if (N_datasets == 0):
+            raise Exception("Must provide at least one dataset to plot!")
+        if (N_datasets > 6):
+            raise Exception("Max number of concurrent datasets to plot is 6.")
+        if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
+            raise Exception("Number of colours does not match number of datasets.")
+        if ((data_labels != []) and (N_datasets != len(data_labels))):
+            raise Exception("Number of dataset labels does not match number of datasets.")
+            
+        # Define colours for plotted spectra (default or user choice)
+        if (data_colour_list == []):   # If user did not specify a custom colour list
+            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black']
+        else:
+            data_colours = data_colour_list
+        
     # If the user did not specify a wavelength range, find min and max from input models
     if (wl_min == None):
         
@@ -1029,18 +1052,33 @@ def plot_spectra(spectra, planet, model, data_properties = None,
 
     # Overplot datapoints
     if (show_data == True):
-        markers, caps, bars = ax1.errorbar(wl_data, ydata, yerr=err_data, 
-                                           xerr=bin_size, marker='o', 
-                                           markersize=3, capsize=2, 
-                                           ls='none', color='orange', 
-                                           elinewidth=0.8, ecolor = 'black', 
-                                           alpha=0.8, label=r'Data') 
-        [markers.set_alpha(1.0)]
-        
-    # Overplot a particular model, binned to resolution of the observations
-   # if (show_ymodel == True):
-   #     ax1.scatter(wl_data, ymodel, color = 'gold', s=5, marker='D', 
-   #                 lw=0.1, alpha=0.8, edgecolor='black', label=r'Binned Model')
+
+        for i in range(N_datasets):
+            
+            # If user did not specify dataset labels, use the instrument names
+            if (data_labels == []):
+                label_i = instruments[i]
+            else:
+                label_i = data_labels[i]
+            
+            # Find start and end indices of dataset_i in dataset property arrays
+            idx_start = data_properties['len_data_idx'][i]
+            idx_end = data_properties['len_data_idx'][i+1]
+
+            # Extract the ith dataset
+            wl_data_i = wl_data[idx_start:idx_end]
+            ydata_i = ydata[idx_start:idx_end]
+            err_data_i = err_data[idx_start:idx_end]
+            bin_size_i = bin_size[idx_start:idx_end]
+
+            # Plot dataset
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                               xerr=bin_size_i, marker='o', 
+                                               markersize=3, capsize=2, ls='none', 
+                                               color=data_colours[i], elinewidth=0.8, 
+                                               ecolor = 'black', alpha=0.8, 
+                                               label=label_i) 
+            [markers.set_alpha(1.0)]
     
     # Set axis ranges
     ax1.set_xlim([wl_range[0], wl_range[1]])
@@ -1054,12 +1092,12 @@ def plot_spectra(spectra, planet, model, data_properties = None,
     ax1.text(planet_name_x_position, planet_name_y_position, planet_name, fontsize = 16)
    # ax1.text(planet_name_x_position, planet_name_y_position, model_name, fontsize = 16)
 
-
     # Decide at which wavelengths to place major tick labels
     if (wl_max <= 1.0):
         wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
         wl_ticks_2 = np.array([])
         wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
     elif (wl_max <= 2.0):
         if (wl_min < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
@@ -1067,6 +1105,7 @@ def plot_spectra(spectra, planet, model, data_properties = None,
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
         wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
     elif (wl_max <= 3.0):
         if (wl_min < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
@@ -1074,15 +1113,25 @@ def plot_spectra(spectra, planet, model, data_properties = None,
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
         wl_ticks_3 = np.array([])
-    else:
+        wl_ticks_4 = np.array([])
+    elif (wl_max <= 10.0):
         if (wl_min < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
         else:
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
         wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-        
-    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3))
+        wl_ticks_4 = np.array([])
+    else:
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+        wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+        wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
+
+    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
     
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
@@ -1227,9 +1276,9 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
     transit_depth_range = [transit_depth_min_plt, transit_depth_max_plt]
     
     # Place planet name in top left corner
-  #  planet_name_x_position = 0.008*(wl_range[1]-wl_range[0]) + wl_range[0]
-  #  planet_name_y_position = (0.92*(transit_depth_range[1]-transit_depth_range[0]) + 
-  #                                  transit_depth_range[0])
+    planet_name_x_position = 0.008*(wl_range[1]-wl_range[0]) + wl_range[0]
+    planet_name_y_position = (0.92*(transit_depth_range[1]-transit_depth_range[0]) + 
+                                    transit_depth_range[0])
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
@@ -1262,7 +1311,7 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
         else:
             label_i = data_labels[i]
         
-        # Find start and end indicies of dataset_i in dataset property arrays
+        # Find start and end indices of dataset_i in dataset property arrays
         idx_start = data['len_data_idx'][i]
         idx_end = data['len_data_idx'][i+1]
 
@@ -1290,13 +1339,14 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
     ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
 
     # Add planet name label
-  #  ax1.text(planet_name_x_position, planet_name_y_position, planet_name, fontsize = 16)
+    ax1.text(planet_name_x_position, planet_name_y_position, planet_name, fontsize = 16)
 
     # Decide at which wavelengths to place major tick labels
     if (wl_max_plt <= 1.0):
         wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), round_sig_figs(wl_max_plt, 2)+0.01, 0.1)
         wl_ticks_2 = np.array([])
         wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
     elif (wl_max_plt <= 2.0):
         if (wl_min_plt < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
@@ -1304,22 +1354,33 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max_plt, 2)+0.01, 0.2)
         wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
     elif (wl_max_plt <= 3.0):
         if (wl_min_plt < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
         else:
             wl_ticks_1 = np.array([])
-        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max_plt, 2)+0.01, 0.5)
+        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max_plt, 3)+0.01, 0.5)
         wl_ticks_3 = np.array([])
-    else:
+        wl_ticks_4 = np.array([])
+    elif (wl_max_plt <= 10.0):
         if (wl_min_plt < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
         else:
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
         wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max_plt, 2)+0.01, 1.0)
-        
-    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3))
+        wl_ticks_4 = np.array([])
+    else:
+        if (wl_min_plt < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+        wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+        wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max_plt, 2)+0.01, 2.0)
+
+    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
     
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
@@ -1610,12 +1671,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ax1.text(planet_name_x_position, planet_name_y_position, planet_name, fontsize = 16)
    # ax1.text(planet_name_x_position, planet_name_y_position, model_name, fontsize = 16)
 
-
     # Decide at which wavelengths to place major tick labels
     if (wl_max <= 1.0):
         wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
         wl_ticks_2 = np.array([])
         wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
     elif (wl_max <= 2.0):
         if (wl_min < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
@@ -1623,6 +1684,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
         wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
     elif (wl_max <= 3.0):
         if (wl_min < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
@@ -1630,15 +1692,25 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
         wl_ticks_3 = np.array([])
-    else:
+        wl_ticks_4 = np.array([])
+    elif (wl_max <= 10.0):
         if (wl_min < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
         else:
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
         wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-        
-    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3))
+        wl_ticks_4 = np.array([])
+    else:
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+        wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+        wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
+
+    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
     
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
@@ -1735,10 +1807,12 @@ def plot_FpFs(planet, model, FpFs, wl, R_to_bin = 100):
     wl_min = min(wl)
     wl_max = max(wl)
 
+    # Decide at which wavelengths to place major tick labels
     if (wl_max <= 1.0):
         wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
         wl_ticks_2 = np.array([])
         wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
     elif (wl_max <= 2.0):
         if (wl_min < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
@@ -1746,6 +1820,7 @@ def plot_FpFs(planet, model, FpFs, wl, R_to_bin = 100):
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
         wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
     elif (wl_max <= 3.0):
         if (wl_min < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
@@ -1753,15 +1828,25 @@ def plot_FpFs(planet, model, FpFs, wl, R_to_bin = 100):
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
         wl_ticks_3 = np.array([])
-    else:
+        wl_ticks_4 = np.array([])
+    elif (wl_max <= 10.0):
         if (wl_min < 1.0):
             wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
         else:
             wl_ticks_1 = np.array([])
         wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
         wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-        
-    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3))
+        wl_ticks_4 = np.array([])
+    else:
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+        wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+        wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
+
+    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
     
     # Plot wl tick labels
     ax.set_xticks(wl_ticks)
