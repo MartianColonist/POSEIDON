@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.ndimage import gaussian_filter1d as gauss_conv
 from scipy.integrate import trapz
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
-
+from spectres import spectres
 
 #from config import planet_name, Band, App_mag, T_s, log_g_s, Met_s
 
@@ -365,8 +365,8 @@ def generate_syn_data_from_user(planet, wl_model, spectrum, data_dir,
 
 
 def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir, 
-                                data_properties, N_trans = [], label = None, 
-                                Gauss_scatter = True):
+                                data_properties, R_to_bin = [], 
+                                N_trans = [], label = None, Gauss_scatter = True):
     '''
     ADD DOCSTRING.
     '''
@@ -404,14 +404,48 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
 
         # Compute binned transit depths for dataset_i
         syn_ymodel = make_model_data(spectrum, wl_model, data_properties['psf_sigma'][idx_1:idx_2], 
-                                    data_properties['sens'][i*len(wl_model):(i+1)*len(wl_model)], 
-                                    data_properties['bin_left'][idx_1:idx_2], 
-                                    data_properties['bin_cent'][idx_1:idx_2], 
-                                    data_properties['bin_right'][idx_1:idx_2],
-                                    data_properties['norm'][idx_1:idx_2], photometric)
+                                     data_properties['sens'][i*len(wl_model):(i+1)*len(wl_model)], 
+                                     data_properties['bin_left'][idx_1:idx_2], 
+                                     data_properties['bin_cent'][idx_1:idx_2], 
+                                     data_properties['bin_right'][idx_1:idx_2],
+                                     data_properties['norm'][idx_1:idx_2], photometric)
+
+        # If simulated data will be further binned down
+        if (R_to_bin != []):
+
+            # Create new data wavelength grid at lower resolution
+            wl_data_new, half_bin_new = R_to_wl(R_to_bin[i], wl_data[0], wl_data[-1])
+            
+            # Initialise the instrument properties for the synthetic dataset 
+            sigma, sens, bin_left, \
+            bin_cent, bin_right, norm = init_instrument(wl_model, wl_data_new, 
+                                                        half_bin_new, 
+                                                        instruments[i])
+            
+            # Compute synthetic binned model points
+            syn_ymodel_new = make_model_data(spectrum, wl_model, sigma, sens, bin_left, 
+                                             bin_cent, bin_right, norm, photometric)
+
+            # Obtain new error bars corresponding to the new spectral resolution
+            _, err_data_new = spectres(wl_data_new, wl_data, syn_ymodel, 
+                                       spec_errs=err_data, verbose = False)
+
+            # Replace Spectres boundary NaNs with second and penultimate values
+            err_data_new[0] = err_data_new[1]
+            err_data_new[-1] = err_data_new[-2]
+     
+
+        # No further binning
+        else:
+
+            # Maintain output quantities
+            wl_data_new = wl_data
+            half_bin_new = half_bin
+            err_data_new = err_data
+            syn_ymodel_new = syn_ymodel
         
         # Find number of data points for dataset_i
-        N_data = len(wl_data)
+        N_data = len(wl_data_new)
 
         # Arrays containing synthetic data and 1-sigma errors
         syn_data = np.zeros(shape=(N_data))
@@ -438,13 +472,13 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
         for j in range(N_data):
             
             if (Gauss_scatter == True):   
-                err = np.random.normal(0.0, (err_data[j]/np.sqrt(N_trans_i)))
-                syn_data[j] = syn_ymodel[j] + err
+                err = np.random.normal(0.0, (err_data_new[j]/np.sqrt(N_trans_i)))
+                syn_data[j] = syn_ymodel_new[j] + err
             else:
-                syn_data[j] = syn_ymodel[j] 
+                syn_data[j] = syn_ymodel_new[j] 
 
-            f.write('%.6f %.6f %.6e %.6e \n' %(wl_data[j], half_bin[j], 
-                                               syn_data[j], err_data[j]))
+            f.write('%.6f %.6f %.6e %.6e \n' %(wl_data_new[j], half_bin_new[j], 
+                                               syn_data[j], err_data_new[j]))
             
         f.close()
         
