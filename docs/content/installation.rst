@@ -53,14 +53,22 @@ Now POSEIDON will know where to find the opacity database and stellar models.
     conda create --name YOUR_ENV_NAME_HERE python=3.8
 
 
-Step 2: Install PyMultiNest
-___________________________
+Step 2: Install mpi4py and PyMultiNest
+______________________________________
 
 MultiNest is the main sampling algorithm used for parameter space exploration
 in POSEIDON retrievals. MultiNest has a convenient Python wrapper, PyMultiNest.
 
-You can install *both* MultiNest and PyMultiNest in a single line via 
-conda-forge (don't follow the complicated instructions you might see elsewhere).
+You first need to install mpi4py, which is used by PyMultiNest for parallel
+computations on multiple cores.
+
+.. code-block:: bash
+
+    conda install -c conda-forge mpi4py
+
+Then you can install *both* MultiNest and PyMultiNest in a single line via 
+conda-forge (you might see way more complicated instructions elsewhere, this
+is the simplest way!).
 
 .. code-block:: bash
 
@@ -70,7 +78,7 @@ conda-forge (don't follow the complicated instructions you might see elsewhere).
 Step 3: Install POSEIDON from GitHub
 ____________________________________
 
-Now all that is left is the clone POSEIDON from GitHub and install the module.
+Now all that is left is to obtain POSEIDON from GitHub and install the module.
 You can download `POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON_public>`_
 or clone the repository:
 
@@ -78,10 +86,10 @@ or clone the repository:
 		
    git clone https://github.com/MartianColonist/POSEIDON_public.git
 
-Then navigate into the POSEIDON_public directory and install the package via:
+Then navigate into the 'POSEIDON_public' directory and install the package via:
 
 .. code-block:: bash
 		
    pip install .
 
-And that, splendidly, is all there is to it. Onwards, to the tutorials!
+And that, splendidly, is all there is to it. Onwards to the tutorials!
