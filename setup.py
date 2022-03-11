@@ -12,7 +12,6 @@ setup(
     author_email = 'rmacdonald@astro.cornell.edu',
     license = 'BSD 3-Clause License',
     packages = find_packages(),
-    include_package_data = True,
     package_data={'': ['reference_data/*']},
     python_requires='<=3.8.12',
     install_requires = ['numpy<=1.21',
