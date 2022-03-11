@@ -411,7 +411,7 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
                                      data_properties['norm'][idx_1:idx_2], photometric)
 
         # If simulated data will be further binned down
-        if (R_to_bin != []):
+        if (R_to_bin[i] != None):
 
             # Create new data wavelength grid at lower resolution
             wl_data_new, half_bin_new = R_to_wl(R_to_bin[i], wl_data[0], wl_data[-1])
@@ -443,6 +443,9 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
             half_bin_new = half_bin
             err_data_new = err_data
             syn_ymodel_new = syn_ymodel
+
+        # Divide error bars by sqrt(number of transits)
+        err_data_new = err_data_new/np.sqrt(N_trans_i)
         
         # Find number of data points for dataset_i
         N_data = len(wl_data_new)
@@ -472,7 +475,7 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
         for j in range(N_data):
             
             if (Gauss_scatter == True):   
-                err = np.random.normal(0.0, (err_data_new[j]/np.sqrt(N_trans_i)))
+                err = np.random.normal(0.0, err_data_new[j])
                 syn_data[j] = syn_ymodel_new[j] + err
             else:
                 syn_data[j] = syn_ymodel_new[j] 
