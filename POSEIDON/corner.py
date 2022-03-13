@@ -657,7 +657,7 @@ def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
             ql, qm, qh = _quantile(x, quantiles, weights=weights)
             q_minus, q_plus = qm - ql, qh - qm
             
-            if (('T' in param_name) or ('T_' in param_name)):
+            if ((('T' in param_name) or ('T_' in param_name)) and ('log' not in param_name)):
                 title_fmt = '.0f'
             elif (('alpha' in param_name) or ('beta' in param_name)):
                 title_fmt = '.0f'
