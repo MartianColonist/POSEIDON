@@ -2,6 +2,7 @@
 
 import numpy as np
 import time
+import os
 import pymultinest
 from mpi4py import MPI
 from scipy.special import ndtri
@@ -61,8 +62,11 @@ def run_retrieval(planet, star, model, opac, data, priors,
     # Run POSEIDON retrieval using PyMultiNest
     if (sampling_algorithm == 'MultiNest'):
 
+        os.chdir(output_dir + 'MultiNest_raw/')
+
         # Set basename for MultiNest output files
-        basename = (output_dir + 'MultiNest_raw/' + retrieval_name + '-')
+        basename = retrieval_name + '-'
+        #basename = (output_dir + 'MultiNest_raw/' + retrieval_name + '-')
 
         # Begin retrieval timer
         if (rank == 0):
