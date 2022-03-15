@@ -62,11 +62,11 @@ def run_retrieval(planet, star, model, opac, data, priors,
     # Run POSEIDON retrieval using PyMultiNest
     if (sampling_algorithm == 'MultiNest'):
 
+        # Change directory into Multinest result file folder
         os.chdir(output_dir + 'MultiNest_raw/')
 
         # Set basename for MultiNest output files
         basename = retrieval_name + '-'
-        #basename = (output_dir + 'MultiNest_raw/' + retrieval_name + '-')
 
         # Begin retrieval timer
         if (rank == 0):
@@ -94,7 +94,7 @@ def run_retrieval(planet, star, model, opac, data, priors,
             print('POSEIDON retrieval finished in ' + str(total) + ' hours')
       
             # Write POSEIDON retrieval output files 
-            write_MultiNest_results(planet, model, data, output_dir, retrieval_name,
+            write_MultiNest_results(planet, model, data, retrieval_name,
                                     N_live, ev_tol, sampling_algorithm, wl, R)
 
             # Compute samples of retrieved P-T profile and spectrum
@@ -102,18 +102,18 @@ def run_retrieval(planet, star, model, opac, data, priors,
             T_high1, T_high2, \
             spec_low2, spec_low1, \
             spec_median, spec_high1, \
-            spec_high2 = spectra_PT_samples(planet, star, model, opac, output_dir, 
+            spec_high2 = spectra_PT_samples(planet, star, model, opac,
                                             retrieval_name, wl, P, P_ref, 
                                             He_fraction, N_slice_EM, N_slice_DN, 
                                             spectrum_type, N_samples = 1000)
                                             
 
             # Save sampled P-T profile
-            write_retrieved_PT(planet_name, retrieval_name, P, T_low2, T_low1, 
+            write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
                                T_median, T_high1, T_high2)
 
             # Save sampled spectrum
-            write_retrieved_spectrum(planet_name, retrieval_name, wl, spec_low2, 
+            write_retrieved_spectrum(retrieval_name, wl, spec_low2, 
                                      spec_low1, spec_median, spec_high1, spec_high2)
 
             print("All done! Output files can be found in " + output_dir + "results/")
@@ -571,7 +571,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
 	
 
-def spectra_PT_samples(planet, star, model, opac, output_dir, retrieval_name,
+def spectra_PT_samples(planet, star, model, opac, retrieval_name,
                        wl, P, P_ref, He_fraction, N_slice_EM, N_slice_DN, 
                        spectrum_type, N_samples = 1000):
     '''
@@ -587,7 +587,7 @@ def spectra_PT_samples(planet, star, model, opac, output_dir, retrieval_name,
     N_params_cum = model['N_params_cum']
     
     # Load relevant output directory
-    output_prefix = (output_dir + 'MultiNest_raw/' + retrieval_name + '-')
+    output_prefix = 'MultiNest_raw/' + retrieval_name + '-'
     
     # Run PyMultiNest analyser to extract posterior samples
     analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
