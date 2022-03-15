@@ -225,7 +225,7 @@ def write_retrieved_spectrum(retrieval_name, wl, spec_low2,
     '''
 
     # Identify output directory location where the retrieved spectrum will be saved
-    output_dir = './results/'
+    output_dir = '../results/'
     
     # Write retrieved spectrum
     f = open(output_dir + retrieval_name + '_spectrum_retrieved.txt', 'w')
@@ -276,7 +276,7 @@ def write_retrieved_PT(retrieval_name, P, T_low2, T_low1,
     '''
 
     # Identify output directory location where the retrieved spectrum will be saved
-    output_dir = './results/'
+    output_dir = '../results/'
     
     # Write retrieved spectrum
     f = open(output_dir + retrieval_name + '_PT_retrieved.txt', 'w')
@@ -963,10 +963,8 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     best_chi_square = -2.0 * (max_likelihood - norm_log)
     reduced_chi_square = best_chi_square/(len(ydata) - n_params)  
 
-    os.chdir('../')    # Go up one directory
-
     # Load relevant results directory
-    results_prefix = './results/' + retrieval_name
+    results_prefix = '../results/' + retrieval_name
     
     # Write samples to file
     write_samples_file(samples, param_names, n_params, results_prefix)

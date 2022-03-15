@@ -120,6 +120,9 @@ def run_retrieval(planet, star, model, opac, data, priors,
          
     comm.Barrier()
 
+    # Change directory back to directory where user's python script is located
+    os.chdir('../../../../')
+
 
 @jit(nopython = True)
 def CLR_Prior(chem_params_drawn, limit = -12.0):
@@ -587,7 +590,7 @@ def spectra_PT_samples(planet, star, model, opac, retrieval_name,
     N_params_cum = model['N_params_cum']
     
     # Load relevant output directory
-    output_prefix = 'MultiNest_raw/' + retrieval_name + '-'
+    output_prefix = retrieval_name + '-'
     
     # Run PyMultiNest analyser to extract posterior samples
     analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
