@@ -47,7 +47,7 @@ def planck_lambda(T, wl):
 
 
 @jit(nopython = True)
-def emission_rad_transfer(T, dr, wl, kappa_clear, order = 1, Gauss_quad = 3):
+def emission_rad_transfer(T, dr, wl, kappa_clear, order = 1, Gauss_quad = 2):
     '''
     ADD DOCSTRING
     '''
@@ -65,7 +65,7 @@ def emission_rad_transfer(T, dr, wl, kappa_clear, order = 1, Gauss_quad = 3):
     # The total extinction coefficient (without scattering) comes only from chemical absorption    
     kappa_tot = kappa_clear[:,0,0,:]  # 0 index to only consider one region for 1D models
     
-    # Remove region dependance from layer thickness array
+    # Remove region dependence from layer thickness array
     dz = dr[:,0,0]   # 0 index to only consider one region for 1D models
     T = T[:,0,0]     # 0 index to only consider one region for 1D models
     

@@ -78,7 +78,7 @@ def scale_lightness(colour_name, scale):
     return colorsys.hls_to_rgb(h, min(1, l * scale), s = s)
 
 
-def plot_transit(ax, R_p, R_s, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta, 
+def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta, 
                  perspective, plot_labels = True):
     '''
     
@@ -313,7 +313,7 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     planet_name = planet['planet_name']
     model_name = model['model_name']
     R_p = planet['planet_radius']
-    R_s = star['stellar_radius']
+  #  R_s = star['stellar_radius']
     r = atmosphere['r']
     T = atmosphere['T']
     phi = atmosphere['phi']
@@ -334,11 +334,11 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     ax2 = plt.subplot(gs[1])
     
     # Plot terminator plane on LHS axis
-    p = plot_transit(ax1, R_p, R_s, r, T, phi, phi_edge, dphi, theta, 
+    p = plot_transit(ax1, R_p, r, T, phi, phi_edge, dphi, theta, 
                      theta_edge, dtheta, 'terminator', plot_labels) 
 
     # Plot side perspective on RHS axis
-    _ = plot_transit(ax2, R_p, R_s, r, T, phi, phi_edge, dphi, theta, 
+    _ = plot_transit(ax2, R_p, r, T, phi, phi_edge, dphi, theta, 
                      theta_edge, dtheta, 'day-night', plot_labels) 
     
     # Plot temperature colourbar
@@ -358,7 +358,8 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     return fig
 
 
-def plot_PT(planet, model, atmosphere, show_profiles = []):
+def plot_PT(planet, model, atmosphere, show_profiles = [], 
+            log_P_min = None, log_P_max = None):
     ''' 
     Plot the pressure-temperature (P-T) profiles defining the atmosphere.
     
@@ -408,6 +409,11 @@ def plot_PT(planet, model, atmosphere, show_profiles = []):
         major_spacing = max(np.around((T_range/10), -1), 10.0)
         
     minor_spacing = major_spacing/10
+
+    if (log_P_min == None):
+        log_P_min = np.log10(np.min(P))
+    if (log_P_max == None):
+        log_P_max = np.log10(np.max(P))
     
     # create figure
     fig = plt.figure()  
@@ -515,8 +521,9 @@ def plot_PT(planet, model, atmosphere, show_profiles = []):
     # Common plot settings for all profiles
     ax.invert_yaxis()            
     ax.set_xlabel(r'Temperature (K)', fontsize = 20)
-    ax.set_xlim(T_min, T_max)  
+    ax.set_xlim(T_min, T_max)
     ax.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))  
     ax.tick_params(labelsize=12)
     
     # Add legend
@@ -534,7 +541,9 @@ def plot_PT(planet, model, atmosphere, show_profiles = []):
     
 
 def plot_chem(planet, model, atmosphere, plot_species = [], 
-              colour_list = [], show_profiles = []):    
+              colour_list = [], show_profiles = [],
+              log_X_min = None, log_X_max = None,
+              log_P_min = None, log_P_max = None):    
     ''' 
     Plot the mixing ratio profiles defining the atmosphere.
     
@@ -591,8 +600,10 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
             raise Exception(species + " not included in this model.")
 
     # Find minimum and maximum mixing ratios in atmosphere
-    log_X_min = np.floor(np.min(log_X)) - 1.0
-    log_X_max = min((np.ceil(np.max(log_X)) + 1.0), 0.0)
+    if (log_X_min == None):
+        log_X_min = np.floor(np.min(log_X)) - 1.0
+    if (log_X_max == None):
+        log_X_max = min((np.ceil(np.max(log_X)) + 1.0), 0.0)
     
     # When range is small, extend axes +/- 1 dex either side
     if (log_X_min == log_X_max):
@@ -605,6 +616,11 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     # Calculate appropriate axis spacing
     major_spacing = 1.0
     minor_spacing = major_spacing/10
+
+    if (log_P_min == None):
+        log_P_min = np.log10(np.min(P))
+    if (log_P_max == None):
+        log_P_max = np.log10(np.max(P))
     
     # Define colours for mixing ratio profiles (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
@@ -784,6 +800,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     ax.set_xlabel(r'Mixing Ratios (log $X_{\rm{i}}$)', fontsize = 20)
     ax.set_xlim(log_X_min, log_X_max)  
     ax.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))  
     ax.tick_params(labelsize=12)
         
     # Add legend
@@ -1405,7 +1422,7 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
 
 def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1, 
                            spectra_high1, spectra_high2, planet_name, 
-                           data_properties, R_to_bin = 100, 
+                           data_properties, R_to_bin = 100, label = None,
                            show_ymodel = True, wl_min = None, wl_max = None, 
                            transit_depth_min = None, transit_depth_max = None, 
                            colour_list = [], spectra_labels = []):
@@ -1737,7 +1754,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
 
     # Write figure to file
-    file_name = output_dir + planet_name + '_retrieved_spectra.pdf'
+    if (label == None):
+        file_name = output_dir + planet_name + '_retrieved_spectra.pdf'
+    else:
+        file_name = output_dir + planet_name + '_' + label + '_retrieved_spectra.pdf'
 
     plt.savefig(file_name, bbox_inches='tight')
 
@@ -1857,6 +1877,107 @@ def plot_FpFs(planet, model, FpFs, wl, R_to_bin = 100):
     ax.set_xlim([min(wl), max(wl)])
 
     ax.legend(loc='upper left', shadow=True, prop={'size':10}, ncol=1, frameon=False)
+    
+    # Write figure to file
+    file_name = output_dir + model_name + '_emission_spectra.pdf'
+
+    plt.savefig(file_name, bbox_inches='tight')
+
+    return fig
+
+
+def plot_Fp(planet, model, Fp, wl, R_to_bin = 100):
+
+    # Unpack model and atmospheric properties
+    planet_name = planet['planet_name']
+    model_name = model['model_name']
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+    # Create y formatting objects
+  #  ymajorLocator   = MultipleLocator(1.0e-4)
+    ymajorFormatter = ScalarFormatter(useMathText=True)
+    ymajorFormatter.set_powerlimits((0,0))
+  #  yminorLocator = MultipleLocator(1.0e-5)
+    
+    fig = plt.figure()  
+        
+    ax = plt.gca()
+
+   # ax.set_xscale("log")
+
+    # Assign formatter objects to axes
+  #  ax.xaxis.set_major_formatter(ScalarFormatter())
+  #  ax.yaxis.set_major_locator(ymajorLocator)
+    ax.yaxis.set_major_formatter(ymajorFormatter)
+  #  ax.yaxis.set_minor_locator(yminorLocator)
+
+    ax.plot(wl, Fp, lw=0.5, alpha=0.4, color = 'crimson', 
+            label='Flux (R = 15,000)')
+
+    # Calculate binned wavelength and spectrum grid
+    wl_binned, Fp_binned = bin_spectrum_fast(wl, Fp, R_to_bin)
+
+    # Plot binned spectrum
+    ax.plot(wl_binned, Fp_binned, lw=1.0, alpha=0.8, 
+            color=scale_lightness('crimson', 0.4),
+            label='Flux' + ' (R = ' + str(R_to_bin) + ')')
+
+    # Decide at which wavelengths to place major tick labels
+    wl_min = min(wl)
+    wl_max = max(wl)
+
+    # Decide at which wavelengths to place major tick labels
+    if (wl_max <= 1.0):
+        wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
+        wl_ticks_2 = np.array([])
+        wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
+    elif (wl_max <= 2.0):
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+        wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
+    elif (wl_max <= 3.0):
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
+        wl_ticks_3 = np.array([])
+        wl_ticks_4 = np.array([])
+    elif (wl_max <= 10.0):
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+        wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
+        wl_ticks_4 = np.array([])
+    else:
+        if (wl_min < 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+        else:
+            wl_ticks_1 = np.array([])
+        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+        wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+        wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
+
+    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
+    
+    # Plot wl tick labels
+    ax.set_xticks(wl_ticks)
+
+    ax.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+    ax.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+
+    ax.set_xlim([min(wl), max(wl)])
+
+    ax.legend(loc='upper right', shadow=True, prop={'size':10}, ncol=1, frameon=False)
     
     # Write figure to file
     file_name = output_dir + model_name + '_emission_spectra.pdf'

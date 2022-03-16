@@ -90,6 +90,12 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
 
             raise Exception("Other stellar grids not yet implemented.")
 
+    else:
+
+        # No stellar spectrum
+        F_star = None
+        wl_star = None
+
     # Package stellar properties
     star = {'stellar_radius': R_s, 'stellar_T_eff': T_eff, 
             'stellar_T_eff_error': T_eff_error, 'stellar_metallicity': Met, 
@@ -100,7 +106,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
 
 
 def create_planet(planet_name, R_p, mass = None, gravity = None, 
-                  T_eq = 1400.0, b_p = 0.0):
+                  T_eq = None, d = None, b_p = 0.0):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
 
@@ -115,6 +121,8 @@ def create_planet(planet_name, R_p, mass = None, gravity = None,
             Planetary gravity corresponding to observed radius (m/s^2).
         T_eq (float):
             Planetary equilibrium temperature (zero albedo) (K). 
+        d (float):
+            Distance to system (m). 
         b_p (float),
             Impact parameter of planetary orbit (m) -- NOT in stellar radii!
     
@@ -141,7 +149,8 @@ def create_planet(planet_name, R_p, mass = None, gravity = None,
     # Package planetary properties
     planet = {'planet_name': planet_name, 'planet_radius': R_p, 
               'planet_mass': mass, 'planet_gravity': gravity, 
-              'planet_T_eq': T_eq, 'planet_impact_parameter': b_p
+              'planet_T_eq': T_eq, 'planet_impact_parameter': b_p,
+              'system_distance': d
              }
 
     return planet
@@ -456,7 +465,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
 def make_atmosphere(planet, model, R_p_ref, P, P_ref = 10.0, PT_params = [], 
                     log_X_params = [], cloud_params = [], geometry_params = [],
                     He_fraction = 0.17, N_slice_EM = 2, N_slice_DN = 4,
-                    retrieval_run = False):
+                    P_deep = 10.0, P_high = 1.0e-5, retrieval_run = False):
 
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
@@ -491,6 +500,12 @@ def make_atmosphere(planet, model, R_p_ref, P, P_ref = 10.0, PT_params = [],
             Number of azimuthal slices in the evening-morning transition region.
         N_slice_DN (even int):
             Number of zenith slices in the day-night transition region.
+        P_deep (float):
+            For P-T gradient profile, P > P_deep is isothermal.
+        P_high (float):
+            For P-T gradient profile, P < P_high is isothermal.
+        retrieval_run (bool):
+            True if a retrieval is being run, False for forward models.
     
     Returns:
         atmosphere (dict):
@@ -572,7 +587,8 @@ def make_atmosphere(planet, model, R_p_ref, P, P_ref = 10.0, PT_params = [],
                            R_p_ref, log_X_state, chemical_species, bulk_species, 
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
-                           beta, phi, theta, species_vert_gradient, He_fraction)
+                           beta, phi, theta, species_vert_gradient, He_fraction,
+                           P_deep, P_high)
 
     #***** Store cloud / haze / aerosol properties *****#
 
@@ -664,7 +680,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             Model wavelength grid (microns)
         spectrum_type (str):
             The type of spectrum for POSEIDON to compute
-            (Options: transmission).
+            (Options: transmission / emission / direct_emission).
         write_spectrum (bool):
             If True, writes the spectrum to './POSEIDON_output/PLANET/spectra/'.
 
@@ -685,17 +701,26 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     cloud_dim = model['cloud_dim']
 
     # Check that the requested spectrum model is supported
-    if (spectrum_type not in ['transmission', 'emission']):
-        raise Exception("Only transmission spectra and dayside emission " +
+    if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
+                              'dayside_emission', 'nightside_emission']):
+        raise Exception("Only transmission spectra and emission " +
                         "spectra are currently supported.")
-    elif ((spectrum_type == 'emission') and 
+    elif (('emission' in spectrum_type) and 
          ((PT_dim + X_dim + cloud_dim) != 3)):
         raise Exception("Only 1D emission spectra currently supported.")
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
     R_p = planet['planet_radius']
-    R_s = star['stellar_radius']
+    d = planet['system_distance']
+
+    if (star is not None):
+        R_s = star['stellar_radius']
+
+    # Check that a distance is provided if user wants a direct spectrum
+    if (d is None) and ('direct' in spectrum_type):
+        raise Exception("Must provide a system distance when computing a " +
+                        "direct emission spectrum.")
 
     # Unpack atmospheric properties needed for radiative transfer
     r = atmosphere['r']
@@ -799,25 +824,39 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                            phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
 
     # Generate emission spectrum
-    elif (spectrum_type == 'emission'):
+    elif ('emission' in spectrum_type):
+
+        # If distance not specified, use fiducial value
+        if (d is None):
+            d = 1        # This value only used for flux ratios, so cancels
 
         # Compute planet flux
         F_p = emission_rad_transfer(T, dr, wl, kappa_clear)
 
-        # Load stellar spectrum
-        F_s = star['F_star']
-        wl_s = star['wl_star']
-
-        # Interpolate stellar spectrum onto planet spectrum wavelength grid
-        F_s_interp = spectres(wl, wl_s, F_s)
-
-        # Convert surface fluxes to observed fluxes
-        d = 1   # Set distance to unity for now (since it cancels)
+        # Convert planet surface flux to observed flux at Earth
         F_p_obs = (R_p / d)**2 * F_p
-        F_s_obs = (R_s / d)**2 * F_s_interp
 
-        # Final spectrum is the planet-star flux ratio
-        spectrum = F_p_obs / F_s_obs
+        # For direct emission spectra (brown dwarfs and directly imaged planets)        
+        if (spectrum_type == 'direct_emission'):
+
+            # Direct spectrum is F_p observed at Earth
+            spectrum = F_p_obs
+
+        # For transiting planet emission spectra
+        else:
+
+            # Load stellar spectrum
+            F_s = star['F_star']
+            wl_s = star['wl_star']
+
+            # Interpolate stellar spectrum onto planet spectrum wavelength grid
+            F_s_interp = spectres(wl, wl_s, F_s)
+
+            # Convert stellar surface flux to observed flux at Earth
+            F_s_obs = (R_s / d)**2 * F_s_interp
+
+            # Final spectrum is the planet-star flux ratio
+            spectrum = F_p_obs / F_s_obs
 
     # Write spectrum to file
     if (save_spectrum == True):

@@ -5,10 +5,6 @@ import scipy.constants as sc
 from scipy.ndimage import gaussian_filter1d as gauss_conv
 from numba.core.decorators import jit
 
-#from config import N_D, R_p, R_J, g_0, P_min, P_max, P_deep, P_high, \
-#                   He_fraction, He_fraction_setting, T_fine_min, T_fine_max, \
-#                   PT_profile, X_profile
-                 
 from .supported_opac import inactive_species
 from .species_data import masses
 
@@ -90,7 +86,7 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 10.0):
 @jit(nopython = True)
 def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
                              N_sectors, N_zones, alpha, beta, phi, theta,
-                             P_deep = 10.0, P_high = 1.0e-5):
+                             P_deep, P_high):
     
     ''' Creates 3D temperature profile array storing T(P, phi, theta).
     
@@ -859,7 +855,8 @@ def compute_N_to_H(X, all_species):
 def profiles(planet, P, PT_profile, X_profile, PT_state, P_ref, R_p_ref, log_X_state, 
              included_species, bulk_species, param_species, active_species, 
              cia_pairs, ff_pairs, bf_species, N_sectors, N_zones, 
-             alpha, beta, phi, theta, species_vert_gradient, He_fraction):
+             alpha, beta, phi, theta, species_vert_gradient, He_fraction,
+             P_deep, P_high):
     
     ''' Main function to evaluate radial profiles of various quantities.
     
@@ -872,7 +869,7 @@ def profiles(planet, P, PT_profile, X_profile, PT_state, P_ref, R_p_ref, log_X_s
         R_p_ref => radius at reference pressure (in Jupiter radii)
         log_X_state => volume mixing ratios of atmosphere
         wl => model wavelength grid (m)
-        eta_stored => refractive indicies on model wl grid at standard conditions
+        eta_stored => refractive indices on model wl grid at standard conditions
         included_species =>
         bulk_species -> 
         param_species => array of strings with parametrised chemical species
@@ -926,7 +923,8 @@ def profiles(planet, P, PT_profile, X_profile, PT_state, P_ref, R_p_ref, log_X_s
             # Compute unsmoothed temperature field
             T_rough = compute_T_field_gradient(P, T_bar_term, Delta_T_term, 
                                                Delta_T_DN, T_deep, N_sectors, 
-                                               N_zones, alpha, beta, phi, theta)
+                                               N_zones, alpha, beta, phi, theta,
+                                               P_deep, P_high)
         
     # For the Madhusudhan & Seager (2009) profile (1D only)
     elif (PT_profile == 'Madhu'):
