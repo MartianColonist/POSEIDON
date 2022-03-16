@@ -51,6 +51,8 @@ def create_directories(base_dir, planet_name):
         os.mkdir(retrieval_dir + '/results')
     if (os.path.exists(retrieval_dir + '/MultiNest_raw') == False):
         os.mkdir(retrieval_dir + '/MultiNest_raw')
+    if (os.path.exists(retrieval_dir + '/samples') == False):
+        os.mkdir(retrieval_dir + '/samples')
         
 
 @jit(nopython = True)
@@ -963,11 +965,12 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     best_chi_square = -2.0 * (max_likelihood - norm_log)
     reduced_chi_square = best_chi_square/(len(ydata) - n_params)  
 
-    # Load relevant results directory
+    # Load relevant results directories
+    samples_prefix = '../samples/' + retrieval_name
     results_prefix = '../results/' + retrieval_name
     
     # Write samples to file
-    write_samples_file(samples, param_names, n_params, results_prefix)
+    write_samples_file(samples, param_names, n_params, samples_prefix)
             
     # Write POSEIDON retrieval summary file
     write_summary_file(results_prefix, planet_name, retrieval_name, 
