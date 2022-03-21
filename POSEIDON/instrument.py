@@ -43,7 +43,7 @@ def fwhm_instrument(wl_data, instrument):
         fwhm = 0.0011750 * np.ones(N_bins)  # Magellan LDSS3
     
     # For JWST, we need to be a little more precise
-    elif(instrument.startswith('JWST')):    
+    elif (instrument.startswith('JWST')):    
 
         # Find precomputed instrument spectral resolution file
         res_file = inst_dir + '/JWST/' + instrument + '_resolution.dat'
@@ -64,11 +64,56 @@ def fwhm_instrument(wl_data, instrument):
         
         # Evaluate FWHM of PSF for each data point
         fwhm = wl_data / R_bin  # (um)
+
+    elif (instrument == 'IRTF_SpeX'):
+
+        #fwhm_IRTF_SpeX(wl_data)
+
+        # Find precomputed instrument spectral resolution file
+        res_file = inst_dir + '/IRTF/' + instrument + '_resolution.dat'
+        
+        # Check that file exists
+        if (os.path.isfile(res_file) == False):
+            print("Error! Cannot find resolution file for: " + instrument)
+            raise SystemExit
+            
+        # Read instrument resolution file
+        resolution = pd.read_csv(res_file, sep=' ', header=None)
+        wl_res = np.array(resolution[0])   # (um)
+        R_inst = np.array(resolution[1])   # Spectral resolution (R = wl/d_wl)
+        
+        # Interpolate resolution to bin centre location of each data point
+        R_interp = interp(wl_res, R_inst, ext = 'extrapolate')  
+        R_bin = np.array(R_interp(wl_data))
+        
+        # Evaluate FWHM of PSF for each data point
+        fwhm = wl_data / R_bin  # (um)
     
     # For any other instruments without a known PSF, convolve with a dummy sharp PSF
     else: 
-        fwhm = 0.0010000 * np.ones(N_bins) 
+        fwhm = 0.0001 * np.ones(N_bins) 
     
+    return fwhm
+
+
+def fwhm_IRTF_SpeX(wl_data):
+    '''
+    Calculate the wavelength dependent FWHM for the SpeX prism on the NASA
+    Infrared Telescope Facility.
+    '''
+
+    # Calculate average bin width
+    delta1 = wl_data - np.roll(wl_data, 1)
+    delta2 = np.abs(wl_data - np.roll(wl_data, -1))
+    delta = 0.5 * (delta1 + delta2)
+    
+    # Approximate edge bin widths by second and penultimate bin widths
+    delta[0] = delta[1]     
+    delta[-1] = delta[-2]
+    
+    # Calculate wavelength dependent FWHM
+    fwhm = 3.3 * delta   # SpeX FWHM is 3.3 times the data wavelength spacing 
+
     return fwhm
 
 
@@ -188,7 +233,7 @@ def init_instrument(wl, wl_data, half_width, instrument):
         norm = trapz(sensitivity[bin_left[0]:bin_right[0]], wl[bin_left[0]:bin_right[0]])
         norm = np.array([norm])
     
-    return sigma, sensitivity, bin_left, bin_cent, bin_right, norm
+    return sigma, fwhm, sensitivity, bin_left, bin_cent, bin_right, norm
     
 
 def make_model_data(spectrum, wl, sigma, sensitivity, bin_left, bin_cent, 
@@ -322,7 +367,7 @@ def generate_syn_data_from_user(planet, wl_model, spectrum, data_dir,
     N_data = len(wl_data)
     
     # Initialise the instrument properties for the synthetic dataset 
-    sigma, sens, bin_left, \
+    sigma, fwhm, sens, bin_left, \
     bin_cent, bin_right, norm = init_instrument(wl_model, wl_data, half_bin, 
                                                 instrument)
     
@@ -417,7 +462,7 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
             wl_data_new, half_bin_new = R_to_wl(R_to_bin[i], wl_data[0], wl_data[-1])
             
             # Initialise the instrument properties for the synthetic dataset 
-            sigma, sens, bin_left, \
+            sigma, fwhm, sens, bin_left, \
             bin_cent, bin_right, norm = init_instrument(wl_model, wl_data_new, 
                                                         half_bin_new, 
                                                         instruments[i])
