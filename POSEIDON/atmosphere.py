@@ -3,10 +3,12 @@
 import numpy as np
 import scipy.constants as sc
 from scipy.ndimage import gaussian_filter1d as gauss_conv
+from scipy.interpolate import pchip_interpolate
 from numba.core.decorators import jit
 
 from .supported_opac import inactive_species
 from .species_data import masses
+from .utility import prior_index
 
 
 @jit(nopython = True)
@@ -82,11 +84,57 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 10.0):
 
     return T
 
+#@jit(nopython = True)
+def compute_T_slope(P, T_phot, Delta_T_arr, log_P_phot = 0.5, 
+                    log_P_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0]):
+    '''
+    ADD DOCSTRING
+    '''
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+    
+    # Initialise temperature and pressure points arrays
+    T_points = np.zeros(len(log_P_arr) + 1)
+    log_P_points = np.sort(np.append(log_P_arr, log_P_phot))
+    log_P_arr = np.array(log_P_arr)
+    
+    # Store number of temperature points defining slope parametrisation
+    N_T_points = len(T_points)
+
+    # Find index of layer containing the photosphere pressure parameter
+    i_phot = prior_index(log_P_phot, log_P_arr, 0)
+
+    # Work from top of atmosphere down to photosphere
+    for i in range(0, i_phot+1):
+
+        if (i == 0):
+            T_points[i] = T_phot - np.sum(Delta_T_arr[i_phot::-1])
+        else:
+            T_points[i] = T_phot - np.sum(Delta_T_arr[i_phot:i-1:-1])
+
+    # Add photosphere temperature
+    T_points[i_phot+1] = T_phot
+
+    # Work down from photoshpere to bottom of atmosphere
+    for i in range(i_phot+2, N_T_points):
+
+        T_points[i] = T_phot + np.sum(Delta_T_arr[i_phot+1:i])
+
+    # Initialise interpolated temperature array
+    T = np.zeros(shape=(N_layers, 1, 1)) # 1D profile => N_sectors = N_zones = 1
+
+    # Apply monotonic cubic interpolation to compute P-T profile from T points
+    T[:,0,0] = pchip_interpolate(log_P_points, T_points, np.log10(P))
+
+    return T
+
+
 
 @jit(nopython = True)
 def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
                              N_sectors, N_zones, alpha, beta, phi, theta,
-                             P_deep, P_high):
+                             P_deep = 10.0, P_high = 1.0e-5):
     
     ''' Creates 3D temperature profile array storing T(P, phi, theta).
     
@@ -472,140 +520,6 @@ def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species,
 
 
 @jit(nopython = True)
-def refractive_index_profile(P, X, n, dr, wl, eta_stored, N_species, 
-                             N_sectors, N_zones):
-    
-    ''' NOT CURRENTLY USED (needs to be made at least 10x faster)
-    
-        Compute the wavelength-dependant refractive index of each layer in
-        each region of the model atmosphere. 
-        
-        Note: 'eta' is used for refractive index, as 'n' is reserved for
-               number density.
-              
-        The overall refractivity (eta-1) is given by nu_tot =  sum(X_q * nu_q)
-        where nu_q is the refractivity of species q, scaled to the number 
-        density in the given layer by nu_q = nu_q_ref * (n/n_ref).
-        The wavelength-dependant refractive indices at standard conditions
-        (eta_q_ref) are pre-computed in absorption.py.
-        
-        This function only outputs wavelength dependance over scales where
-        the refractive index at reference conditions varies by > 1%.
-       
-        Inputs:
-        
-        X => atmosphere volume mixing ratios
-        n => atmosphere number density grid
-        dr => thickness of atmosphere layers
-        wl => model wavelength grid (um)
-        eta_stored => refractive indicies on model wl grid at standard conditions
-        N_species => number of chemical species included in model
-        N_sectors =>
-       
-        Outputs:
-           
-        eta_out => overall (weighted) refractive index at local layer and region
-                   conditions for wavelengths where eta varies significantly
-        wl_eta => wavelengths where eta_out is calculated
-        dlneta_dr => derivative of natural log of refractive index w.r.t height
-                     for each wavelength in wl_eta (used for refractive ray tracing)
-       
-    '''
-    
-    # Store number of layers for convenience
-    N_layers = len(P)
-
-    refractive_tol = 1.0e-2   # 1% tolerance for wavelength dependance of refractive index
-    
-    N_wl = len(wl)  # Number of wavelengths on model grid
-    
-    # Specify reference number density (m^-3) at standard conditions (1 atm and 0 C)
-    n_ref = (101325.0/(sc.k * 273.15))   # Ideal gas law, P in Pa, T in K
-    
-    # Initialise refractive index reference array
-    eta_ref = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))   # Refractive index at output wavelengths and reference density
-    
-    # Establish how many refractive index values are needed (due to wl variation)
-    for i in range(N_layers):
-            
-        for j in range(N_sectors):
-        
-            for k in range(N_zones):
-        
-                # For first wavelength on grid, store refractive index for this wavelength
-                eta_ref[i,j,k,0] = (1.0 + np.sum(X[:,i,j,k]*(eta_stored[:,0] - 1.0)))
-                eta_tot_last = eta_ref[i,j,k,0]
-                
-                # For other wavelengths, only store refractive index if it changes by more than 1%
-                for l in range(N_wl):
-                    
-                    nu_tot = 0.0
-                    
-                    # For each molecule / atom included in model
-                    for q in range(N_species):
-                        
-                        # Compute overall refractivity at this wavelength (at reference number density) 
-                        nu_tot += X[q,i,j,k]*(eta_stored[q,l] - 1.0)  
-                        
-                    eta_tot_new = (1.0 + nu_tot)   # Overall refractive index at this wavelength
-                        
-                    # Compute fractional error between refractive index at new wavelength and last stored
-                    eta_err = np.abs((eta_tot_new - eta_tot_last)/eta_tot_last)
-                        
-                    # If error exceeds tolerance, then create new entry in wl-dependant refractive index array
-                    if (eta_err >= refractive_tol):
-                        eta_ref[i,j,k,l] = eta_tot_new
-                        eta_tot_last = eta_tot_new
-            
-    #***** Now that the refractive index array has been reduced to consider only important *****#
-    #      wavelength variations, can proceed to work out refractive index in each layer        #
-    
-    # Find wavelength indices (across all regions) where wavelength variations exceed threshold
-    l_eta_change = np.unique(np.where(eta_ref != 0.0)[0])
-    
-    wl_eta = wl[l_eta_change]    # Wavelengths to output refractive index to
-    N_wl_eta = len(wl_eta)       # Number of wavelengths to output refractive index
-    
-    # Initialise output refractive index and derivative arrays
-    eta_out = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl_eta))
-    dlneta_dr = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl_eta))
-    
-    # Compute refractive index profiles for each sector and zone
-    for j in range(N_sectors):
-        
-        for k in range(N_zones):
-        
-            # For each wavelength where eta changes by >1%
-            for l in range(N_wl_eta):
-                
-                # For each atmospheric layer
-                for i in range(N_layers): 
-                
-                    # If no computed value in last loop (due to different wavelength dependance between terminator regions)
-                    if (eta_ref[i,j,k,l_eta_change[l]] == 0):
-                        
-                        # Set value in this region equal to value at last wavelength (as refractive_tol not exceeded)
-                        eta_ref[i,j,k,l_eta_change[l]] = eta_ref[i,j,k,l_eta_change[l-1]]
-                
-                    nu_ref = (eta_ref[i,j,k,l_eta_change[l]] - 1.0)   # Refractivity at reference number density
-                
-                    # Scale refractivity to number density in layer
-                    eta_out[i,j,k,l] = (1.0 + (n[i,j,k]/n_ref)*nu_ref)   
-             
-                # For each atmospheric layer (except bottom and top)
-                for i in range(1, N_layers-1):
-            
-                    # Store derivative of log refractive index w.r.t height
-                    dlneta_dr[i,j,k,l] = (0.5 * np.log(eta_out[(i+1),j,k,l]/eta_out[(i-1),j,k,l]))/dr[i,j,k]
-                
-                # Edge cases for bottom and top layers
-                dlneta_dr[0,j,k,l] = np.log(eta_out[1,j,k,l]/eta_out[0,j,k,l])/dr[0,j,k]
-                dlneta_dr[(N_layers-1),j,k,l] = np.log(eta_out[(N_layers-1),j,k,l]/eta_out[(N_layers-2),j,k,l])/dr[(N_layers-1),j,k]
-                
-    return eta_out, wl_eta, dlneta_dr  
-
-
-@jit(nopython = True)
 def compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all):
     
     ''' Computes the mean molecular mass of the atmosphere.
@@ -852,11 +766,11 @@ def compute_N_to_H(X, all_species):
     
 #*****************************************************************************************
 
-def profiles(planet, P, PT_profile, X_profile, PT_state, P_ref, R_p_ref, log_X_state, 
-             included_species, bulk_species, param_species, active_species, 
-             cia_pairs, ff_pairs, bf_species, N_sectors, N_zones, 
-             alpha, beta, phi, theta, species_vert_gradient, He_fraction,
-             P_deep, P_high):
+def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref, 
+             log_X_state, included_species, bulk_species, param_species, 
+             active_species, cia_pairs, ff_pairs, bf_species, N_sectors, 
+             N_zones, alpha, beta, phi, theta, species_vert_gradient, 
+             He_fraction):
     
     ''' Main function to evaluate radial profiles of various quantities.
     
@@ -900,10 +814,6 @@ def profiles(planet, P, PT_profile, X_profile, PT_state, P_ref, R_p_ref, log_X_s
         is_physical => boolean specifying if P-T profile within allowed T range
        
     '''
-
-    # Unpack planet properties
-    g_0 = planet['planet_gravity']
-    R_p = planet['planet_radius']
             
     # For isothermal or gradient profiles (1D, 2D, or 3D)
     if (PT_profile in ['isotherm', 'gradient']):
@@ -923,8 +833,10 @@ def profiles(planet, P, PT_profile, X_profile, PT_state, P_ref, R_p_ref, log_X_s
             # Compute unsmoothed temperature field
             T_rough = compute_T_field_gradient(P, T_bar_term, Delta_T_term, 
                                                Delta_T_DN, T_deep, N_sectors, 
-                                               N_zones, alpha, beta, phi, theta,
-                                               P_deep, P_high)
+                                               N_zones, alpha, beta, phi, theta)
+
+        # Gaussian smooth P-T profile
+        T_smooth = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
         
     # For the Madhusudhan & Seager (2009) profile (1D only)
     elif (PT_profile == 'Madhu'):
@@ -944,19 +856,25 @@ def profiles(planet, P, PT_profile, X_profile, PT_state, P_ref, R_p_ref, log_X_s
             # Compute unsmoothed temperature profile
             T_rough = compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep)
 
-    # Gaussian smooth P-T profiles to avoid gradient discontinuities
-    T_smooth = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
-    
-    # Find min and max profile temperatures
-  #  T_min = np.min(T_smooth)
-  #  T_max = np.max(T_smooth)
+        # Gaussian smooth P-T profile
+        T_smooth = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
+
+    # For the Piette & Madhusudhan (2020) profile (1D only)
+    elif (PT_profile == 'slope'):
         
-    # Check if minimum or maximum temperatures are outside opacity range
-  #  if ((T_max > T_fine_max) or (T_min < T_fine_min)): 
-        
-        # Quit computations if model rejected
-  #      return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
-    
+        # Unpack P-T profile parameters
+        T_phot = PT_state[0]
+        Delta_T_arr = np.array(PT_state[1:])
+            
+        # Compute unsmoothed temperature profile
+        T_rough = compute_T_slope(P, T_phot, Delta_T_arr)
+
+        # Find how many layers corresponds to 0.3 dex smoothing width
+        smooth_width = round(0.3/(((np.log10(P[0]) - np.log10(P[-1]))/len(P))))
+
+        # Gaussian smooth P-T profile
+        T_smooth = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
+
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
     
@@ -1007,11 +925,6 @@ def profiles(planet, P, PT_profile, X_profile, PT_state, P_ref, R_p_ref, log_X_s
     # Calculate number density and radial profiles
     n, r, r_up, r_low, dr = radial_profiles(P, T_smooth, g_0, R_p, P_ref, 
                                             R_p_ref, mu, N_sectors, N_zones)
-        
-    # Calculate refractive index and its derivative w.r.t height
- #   eta, wl_eta, dlneta_dr = refractive_index_profile(P, X, n, dr, wl, eta_stored, 
- #                                                     N_species, N_sectors, N_zones)
     
     return P, T_smooth, n, r, r_up, r_low, dr, X, X_active, X_cia, \
            X_ff, X_bf, mu, True
-        
