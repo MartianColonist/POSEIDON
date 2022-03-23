@@ -506,16 +506,16 @@ def reformat_log_X(log_X_state_in, param_species, X_profile, X_dim, TwoD_type,
     
 def split_params(params, N_params_cumulative):
     ''' 
-    Converts MultiNest parameter cube array, into PT, R_p_ref, mixing ratio, 
+    Converts MultiNest parameter cube array, into physical, PT, mixing ratio, 
     cloud, geometry, stellar, offset, and error inflation parameters.
     
     '''
     
-    # Extract PT profile parameters
-    PT_drawn = params[0:N_params_cumulative[0]]
+    # Extract physical property parameters
+    physical_drawn = params[0:N_params_cumulative[0]]
     
-    # Extract R_p_ref parameter
-    R_p_ref_drawn = params[N_params_cumulative[0]:N_params_cumulative[1]][0]
+    # Extract PT profile parameters
+    PT_drawn = params[N_params_cumulative[0]:N_params_cumulative[1]]
     
     # Extract mixing ratio parameters
     log_X_drawn = params[N_params_cumulative[1]:N_params_cumulative[2]]
@@ -534,16 +534,8 @@ def split_params(params, N_params_cumulative):
     
     # Extract error adjustment parameters      
     err_inflation_drawn = params[N_params_cumulative[6]:N_params_cumulative[7]]
-
-    # Feed drawn parameters to generate state vector
-  #  PT_state, log_X_state = generate_state(PT_drawn, log_X_drawn, param_species,
-  #                                         PT_dim, X_dim, PT_profile, X_profile, 
-  #                                         TwoD_type, TwoD_param_scheme, 
-  #                                         species_EM_gradient, 
-  #                                         species_DN_gradient, 
-  #                                         species_vert_gradient)
         
-    return PT_drawn, R_p_ref_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
+    return physical_drawn, PT_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
            stellar_drawn, offsets_drawn, err_inflation_drawn    
  
     

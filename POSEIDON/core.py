@@ -42,7 +42,7 @@ rank = comm.Get_rank()
 
 def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, 
                 stellar_spectrum = True, grid = 'blackbody',
-                heterogeneous = False, f_het = [], T_het = []):
+                heterogeneous = False, f_het = 0.0, T_het = None):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
 
@@ -103,28 +103,11 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
         # For non-uniform stellar surfaces
         elif (heterogeneous == True):
 
-            # Validity checks for user-provided heterogeneity properties
-            if ((len(f_het) == 0) or (len(T_het) == 0)):
-                raise Exception("You must provide an array of spot / " +
-                                "faculae coverage fractions and temperatures " +
-                                "when 'heterogeneous' is True.")
-            if (len(f_het) != len(T_het)):
-                raise Exception("Number of spot / faculae coverage fraction " +
-                                "does not equal number of heterogeneity temperatures.")
-
-            # Initialise stellar heterogeneity intensity array
-            I_het = np.zeros(shape=(len(f_het), len(wl_star)))
-
-            # Interpolate and store stellar intensities
-            for i in range(len(f_het)):
-
-                # Obtain heterogeneity spectrum by interpolation
-                _, I_het[i,:] = load_stellar_pysynphot(T_het[i], Met, log_g,
-                                                        grid = grid)
+            # Obtain heterogeneity spectrum by interpolation
+            _, I_het = load_stellar_pysynphot(T_het, Met, log_g, grid = grid)
 
             # Evaluate total stellar flux as a weighted sum of each region 
-            F_star = np.pi * (np.dot(f_het, I_het) + 
-                              (1.0 - np.sum(f_het)) * I_phot)
+            F_star = np.pi * ((f_het * I_het) + (1.0 - f_het) * I_phot)
 
     # If user doesn't require a stellar spectrum
     else:
@@ -899,7 +882,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         # If distance not specified, use fiducial value
         if (d is None):
-            d = 1        # This value only used for flux ratios, so cancels
+            d = 1        # This value only used for flux ratios, so it cancels
 
         # Compute planet flux
         F_p = emission_rad_transfer(T, dr, wl, kappa_clear)
@@ -931,7 +914,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
     # Write spectrum to file
     if (save_spectrum == True):
-        write_spectrum(planet, model, spectrum, wl)
+        write_spectrum(planet['planet_name'], model['model_name'], spectrum, wl)
 
     return spectrum
 

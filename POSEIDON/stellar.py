@@ -86,17 +86,8 @@ def load_stellar_pysynphot(T_eff, Met, log_g, grid = 'cbk04'):
     return wl_grid, Fs_grid
 
     
-def precompute_stellar_spectra(wl_out, Met, log_g, component, T_phot_min, 
-                               T_phot_max, T_het_min, T_het_max, 
-                               T_phot_step = 10, T_het_step = 10):
-
-#T_phot_min = T_s - 10.0*err_T_s     # Minimum T_phot on pre-computed grid (-10 sigma)
-#T_phot_max = T_s + 10.0*err_T_s     # Maximum T_phot on pre-computed grid (+10 sigma)
-#T_phot_step = err_T_s/10.0          # T_phot pre-computed grid resolution (0.1 sigma)
-
-#T_het_min = 0.6*T_s     # Minimum T_het on pre-computed grid
-#T_het_max = 1.2*T_s     # Maximum T_het on pre-computed grid
-#T_het_step = 10.0       # T_het pre-computed grid resolution (K)
+def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
+                               T_step_interp = 10):
     
     ''' Precompute a grid of stellar spectra across a range of T_eff.
         This function uses the ck04 low-resolution models from pysynphot.
@@ -117,35 +108,94 @@ def precompute_stellar_spectra(wl_out, Met, log_g, component, T_phot_min,
         I_out => stellar intensity array on output wavelength grid [T, wl] (W/m^2/sr/m)
     
     '''
-    
-    if (component == 'photosphere'):
-        T_min, T_max, T_step = T_phot_min, T_phot_max, T_phot_step
-    elif (component == 'unocculted'):
-        T_min, T_max, T_step = T_het_min, T_het_max, T_het_step
+
+    # Unpack stellar properties
+    Met_s = star['stellar_metallicity']
+    log_g_s = star['stellar_log_g']
+
+    # Set range for T_phot according to whether prior is uniform or Gaussian
+    if (prior_types['T_phot'] == 'uniform'):
+
+        T_phot_min = prior_ranges['T_phot'][0]
+        T_phot_max = prior_ranges['T_phot'][1]
+        T_phot_step = T_step_interp        # Default interpolation step of 10 K
+
+    elif (prior_types['T_phot'] == 'gaussian'):
+
+        # Unpack Gaussian prior mean and std
+        T_s = prior_ranges['T_phot'][0]
+        err_T_s = prior_ranges['T_phot'][1]
+
+        T_phot_min = T_s - (10.0 * err_T_s)  # 10 sigma below mean
+        T_phot_max = T_s + (10.0 * err_T_s)  # 10 sigma above mean
+        T_phot_step = err_T_s/10.0      # Interpolation step of 0.1 sigma
+
+    # Set range for T_het according to whether prior is uniform or Gaussian
+    if (prior_types['T_het'] == 'uniform'):
+
+        T_het_min = prior_ranges['T_het'][0]
+        T_het_max = prior_ranges['T_het'][1]
+        T_het_step = T_step_interp        # Default interpolation step of 10 K
+
+    elif (prior_types['T_het'] == 'gaussian'):
+
+        # Unpack Gaussian prior mean and std
+        T_het_mean = prior_ranges['T_het'][0]
+        err_T_het = prior_ranges['T_het'][1]
+
+        T_het_min = T_het_mean - (10.0 * err_T_het)  # 10 sigma below mean
+        T_het_max = T_het_mean + (10.0 * err_T_het)  # 10 sigma above mean
+        T_het_step = err_T_het/10.0      # Interpolation step of 0.1 sigma   
+
+    #***** Interpolate photosphere spectra *****#
     
     # Find number of spectra needed to span desired range (rounding up)
-    N_spec = np.ceil((T_max - T_min)/T_step).astype(np.int64) + 1
-    
+    N_spec_phot = np.ceil((T_phot_max - T_phot_min)/T_phot_step).astype(np.int64) + 1
+
     # Specify starting and ending grid temperatures
-    T_start = T_min                      
-    T_end = T_min + (N_spec * T_step)   # Slightly > T_max if T_step doesn't divide exactly 
+    T_start = T_phot_min                      
+    T_end = T_phot_min + (N_spec_phot * T_phot_step)   # Slightly > T_max if T_step doesn't divide exactly 
     
-    # Effective temperatures of model grid
-    T_grid = np.linspace(T_start, T_end, N_spec)
-    
-    # Initialise output (interpolated) intensity array
-    I_out = np.zeros(shape=(N_spec, len(wl_out)))
-    
+    # Initialise photosphere temperature array
+    T_phot_grid = np.linspace(T_start, T_end, N_spec_phot)
+
+    # Initialise output photosphere spectra array
+    I_phot_out = np.zeros(shape=(N_spec_phot, len(wl_out)))
+
     # Interpolate and store stellar intensities
-    for i in range(N_spec):
+    for j in range(N_spec_phot):
         
         # Load interpolated stellar spectrum from model grid
-        wl_grid, I_grid = load_stellar_pysynphot(T_grid[i], Met, log_g)
+        wl_grid, I_phot_grid = load_stellar_pysynphot(T_phot_grid[j], Met_s, log_g_s)
         
         # Bin / interpolate stellar spectrum to output wavelength grid
-        I_out[i,:] = spectres(wl_out, wl_grid, I_grid)
+        I_phot_out[j,:] = spectres(wl_out, wl_grid, I_phot_grid)
 
-    return T_grid, I_out
+    #***** Interpolate heterogeneity spectra *****#
+    
+    # Find number of spectra needed to span desired range (rounding up)
+    N_spec_het = np.ceil((T_het_max - T_het_min)/T_het_step).astype(np.int64) + 1
+
+    # Specify starting and ending grid temperatures
+    T_start = T_het_min                      
+    T_end = T_het_min + (N_spec_het * T_het_step)   # Slightly > T_max if T_step doesn't divide exactly 
+    
+    # Initialise heterogeneity temperature array
+    T_het_grid = np.linspace(T_start, T_end, N_spec_het)
+
+    # Initialise output heterogeneity spectra array
+    I_het_out = np.zeros(shape=(N_spec_het, len(wl_out)))
+
+    # Interpolate and store stellar intensities
+    for j in range(N_spec_het):
+        
+        # Load interpolated stellar spectrum from model grid
+        wl_grid, I_het_grid = load_stellar_pysynphot(T_het_grid[j], Met_s, log_g_s)
+        
+        # Bin / interpolate stellar spectrum to output wavelength grid
+        I_het_out[j,:] = spectres(wl_out, wl_grid, I_het_grid)
+
+    return T_phot_grid, T_het_grid, I_phot_out, I_het_out
 
 
 @jit(nopython = True)
@@ -223,16 +273,14 @@ def stellar_contamination(star, wl_out):
     I_het = star['I_het']
 
     # Initialise stellar heterogeneity intensity array
-    I_het_interp = np.zeros(shape=(len(f_het), len(wl_out)))
+    I_het_interp = np.zeros(len(wl_out))
 
     # Interpolate and store stellar intensities
     I_phot_interp = spectres(wl_out, wl_s, I_phot)
 
-    for i in range(len(f_het)):
+    # Obtain heterogeneity spectra by interpolation
+    I_het_interp = spectres(wl_out, wl_s, I_het)
 
-        # Obtain heterogeneity spectra by interpolation
-        I_het_interp[i,:] = spectres(wl_out, wl_s, I_het)
-
-    epsilon = stellar_contamination_general(f_het, I_het_interp, I_phot_interp)
+    epsilon = stellar_contamination_single_spot(f_het, I_het_interp, I_phot_interp)
 
     return epsilon
