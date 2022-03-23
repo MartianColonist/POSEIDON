@@ -563,6 +563,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             len_PT = 6
         elif (PT_profile == 'slope'):  # Piette & Madhusudhan (2020) profile
             len_PT = 8
+        else:
+            len_PT = 4
     else:
         len_PT = 4   # 2D and 3D profiles (T_bar_term, Delta_T_term, Delta_T_DN, T_deep)
     
