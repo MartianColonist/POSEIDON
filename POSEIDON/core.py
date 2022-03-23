@@ -22,7 +22,8 @@ from spectres import spectres
 from .constants import R_Sun, R_J, R_E
 
 from .utility import create_directories, write_spectrum, read_data
-from .stellar import planck_lambda
+from .stellar import planck_lambda, load_stellar_pysynphot, \
+                     stellar_contamination_general
 from .supported_opac import supported_species, supported_cia, inactive_species
 from .parameters import assign_free_params, reformat_log_X, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
@@ -40,7 +41,8 @@ rank = comm.Get_rank()
 
 
 def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, 
-                stellar_spectrum = True, grid = 'blackbody'):
+                stellar_spectrum = True, grid = 'blackbody',
+                heterogeneous = False, f_het = [], T_het = []):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
 
@@ -81,25 +83,60 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
             wl_star = wl_grid_constant_R(wl_min, wl_max, R)
 
             # Evaluate Planck function at stellar effective temperature
-            B = planck_lambda(T_eff, wl_star)
-
-            # Convert spectral radiance to surface flux
-            F_star = np.pi * B
+            I_phot = planck_lambda(T_eff, wl_star)
 
         else:
 
-            raise Exception("Other stellar grids not yet implemented.")
+            # Obtain photosphere spectrum by interpolating stellar grids
+            wl_star, I_phot = load_stellar_pysynphot(T_eff, Met, log_g, 
+                                                     grid = grid)
 
+        # For uniform stellar surfaces
+        if (heterogeneous == False):
+
+            # No heterogeneity spectrum to return 
+            I_het = np.zeros(len(wl_star))   
+
+            # Surface flux is pi * intensity
+            F_star = np.pi * I_phot
+
+        # For non-uniform stellar surfaces
+        elif (heterogeneous == True):
+
+            # Validity checks for user-provided heterogeneity properties
+            if ((len(f_het) == 0) or (len(T_het) == 0)):
+                raise Exception("You must provide an array of spot / " +
+                                "faculae coverage fractions and temperatures " +
+                                "when 'heterogeneous' is True.")
+            if (len(f_het) != len(T_het)):
+                raise Exception("Number of spot / faculae coverage fraction " +
+                                "does not equal number of heterogeneity temperatures.")
+
+            # Initialise stellar heterogeneity intensity array
+            I_het = np.zeros(shape=(len(f_het), len(wl_star)))
+
+            # Interpolate and store stellar intensities
+            for i in range(len(f_het)):
+
+                # Obtain heterogeneity spectrum by interpolation
+                _, I_het[i,:] = load_stellar_pysynphot(T_het[i], Met, log_g,
+                                                        grid = grid)
+
+            # Evaluate total stellar flux as a weighted sum of each region 
+            F_star = np.pi * (np.dot(f_het, I_het) + 
+                              (1.0 - np.sum(f_het)) * I_phot)
+
+    # If user doesn't require a stellar spectrum
     else:
 
-        # No stellar spectrum
         F_star = None
         wl_star = None
 
     # Package stellar properties
     star = {'stellar_radius': R_s, 'stellar_T_eff': T_eff, 
             'stellar_T_eff_error': T_eff_error, 'stellar_metallicity': Met, 
-            'stellar_log_g': log_g, 'F_star': F_star, 'wl_star': wl_star
+            'stellar_log_g': log_g, 'F_star': F_star, 'wl_star': wl_star,
+            'f_het': f_het, 'T_het': T_het, 'I_phot': I_phot, 'I_het': I_het
            }
 
     return star

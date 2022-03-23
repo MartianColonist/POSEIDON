@@ -47,11 +47,9 @@ def planck_lambda(T, wl):
     return B_lambda
 
 
-# TBD: update functions below 
-
-def load_stellar_pysynphot(T, M, logg):
+def load_stellar_pysynphot(T_eff, Met, log_g, grid = 'cbk04'):
     
-    ''' Load a ck04 stellar spectrum using pysynphot. Pynshot's ICAT function
+    ''' Load a stellar model using pysynphot. Pynshot's ICAT function
         automatically handles interpolation within the model grid to the
         specified stellar parameters.
         
@@ -61,8 +59,8 @@ def load_stellar_pysynphot(T, M, logg):
         
         Fixed inputs (from config.py):
             
-        M_s => stellar metallicity (dex, solar units)
-        log_g_s => stellar log10(surface gravity) (cgs)
+        Met => stellar metallicity (dex, solar units)
+        log_g => stellar log10(surface gravity) (cgs)
         
         Outputs:
             
@@ -72,17 +70,33 @@ def load_stellar_pysynphot(T, M, logg):
     '''
     
     # Load Phoenix model interpolated to stellar parameters
-    sp = psyn.Icat('ck04models', T, M, logg)
-    sp.convert("um")                          # Convert wavelengths to micron
-    sp.convert('flam')                        # Convert to flux units (erg/s/cm^2/A)
-    wl_grid = sp.wave                         # Phoenix model wavelength array (m)
+    if (grid == 'cbk04'):
+        sp = psyn.Icat('ck04models', T_eff, Met, log_g)
+    elif (grid == 'phoenix'):
+        sp = psyn.Icat('phoenix', T_eff, 0.0, log_g)   # Some Phoenix models with Met =/= 0 have issues...
+    else:
+        raise Exception("Unsupported stellar grid")
+
+    sp.convert("um")                # Convert wavelengths to micron
+    sp.convert('flam')              # Convert to flux units (erg/s/cm^2/A)
+
+    wl_grid = sp.wave                         # Stellar wavelength array (m)
     Fs_grid = (sp.flux*1e-7*1e4*1e10)/np.pi   # Convert to W/m^2/sr/m
     
     return wl_grid, Fs_grid
 
-###### Function to pre-compute interpolated stellar grid here #######
     
-def precompute_stellar_spectra(wl_out, component):
+def precompute_stellar_spectra(wl_out, Met, log_g, component, T_phot_min, 
+                               T_phot_max, T_het_min, T_het_max, 
+                               T_phot_step = 10, T_het_step = 10):
+
+#T_phot_min = T_s - 10.0*err_T_s     # Minimum T_phot on pre-computed grid (-10 sigma)
+#T_phot_max = T_s + 10.0*err_T_s     # Maximum T_phot on pre-computed grid (+10 sigma)
+#T_phot_step = err_T_s/10.0          # T_phot pre-computed grid resolution (0.1 sigma)
+
+#T_het_min = 0.6*T_s     # Minimum T_het on pre-computed grid
+#T_het_max = 1.2*T_s     # Maximum T_het on pre-computed grid
+#T_het_step = 10.0       # T_het pre-computed grid resolution (K)
     
     ''' Precompute a grid of stellar spectra across a range of T_eff.
         This function uses the ck04 low-resolution models from pysynphot.
@@ -126,7 +140,7 @@ def precompute_stellar_spectra(wl_out, component):
     for i in range(N_spec):
         
         # Load interpolated stellar spectrum from model grid
-        wl_grid, I_grid = load_stellar_pysynphot(T_grid[i], Met_s, log_g_s)
+        wl_grid, I_grid = load_stellar_pysynphot(T_grid[i], Met, log_g)
         
         # Bin / interpolate stellar spectrum to output wavelength grid
         I_out[i,:] = spectres(wl_out, wl_grid, I_grid)
@@ -160,3 +174,65 @@ def stellar_contamination_single_spot(f, I_het, I_phot):
     
     return epsilon
 
+
+@jit(nopython = True)
+def stellar_contamination_general(f, I_het, I_phot):
+    
+    ''' Computes the multiplicative stellar contamination factor for a
+        transmission spectrum due to an unocculted starspot or facular region.
+        Prescription is as in Rackham+(2017,2018).
+        
+        Inputs:
+            
+        f => spot / facular covering fractions
+        I_het => specific intensities of unocculted spot / faculae (W/m^2/sr/m)
+        I_phot => specific intensity of occulted photosphere (W/m^2/sr/m)
+        
+        Outputs:
+            
+        epsilon => stellar contamination factor (dimensionless)
+        
+    '''
+    
+    N_wl = np.shape(I_phot)[0]
+
+    sum = np.zeros(N_wl)   
+
+    # Add contributions from each heterogeneity to contamination factor
+    for i in range(len(f)):
+
+        I_ratio = I_het[i,:]/I_phot
+
+        sum += (f[i] * (1.0 - I_ratio))
+
+    # Compute (wavelength-dependent) stellar heterogeneity correction
+    epsilon = 1.0/(1.0 - sum)
+    
+    return epsilon
+
+
+def stellar_contamination(star, wl_out):
+    '''
+    ADD DOCSTRING
+    '''
+
+    # Unpack stellar properties
+    wl_s = star['wl_star']
+    f_het = star['f_het']
+    I_phot = star['I_phot']
+    I_het = star['I_het']
+
+    # Initialise stellar heterogeneity intensity array
+    I_het_interp = np.zeros(shape=(len(f_het), len(wl_out)))
+
+    # Interpolate and store stellar intensities
+    I_phot_interp = spectres(wl_out, wl_s, I_phot)
+
+    for i in range(len(f_het)):
+
+        # Obtain heterogeneity spectra by interpolation
+        I_het_interp[i,:] = spectres(wl_out, wl_s, I_het)
+
+    epsilon = stellar_contamination_general(f_het, I_het_interp, I_phot_interp)
+
+    return epsilon
