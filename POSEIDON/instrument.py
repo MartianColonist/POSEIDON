@@ -157,7 +157,7 @@ def init_instrument(wl, wl_data, half_width, instrument):
     
     # If instrument does not have a known sensitivity function, just use a top hat
     else: 
-        sens_file = inst_dir + 'dummy_instrument_sensitivity.dat'
+        sens_file = inst_dir + '/dummy_instrument_sensitivity.dat'
     
     # Verify that sensitivity file exists
     if (os.path.isfile(sens_file) == False):
