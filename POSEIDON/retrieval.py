@@ -15,7 +15,7 @@ from .constants import R_J, R_E
 from .parameters import split_params
 from .instrument import bin_spectrum_to_data
 from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
-                     write_retrieved_spectrum, write_retrieved_PT
+                     write_retrieved_spectrum, write_retrieved_PT, confidence_intervals
 from .core import make_atmosphere, compute_spectrum
 from .stellar import precompute_stellar_spectra, stellar_contamination_single_spot
 
