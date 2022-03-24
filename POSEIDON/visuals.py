@@ -822,9 +822,10 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
 def plot_spectra(spectra, planet, model, data_properties = None,
                  plot_full_res = True, bin_spectra = True, R_to_bin = 100, 
                  wl_min = None, wl_max = None, transit_depth_min = None,
-                 transit_depth_max = None, show_data = False, 
+                 transit_depth_max = None, show_data = False, label = None,
                  colour_list = [], spectra_labels = [], data_colour_list = [],
-                 data_labels = []):
+                 data_labels = [], data_marker_list = [], 
+                 data_marker_size_list = []):
     ''' 
     Plot a collection of individual model transmission spectra.
     
@@ -852,7 +853,7 @@ def plot_spectra(spectra, planet, model, data_properties = None,
         
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
-        colours = ['green', 'red', 'blue', 'brown', 'black', 'darkgrey']
+        colours = ['black', 'lime', 'cyan', 'red', 'darkgrey', 'brown']
     else:
         colours = colour_list
 
@@ -878,12 +879,29 @@ def plot_spectra(spectra, planet, model, data_properties = None,
             raise Exception("Number of colours does not match number of datasets.")
         if ((data_labels != []) and (N_datasets != len(data_labels))):
             raise Exception("Number of dataset labels does not match number of datasets.")
+        if ((data_marker_list != []) and (N_datasets != len(data_marker_list))):
+            raise Exception("Number of dataset markers does not match number of datasets.")
+        if ((data_marker_size_list != []) and (N_datasets != len(data_marker_size_list))):
+            raise Exception("Number of dataset marker sizes does not match number of datasets.")
             
         # Define colours for plotted spectra (default or user choice)
         if (data_colour_list == []):   # If user did not specify a custom colour list
             data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black']
         else:
             data_colours = data_colour_list
+
+        # Define data marker symbols (default or user choice)
+        if (data_marker_list == []):   # If user did not specify a custom colour list
+            data_markers = ['o', 's', 'D', '*', 'X', 'p']
+        else:
+            data_markers = data_marker_list
+
+
+        # Define data marker sizes (default or user choice)
+        if (data_marker_size_list == []):   # If user did not specify a custom colour list
+            data_markers_size = [3, 3, 3, 3, 3, 3]
+        else:
+            data_markers_size = data_marker_size_list
         
     # If the user did not specify a wavelength range, find min and max from input models
     if (wl_min == None):
@@ -998,6 +1016,8 @@ def plot_spectra(spectra, planet, model, data_properties = None,
     planet_name_x_position = 0.008*(wl_range[1]-wl_range[0]) + wl_range[0]
     planet_name_y_position = (0.92*(transit_depth_range[1]-transit_depth_range[0]) + 
                                     transit_depth_range[0])
+    label_y_position = (0.86*(transit_depth_range[1]-transit_depth_range[0]) + 
+                              transit_depth_range[0])
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
@@ -1063,7 +1083,7 @@ def plot_spectra(spectra, planet, model, data_properties = None,
             ax1.plot(wl_binned, spec_binned, lw=1.0, alpha=0.8, 
                      color=scale_lightness(colours[i], 0.4), 
                      zorder=N_spectra+N_plotted_binned, 
-                     label=label_i + ' (R = ' + str(R_to_bin) + ')')
+                     label=label_i) #+ ' (R = ' + str(R_to_bin) + ')')
             
             N_plotted_binned += 1
 
@@ -1090,13 +1110,15 @@ def plot_spectra(spectra, planet, model, data_properties = None,
 
             # Plot dataset
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                               xerr=bin_size_i, marker='o', 
-                                               markersize=3, capsize=2, ls='none', 
-                                               color=data_colours[i], elinewidth=0.8, 
-                                               ecolor = 'black', alpha=0.8, 
-                                               label=label_i) 
+                                               xerr=bin_size_i, marker=data_markers[i], 
+                                               markersize=data_markers_size[i], 
+                                               capsize=2, ls='none', elinewidth=0.8, 
+                                               color=data_colours[i], alpha = 0.8,
+                                               ecolor = 'black', label=label_i,
+                                               zorder = 100)
+
             [markers.set_alpha(1.0)]
-    
+
     # Set axis ranges
     ax1.set_xlim([wl_range[0], wl_range[1]])
     ax1.set_ylim([transit_depth_range[0], transit_depth_range[1]])
@@ -1107,7 +1129,9 @@ def plot_spectra(spectra, planet, model, data_properties = None,
 
     # Add planet name label
     ax1.text(planet_name_x_position, planet_name_y_position, planet_name, fontsize = 16)
-   # ax1.text(planet_name_x_position, planet_name_y_position, model_name, fontsize = 16)
+
+    if (label != None):
+        ax1.text(planet_name_x_position, label_y_position, label, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
     if (wl_max <= 1.0):
@@ -1166,7 +1190,7 @@ def plot_spectra(spectra, planet, model, data_properties = None,
 #    ax2.set_ylim([N_sc[0], N_sc[1]])
 #    ax2.set_ylabel(r'$\mathrm{Scale \, \, Heights}$', fontsize = 16)
     
-    legend = ax1.legend(loc='upper right', shadow=True, prop={'size':10}, 
+    legend = ax1.legend(loc='lower right', shadow=True, prop={'size':10}, 
                         ncol=1, frameon=True)    #legend settings
   #  legend.set_bbox_to_anchor([0.75, 0.98], transform=None)
     frame = legend.get_frame()
@@ -1177,9 +1201,13 @@ def plot_spectra(spectra, planet, model, data_properties = None,
     
     plt.tight_layout()
 
-    
     # Write figure to file
-    file_name = output_dir + model_name + '_transmission_spectra.pdf'
+    if (label == None):
+        file_name = (output_dir + planet_name + '_' + model_name + 
+                     '_transmission_spectra.pdf')
+    else:
+        file_name = (output_dir + planet_name + '_' + model_name +
+                     '_' + label + '_transmission_spectra.pdf')
 
     plt.savefig(file_name, bbox_inches='tight')
 
@@ -1772,7 +1800,7 @@ def plot_stellar_flux(Flux, wl):
 
     ax.set_xscale("log")
 
-    ax.xaxis.set_major_formatter(ScalarFormatter())
+    ax.xaxis.set_major_formatter(FormatStrFormatter('%g'))
 
     ax.plot(wl, Flux, lw=1, alpha=0.8, label=r'Stellar Flux')
 
