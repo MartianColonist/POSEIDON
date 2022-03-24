@@ -459,7 +459,7 @@ def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species,
                             active_species, cia_pairs, ff_pairs, bf_species):
     
     ''' Sort mixing ratios into those of active species, collision-induced
-        absorption (CIA), free-free opacity, and bound-free opaciy.
+        absorption (CIA), free-free opacity, and bound-free opacity.
         
     '''
 

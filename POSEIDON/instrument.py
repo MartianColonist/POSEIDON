@@ -431,6 +431,11 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
             N_trans_i = 1     # Use one transit if not specified by user
         else:
             N_trans_i = N_trans[i]
+
+        if (R_to_bin == []):
+            R_to_bin_i = None    # No binning if not specified by user
+        else:
+            R_to_bin_i = R_to_bin[i]
         
         # Check if selected instrument corresponds to a photometric band
         if (data_properties['instruments'][i] in ['IRAC1', 'IRAC2']): 
@@ -456,7 +461,7 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
                                      data_properties['norm'][idx_1:idx_2], photometric)
 
         # If simulated data will be further binned down
-        if (R_to_bin[i] != None):
+        if (R_to_bin_i != None):
 
             # Create new data wavelength grid at lower resolution
             wl_data_new, half_bin_new = R_to_wl(R_to_bin[i], wl_data[0], wl_data[-1])

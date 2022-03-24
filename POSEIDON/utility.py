@@ -227,7 +227,7 @@ def write_retrieved_spectrum(retrieval_name, wl, spec_low2,
     '''
 
     # Identify output directory location where the retrieved spectrum will be saved
-    output_dir = '../results/'
+    output_dir = '../samples/'
     
     # Write retrieved spectrum
     f = open(output_dir + retrieval_name + '_spectrum_retrieved.txt', 'w')
@@ -253,7 +253,7 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
         retrieval_name = model_name + '_' + retrieval_name
 
     # Identify output directory location where the retrieved spectrum is located
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
     # Find retrieved spectrum file
     fname = output_dir + retrieval_name + '_spectrum_retrieved.txt'
@@ -278,7 +278,7 @@ def write_retrieved_PT(retrieval_name, P, T_low2, T_low1,
     '''
 
     # Identify output directory location where the retrieved spectrum will be saved
-    output_dir = '../results/'
+    output_dir = '../samples/'
     
     # Write retrieved spectrum
     f = open(output_dir + retrieval_name + '_PT_retrieved.txt', 'w')
@@ -303,7 +303,7 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
         retrieval_name = model_name + '_' + retrieval_name
 
     # Identify output directory location where the retrieved spectrum is located
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
     # Find retrieved spectrum file
     fname = output_dir + retrieval_name + '_PT_retrieved.txt'
