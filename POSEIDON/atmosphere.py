@@ -873,7 +873,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         smooth_width = round(0.3/(((np.log10(P[0]) - np.log10(P[-1]))/len(P))))
 
         # Gaussian smooth P-T profile
-        T_smooth = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
+        T_smooth = T_rough #gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
 
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
