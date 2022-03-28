@@ -4,10 +4,10 @@ import numpy as np
 from numba.core.decorators import jit
 
 
-def assign_free_params(param_species, PT_profile, X_profile, cloud_model,
-                       cloud_type, stellar_contam, offsets_applied,
-                       error_inflation, PT_dim, X_dim, cloud_dim, TwoD_type,
-                       TwoD_param_scheme, species_EM_gradient, 
+def assign_free_params(param_species, object_type, PT_profile, X_profile, 
+                       cloud_model, cloud_type, gravity_setting, stellar_contam, 
+                       offsets_applied, error_inflation, PT_dim, X_dim, cloud_dim, 
+                       TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension):
     
@@ -19,11 +19,25 @@ def assign_free_params(param_species, PT_profile, X_profile, cloud_model,
     
     # Create lists storing names of free parameters
     params = []           # All parameters
+    physical_params = []  # Physical parameters
     PT_params = []        # P-T profile parameters
     X_params = []         # Mixing ratio parameters
     cloud_params = []     # Cloud parameters
     geometry_params = []  # Geometry parameters
     stellar_params = []   # Stellar parameters
+
+    #***** Physical property parameters *****#
+
+    physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
+
+    if (gravity_setting == 'free'):
+        physical_params += ['log_g']         # log_10 surface gravity (cm / s^2)
+
+    if (object_type == 'directly_imaged'):
+        physical_params += ['d']             # Distance to system (pc)
+
+    N_physical_params = len(physical_params)   # Store number of physical parameters
+    params += physical_params                  # Add physical parameter names to combined list
 
     #***** PT profile parameters *****#
            
@@ -35,6 +49,10 @@ def assign_free_params(param_species, PT_profile, X_profile, cloud_model,
             PT_params += ['T_high', 'T_deep']
         elif (PT_profile == 'Madhu'):     
             PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_deep']
+        elif (PT_profile == 'slope'):
+            PT_params += ['T_phot', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
+                          'Delta_T_1-0.1b', 'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 
+                          'Delta_T_32-10b', 'Delta_T_100-32b']
         else:
             raise Exception("Error: unsupported P-T profile.")
         
@@ -70,11 +88,12 @@ def assign_free_params(param_species, PT_profile, X_profile, cloud_model,
         
     if ((PT_profile == 'Madhu') and (PT_dim > 1)):
         raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D models")
+
+    if ((PT_profile == 'slope') and (PT_dim > 1)):
+        raise Exception("Slope profile only supported for 1D models")
         
     N_PT_params = len(PT_params)   # Store number of P-T profile parameters
     params += PT_params            # Add P-T parameter names to combined list
-
-    params += ['R_p_ref']   # Add reference radius parameter to combined list
     
     #***** Mixing ratio parameters *****#
         
@@ -172,7 +191,6 @@ def assign_free_params(param_species, PT_profile, X_profile, cloud_model,
             if ((X_profile == 'gradient') and (species in species_vert_gradient)):  
                 X_params += ['log_' + species + '_deep']    
                 
-        
     N_species_params = len(X_params)   # Store number of mixing ratio parameters
     params += X_params                 # Add mixing ratio parameter names to combined list
                    
@@ -282,6 +300,7 @@ def assign_free_params(param_species, PT_profile, X_profile, cloud_model,
 
     # Convert parameter lists to numpy arrays
     params = np.array(params)
+    physical_params = np.array(physical_params)
     PT_params = np.array(PT_params)
     X_params = np.array(X_params)
     cloud_params = np.array(cloud_params)
@@ -289,13 +308,13 @@ def assign_free_params(param_species, PT_profile, X_profile, cloud_model,
     stellar_params = np.array(stellar_params)
     
     # The cumulative sum of the number of each type of parameter saves time indexing later 
-    N_params_cumulative = np.cumsum([N_PT_params, 1, N_species_params, 
-                                     N_cloud_params, N_geometry_params, 
-                                     N_stellar_params, N_offset_params, 
-                                     N_error_params])
+    N_params_cumulative = np.cumsum([N_physical_params, N_PT_params, 
+                                     N_species_params, N_cloud_params,
+                                     N_geometry_params, N_stellar_params, 
+                                     N_offset_params, N_error_params])
     
-    return params, PT_params, X_params, cloud_params, geometry_params, \
-           stellar_params, N_params_cumulative
+    return params, physical_params, PT_params, X_params, cloud_params, \
+           geometry_params, stellar_params, N_params_cumulative
       
          
 def reformat_log_X(log_X_state_in, param_species, X_profile, X_dim, TwoD_type,
@@ -487,16 +506,16 @@ def reformat_log_X(log_X_state_in, param_species, X_profile, X_dim, TwoD_type,
     
 def split_params(params, N_params_cumulative):
     ''' 
-    Converts MultiNest parameter cube array, into PT, R_p_ref, mixing ratio, 
+    Converts MultiNest parameter cube array, into physical, PT, mixing ratio, 
     cloud, geometry, stellar, offset, and error inflation parameters.
     
     '''
     
-    # Extract PT profile parameters
-    PT_drawn = params[0:N_params_cumulative[0]]
+    # Extract physical property parameters
+    physical_drawn = params[0:N_params_cumulative[0]]
     
-    # Extract R_p_ref parameter
-    R_p_ref_drawn = params[N_params_cumulative[0]:N_params_cumulative[1]][0]
+    # Extract PT profile parameters
+    PT_drawn = params[N_params_cumulative[0]:N_params_cumulative[1]]
     
     # Extract mixing ratio parameters
     log_X_drawn = params[N_params_cumulative[1]:N_params_cumulative[2]]
@@ -515,16 +534,8 @@ def split_params(params, N_params_cumulative):
     
     # Extract error adjustment parameters      
     err_inflation_drawn = params[N_params_cumulative[6]:N_params_cumulative[7]]
-
-    # Feed drawn parameters to generate state vector
-  #  PT_state, log_X_state = generate_state(PT_drawn, log_X_drawn, param_species,
-  #                                         PT_dim, X_dim, PT_profile, X_profile, 
-  #                                         TwoD_type, TwoD_param_scheme, 
-  #                                         species_EM_gradient, 
-  #                                         species_DN_gradient, 
-  #                                         species_vert_gradient)
         
-    return PT_drawn, R_p_ref_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
+    return physical_drawn, PT_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
            stellar_drawn, offsets_drawn, err_inflation_drawn    
  
     
@@ -537,12 +548,17 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
     format expected by the POSEIDON.atmosphere module.
         
     '''
-    
-    # Most P-T state vectors have 4 parameters (T_bar_term, Delta_T_term, Delta_T_DN, T_deep)
-    if ((PT_dim == 1) and (PT_profile == 'Madhu')):   # Except for the Madhusudhan & Seager (2009) profile
-        len_PT = 6
+
+    # Store length of each P-T profile state array
+    if (PT_dim == 1):
+        if (PT_profile == 'Madhu'):   # Madhusudhan & Seager (2009) profile
+            len_PT = 6
+        elif (PT_profile == 'slope'):  # Piette & Madhusudhan (2020) profile
+            len_PT = 8
+        else:
+            len_PT = 4
     else:
-        len_PT = 4
+        len_PT = 4   # 2D and 3D profiles (T_bar_term, Delta_T_term, Delta_T_DN, T_deep)
     
     # All abundance state arrays are (N_species_params x 4)
     len_X = 4    # log_X_bar_term, Delta_log_X_term, Delta_log_X_DN, log_X_deep)
@@ -566,6 +582,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             PT_state[3] = PT_in[1]          # Assign T_deep
         elif (PT_profile == 'Madhu'):  
             PT_state = PT_in                # Assign 6 parameters defining this profile
+        elif (PT_profile == 'slope'):
+            PT_state = PT_in                # Assign 8 parameters defining this profile
                
     # 2D atmosphere
     elif (PT_dim == 2):  

@@ -6,3 +6,4 @@ Forward Model Tutorials
 
    notebooks/transmission_basic
    notebooks/emission_basic
+   notebooks/brown_dwarf.ipynb

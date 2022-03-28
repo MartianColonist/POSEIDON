@@ -14,9 +14,10 @@ from .constants import R_J, R_E
 
 from .parameters import split_params
 from .instrument import bin_spectrum_to_data
-from .utility import write_MultiNest_results, round_sig_figs, confidence_intervals, \
-                     write_retrieved_spectrum, write_retrieved_PT
+from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
+                     write_retrieved_spectrum, write_retrieved_PT, confidence_intervals
 from .core import make_atmosphere, compute_spectrum
+from .stellar import precompute_stellar_spectra, stellar_contamination_single_spot
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -53,20 +54,38 @@ def run_retrieval(planet, star, model, opac, data, priors,
     else:
         retrieval_name = model_name + '_' + retrieval_name
 
-    if (rank == 0):
-        print("POSEIDON now running '" + retrieval_name + "'")
-
     # Identify output directory location
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+
+    # Pre-compute stellar spectra for models with unocculted spots / faculae
+    if (model['stellar_contam'] != 'No'):
+
+        if (rank == 0):
+            print("Pre-computing stellar spectra before starting retrieval...")
+
+        # Interpolate and store stellar photosphere and heterogeneity spectra
+        T_phot_grid, T_het_grid, \
+        I_phot_grid, I_het_grid = precompute_stellar_spectra(wl, star, prior_types, 
+                                                             prior_ranges,
+                                                             T_step_interp = 10)
+
+    # No stellar grid precomputation needed for models with uniform star
+    else:
+
+        T_phot_grid, T_het_grid = None, None
+        I_phot_grid, I_het_grid = None, None
+
+    if (rank == 0):
+        print("POSEIDON now running '" + retrieval_name + "'")
 
     # Run POSEIDON retrieval using PyMultiNest
     if (sampling_algorithm == 'MultiNest'):
 
+        # Change directory into Multinest result file folder
         os.chdir(output_dir + 'MultiNest_raw/')
 
         # Set basename for MultiNest output files
         basename = retrieval_name + '-'
-        #basename = (output_dir + 'MultiNest_raw/' + retrieval_name + '-')
 
         # Begin retrieval timer
         if (rank == 0):
@@ -76,7 +95,8 @@ def run_retrieval(planet, star, model, opac, data, priors,
         PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
                               prior_ranges, spectrum_type, wl, P, P_ref, 
                               He_fraction, N_slice_EM, N_slice_DN, N_params, 
-                              resume = resume, verbose = verbose,
+                              T_phot_grid, T_het_grid, I_phot_grid,
+                              I_het_grid, resume = resume, verbose = verbose,
                               outputfiles_basename = basename, 
                               n_live_points = N_live, multimodal = False,
                               evidence_tolerance = ev_tol, log_zero = -1e90,
@@ -94,7 +114,7 @@ def run_retrieval(planet, star, model, opac, data, priors,
             print('POSEIDON retrieval finished in ' + str(total) + ' hours')
       
             # Write POSEIDON retrieval output files 
-            write_MultiNest_results(planet, model, data, output_dir, retrieval_name,
+            write_MultiNest_results(planet, model, data, retrieval_name,
                                     N_live, ev_tol, sampling_algorithm, wl, R)
 
             # Compute samples of retrieved P-T profile and spectrum
@@ -102,23 +122,27 @@ def run_retrieval(planet, star, model, opac, data, priors,
             T_high1, T_high2, \
             spec_low2, spec_low1, \
             spec_median, spec_high1, \
-            spec_high2 = spectra_PT_samples(planet, star, model, opac, output_dir, 
+            spec_high2 = spectra_PT_samples(planet, star, model, opac,
                                             retrieval_name, wl, P, P_ref, 
                                             He_fraction, N_slice_EM, N_slice_DN, 
-                                            spectrum_type, N_samples = 1000)
+                                            spectrum_type, T_phot_grid, 
+                                            T_het_grid, I_phot_grid, I_het_grid, 
+                                            N_samples = 1000)
                                             
-
             # Save sampled P-T profile
-            write_retrieved_PT(planet_name, retrieval_name, P, T_low2, T_low1, 
+            write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
                                T_median, T_high1, T_high2)
 
             # Save sampled spectrum
-            write_retrieved_spectrum(planet_name, retrieval_name, wl, spec_low2, 
+            write_retrieved_spectrum(retrieval_name, wl, spec_low2, 
                                      spec_low1, spec_median, spec_high1, spec_high2)
 
             print("All done! Output files can be found in " + output_dir + "results/")
          
     comm.Barrier()
+
+    # Change directory back to directory where user's python script is located
+    os.chdir('../../../../')
 
 
 @jit(nopython = True)
@@ -131,7 +155,6 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
     '''
     
     n = len(chem_params_drawn)     # Number of species free parameters
- #   limit = -12.0                # Lowest (log) mixing ratio considered
 
     # Limits correspond to condition that all X_i > 10^(-12)
     prior_lower_CLR = ((n-1.0)/n) * (limit * np.log(10.0) + np.log(n-1.0))      # Lower limit corresponds to species underabundant
@@ -175,7 +198,8 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
 
 def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
                           prior_ranges, spectrum_type, wl, P, P_ref, He_fraction, 
-                          N_slice_EM, N_slice_DN, N_params, **kwargs):
+                          N_slice_EM, N_slice_DN, N_params, T_phot_grid,
+                          T_het_grid, I_phot_grid, I_het_grid, **kwargs):
     ''' 
     Main function for conducting atmospheric retrievals with PyMultiNest.
     
@@ -183,6 +207,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
     # Unpack model properties
     param_names = model['param_names']
+    physical_param_names = model['physical_param_names']
     param_species = model['param_species']
     X_params = model['X_param_names']
     N_params_cum = model['N_params_cum']
@@ -207,7 +232,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
     global allowed_simplex    # Needs to be global, as prior function has no return
 
-    allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
+    allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior     
     
     # Define the prior transformation function
     def Prior(cube, ndim, nparams):
@@ -469,10 +494,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         #***** Step 1: unpack parameter values from prior sample *****#
         
-        PT_params, R_p_ref, \
+        physical_params, PT_params, \
         log_X_params, cloud_params, \
         geometry_params, stellar_params, \
         offset_params, err_inflation_params = split_params(cube, N_params_cum)
+
+        R_p_ref = physical_params[0]   # Reference radius is first physical parameter
 
         # Convert normalised radius drawn by MultiNest back into SI
         if (radius_unit == 'R_J'):
@@ -480,11 +507,17 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         elif (radius_unit == 'R_E'):
             R_p_ref *= R_E
 
+        # Unpack log(gravity) if set as a free parameter
+        if ('log_g' in physical_param_names):
+            log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
+        else:
+            log_g = None
+
         #***** Step 2: generate atmosphere corresponding to parameter draw *****#
 
-        atmosphere = make_atmosphere(planet, model, R_p_ref, P, P_ref, PT_params, 
+        atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
-                                     He_fraction, N_slice_EM, N_slice_DN,
+                                     log_g, He_fraction, N_slice_EM, N_slice_DN,
                                      retrieval_run = True)
 
         #***** Step 3: generate spectrum of atmosphere ****#
@@ -501,42 +534,34 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             # Quit if given parameter combination is unphysical
             return loglikelihood
 
-        #***** TBD: stellar contamination *****#
+        #***** Step 4: stellar contamination *****#
         
-        '''
-        # Unpack stellar contamination parameters
-        if (stellar_contam == 'one-spot'):
-            f, T_het, T_phot = stellar_state         
-        else:
-            f, T_het, T_phot = 0.0, T_s, T_s
+        # Stellar contamination is only relevant for transmission spectra
+        if (spectrum_type == 'transmission'):
 
-        # One spot / facula
-        if (stellar_contam == 'one-spot'):
-            
-            # Find photoshpere and spot / faculae intensities at relevant effective temperatures
-            I_het = I_het_grid[closest_index(T_het, T_het_grid[0], 
-                                            T_het_grid[-1], len(T_het_grid)),:]
-            I_phot = I_phot_grid[closest_index(T_phot, T_phot_grid[0], 
-                                            T_phot_grid[-1], len(T_phot_grid)),:]
-            
-            # Compute wavelength-dependant stellar contamination factor
-            epsilon = stellar_contamination_single_spot(f, I_het, I_phot)
-            
-        # No stellar contamination
-        elif (stellar_contam == 'No'):
-            
-            # Uniform photosphere in this case
-            epsilon = 1.0
-        '''
+            # Model with a single spot / facula population
+            if (model['stellar_contam'] == 'one-spot'):
 
-        #*********************8
+                # Unpack stellar contamination parameters
+                f, T_het, T_phot = stellar_params         
+                
+                # Find photoshpere and spot / faculae intensities at relevant effective temperatures
+                I_het = I_het_grid[closest_index(T_het, T_het_grid[0], 
+                                                T_het_grid[-1], len(T_het_grid)),:]
+                I_phot = I_phot_grid[closest_index(T_phot, T_phot_grid[0], 
+                                                T_phot_grid[-1], len(T_phot_grid)),:]
+                
+                # Compute wavelength-dependant stellar contamination factor
+                epsilon = stellar_contamination_single_spot(f, I_het, I_phot)
 
-
-        #***** Step 4: convolve spectrum with instrument PSF and bin to data resolution ****#
+                # Apply multiplicative stellar contamination to spectrum
+                spectrum = epsilon * spectrum
+            
+        #***** Step 5: convolve spectrum with instrument PSF and bin to data resolution ****#
 
         ymodel = bin_spectrum_to_data(spectrum, wl, data)
                                                                          
-        #***** Step 5: inflate error bars (optional) ****#
+        #***** Step 6: inflate error bars (optional) ****#
         
         # Compute effective error, if unknown systematics included
         err_data = data['err_data']
@@ -548,7 +573,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             err_eff_sq = err_data*err_data
             norm_log = norm_log_default
 
-        #***** Step 6: apply relative offset between datasets (optional) ****#
+        #***** Step 7: apply relative offset between datasets (optional) ****#
         
         ydata = data['ydata']
         offset_start = data['offset_start']
@@ -560,7 +585,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         else: 
             ydata_adjusted = ydata
 
-        #***** Step 7: evaluate ln(likelihood) ****#
+        #***** Step 8: evaluate ln(likelihood) ****#
     
         loglikelihood = (-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq).sum()
         loglikelihood += norm_log
@@ -571,15 +596,17 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
 	
 
-def spectra_PT_samples(planet, star, model, opac, output_dir, retrieval_name,
+def spectra_PT_samples(planet, star, model, opac, retrieval_name,
                        wl, P, P_ref, He_fraction, N_slice_EM, N_slice_DN, 
-                       spectrum_type, N_samples = 1000):
+                       spectrum_type, T_phot_grid, T_het_grid, I_phot_grid,
+                       I_het_grid, N_samples = 1000):
     '''
     ADD DOCSTRING
     '''
 
     # Unpack number of free parameters
     param_names = model['param_names']
+    physical_param_names = model['physical_param_names']
     n_params = len(param_names)
 
     # Unpack model properties
@@ -587,7 +614,7 @@ def spectra_PT_samples(planet, star, model, opac, output_dir, retrieval_name,
     N_params_cum = model['N_params_cum']
     
     # Load relevant output directory
-    output_prefix = (output_dir + 'MultiNest_raw/' + retrieval_name + '-')
+    output_prefix = retrieval_name + '-'
     
     # Run PyMultiNest analyser to extract posterior samples
     analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
@@ -612,11 +639,13 @@ def spectra_PT_samples(planet, star, model, opac, output_dir, retrieval_name,
             t0 = time.perf_counter()   # Time how long one model takes
 
         # Convert MultiNest parameter samples into POSEIDON function inputs
-        PT_params, R_p_ref, \
+        physical_params, PT_params, \
         log_X_params, cloud_params, \
         geometry_params, stellar_params, \
         offset_params, err_inflation_params = split_params(samples[sample[i],:], 
                                                            N_params_cum)
+
+        R_p_ref = physical_params[0]   # Reference radius is first physical parameter
 
         # Convert normalised radius into SI
         if (radius_unit == 'R_J'):
@@ -624,15 +653,42 @@ def spectra_PT_samples(planet, star, model, opac, output_dir, retrieval_name,
         elif (radius_unit == 'R_E'):
             R_p_ref *= R_E
 
+        # Unpack log(gravity) if set as a free parameter
+        if ('log_g' in physical_param_names):
+            log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
+        else:
+            log_g = None
+
         # Generate atmosphere corresponding to parameter draw
-        atmosphere = make_atmosphere(planet, model, R_p_ref, P, P_ref, PT_params, 
+        atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
-                                     He_fraction, N_slice_EM, N_slice_DN,
+                                     log_g, He_fraction, N_slice_EM, N_slice_DN,
                                      retrieval_run = True)
 
         # Generate spectrum of atmosphere
         spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                     spectrum_type)
+
+        # Stellar contamination is only relevant for transmission spectra
+        if (spectrum_type == 'transmission'):
+
+            # Model with a single spot / facula population
+            if (model['stellar_contam'] == 'one-spot'):
+
+                # Unpack stellar contamination parameters
+                f, T_het, T_phot = stellar_params         
+                
+                # Find photoshpere and spot / faculae intensities at relevant effective temperatures
+                I_het = I_het_grid[closest_index(T_het, T_het_grid[0], 
+                                                 T_het_grid[-1], len(T_het_grid)),:]
+                I_phot = I_phot_grid[closest_index(T_phot, T_phot_grid[0], 
+                                                   T_phot_grid[-1], len(T_phot_grid)),:]
+                
+                # Compute wavelength-dependant stellar contamination factor
+                epsilon = stellar_contamination_single_spot(f, I_het, I_phot)
+
+                # Apply multiplicative stellar contamination to spectrum
+                spectrum = epsilon * spectrum
 
         if (i == 0):
 
@@ -666,9 +722,6 @@ def spectra_PT_samples(planet, star, model, opac, output_dir, retrieval_name,
     
     return T_low2, T_low1, T_median, T_high1, T_high2, \
            spec_low2, spec_low1, spec_median, spec_high1, spec_high2
-
-
-    
 
 
 #***** Compute Bayes factors, sigma significance etc *****#
