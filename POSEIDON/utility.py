@@ -51,6 +51,8 @@ def create_directories(base_dir, planet_name):
         os.mkdir(retrieval_dir + '/results')
     if (os.path.exists(retrieval_dir + '/MultiNest_raw') == False):
         os.mkdir(retrieval_dir + '/MultiNest_raw')
+    if (os.path.exists(retrieval_dir + '/samples') == False):
+        os.mkdir(retrieval_dir + '/samples')
         
 
 @jit(nopython = True)
@@ -218,14 +220,14 @@ def write_spectrum(planet_name, model_name, spectrum, wl):
     f.close()
 
 
-def write_retrieved_spectrum(planet_name, retrieval_name, wl, spec_low2, 
+def write_retrieved_spectrum(retrieval_name, wl, spec_low2, 
                              spec_low1, spec_median, spec_high1, spec_high2):
     '''
     ADD DOCSTRING
     '''
 
     # Identify output directory location where the retrieved spectrum will be saved
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+    output_dir = '../samples/'
     
     # Write retrieved spectrum
     f = open(output_dir + retrieval_name + '_spectrum_retrieved.txt', 'w')
@@ -251,7 +253,7 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
         retrieval_name = model_name + '_' + retrieval_name
 
     # Identify output directory location where the retrieved spectrum is located
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
     # Find retrieved spectrum file
     fname = output_dir + retrieval_name + '_spectrum_retrieved.txt'
@@ -269,14 +271,14 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     return wl, spec_low2, spec_low1, spec_median, spec_high1, spec_high2
 
 
-def write_retrieved_PT(planet_name, retrieval_name, P, T_low2, T_low1, 
+def write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
                        T_median, T_high1, T_high2):
     '''
     ADD DOCSTRING
     '''
 
     # Identify output directory location where the retrieved spectrum will be saved
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+    output_dir = '../samples/'
     
     # Write retrieved spectrum
     f = open(output_dir + retrieval_name + '_PT_retrieved.txt', 'w')
@@ -301,7 +303,7 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
         retrieval_name = model_name + '_' + retrieval_name
 
     # Identify output directory location where the retrieved spectrum is located
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
     # Find retrieved spectrum file
     fname = output_dir + retrieval_name + '_PT_retrieved.txt'
@@ -922,7 +924,7 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     summary_file.writelines(lines)
     
     
-def write_MultiNest_results(planet, model, data, output_dir, retrieval_name,
+def write_MultiNest_results(planet, model, data, retrieval_name,
                             N_live, ev_tol, sampling_algorithm, wl, R):
     ''' 
     Process raw retrieval output into human readable output files.
@@ -943,10 +945,7 @@ def write_MultiNest_results(planet, model, data, output_dir, retrieval_name,
     datasets = data['datasets']
     
     # Load relevant output directory
-    output_prefix = (output_dir + 'MultiNest_raw/' + retrieval_name + '-')
-
-    # Load relevant results directory
-    results_prefix = output_dir + 'results/' + retrieval_name
+    output_prefix = retrieval_name + '-'
     
     # Run PyMultiNest analyser to extract posterior samples and model evidence
     analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
@@ -965,12 +964,13 @@ def write_MultiNest_results(planet, model, data, output_dir, retrieval_name,
     norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
     best_chi_square = -2.0 * (max_likelihood - norm_log)
     reduced_chi_square = best_chi_square/(len(ydata) - n_params)  
-    
-    # Write parameter names to file
-  #  write_params_file(param_names, results_prefix)
+
+    # Load relevant results directories
+    samples_prefix = '../samples/' + retrieval_name
+    results_prefix = '../results/' + retrieval_name
     
     # Write samples to file
-    write_samples_file(samples, param_names, n_params, results_prefix)
+    write_samples_file(samples, param_names, n_params, samples_prefix)
             
     # Write POSEIDON retrieval summary file
     write_summary_file(results_prefix, planet_name, retrieval_name, 
