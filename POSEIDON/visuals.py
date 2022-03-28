@@ -896,7 +896,6 @@ def plot_spectra(spectra, planet, model, data_properties = None,
         else:
             data_markers = data_marker_list
 
-
         # Define data marker sizes (default or user choice)
         if (data_marker_size_list == []):   # If user did not specify a custom colour list
             data_markers_size = [3, 3, 3, 3, 3, 3]
@@ -1190,7 +1189,7 @@ def plot_spectra(spectra, planet, model, data_properties = None,
 #    ax2.set_ylim([N_sc[0], N_sc[1]])
 #    ax2.set_ylabel(r'$\mathrm{Scale \, \, Heights}$', fontsize = 16)
     
-    legend = ax1.legend(loc='lower right', shadow=True, prop={'size':10}, 
+    legend = ax1.legend(loc='upper right', shadow=True, prop={'size':10}, 
                         ncol=1, frameon=True)    #legend settings
   #  legend.set_bbox_to_anchor([0.75, 0.98], transform=None)
     frame = legend.get_frame()
@@ -1453,7 +1452,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            data_properties, R_to_bin = 100, label = None,
                            show_ymodel = True, wl_min = None, wl_max = None, 
                            transit_depth_min = None, transit_depth_max = None, 
-                           colour_list = [], spectra_labels = []):
+                           colour_list = [], spectra_labels = [],
+                           data_colour_list = [], data_labels = [],
+                           data_marker_list = [], data_marker_size_list = []):
+
+
     ''' 
     Plot retrieved transmission spectra.
     
@@ -1464,13 +1467,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
-
-    # Unpack data properties (if provided)
-    if (data_properties is not None):
-        ydata = data_properties['ydata']
-        err_data = data_properties['err_data']
-        wl_data = data_properties['wl_data']
-        bin_size = data_properties['half_bin']
          
     # Quick validity checks for plotting
     if (N_spectra == 0):
@@ -1489,6 +1485,49 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         colours = colour_list
 
     binned_colours = ['gold', 'pink', 'cyan']
+
+    # Unpack data properties (if provided)
+    datasets = data_properties['datasets']
+    instruments = data_properties['instruments']
+    ydata = data_properties['ydata']
+    err_data = data_properties['err_data']
+    wl_data = data_properties['wl_data']
+    bin_size = data_properties['half_bin']
+
+    # Find number of datasets to plot
+    N_datasets = len(datasets)
+        
+    # Quick validity checks for plotting
+    if (N_datasets == 0):
+        raise Exception("Must provide at least one dataset to plot!")
+    if (N_datasets > 6):
+        raise Exception("Max number of concurrent datasets to plot is 6.")
+    if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
+        raise Exception("Number of colours does not match number of datasets.")
+    if ((data_labels != []) and (N_datasets != len(data_labels))):
+        raise Exception("Number of dataset labels does not match number of datasets.")
+    if ((data_marker_list != []) and (N_datasets != len(data_marker_list))):
+        raise Exception("Number of dataset markers does not match number of datasets.")
+    if ((data_marker_size_list != []) and (N_datasets != len(data_marker_size_list))):
+        raise Exception("Number of dataset marker sizes does not match number of datasets.")
+        
+    # Define colours for plotted spectra (default or user choice)
+    if (data_colour_list == []):   # If user did not specify a custom colour list
+        data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black']
+    else:
+        data_colours = data_colour_list
+
+    # Define data marker symbols (default or user choice)
+    if (data_marker_list == []):   # If user did not specify a custom colour list
+        data_markers = ['o', 's', 'D', '*', 'X', 'p']
+    else:
+        data_markers = data_marker_list
+
+    # Define data marker sizes (default or user choice)
+    if (data_marker_size_list == []):   # If user did not specify a custom colour list
+        data_markers_size = [3, 3, 3, 3, 3, 3]
+    else:
+        data_markers_size = data_marker_size_list
                 
     # If the user did not specify a wavelength range, find min and max from input models
     if (wl_min == None):
@@ -1698,11 +1737,33 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                         label = label_i + r' (Binned)')
             
     # Overplot datapoints
-    markers, caps, bars = ax1.errorbar(wl_data, ydata, yerr=err_data, xerr=bin_size, 
-                                       marker='o', markersize=3, capsize=2, 
-                                       ls='none', color='black', elinewidth=0.8, 
-                                       ecolor='black', alpha=0.8, label=r'Data') 
-    [markers.set_alpha(1.0)]
+    for i in range(N_datasets):
+        
+        # If user did not specify dataset labels, use the instrument names
+        if (data_labels == []):
+            label_i = instruments[i]
+        else:
+            label_i = data_labels[i]
+        
+        # Find start and end indices of dataset_i in dataset property arrays
+        idx_start = data_properties['len_data_idx'][i]
+        idx_end = data_properties['len_data_idx'][i+1]
+
+        # Extract the ith dataset
+        wl_data_i = wl_data[idx_start:idx_end]
+        ydata_i = ydata[idx_start:idx_end]
+        err_data_i = err_data[idx_start:idx_end]
+        bin_size_i = bin_size[idx_start:idx_end]
+
+        # Plot dataset
+        markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                            xerr=bin_size_i, marker=data_markers[i], 
+                                            markersize=data_markers_size[i], 
+                                            capsize=2, ls='none', elinewidth=0.8, 
+                                            color=data_colours[i], alpha = 0.8,
+                                            ecolor = 'black', label=label_i)
+
+        [markers.set_alpha(1.0)]
     
     # Set axis ranges
     ax1.set_xlim([wl_range[0], wl_range[1]])
