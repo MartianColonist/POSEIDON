@@ -1266,10 +1266,11 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                       a, gamma, P_cloud, kappa_cloud_0, N_species, N_species_active,
                       N_cia_pairs, N_ff_pairs, N_bf_species, sigma_interp,
                       cia_interp, Rayleigh_stored, ff_stored, bf_stored, 
-                      enable_haze, enable_deck, kappa_clear, kappa_cloud):
+                      enable_haze, enable_deck, kappa_clear, kappa_cloud,
+                      disable_continuum):
     
     ''' Computes extinction coefficients for given sector and zone. 
-        Special function optimsied for line-by-line case.
+        Special function optimised for line-by-line case.
     
     '''
     
@@ -1285,18 +1286,31 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
     # For each layer
     for i in range(N_layers):
             
-        # For each collisionally-induced absorption (CIA) pair
-        for q in range(N_cia_pairs): 
-                
-            n_cia_1 = n[i,j,k]*X_cia[0,q,i,j,k]   # Number density of first CIA species in pair
-            n_cia_2 = n[i,j,k]*X_cia[1,q,i,j,k]   # Number density of second CIA species in pair
-            n_n_cia = n_cia_1*n_cia_2             # Product of number densities of CIA pair
-                
-            # For each wavelength
-            for l in range(N_wl):
+        if (disable_continuum == False):
+
+            # For each collisionally-induced absorption (CIA) pair
+            for q in range(N_cia_pairs): 
                     
-                # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
-                kappa_clear[i,j,k,l] += n_n_cia * cia_interp[q,i,l]
+                n_cia_1 = n[i,j,k]*X_cia[0,q,i,j,k]   # Number density of first CIA species in pair
+                n_cia_2 = n[i,j,k]*X_cia[1,q,i,j,k]   # Number density of second CIA species in pair
+                n_n_cia = n_cia_1*n_cia_2             # Product of number densities of CIA pair
+                    
+                # For each wavelength
+                for l in range(N_wl):
+                        
+                    # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
+                    kappa_clear[i,j,k,l] += n_n_cia * cia_interp[q,i,l]
+
+            # For each molecular / atomic species
+            for q in range(N_species):  
+                    
+                n_q = n[i,j,k]*X[q,i,j,k]       # Number density of given species
+                    
+                # For each wavelength
+                for l in range(N_wl):
+                                
+                    # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
+                    kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
                 
         # For each free-free absorption pair
         for q in range(N_ff_pairs): 
@@ -1332,17 +1346,6 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                     
                 # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
                 kappa_clear[i,j,k,l] += n_q * sigma_interp[q,i,l]
-                
-        # For each molecular / atomic species
-        for q in range(N_species):  
-                
-            n_q = n[i,j,k]*X[q,i,j,k]       # Number density of given species
-                
-            # For each wavelength
-            for l in range(N_wl):
-                            
-                # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
-                kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
     
     # If haze is enabled in this model  
     if (enable_haze == 1):
@@ -1368,10 +1371,11 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
 def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs, 
                    bf_species, n, T, P, wl_model, X, X_active, X_cia, X_ff, X_bf, 
                    a, gamma, P_cloud, kappa_cloud_0, Rayleigh_stored, enable_haze, 
-                   enable_deck, N_sectors, N_zones, opacity_database = 'High-T'):
+                   enable_deck, N_sectors, N_zones, opacity_database = 'High-T',
+                   disable_continuum = False):
     
     ''' Evaluate extinction coefficients for molecules / atoms, Rayleigh 
-        scattering, hazes, and clouds. Special function optimsied for 
+        scattering, hazes, and clouds. Special function optimised for 
         line-by-line case.
         
         Here, kappa = n[layer] * sigma[P_layer, T_layer, wl], where
@@ -1402,7 +1406,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
     N_nu = len(nu_model)    # Number of wavenumbers on model grid
     N_wl = len(wl_model)    # Number of wavelengths on model grid
     
-    # Define extinction coefficent arrays
+    # Define extinction coefficient arrays
     kappa_clear = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
 
@@ -1469,7 +1473,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
             # Initialise ff opacity array interpolated to model wavelengths + fine temperature grid
             ff_stored = np.zeros(shape=(N_ff_pairs, N_layers, N_wl))
             
-            # For free-free abosorption, can just use fitting functions instead of pre-tabulated opacities
+            # For free-free absorption, can just use fitting functions instead of pre-tabulated opacities
             for q in range(N_ff_pairs):
                 
                 ff_pair_q = ff_pairs[q]     # ff pair name
@@ -1487,7 +1491,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
             # Initialise bf opacity array interpolated to model wavelengths
             bf_stored = np.zeros(shape=(N_bf_species, N_wl))
             
-            # For bound-free abosorption, can just use fitting functions instead of pre-tabulated opacities
+            # For bound-free absorption, can just use fitting functions instead of pre-tabulated opacities
             for q in range(N_bf_species):
                 
                 bf_species_q = bf_species[q]     # bf species name
@@ -1540,13 +1544,13 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
             
             #***** Now compute extinction coefficients *****#
             
-            # Populate extinction coefficients for this sector (using optimised compiled funtion)
+            # Populate extinction coefficients for this sector (using optimised compiled function)
             compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, 
                               P, a, gamma, P_cloud, kappa_cloud_0, N_species, 
                               N_species_active, N_cia_pairs, N_ff_pairs, N_bf_species, 
                               sigma_interp, cia_interp, Rayleigh_stored, ff_stored, 
                               bf_stored, enable_haze, enable_deck, kappa_clear, 
-                              kappa_cloud)
+                              kappa_cloud, disable_continuum)
                     
     print("Finished producing extinction coefficients")
             
