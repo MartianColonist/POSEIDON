@@ -302,21 +302,21 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     else:
         retrieval_name = model_name + '_' + retrieval_name
 
-    # Identify output directory location where the retrieved spectrum is located
+    # Identify output directory location where the retrieved P-T profile is located
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
-    # Find retrieved spectrum file
+    # Find retrieved P-T profile file
     fname = output_dir + retrieval_name + '_PT_retrieved.txt'
 
-    # Read retrieved spectrum confidence intervals
-    spec = pd.read_csv(fname, sep = ' ', header = None, skiprows = 1)
+    # Read retrieved temperature confidence intervals
+    PT = pd.read_csv(fname, sep = ' ', header = None, skiprows = 1)
 
-    P = np.array(spec[0])           # Wavelengths (um)
-    T_low2 = np.array(spec[1])    # -2σ
-    T_low1 = np.array(spec[2])    # -1σ
-    T_median = np.array(spec[3])  # Median
-    T_high1 = np.array(spec[4])   # +1σ
-    T_high2 = np.array(spec[5])   # +2σ
+    P = np.array(PT[0])         # Pressure (bar)
+    T_low2 = np.array(PT[1])    # -2σ
+    T_low1 = np.array(PT[2])    # -1σ
+    T_median = np.array(PT[3])  # Median
+    T_high1 = np.array(PT[4])   # +1σ
+    T_high2 = np.array(PT[5])   # +2σ
     
     return P, T_low2, T_low1, T_median, T_high1, T_high2
 

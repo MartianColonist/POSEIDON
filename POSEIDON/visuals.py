@@ -853,7 +853,7 @@ def plot_spectra(spectra, planet, model, data_properties = None,
         
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
-        colours = ['black', 'lime', 'cyan', 'red', 'darkgrey', 'brown']
+        colours = ['green', 'red', 'black', 'darkgrey', 'navy', 'brown']
     else:
         colours = colour_list
 
@@ -1082,7 +1082,7 @@ def plot_spectra(spectra, planet, model, data_properties = None,
             ax1.plot(wl_binned, spec_binned, lw=1.0, alpha=0.8, 
                      color=scale_lightness(colours[i], 0.4), 
                      zorder=N_spectra+N_plotted_binned, 
-                     label=label_i) #+ ' (R = ' + str(R_to_bin) + ')')
+                     label=label_i + ' (R = ' + str(R_to_bin) + ')')
             
             N_plotted_binned += 1
 
@@ -1455,8 +1455,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            colour_list = [], spectra_labels = [],
                            data_colour_list = [], data_labels = [],
                            data_marker_list = [], data_marker_size_list = []):
-
-
     ''' 
     Plot retrieved transmission spectra.
     
@@ -1847,6 +1845,177 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         file_name = output_dir + planet_name + '_retrieved_spectra.pdf'
     else:
         file_name = output_dir + planet_name + '_' + label + '_retrieved_spectra.pdf'
+
+    plt.savefig(file_name, bbox_inches='tight')
+
+    return fig
+
+
+def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
+                      PT_high2, T_true = None, Atmosphere_dimension = 1, 
+                      TwoD_type = None, label = None, show_profiles = [],
+                      PT_labels = [], colour_list = [], log_P_min = None,
+                      log_P_max = None, T_min = None, T_max = None):
+        
+    ''' Plot a retrieved Pressure-Temperature (P-T) profile.
+        
+    '''
+
+    # Find number of P-T profiles to plot
+    N_PT = len(PT_median)
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+    # Quick validity checks for plotting
+    if (N_PT == 0):
+        raise Exception("Must provide at least one P-T profile to plot!")
+    if (N_PT > 3):
+        raise Exception("Max number of concurrent retrieved P-T profiles to plot is 3.")
+    if ((colour_list != []) and (N_PT != len(colour_list))):
+        raise Exception("Number of colours does not match number of P-T profiles.")
+    if ((PT_labels != []) and (N_PT != len(PT_labels))):
+        raise Exception("Number of model labels does not match number of P-T profiles.")
+
+    # Define colours for plotted spectra (default or user choice)
+    if (colour_list == []):   # If user did not specify a custom colour list
+        colours = ['purple', 'darkorange', 'green']
+    else:
+        colours = colour_list
+
+    # If the user did not specify a temperature range, find min and max from input models
+    if (T_min == None):
+        
+        T_min = 1e10   # Dummy value
+        
+        # Loop over each model, finding the most extreme min / max range 
+        for i in range(N_PT):
+            
+            T_min_i = np.min(PT_low2[i][0])
+            T_min = min(T_min, T_min_i)
+            
+    # If the user did not specify a wavelength range, find min and max from input models
+    if (T_max == None):
+        
+        T_max = 1e-10  # Dummy value
+        
+        # Loop over each model, finding the most extreme min / max range 
+        for i in range(N_PT):
+            
+            T_max_i = np.max(PT_high2[i][0])
+            T_max = max(T_max, T_max_i)
+
+    # Find minimum and maximum temperatures in atmosphere
+    T_min = np.floor(T_min/100)*100 - 200.0    # Round down to nearest 100
+    T_max = np.ceil(T_max/100)*100 + 200.0     # Round up to nearest 100
+
+    # Find range to plot
+    T_range = T_max - T_min  
+    
+    # Calculate appropriate axis spacing
+    if (T_range >= 500.0):
+        major_spacing = max(np.around((T_range/10), -2), 100.0)
+    elif (T_range < 500.0):
+        major_spacing = max(np.around((T_range/10), -1), 10.0)
+        
+    minor_spacing = major_spacing/10
+
+    # Load pressure grid
+    P = PT_median[0][1]
+
+    if (log_P_min == None):
+        log_P_min = np.log10(np.min(P))
+    if (log_P_max == None):
+        log_P_max = np.log10(np.max(P))
+    
+    # create figure
+    fig = plt.figure()  
+    ax = plt.gca()
+    
+    # Assign axis spacing
+    xmajorLocator_PT = MultipleLocator(major_spacing)
+    xminorLocator_PT = MultipleLocator(minor_spacing)
+        
+    ax.xaxis.set_major_locator(xmajorLocator_PT)
+    ax.xaxis.set_minor_locator(xminorLocator_PT)
+    
+    #***** Plot P-T profiles *****#
+    
+    # 1D temperature profile
+    if (Atmosphere_dimension > 1):
+        raise Exception("This function does not support multidimensional retrievals.")
+        
+    else:
+
+        # Loop over retrieved P-T profiles
+        for i in range(N_PT):
+            
+            # Extract spectrum and wavelength grid
+            (T_med, P) = PT_median[i]
+            (T_low1, P) = PT_low1[i]
+            (T_low2, P) = PT_low2[i]
+            (T_high1, P) = PT_high1[i]
+            (T_high2, P) = PT_high2[i]
+            
+            # If user did not specify a model label, just call them "Model 1, 2" etc.
+            if (PT_labels == []):
+                if (N_PT == 1):
+                    label_i = r'Retrieved P-T Profile'
+                else:
+                    label_i = r'Retrieved P-T Profile ' + str(i+1)
+            else:
+                label_i = PT_labels[i]
+            
+            # Only add sigma intervals to legend for one model (avoids clutter)
+            if (N_PT == 1):
+                label_med = label_i + r' (Median)'
+                label_one_sig = label_i + r' ($1 \sigma$)'
+                label_two_sig = label_i + r' ($2 \sigma$)'
+            else:
+                label_med = label_i
+                label_one_sig = ''
+                label_two_sig = ''
+
+            # Plot median retrieved spectrum
+            ax.semilogy(T_med, P, lw = 1.5, color = scale_lightness(colours[i], 1.0), 
+                        label = label_med)
+            
+            # Plot +/- 1σ confidence region
+            ax.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
+                            facecolor = colours[i], label = label_one_sig)
+
+            # Plot +/- 2σ sigma confidence region
+            ax.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
+                            facecolor = colours[i], label = label_two_sig)
+
+        # Plot actual (true) P-T profile
+        if (T_true != None):
+            ax.semilogy(T_true, P, lw = 1.5, color = 'crimson', label = 'True')
+
+    # Common plot settings for all profiles
+    ax.invert_yaxis()            
+    ax.set_xlabel(r'Temperature (K)', fontsize = 20)
+    ax.set_xlim(T_min, T_max)
+    ax.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min)) 
+
+    ax.tick_params(labelsize=12)
+    
+    # Add legend
+    legend = ax.legend(loc='lower left', shadow=True, prop={'size':14}, ncol=1, 
+                       frameon=False, columnspacing=1.0)
+    
+    fig.set_size_inches(9.0, 9.0)
+
+    #plt.tight_layout()
+
+    #legend.set_bbox_to_anchor([0.20, 0.10], transform=None)
+
+    # Write figure to file
+    if (label == None):
+        file_name = output_dir + planet_name + '_retrieved_PT.pdf'
+    else:
+        file_name = output_dir + planet_name + '_' + label + '_retrieved_PT.pdf'
 
     plt.savefig(file_name, bbox_inches='tight')
 
