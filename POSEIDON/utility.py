@@ -174,13 +174,16 @@ def read_data(data_dir, fname):
     return wavelength, bin_size, spectrum, err
 
     
-def read_spectrum(fname):
+def read_spectrum(planet_name, fname):
     
     ''' Read in a pre-computed transmission spectrum.
     
     '''
+
+    # Identify output directory location where the spectrum will be saved
+    input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
     
-    data = pd.read_csv(fname, sep = ' ', header=None)
+    data = pd.read_csv(input_dir + fname, sep = ' ', header=None)
     wavelength = np.array(data[0])  # Wavelengths (um)
     spectrum = np.array(data[1])    # Transit depth
     
