@@ -11,13 +11,15 @@ Before installing POSEIDON, you will need to download these input files
 
 * `Opacity_database_0.01cm-1.hdf5 <https://drive.google.com/file/d/1Rk_6sbIYC8c9La0fWHWpMPve6Jik7a3h/view?usp=sharing>`_
 * `Opacity_database_cia.hdf5 <https://drive.google.com/file/d/1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_/view?usp=sharing>`_
+* `Opacity_database_0.01cm-1_Temperate.hdf5 <https://drive.google.com/file/d/1hYLTzIy7cVicqGU8LHmLnq-3WQuyKISX/view?usp=sharing>`_
 * `Stellar_grids.zip <https://drive.google.com/file/d/1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C/view?usp=sharing>`_
 
-Place the two opacity files in a directory of your choice and unzip the stellar 
+Place the three opacity files in a directory of your choice and unzip the stellar 
 grid folder.
 
 .. note::
-   For Windows users, we recommend installing `Windows Subsystem for Linux (WSL) <https://docs.microsoft.com/en-us/windows/wsl/about>`_
+   For Windows users, we recommend installing `Windows Subsystem for Linux (WSL) 
+   <https://docs.microsoft.com/en-us/windows/wsl/about>`_
    before proceeding. WSL provides a Linux environment you can use on Windows.
    
    One of the main modules used by POSEIDON, PyMultiNest, does not natively 
@@ -84,7 +86,7 @@ or clone the repository:
 
 .. code-block:: bash
 		
-   git clone https://github.com/MartianColonist/POSEIDON_public.git
+   git clone https://github.com/MartianColonist/POSEIDON_dev.git
 
 Then navigate into the 'POSEIDON_public' directory and install the package via:
 
