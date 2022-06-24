@@ -28,19 +28,30 @@ grid folder.
 
 Next, you need to create two new environment variables: one pointing to the 
 directory containing the opacity files and a second to the (unzipped) stellar
-grid folder. You can do this on Linux by entering into a terminal 
+grid folder. 
+
+You can do this on Linux by entering into a terminal 
 
 .. code-block:: bash
 
    echo 'export POSEIDON_input_data="/PATH/TO/YOUR/OPACITY/DIRECTORY/"' >>~/.bashrc
    echo 'export PYSYN_CDBS="/PATH/TO/stellar_grids/"' >>~/.bashrc
 
-On Mac OS, instead use
+On Mac OS, check whether your terminals use bash (older OS) or zsh (newer OS).
+
+For bash terminals, enter
    
 .. code-block:: bash
 
    echo 'export POSEIDON_input_data="/PATH/TO/YOUR/OPACITY/DIRECTORY/"' >>~/.bash_profile
    echo 'export PYSYN_CDBS="/PATH/TO/stellar_grids/"' >>~/.bash_profile
+
+For zsh terminals, enter
+   
+.. code-block:: bash
+
+   echo export POSEIDON_input_data="/PATH/TO/YOUR/OPACITY/DIRECTORY/" >>~/.zshrc
+   echo export PYSYN_CDBS="/PATH/TO/stellar_grids/" >>~/.zshrc
 
 Now POSEIDON will know where to find the opacity database and stellar models.
 
@@ -81,14 +92,14 @@ Step 3: Install POSEIDON from GitHub
 ____________________________________
 
 Now all that is left is to obtain POSEIDON from GitHub and install the module.
-You can download `POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON_public>`_
+You can download `POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON_rev>`_
 or clone the repository:
 
 .. code-block:: bash
 		
    git clone https://github.com/MartianColonist/POSEIDON_dev.git
 
-Then navigate into the 'POSEIDON_public' directory and install the package via:
+Then navigate into the 'POSEIDON_dev' directory and install the package via:
 
 .. code-block:: bash
 		
