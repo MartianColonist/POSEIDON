@@ -55,19 +55,17 @@ For zsh terminals, enter
 
 Now POSEIDON will know where to find the opacity database and stellar models.
 
-.. attention::
-   Due to reports of issues configuring MPI with Python 3.9 (required by POSEIDON
-   for multi-core retrievals), we recommend installing POSEIDON with Python 3.8 
-   (or earlier). If using anaconda, you can make a fresh environment with 
-   Python 3.8 via:
-
-   .. code-block:: bash
-
-    conda create --name YOUR_ENV_NAME_HERE python=3.8
-
 
 Step 2: Install mpi4py and PyMultiNest
 ______________________________________
+
+.. attention::
+   We recommend installing POSEIDON in a fresh Anaconda environment. You can
+   create a new Python 3.9 environment via :
+
+   .. code-block:: bash
+
+    conda create --name \b YOUR_ENV_NAME_HERE \b python=3.9
 
 MultiNest is the main sampling algorithm used for parameter space exploration
 in POSEIDON retrievals. MultiNest has a convenient Python wrapper, PyMultiNest.

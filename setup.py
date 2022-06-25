@@ -12,7 +12,7 @@ setup(
     author_email = 'rmacdonald@astro.cornell.edu',
     license = 'BSD 3-Clause License',
     include_package_data = True,
-    python_requires = '<3.9',
+    python_requires = '<3.10',
     install_requires = ['numpy<=1.21',
                         'scipy',
                         'matplotlib<=3.5.1',
