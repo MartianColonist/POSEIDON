@@ -699,13 +699,13 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             raise Exception("POSEIDON cannot locate the opacity input data.\n"
                             "Please set the 'POSEIDON_input_data' variable in " +
                             "your .bashrc or .bash_profile to point to the " +
-                            "directory containing the POSEIDON opacity databse.")
+                            "directory containing the POSEIDON opacity database.")
         
         # Open HDF5 files containing molecular + atomic opacities
         if (opacity_database == 'High-T'):        # High T database
             opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1.hdf5', 'r')  
         elif (opacity_database == 'Temperate'):   # Low T database
-            opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1_TEMPERATE.hdf5', 'r')
+            opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
         
         # Open HDF5 files containing collision-induced absorption (CIA)
         cia_file = h5py.File(opacity_path + 'Opacity_database_cia.hdf5', 'r')
@@ -1417,13 +1417,13 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
         raise Exception("POSEIDON cannot locate the opacity input data.\n"
                         "Please set the 'POSEIDON_input_data' variable in " +
                         "your .bashrc or .bash_profile to point to the " +
-                        "directory containing the POSEIDON opacity databse.")
+                        "directory containing the POSEIDON opacity database.")
     
     # Open HDF5 files containing molecular + atomic opacities
     if (opacity_database == 'High-T'):        # High T database
         opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1.hdf5', 'r')  
     elif (opacity_database == 'Temperate'):   # Low T database
-        opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1_TEMPERATE.hdf5', 'r')
+        opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
     
     # Open HDF5 files containing collision-induced absorption (CIA)
     cia_file = h5py.File(opacity_path + 'Opacity_database_cia.hdf5', 'r')
