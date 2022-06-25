@@ -116,7 +116,7 @@ def compute_T_slope(P, T_phot, Delta_T_arr, log_P_phot = 0.5,
     # Add photosphere temperature
     T_points[i_phot+1] = T_phot
 
-    # Work down from photoshpere to bottom of atmosphere
+    # Work down from photosphere to bottom of atmosphere
     for i in range(i_phot+2, N_T_points):
 
         T_points[i] = T_phot + np.sum(Delta_T_arr[i_phot+1:i])
@@ -178,7 +178,7 @@ def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
         elif (phi[j] >= -alpha_rad/2.0):
             T_term = T_Morning
             
-        # Compute dayside and nighside temperatures for given angle phi
+        # Compute dayside and nightside temperatures for given angle phi
         T_Day   = T_term + Delta_T_DN/2.0
         T_Night = T_term - Delta_T_DN/2.0
         
@@ -245,7 +245,7 @@ def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species,
     alpha_rad = alpha * (np.pi / 180.0)
     beta_rad = beta * (np.pi / 180.0)
     
-    # Loop over parametrised chemical speciespasses
+    # Loop over parametrised chemical species
     for q in range(N_param_species):
         
         # Unpack abundance field parameters for this species
@@ -271,7 +271,7 @@ def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species,
             elif (phi[j] >= -alpha_rad/2.0):
                 X_term = X_Morning
                 
-            # Compute dayside and nighside abundances for given angle phi
+            # Compute dayside and nightside abundances for given angle phi
             X_Day   = X_term * np.power(10.0, (Delta_log_X_DN/2.0))
             X_Night = X_term * np.power(10.0, (-Delta_log_X_DN/2.0))
             
