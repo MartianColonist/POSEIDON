@@ -15,7 +15,8 @@ from .constants import R_J, R_E
 from .parameters import split_params
 from .instrument import bin_spectrum_to_data
 from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
-                     write_retrieved_spectrum, write_retrieved_PT, confidence_intervals
+                     write_retrieved_spectrum, write_retrieved_PT, \
+                     write_retrieved_log_X, confidence_intervals
 from .core import make_atmosphere, compute_spectrum
 from .stellar import precompute_stellar_spectra, stellar_contamination_single_spot
 
@@ -32,7 +33,8 @@ def run_retrieval(planet, star, model, opac, data, priors,
                   He_fraction = 0.17, N_slice_EM = 2, N_slice_DN = 4, 
                   spectrum_type = 'transmission', N_live = 400, ev_tol = 0.5,
                   sampling_algorithm = 'MultiNest', resume = False, 
-                  verbose = True, sampling_target = 'parameter'):         
+                  verbose = True, sampling_target = 'parameter',
+                  N_output_samples = 1000):
     '''
     ADD DOCSTRING
     '''
@@ -46,6 +48,7 @@ def run_retrieval(planet, star, model, opac, data, priors,
 
     # Unpack model properties
     model_name = model['model_name']
+    chemical_species = model['chemical_species']
     param_names = model['param_names']
     N_params = len(param_names)
 
@@ -81,7 +84,7 @@ def run_retrieval(planet, star, model, opac, data, priors,
     # Run POSEIDON retrieval using PyMultiNest
     if (sampling_algorithm == 'MultiNest'):
 
-        # Change directory into Multinest result file folder
+        # Change directory into MultiNest result file folder
         os.chdir(output_dir + 'MultiNest_raw/')
 
         # Set basename for MultiNest output files
@@ -117,21 +120,29 @@ def run_retrieval(planet, star, model, opac, data, priors,
             write_MultiNest_results(planet, model, data, retrieval_name,
                                     N_live, ev_tol, sampling_algorithm, wl, R)
 
-            # Compute samples of retrieved P-T profile and spectrum
+            # Compute samples of retrieved P-T, mixing ratio profiles, and spectrum
             T_low2, T_low1, T_median, \
             T_high1, T_high2, \
+            log_X_low2, log_X_low1, \
+            log_X_median, log_X_high1, \
+            log_X_high2, \
             spec_low2, spec_low1, \
             spec_median, spec_high1, \
-            spec_high2 = spectra_PT_samples(planet, star, model, opac,
-                                            retrieval_name, wl, P, P_ref, 
-                                            He_fraction, N_slice_EM, N_slice_DN, 
-                                            spectrum_type, T_phot_grid, 
-                                            T_het_grid, I_phot_grid, I_het_grid, 
-                                            N_samples = 1000)
+            spec_high2 = retrieved_samples(planet, star, model, opac,
+                                           retrieval_name, wl, P, P_ref, 
+                                           He_fraction, N_slice_EM, N_slice_DN, 
+                                           spectrum_type, T_phot_grid, 
+                                           T_het_grid, I_phot_grid, I_het_grid, 
+                                           N_output_samples)
                                             
             # Save sampled P-T profile
             write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
                                T_median, T_high1, T_high2)
+
+            # Save sampled mixing ratio profiles
+            write_retrieved_log_X(retrieval_name, chemical_species, P, 
+                                  log_X_low2, log_X_low1, log_X_median, 
+                                  log_X_high1, log_X_high2)
 
             # Save sampled spectrum
             write_retrieved_spectrum(retrieval_name, wl, spec_low2, 
@@ -596,10 +607,10 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
 	
 
-def spectra_PT_samples(planet, star, model, opac, retrieval_name,
-                       wl, P, P_ref, He_fraction, N_slice_EM, N_slice_DN, 
-                       spectrum_type, T_phot_grid, T_het_grid, I_phot_grid,
-                       I_het_grid, N_samples = 1000):
+def retrieved_samples(planet, star, model, opac, retrieval_name,
+                      wl, P, P_ref, He_fraction, N_slice_EM, N_slice_DN, 
+                      spectrum_type, T_phot_grid, T_het_grid, I_phot_grid,
+                      I_het_grid, N_output_samples):
     '''
     ADD DOCSTRING
     '''
@@ -625,7 +636,7 @@ def spectra_PT_samples(planet, star, model, opac, retrieval_name,
     N_samples_total = len(samples[:,0])
     
     # Randomly draw parameter samples from posterior
-    N_sample_draws = min(N_samples_total, N_samples)
+    N_sample_draws = min(N_samples_total, N_output_samples)
     sample = np.random.choice(len(samples), N_sample_draws, replace=False)
 
     print("Now generating " + str(N_sample_draws) + " sampled spectra and " + 
@@ -678,7 +689,7 @@ def spectra_PT_samples(planet, star, model, opac, retrieval_name,
                 # Unpack stellar contamination parameters
                 f, T_het, T_phot = stellar_params         
                 
-                # Find photoshpere and spot / faculae intensities at relevant effective temperatures
+                # Find photosphere and spot / faculae intensities at relevant effective temperatures
                 I_het = I_het_grid[closest_index(T_het, T_het_grid[0], 
                                                  T_het_grid[-1], len(T_het_grid)),:]
                 I_phot = I_phot_grid[closest_index(T_phot, T_phot_grid[0], 
@@ -690,6 +701,7 @@ def spectra_PT_samples(planet, star, model, opac, retrieval_name,
                 # Apply multiplicative stellar contamination to spectrum
                 spectrum = epsilon * spectrum
 
+        # Based on first model, create arrays to store retrieved temperature, spectrum, and mixing ratios
         if (i == 0):
 
             # Estimate run time for this function based on one model evaluation
@@ -698,29 +710,48 @@ def spectra_PT_samples(planet, star, model, opac, retrieval_name,
             
             print('This process will take approximately ' + str(total) + ' minutes')
 
-            # Based on first model, create arrays storing retrieved temperature field and spectrum
-            N_D, N_sectors, N_zones = np.shape(atmosphere['T'])  # Size of temperature field
+            # Find size of mixing ratio field (same as temperature field)
+            N_species, N_D, N_sectors, N_zones = np.shape(atmosphere['X'])
 
+            # Create arrays to store sampled retrieval outputs
             T_stored = np.zeros(shape=(N_sample_draws, N_D, N_sectors, N_zones))
+            log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
             spectrum_stored = np.zeros(shape=(N_sample_draws, len(wl)))
 
         # Store temperature field and spectrum in sample arrays
         T_stored[i,:,:,:] = atmosphere['T']
+        log_X_stored[i,:,:,:,:] = np.log10(atmosphere['X'])
         spectrum_stored[i,:] = spectrum
             
-    # Compute 1 and 2 sigma confidence intervals for P-T profile and spectrum
+    # Compute 1 and 2 sigma confidence intervals for P-T and mixing ratio profiles and spectrum
         
     # P-T profile
     _, T_low2, T_low1, T_median, \
     T_high1, T_high2, _ = confidence_intervals(N_sample_draws, 
                                                T_stored[:,:,0,0], N_D)
+
+    # Mixing ratio profiles
+    log_X_low2 = np.zeros(shape=(N_species, N_D))
+    log_X_low1 = np.zeros(shape=(N_species, N_D))
+    log_X_median = np.zeros(shape=(N_species, N_D))
+    log_X_high1 = np.zeros(shape=(N_species, N_D))
+    log_X_high2 = np.zeros(shape=(N_species, N_D))
+
+    # Loop over each chemical species
+    for q in range(N_species):
+
+        _, log_X_low2[q,:], log_X_low1[q,:], \
+        log_X_median[q,:], log_X_high1[q,:], \
+        log_X_high2[q,:], _ = confidence_intervals(N_sample_draws, 
+                                                   log_X_stored[:,q,:,0,0], N_D)
     
-    # Sectrum
+    # Spectrum
     _, spec_low2, spec_low1, spec_median, \
     spec_high1, spec_high2, _ = confidence_intervals(N_sample_draws, 
                                                      spectrum_stored, len(wl))
     
     return T_low2, T_low1, T_median, T_high1, T_high2, \
+           log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2, \
            spec_low2, spec_low1, spec_median, spec_high1, spec_high2
 
 

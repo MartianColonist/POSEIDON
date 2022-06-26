@@ -235,6 +235,7 @@ def write_retrieved_spectrum(retrieval_name, wl, spec_low2,
     # Write retrieved spectrum
     f = open(output_dir + retrieval_name + '_spectrum_retrieved.txt', 'w')
     
+    # Write top line
     f.write('wl (μm) | spectrum: -2σ | spectrum: -1σ | spectrum: median ' + 
             '| spectrum: +1σ | spectrum: +2σ \n')
     
@@ -244,6 +245,69 @@ def write_retrieved_spectrum(retrieval_name, wl, spec_low2,
         
     f.close()
 
+
+def write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
+                       T_median, T_high1, T_high2):
+    '''
+    ADD DOCSTRING
+    '''
+
+    # Identify output directory location where the retrieved P-T profile will be saved
+    output_dir = '../samples/'
+    
+    # Write retrieved spectrum
+    f = open(output_dir + retrieval_name + '_PT_retrieved.txt', 'w')
+    
+    # Write top line
+    f.write('P (bar) | T: -2σ | T: -1σ  | T: median | T: +1σ | T: +2σ \n')
+    
+    for i in range(len(P)):
+        f.write('%.8e %.8e %.8e %.8e %.8e %.8e \n' %(P[i], T_low2[i], T_low1[i], 
+                                                     T_median[i], T_high1[i], T_high2[i]))
+        
+    f.close()
+
+
+def write_retrieved_log_X(retrieval_name, chemical_species, P, log_X_low2, 
+                          log_X_low1, log_X_median, log_X_high1, log_X_high2):
+    '''
+    ADD DOCSTRING
+    '''
+
+    # Identify output directory location where the retrieved mixing ratio profiles will be saved
+    output_dir = '../samples/'
+    
+    # Write retrieved spectrum
+    f = open(output_dir + retrieval_name + '_log_X_retrieved.txt', 'w')
+
+    # First line of file lists the chemical species included in this model
+    chem_species_string = 'Chemical species: '
+
+    # Add each chemical species to top line string
+    for q in range(len(chemical_species)):
+        chem_species_string += chemical_species[q]
+        if (q < len(chemical_species)-1):
+            chem_species_string += ' '   # Don't add a space for final chemical
+
+    # Write top line
+    f.write(chem_species_string + '\n')
+
+    # For each chemical species, write a block with the retrieved mixing ratio profile
+    for q in range(len(chemical_species)):
+
+        log_species = 'log_' + chemical_species[q]
+    
+        f.write('P (bar) | ' + log_species + ': -2σ | ' + log_species + ': -1σ | ' +
+                log_species + ': median | ' + log_species + ': +1σ | ' + 
+                log_species + ': +2σ \n')
+    
+        for i in range(len(P)):
+            f.write('%.8e %.8f %.8f %.8f %.8f %.8f \n' %(P[i], log_X_low2[q,i],
+                                                         log_X_low1[q,i], log_X_median[q,i], 
+                                                         log_X_high1[q,i], log_X_high2[q,i]))
+        
+    f.close()
+    
 
 def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     '''
@@ -262,39 +326,18 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_spectrum_retrieved.txt'
 
     # Read retrieved spectrum confidence intervals
-    spec = pd.read_csv(fname, sep = ' ', header = None, skiprows = 1)
+    spec_file = pd.read_csv(fname, sep = ' ', header = None, skiprows = 1)
 
-    wl = np.array(spec[0])           # Wavelengths (um)
-    spec_low2 = np.array(spec[1])    # -2σ
-    spec_low1 = np.array(spec[2])    # -1σ
-    spec_median = np.array(spec[3])  # Median
-    spec_high1 = np.array(spec[4])   # +1σ
-    spec_high2 = np.array(spec[5])   # +2σ
+    wl = np.array(spec_file[0])           # Wavelengths (um)
+    spec_low2 = np.array(spec_file[1])    # -2σ
+    spec_low1 = np.array(spec_file[2])    # -1σ
+    spec_median = np.array(spec_file[3])  # Median
+    spec_high1 = np.array(spec_file[4])   # +1σ
+    spec_high2 = np.array(spec_file[5])   # +2σ
     
     return wl, spec_low2, spec_low1, spec_median, spec_high1, spec_high2
 
 
-def write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
-                       T_median, T_high1, T_high2):
-    '''
-    ADD DOCSTRING
-    '''
-
-    # Identify output directory location where the retrieved spectrum will be saved
-    output_dir = '../samples/'
-    
-    # Write retrieved spectrum
-    f = open(output_dir + retrieval_name + '_PT_retrieved.txt', 'w')
-    
-    f.write('P (bar) | T: -2σ | T: -1σ  | T: median | T: +1σ | T: +2σ \n')
-    
-    for i in range(len(P)):
-        f.write('%.8e %.8e %.8e %.8e %.8e %.8e \n' %(P[i], T_low2[i], T_low1[i], 
-                                                     T_median[i], T_high1[i], T_high2[i]))
-        
-    f.close()
-    
-    
 def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     '''
     ADD DOCSTRING
@@ -312,16 +355,82 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_PT_retrieved.txt'
 
     # Read retrieved temperature confidence intervals
-    PT = pd.read_csv(fname, sep = ' ', header = None, skiprows = 1)
+    PT_file = pd.read_csv(fname, sep = ' ', header = None, skiprows = 1)
 
-    P = np.array(PT[0])         # Pressure (bar)
-    T_low2 = np.array(PT[1])    # -2σ
-    T_low1 = np.array(PT[2])    # -1σ
-    T_median = np.array(PT[3])  # Median
-    T_high1 = np.array(PT[4])   # +1σ
-    T_high2 = np.array(PT[5])   # +2σ
+    P = np.array(PT_file[0])         # Pressure (bar)
+    T_low2 = np.array(PT_file[1])    # -2σ
+    T_low1 = np.array(PT_file[2])    # -1σ
+    T_median = np.array(PT_file[3])  # Median
+    T_high1 = np.array(PT_file[4])   # +1σ
+    T_high2 = np.array(PT_file[5])   # +2σ
     
     return P, T_low2, T_low1, T_median, T_high1, T_high2
+
+
+def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
+    '''
+    ADD DOCSTRING
+    '''
+
+    if (retrieval_name is None):
+        retrieval_name = model_name
+    else:
+        retrieval_name = model_name + '_' + retrieval_name
+
+    # Identify output directory location where the retrieved P-T profile is located
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
+
+    # Find retrieved P-T profile file
+    fname = output_dir + retrieval_name + '_log_X_retrieved.txt'
+
+    # Read file to figure out number of layers and chemical species
+    file = open(fname, 'r')
+    lines = file.readlines()
+  
+    line_number = 0
+    block_line_numbers = []
+
+    # Looping through the file to find the chemical species and number of layers
+    for line in lines:
+
+        line_number += 1
+
+        # Read in list of chemical species from top line
+        if ('Chemical species:' in line):
+            chemical_species = np.array(line[18:].strip().split(' '))
+
+        # Note the line numbers where each chemical species block begins
+        if ('P (bar)' in line):
+            block_line_numbers.append(line_number)
+
+    N_species = len(chemical_species)
+    N_D = (block_line_numbers[1] - block_line_numbers[0]) - 1
+
+    file.close()
+
+    # Initialise the retrieved mixing ratio profile arrays
+    log_X_low2 = np.zeros(shape=(N_species, N_D))
+    log_X_low1 = np.zeros(shape=(N_species, N_D))
+    log_X_median = np.zeros(shape=(N_species, N_D))
+    log_X_high1 = np.zeros(shape=(N_species, N_D))
+    log_X_high2 = np.zeros(shape=(N_species, N_D))
+
+    # For each chemical species, read in the retrieved mixing ratio block
+    for q in range(N_species):
+
+        # Read retrieved mixing ratio confidence intervals
+        X_file = pd.read_csv(fname, sep = ' ', header = None, 
+                             skiprows = block_line_numbers[q], nrows = N_D)
+
+        P = np.array(X_file[0])                  # Pressure (bar)
+        log_X_low2[q,:] = np.array(X_file[1])    # -2σ
+        log_X_low1[q,:] = np.array(X_file[2])    # -1σ
+        log_X_median[q,:] = np.array(X_file[3])  # Median
+        log_X_high1[q,:] = np.array(X_file[4])   # +1σ
+        log_X_high2[q,:] = np.array(X_file[5])   # +2σ
+    
+    return P, chemical_species, log_X_low2, log_X_low1, log_X_median, \
+           log_X_high1, log_X_high2
 
 
 def write_output_binned(planet_name, wl, spectrum_binned, description):
