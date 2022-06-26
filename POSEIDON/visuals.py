@@ -647,6 +647,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     
     # 1D temperature profile
     if (Atmosphere_dimension == 1):
+
         for q, species in enumerate(plot_species):
             ax.semilogy(log_X[chemical_species == species,:,0,0][0], P, 
                         lw=1.5, color = colours[q], label=latex_species[q])
@@ -1449,7 +1450,7 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
 
 def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1, 
                            spectra_high1, spectra_high2, planet_name, 
-                           data_properties, R_to_bin = 100, label = None,
+                           data_properties, R_to_bin = 100, plt_label = None,
                            show_ymodel = True, wl_min = None, wl_max = None, 
                            transit_depth_min = None, transit_depth_max = None, 
                            colour_list = [], spectra_labels = [],
@@ -1841,10 +1842,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
 
     # Write figure to file
-    if (label == None):
+    if (plt_label == None):
         file_name = output_dir + planet_name + '_retrieved_spectra.pdf'
     else:
-        file_name = output_dir + planet_name + '_' + label + '_retrieved_spectra.pdf'
+        file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_spectra.pdf'
 
     plt.savefig(file_name, bbox_inches='tight')
 
@@ -1853,7 +1854,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
 def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       PT_high2, T_true = None, Atmosphere_dimension = 1, 
-                      TwoD_type = None, label = None, show_profiles = [],
+                      TwoD_type = None, plt_label = None, show_profiles = [],
                       PT_labels = [], colour_list = [], log_P_min = None,
                       log_P_max = None, T_min = None, T_max = None):
         
@@ -1894,7 +1895,7 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
             T_min_i = np.min(PT_low2[i][0])
             T_min = min(T_min, T_min_i)
             
-    # If the user did not specify a wavelength range, find min and max from input models
+    # If the user did not specify a temperature range, find min and max from input models
     if (T_max == None):
         
         T_max = 1e-10  # Dummy value
@@ -1950,7 +1951,7 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
         # Loop over retrieved P-T profiles
         for i in range(N_PT):
             
-            # Extract spectrum and wavelength grid
+            # Extract temperature and pressure grid
             (T_med, P) = PT_median[i]
             (T_low1, P) = PT_low1[i]
             (T_low2, P) = PT_low2[i]
@@ -2012,10 +2013,205 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
     #legend.set_bbox_to_anchor([0.20, 0.10], transform=None)
 
     # Write figure to file
-    if (label == None):
+    if (plt_label == None):
         file_name = output_dir + planet_name + '_retrieved_PT.pdf'
     else:
-        file_name = output_dir + planet_name + '_' + label + '_retrieved_PT.pdf'
+        file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_PT.pdf'
+
+    plt.savefig(file_name, bbox_inches='tight')
+
+    return fig
+
+
+def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median, 
+                        log_Xs_low2, log_Xs_low1, log_Xs_high1, log_Xs_high2, 
+                        log_X_true = None, plot_species = [], plot_two_sigma = False,
+                        Atmosphere_dimension = 1, TwoD_type = None, plt_label = None, 
+                        show_profiles = [], model_labels = [], colour_list = [],
+                        log_P_min = None, log_P_max = None, log_X_min = None, 
+                        log_X_max = None):
+        
+    ''' Plot retrieved mixing ratio profiles.
+        
+    '''
+  
+    # Find number of mixing ratio model profiles to plot
+    N_chem = len(log_Xs_median)
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+    # If the user did not specify which species to plot, plot all of them
+    if (len(plot_species) == 0):
+        plot_species = chemical_species
+
+    # Quick validity checks for plotting
+    if (N_chem >= 2):
+        raise Exception("Only 1 set of mixing ratio profiles can be plotted currently.")
+    if (len(plot_species) > 8):
+        raise Exception("Max number of concurrent species on plot is 8.\n"
+                        "Please specify species to plot via plot_species = [LIST]")
+    if ((colour_list != []) and (len(plot_species) != len(colour_list))):
+        raise Exception("Number of colours does not match number of species.")
+    if ((model_labels != []) and (N_chem != len(model_labels))):
+        raise Exception("Number of model labels does not match number of mixing ratio profiles.")
+    for q, species in enumerate(plot_species):
+        if (species not in chemical_species):
+            raise Exception(species + " not included in this model.")
+
+    # Define colours for mixing ratio profiles (default or user choice)
+    if (colour_list == []):   # If user did not specify a custom colour list
+        colours = ['royalblue', 'darkgreen', 'magenta', 'crimson', 'darkgrey', 
+                   'black', 'darkorange', 'navy']
+    else:
+        colours = colour_list
+
+    # If the user did not specify a mixing ratio range, find min and max from input models
+    if (log_X_min == None):
+        
+        log_X_min = 0.0   # Dummy value
+        
+        # Loop over each model, finding the most extreme min / max range 
+        for i in range(N_chem):
+            
+            log_X_min_i = np.min(log_Xs_low2[i][0])
+            log_X_min = min(log_X_min, log_X_min_i)
+            
+    # If the user did not specify a mixing ratio range, find min and max from input models
+    if (log_X_max == None):
+        
+        log_X_max = -50.0  # Dummy value
+        
+        # Loop over each model, finding the most extreme min / max range 
+        for i in range(N_chem):
+            
+            log_X_max_i = np.max(log_Xs_high2[i][0])
+            log_X_max = max(log_X_max, log_X_max_i)
+
+    # Find minimum and maximum mixing ratios in atmosphere
+    log_X_min = np.floor(log_X_min) - 1.0
+    log_X_max = min((np.ceil(log_X_max) + 1.0), 0.0)
+
+    # When range is small, extend axes +/- 1 dex either side
+    if (log_X_min == log_X_max):
+        log_X_min = log_X_min - 1.0
+        log_X_max = log_X_max + 1.0
+        
+    # Find range to plot
+    log_X_range = log_X_max - log_X_min    
+    
+    # Calculate appropriate axis spacing
+    major_spacing = 1.0
+    minor_spacing = major_spacing/10
+
+    # Load pressure grid
+    P = log_Xs_median[0][1]
+
+    if (log_P_min == None):
+        log_P_min = np.log10(np.min(P))
+    if (log_P_max == None):
+        log_P_max = np.log10(np.max(P))
+    
+    # Find LaTeX code for each chemical species to plot
+    latex_species = generate_latex_param_names(plot_species)
+    
+    # create figure
+    fig = plt.figure()  
+    ax = plt.gca()
+    
+    # Assign axis spacing
+    xmajorLocator_X = MultipleLocator(major_spacing)
+    xminorLocator_X = MultipleLocator(minor_spacing)
+        
+    ax.xaxis.set_major_locator(xmajorLocator_X)
+    ax.xaxis.set_minor_locator(xminorLocator_X)
+    
+    #***** Plot mixing ratio profiles *****#
+    
+    # 1D temperature profile
+    if (Atmosphere_dimension > 1):
+        raise Exception("This function does not support multidimensional retrievals.")
+        
+    else:
+
+        # Loop over retrieved mixing ratio profile models
+        for i in range(N_chem):
+            
+            # Extract mixing ratio and pressure grid
+            (log_X_med, P) = log_Xs_median[i]
+            (log_X_low1, P) = log_Xs_low1[i]
+            (log_X_low2, P) = log_Xs_low2[i]
+            (log_X_high1, P) = log_Xs_high1[i]
+            (log_X_high2, P) = log_Xs_high2[i]
+
+            # Plot the profile for each species in turn
+            for q, species in enumerate(plot_species):
+ 
+                # If user did not specify a model label, just call them "Model 1, 2" etc.
+                if (model_labels == []):
+                    if (N_chem == 1):
+                        label_i = r'Retrieved ' + latex_species[q]
+                    else:
+                        label_i = r'Retrieved ' + latex_species[q] + str(i+1)
+                else:
+                    label_i = latex_species[q] + ' ' + model_labels[i]
+            
+                # Don't add sigma intervals to legend (avoids clutter)
+                label_med = label_i
+                label_one_sig = ''
+                label_two_sig = ''
+
+                # Plot median retrieved mixing ratio profile
+                ax.semilogy(log_X_med[chemical_species == species,:][0], P, 
+                            lw = 1.5, color = colours[q],
+                            label = label_med)
+
+                # Plot +/- 1σ confidence region
+                ax.fill_betweenx(P, log_X_low1[chemical_species == species,:][0], 
+                                 log_X_high1[chemical_species == species,:][0],
+                                 lw = 0.0, alpha = 0.4, facecolor = colours[q],
+                                 label = label_one_sig)
+
+                # Plot +/- 2σ confidence region
+                if (plot_two_sigma == True):
+                    ax.fill_betweenx(P, log_X_low2[chemical_species == species,:][0], 
+                                    log_X_high2[chemical_species == species,:][0],
+                                    lw = 0.0, alpha = 0.2, facecolor = colours[q],
+                                    label = label_two_sig)
+
+                # Plot actual (true) mixing ratio profile
+                if (log_X_true != None):
+
+                    ax.semilogy(log_X_true[chemical_species == species,:][0], P, 
+                                lw = 1.5, color = colours[q], ls = linestyles['dashed'],
+                                label = r'True ' + latex_species[q])
+
+    # Common plot settings for all profiles
+    ax.invert_yaxis()            
+    ax.set_xlabel(r'Mixing Ratios (log $X_{\rm{i}}$)', fontsize = 20)
+    ax.set_xlim(log_X_min, log_X_max)  
+    ax.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))
+
+    ax.tick_params(labelsize=12)
+        
+    # Add legend
+    legend = ax.legend(loc='upper right', shadow=True, prop={'size':14}, ncol=1,
+                       frameon=True, columnspacing=1.0)
+    frame = legend.get_frame()
+    frame.set_facecolor('0.90') 
+    
+    fig.set_size_inches(9.0, 9.0)
+
+    #plt.tight_layout()
+
+    #legend.set_bbox_to_anchor([0.20, 0.10], transform=None)
+
+    # Write figure to file
+    if (plt_label == None):
+        file_name = output_dir + planet_name + '_retrieved_chem.pdf'
+    else:
+        file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_chem.pdf'
 
     plt.savefig(file_name, bbox_inches='tight')
 
