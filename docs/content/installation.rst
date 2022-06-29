@@ -14,8 +14,9 @@ Before installing POSEIDON, you will need to download these input files
 * `Opacity_database_0.01cm-1_Temperate.hdf5 <https://drive.google.com/file/d/1hYLTzIy7cVicqGU8LHmLnq-3WQuyKISX/view?usp=sharing>`_
 * `Stellar_grids.zip <https://drive.google.com/file/d/1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C/view?usp=sharing>`_
 
-Place the three opacity files in a directory of your choice and unzip the stellar 
-grid folder.
+Place the three opacity files in a directory called 'opacity' in a location of 
+your choice and unzip the stellar grid folder. I usually place these in an
+'input' folder with the structure 'input/opacity' and 'input/stellar_grids'.
 
 .. note::
    For Windows users, we recommend installing `Windows Subsystem for Linux (WSL) 
@@ -30,28 +31,42 @@ Next, you need to create two new environment variables: one pointing to the
 directory containing the opacity files and a second to the (unzipped) stellar
 grid folder. 
 
-You can do this on Linux by entering into a terminal 
+* Linux environment variables:
+  
+Enter the following lines into a terminal:
 
 .. code-block:: bash
 
-   echo 'export POSEIDON_input_data="/PATH/TO/YOUR/OPACITY/DIRECTORY/"' >>~/.bashrc
-   echo 'export PYSYN_CDBS="/PATH/TO/stellar_grids/"' >>~/.bashrc
+   echo 'export POSEIDON_input_data="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/opacity/"' >>~/.bashrc
+   echo 'export PYSYN_CDBS="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/stellar_grids/"' >>~/.bashrc
 
-On Mac OS, check whether your terminals use bash (older OS) or zsh (newer OS).
+You should replace the bold text above with the location of your input directory.
 
-For bash terminals, enter
+Alternatively, you can just open your .bashrc file (a hidden file in your home 
+directory) in a text editor and add the following two lines at the bottom:
+
+.. code-block:: bash
+
+   export POSEIDON_input_data="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/opacity/"
+   export PYSYN_CDBS="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/stellar_grids/"
+
+* Mac OS environment variables:
+
+Check whether your terminals use bash (older OS) or zsh (newer OS).
+
+For bash terminals, enter the following lines:
    
 .. code-block:: bash
 
-   echo 'export POSEIDON_input_data="/PATH/TO/YOUR/OPACITY/DIRECTORY/"' >>~/.bash_profile
-   echo 'export PYSYN_CDBS="/PATH/TO/stellar_grids/"' >>~/.bash_profile
+   echo 'export POSEIDON_input_data="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/opacity/"' >>~/.bash_profile
+   echo 'export PYSYN_CDBS="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/stellar_grids/"' >>~/.bash_profile
 
-For zsh terminals, enter
+For zsh terminals, instead enter the following lines:
    
 .. code-block:: bash
 
-   echo export POSEIDON_input_data="/PATH/TO/YOUR/OPACITY/DIRECTORY/" >>~/.zshrc
-   echo export PYSYN_CDBS="/PATH/TO/stellar_grids/" >>~/.zshrc
+   echo export POSEIDON_input_data="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/opacity/" >>~/.zshrc
+   echo export PYSYN_CDBS="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/stellar_grids/" >>~/.zshrc
 
 Now POSEIDON will know where to find the opacity database and stellar models.
 
@@ -65,7 +80,7 @@ ______________________________________
 
    .. code-block:: bash
 
-    conda create --name \b YOUR_ENV_NAME_HERE \b python=3.9
+    conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.9
 
 MultiNest is the main sampling algorithm used for parameter space exploration
 in POSEIDON retrievals. MultiNest has a convenient Python wrapper, PyMultiNest.
