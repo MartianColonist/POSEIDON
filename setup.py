@@ -11,6 +11,7 @@ setup(
     author = 'Ryan J. MacDonald',
     author_email = 'rmacdonald@astro.cornell.edu',
     license = 'BSD 3-Clause License',
+    packages = ['POSEIDON'],
     include_package_data = True,
     python_requires = '<3.10',
     install_requires = ['numpy<=1.21',
