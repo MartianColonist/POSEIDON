@@ -130,7 +130,6 @@ def compute_T_slope(P, T_phot, Delta_T_arr, log_P_phot = 0.5,
     return T
 
 
-
 @jit(nopython = True)
 def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
                              N_sectors, N_zones, alpha, beta, phi, theta,
@@ -141,7 +140,7 @@ def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
         For each atmospheric column, the temperature profile has a constant
         vertical gradient across the observable atmosphere. For pressures
         above and below the considered range (by default, 10^-5 -> 10 bar),
-        are treated with an isotherm.
+        the temperature is isothermal.
            
         Inputs:
             
@@ -209,18 +208,112 @@ def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
 
 
 @jit(nopython = True)
+def compute_T_field_two_gradients(P, T_bar_term_high, T_bar_term_mid, 
+                                  Delta_T_term_high, Delta_T_term_mid,
+                                  Delta_T_DN_high, Delta_T_DN_mid, log_P_mid,
+                                  T_deep, N_sectors, N_zones, alpha, beta,
+                                  phi, theta, P_deep = 10.0, P_high = 1.0e-5):
+    
+    ''' Creates 3D temperature profile array storing T(P, phi, theta).
+    
+        For each atmospheric column, the temperature profile has two constant
+        vertical gradients across the observable atmosphere. The transition 
+        point between the two gradients is at log_P_mid. For pressures
+        above and below the considered range (by default, 10^-5 -> 10 bar)
+        the temperature is isothermal.
+           
+        Inputs:
+            
+        TBD
+
+        Outputs:
+           
+        T => Array of temperature profiles for each sector and zone
+       
+    '''
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+    
+    # Initialise temperature arrays
+    T = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    
+    # Convert alpha and beta from degrees to radians
+    alpha_rad = alpha * (np.pi / 180.0)
+    beta_rad = beta * (np.pi / 180.0)
+    
+    # Compute evening and morning temperatures in terminator plane
+    T_Evening_high = T_bar_term_high + Delta_T_term_high/2.0
+    T_Evening_mid  = T_bar_term_mid + Delta_T_term_mid/2.0
+    T_Morning_high = T_bar_term_high - Delta_T_term_high/2.0
+    T_Morning_mid  = T_bar_term_mid - Delta_T_term_mid/2.0
+
+    P_mid = np.power(10.0, log_P_mid)
+
+    # Compute 3D temperature field throughout atmosphere 
+    for j in range(N_sectors):
+        
+        # Compute high and mid temperature in terminator plane for given angle phi
+        if (phi[j] <= -alpha_rad/2.0):
+            T_term_high = T_Evening_high
+            T_term_mid  = T_Evening_mid
+        elif ((phi[j] > -alpha_rad/2.0) and (phi[j] < alpha_rad/2.0)):
+            T_term_high = T_bar_term_high - (phi[j]/(alpha_rad/2.0)) * (Delta_T_term_high/2.0)
+            T_term_mid  = T_bar_term_mid - (phi[j]/(alpha_rad/2.0)) * (Delta_T_term_mid/2.0)
+        elif (phi[j] >= -alpha_rad/2.0):
+            T_term_high = T_Morning_high
+            T_term_mid  = T_Morning_mid
+            
+        # Compute dayside and nightside temperatures for given angle phi
+        T_Day_high   = T_term_high + Delta_T_DN_high/2.0
+        T_Day_mid    = T_term_mid + Delta_T_DN_mid/2.0
+        T_Night_high = T_term_high - Delta_T_DN_high/2.0
+        T_Night_mid  = T_term_mid - Delta_T_DN_mid/2.0
+        
+        for k in range(N_zones):
+            
+            # Compute high and mid temperature for given angles phi and theta
+            if (theta[k] <= -beta_rad/2.0):
+                T_high = T_Day_high
+                T_mid  = T_Day_mid
+            elif ((theta[k] > -beta_rad/2.0) and (theta[k] < beta_rad/2.0)):
+                T_high = T_term_high - (theta[k]/(beta_rad/2.0)) * (Delta_T_DN_high/2.0)
+                T_mid  = T_term_mid - (theta[k]/(beta_rad/2.0)) * (Delta_T_DN_mid/2.0)
+            elif (theta[k] >= -beta_rad/2.0):
+                T_high = T_Night_high
+                T_mid  = T_Night_mid
+                
+            # Compute T gradients
+            dT_dlogP_1 = (T_mid - T_high) / (np.log10(P_mid/P_high))
+            dT_dlogP_2 = (T_deep - T_mid) / (np.log10(P_deep/P_mid))
+            
+            for i in range(N_layers):
+                
+                # Compute temperature profile for each atmospheric column
+                if (P[i] <= P_high):
+                    T[i,j,k] = T_high
+                elif ((P[i] > P_high) and (P[i] < P_mid)):
+                    T[i,j,k] = T_high + dT_dlogP_1 * np.log10(P[i] / P_high)
+                elif ((P[i] >= P_mid) and (P[i] < P_deep)):
+                    T[i,j,k] = T_mid + dT_dlogP_2 * np.log10(P[i] / P_mid)
+                elif (P[i] >= P_deep):
+                    T[i,j,k] = T_deep
+        
+    return T
+
+
+@jit(nopython = True)
 def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species, 
                              species_has_profile, alpha, beta, phi, theta, 
                              P_deep = 10.0, P_high = 1.0e-5):
     
     ''' Creates 4D abundance profile array storing X(species, P, phi, theta).
     
-        For each atmospheric column, the abundance profile has either a 
-        constant vertical gradient across the observable atmosphere or a 
-        uniform (isochem) profile. The species with a gradient profile are
-        specified by the user. For gradient profiles, pressures
-        above and below the considered range (by default, 10^-5 -> 10 bar),
-        are treated with an isochem.
+        For each atmospheric column, the abundance profile has either a constant 
+        vertical gradient across the observable atmosphere or a uniform (isochem) 
+        profile. The species with a gradient profile are specified by the user. 
+        For gradient profiles, pressures above and below the considered range 
+        (10^-5 -> 10 bar) have isochemical mixing ratios.
            
         Inputs:
             
@@ -298,6 +391,125 @@ def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species,
                             X_profiles[q,i,j,k] = X_high
                         elif ((P[i] > P_high) and (P[i] < P_deep)):
                             X_profiles[q,i,j,k] = X_high * np.power((P[i] / P_high), dlog_X_dlogP)
+                        elif (P[i] >= P_deep):
+                            X_profiles[q,i,j,k] = X_deep
+                  
+                # Otherwise abundance is uniform with pressure
+                else:
+                    
+                    X_profiles[q,:,j,k] = X_high
+            
+    return X_profiles
+
+
+@jit(nopython = True)
+def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_species, 
+                                  species_has_profile, alpha, beta, phi, theta, 
+                                  P_deep = 10.0, P_high = 1.0e-5):
+    
+    ''' Creates 4D abundance profile array storing X(species, P, phi, theta).
+    
+        For each atmospheric column, the abundance profile has either two 
+        constant vertical gradients across the observable atmosphere or a 
+        uniform (isochem) profile. The transition point between the two 
+        gradients is at log_P_X_mid (species dependent). The species with 
+        gradient profiles are specified by the user. For gradient profiles, 
+        pressures above and below the considered range (10^-5 -> 10 bar) have 
+        isochemical mixing ratios.
+           
+        Inputs:
+            
+        TBD
+
+        Outputs:
+           
+        X => Array of abundance profiles for each species in each sector and zone
+       
+    '''
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+    
+    # Store lengths of species arrays for convenience
+    N_param_species = len(param_species)
+    
+    # Initialise mixing ratio array
+    X_profiles = np.zeros(shape=(N_param_species, N_layers, N_sectors, N_zones))
+
+    # Convert alpha and beta from degrees to radians
+    alpha_rad = alpha * (np.pi / 180.0)
+    beta_rad = beta * (np.pi / 180.0)
+    
+    # Loop over parametrised chemical species
+    for q in range(N_param_species):
+        
+        # Unpack abundance field parameters for this species
+        log_X_bar_term_high, log_X_bar_term_mid, \
+        Delta_log_X_term_high, Delta_log_X_term_mid, \
+        Delta_log_X_DN_high, Delta_log_X_DN_mid, \
+        log_P_X_mid, log_X_deep = log_X_state[q,:]
+        
+        # Convert average terminator and deep abundances into linear space
+        X_bar_term_high = np.power(10.0, log_X_bar_term_high)
+        X_bar_term_mid = np.power(10.0, log_X_bar_term_mid)
+        P_mid = np.power(10.0, log_P_X_mid)
+        X_deep = np.power(10.0, log_X_deep)
+ 
+        # Compute evening and morning temperatures in terminator plane
+        X_Evening_high = X_bar_term_high * np.power(10.0, (Delta_log_X_term_high/2.0))
+        X_Evening_mid  = X_bar_term_mid * np.power(10.0, (Delta_log_X_term_mid/2.0))
+        X_Morning_high = X_bar_term_high * np.power(10.0, (-Delta_log_X_term_high/2.0))
+        X_Morning_mid  = X_bar_term_mid * np.power(10.0, (-Delta_log_X_term_mid/2.0))
+
+        # Compute 3D abundance field for species q throughout atmosphere 
+        for j in range(N_sectors):
+            
+            # Compute high and mid abundance in terminator plane for given angle phi
+            if (phi[j] <= -alpha_rad/2.0):
+                X_term_high = X_Evening_high
+                X_term_mid  = X_Evening_mid
+            elif ((phi[j] > -alpha_rad/2.0) and (phi[j] < alpha_rad/2.0)):
+                X_term_high = X_bar_term_high * np.power(10.0, (-(phi[j]/(alpha_rad/2.0)) * (Delta_log_X_term_high/2.0)))
+                X_term_mid  = X_bar_term_mid * np.power(10.0, (-(phi[j]/(alpha_rad/2.0)) * (Delta_log_X_term_mid/2.0)))
+            elif (phi[j] >= -alpha_rad/2.0):
+                X_term_high = X_Morning_high
+                X_term_mid  = X_Morning_mid
+                
+            # Compute dayside and nightside abundances for given angle phi
+            X_Day_high   = X_term_high * np.power(10.0, (Delta_log_X_DN_high/2.0))
+            X_Day_mid    = X_term_mid * np.power(10.0, (Delta_log_X_DN_mid/2.0))
+            X_Night_high = X_term_high * np.power(10.0, (-Delta_log_X_DN_high/2.0))
+            X_Night_mid  = X_term_mid * np.power(10.0, (-Delta_log_X_DN_mid/2.0))
+  
+            for k in range(N_zones):
+                
+                # Compute high abundance for given angles phi and theta
+                if (theta[k] <= -beta_rad/2.0):
+                    X_high = X_Day_high
+                    X_mid  = X_Day_mid
+                elif ((theta[k] > -beta_rad/2.0) and (theta[k] < beta_rad/2.0)):
+                    X_high = X_term_high * np.power(10.0, (-(theta[k]/(beta_rad/2.0)) * (Delta_log_X_DN_high/2.0)))
+                    X_mid  = X_term_mid * np.power(10.0, (-(theta[k]/(beta_rad/2.0)) * (Delta_log_X_DN_mid/2.0)))
+                elif (theta[k] >= -beta_rad/2.0):
+                    X_high = X_Night_high
+                    X_mid  = X_Night_mid
+                    
+                # If the given species has a vertical profile with a gradient
+                if (species_has_profile[q] == 1):  
+
+                    # Compute abundance gradients
+                    dlog_X_dlogP_1 = np.log10(X_mid/X_high) / np.log10(P_mid/P_high)
+                    dlog_X_dlogP_2 = np.log10(X_deep/X_mid) / np.log10(P_deep/P_mid)
+                    
+                    for i in range(N_layers):
+                        
+                        # Compute abundance profile for each atmospheric column
+                        if (P[i] <= P_high):
+                            X_profiles[q,i,j,k] = X_high
+                        elif ((P[i] > P_high) and (P[i] < P_mid)):
+                            X_profiles[q,i,j,k] = X_high * np.power((P[i] / P_high), dlog_X_dlogP_1)
+                        elif ((P[i] >= P_mid) and (P[i] < P_deep)):
+                            X_profiles[q,i,j,k] = X_mid * np.power((P[i] / P_mid), dlog_X_dlogP_2)
                         elif (P[i] >= P_deep):
                             X_profiles[q,i,j,k] = X_deep
                   
@@ -815,8 +1027,20 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
        
     '''
             
-    # For isothermal or gradient profiles (1D, 2D, or 3D)
-    if (PT_profile in ['isotherm', 'gradient']):
+    # For an isothermal profile
+    if (PT_profile == 'isotherm'):
+        
+        # Unpack P-T profile parameters
+        T_iso = PT_state[0]
+    
+        # Initialise temperature array
+        T = T_iso * np.ones(shape=(len(P), 1, 1)) # 1D profile => N_sectors = N_zones = 1
+        
+        # Gaussian smooth P-T profile
+        T_smooth = T   # No need to Gaussian smooth an isothermal profile
+
+    # For the gradient profiles (1D, 2D, or 3D)
+    elif (PT_profile == 'gradient'):
         
         # Unpack P-T profile parameters
         T_bar_term, Delta_T_term, Delta_T_DN, T_deep = PT_state
@@ -834,6 +1058,34 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             T_rough = compute_T_field_gradient(P, T_bar_term, Delta_T_term, 
                                                Delta_T_DN, T_deep, N_sectors, 
                                                N_zones, alpha, beta, phi, theta)
+
+        # Gaussian smooth P-T profile
+        T_smooth = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
+
+    # For the two-gradients profiles (1D, 2D, or 3D)
+    elif (PT_profile == 'two-gradients'):
+        
+        # Unpack P-T profile parameters
+        T_bar_term_high, T_bar_term_mid, \
+        Delta_T_term_high, Delta_T_term_mid, \
+        Delta_T_DN_high, Delta_T_DN_mid, log_P_mid, T_deep = PT_state
+        
+        # Reject if T_Morning > T_Evening or T_Night > T_day
+        if (((Delta_T_term_high < 0.0) or (Delta_T_DN_high < 0.0)) or
+            ((Delta_T_term_mid < 0.0) or (Delta_T_DN_mid < 0.0))): 
+            
+            # Quit computations if model rejected
+            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+        
+        # If P-T parameters valid
+        else:
+            
+            # Compute unsmoothed temperature field
+            T_rough = compute_T_field_two_gradients(P, T_bar_term_high, T_bar_term_mid,
+                                                    Delta_T_term_high, Delta_T_term_mid, 
+                                                    Delta_T_DN_high, Delta_T_DN_mid,
+                                                    log_P_mid, T_deep, N_sectors, 
+                                                    N_zones, alpha, beta, phi, theta)
 
         # Gaussian smooth P-T profile
         T_smooth = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
@@ -873,7 +1125,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         smooth_width = round(0.3/(((np.log10(P[0]) - np.log10(P[-1]))/len(P))))
 
         # Gaussian smooth P-T profile
-        T_smooth = T_rough #gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
+        T_smooth = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
 
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
@@ -881,13 +1133,19 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
     # Find which parametrised chemical species have a gradient profile
     species_has_profile = np.zeros(len(param_species)).astype(np.int64)
     
-    if (X_profile == 'gradient'):
+    if (X_profile in ['gradient', 'two-gradients']):
         species_has_profile[np.isin(param_species, species_vert_gradient)] = 1  
     
     # Compute 4D mixing ratio array
-    X_param = compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, 
-                                       param_species, species_has_profile, 
-                                       alpha, beta, phi, theta)
+    if (X_profile in ['isochem', 'gradient']):
+        X_param = compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, 
+                                           param_species, species_has_profile, 
+                                           alpha, beta, phi, theta)
+                                           
+    elif (X_profile == 'two-gradients'):
+        X_param = compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, 
+                                                param_species, species_has_profile, 
+                                                alpha, beta, phi, theta)
     
     # Gaussian smooth any profiles with a vertical profile
     for q, species in enumerate(param_species):

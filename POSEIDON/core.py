@@ -188,7 +188,8 @@ def create_planet(planet_name, R_p, mass = None, gravity = None,
 def define_model(model_name, bulk_species, param_species,
                  object_type = 'transiting', PT_profile = 'isotherm', 
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
-                 cloud_type = 'deck', gravity_setting = 'fixed',
+                 cloud_type = 'deck', opaque_Iceberg = False,
+                 gravity_setting = 'fixed',
                  stellar_contam = 'No', offsets_applied = 'No', 
                  error_inflation = 'No', radius_unit = 'R_J',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
@@ -210,16 +211,18 @@ def define_model(model_name, bulk_species, param_species,
             (Options: transiting / directly_imaged).
         PT_profile (str):
             Chosen P-T profile parametrisation 
-            (Options: isotherm / gradient / Madhu / slope).
+            (Options: isotherm / gradient / two-gradients / Madhu / slope).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient).
+            (Options: isochem / gradient / two-gradients).
         cloud_model (str):
             Chosen cloud parametrisation 
             (Options: cloud-free / MacMad17 / Iceberg).
         cloud_type (str):
             Cloud extinction type to consider 
             (Options: deck / haze / deck_haze).
+        opaque_Iceberg (Bool):
+            If using the Iceberg cloud model, True disables the kappa parameter.
         gravity_setting (str):
             Whether log_g is fixed or a free parameter.
             (Options: fixed / free).
@@ -324,7 +327,8 @@ def define_model(model_name, bulk_species, param_species,
                                       offsets_applied, error_inflation, PT_dim, 
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
-                                      species_vert_gradient, Atmosphere_dimension)
+                                      species_vert_gradient, Atmosphere_dimension,
+                                      opaque_Iceberg)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -617,13 +621,14 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params,
     #***** Generate state arrays for the PT and mixing ratio profiles *****# 
 
     # For forward models, reformat mixing ratio parameters to flat array
-    if (retrieval_run is False):
-        log_X_flat_array = reformat_log_X(log_X_params, param_species, X_profile, 
-                                          X_dim, TwoD_type, TwoD_param_scheme, 
-                                          species_EM_gradient, species_DN_gradient, 
-                                          species_vert_gradient)
-    else:
-        log_X_flat_array = log_X_params
+  #  if (retrieval_run is False):
+  #      log_X_flat_array = reformat_log_X(log_X_params, param_species, X_profile, 
+  #                                        X_dim, TwoD_type, TwoD_param_scheme, 
+  #                                        species_EM_gradient, species_DN_gradient, 
+  #                                        species_vert_gradient)
+  #  else:
+  #      log_X_flat_array = log_X_params
+    log_X_flat_array = log_X_params
 
     # Recast PT and mixing ratio parameters as state arrays used by atmosphere.py
     PT_state, \
@@ -1040,7 +1045,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     prior_ranges_defaults = {'T': [400, T_eq+200], 'Delta_T': [0, 1000],
                              'a1': [0.02, 2.00], 'a2': [0.02, 2.00],
                              'log_P1': [-6, 2], 'log_P2': [-6, 2],
-                             'log_P3': [-2, 2], 
+                             'log_P3': [-2, 2], 'log_P_mid': [-5, 1],
                              'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
                              'log_X': [-12, -1], 'Delta_log_X': [-8, 8], 
                              'log_a': [-4, 8], 'gamma': [-20, 2], 
@@ -1064,8 +1069,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
             # Special case for mixing ratio parameters
             if (parameter in X_param_names):
 
+                # Set non-specified pressure of mid mixing ratio prior to that for 'log_P_mid'
+                if ('log_P_' in parameter):
+                    if ('log_P_X_mid' in prior_ranges):
+                        prior_ranges[parameter] = prior_ranges['log_P_X_mid']
+                    else:
+                        prior_ranges[parameter] = prior_ranges_defaults['log_P_mid']
+                    
                 # Set non-specified mixing ratio prior to that for 'log_X'
-                if ('log_' in parameter):
+                elif ('log_' in parameter):
                     if ('log_X' in prior_ranges):
                         prior_ranges[parameter] = prior_ranges['log_X']
                     else:
@@ -1095,8 +1107,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
             # Special case for mixing ratio parameters
             if (parameter in X_param_names):
 
+                # Set non-specified pressure of mid mixing ratio prior to that for 'log_P_mid'
+                if ('log_P_' in parameter):
+                    if ('log_P_X_mid' in prior_types):
+                        prior_types[parameter] = prior_types['log_P_X_mid']
+                    else:
+                        prior_types[parameter] = 'uniform'
+
                 # Set non-specified mixing ratio prior to that for 'log_X'
-                if ('log_' in parameter):
+                elif ('log_' in parameter):
                     if ('log_X' in prior_types):
                         prior_types[parameter] = prior_types['log_X']
                     else:
@@ -1130,7 +1149,19 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # If the user provided a single prior for mixing ratios or temperature,
     # that parameter can be removed now that all parameters have separate priors
 
+    # Remove group prior range for mixing ratio and temperature parameters
+    if ('log_P_X_mid' in prior_ranges):
+        del prior_ranges['log_P_X_mid']
+    if ('log_X' in prior_ranges):
+        del prior_ranges['log_X']
+    if ('Delta_log_X' in prior_ranges):
+        del prior_ranges['Delta_log_X']
+    if (('T' in prior_ranges) and (PT_profile != 'isotherm')):
+        del prior_ranges['T']
+
     # Remove group prior types for mixing ratio and temperature parameters
+    if ('log_P_X_mid' in prior_types):
+        del prior_types['log_P_X_mid']
     if ('log_X' in prior_types):
         del prior_types['log_X']
     if ('Delta_log_X' in prior_types):
