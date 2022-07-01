@@ -823,7 +823,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
 def plot_spectra(spectra, planet, model, data_properties = None,
                  plot_full_res = True, bin_spectra = True, R_to_bin = 100, 
                  wl_min = None, wl_max = None, transit_depth_min = None,
-                 transit_depth_max = None, show_data = False, label = None,
+                 transit_depth_max = None, show_data = False, plt_label = None,
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
                  data_marker_size_list = []):
@@ -1130,8 +1130,8 @@ def plot_spectra(spectra, planet, model, data_properties = None,
     # Add planet name label
     ax1.text(planet_name_x_position, planet_name_y_position, planet_name, fontsize = 16)
 
-    if (label != None):
-        ax1.text(planet_name_x_position, label_y_position, label, fontsize = 14)
+    if (plt_label != None):
+        ax1.text(planet_name_x_position, label_y_position, plt_label, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
     if (wl_max <= 1.0):
@@ -1202,12 +1202,12 @@ def plot_spectra(spectra, planet, model, data_properties = None,
     plt.tight_layout()
 
     # Write figure to file
-    if (label == None):
+    if (plt_label == None):
         file_name = (output_dir + planet_name + '_' + model_name + 
                      '_transmission_spectra.pdf')
     else:
         file_name = (output_dir + planet_name + '_' + model_name +
-                     '_' + label + '_transmission_spectra.pdf')
+                     '_' + plt_label + '_transmission_spectra.pdf')
 
     plt.savefig(file_name, bbox_inches='tight')
 
