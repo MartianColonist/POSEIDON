@@ -358,8 +358,9 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     return fig
 
 
-def plot_PT(planet, model, atmosphere, show_profiles = [], 
-            log_P_min = None, log_P_max = None):
+def plot_PT(planet, model, atmosphere, show_profiles = [],
+            PT_label = None, log_P_min = None, log_P_max = None, T_min = None,
+            T_max = None, colour = 'darkblue', legend_location = 'lower left'):
     ''' 
     Plot the pressure-temperature (P-T) profiles defining the atmosphere.
     
@@ -396,8 +397,11 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
 
     # Find minimum and maximum temperatures in atmosphere
-    T_min = np.floor(np.min(T)/100)*100 - 200.0    # Round down to nearest 100
-    T_max = np.ceil(np.max(T)/100)*100 + 200.0     # Round up to nearest 100
+    if (T_min == None):
+        T_min = np.floor(np.min(T)/100)*100 - 200.0    # Round down to nearest 100
+
+    if (T_max == None):
+        T_max = np.ceil(np.max(T)/100)*100 + 200.0     # Round up to nearest 100
         
     # Find range to plot
     T_range = T_max - T_min    
@@ -430,7 +434,10 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
     
     # 1D temperature profile
     if (Atmosphere_dimension == 1):
-        ax.semilogy(T[:,0,0], P, lw=1.5, color = 'darkblue', label='P-T Profile')
+        if (PT_label == None):
+            ax.semilogy(T[:,0,0], P, lw=1.5, color = colour, label = 'P-T Profile')
+        else:
+            ax.semilogy(T[:,0,0], P, lw=1.5, color = colour, label = PT_label)
 
     # 2D temperature profile
     elif (Atmosphere_dimension == 2):
@@ -527,7 +534,7 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
     ax.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax.legend(loc='lower left', shadow=True, prop={'size':14}, ncol=1, 
+    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
@@ -535,7 +542,9 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
     #plt.tight_layout()
     
     # Write figure to file
-    plt.savefig(output_dir + model_name + '_PT.pdf', bbox_inches='tight')
+    file_name = output_dir + planet_name + '_' + model_name + '_PT.pdf'
+
+    plt.savefig(file_name, bbox_inches='tight')
 
     return fig
     
@@ -543,7 +552,9 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
 def plot_chem(planet, model, atmosphere, plot_species = [], 
               colour_list = [], show_profiles = [],
               log_X_min = None, log_X_max = None,
-              log_P_min = None, log_P_max = None):    
+              log_P_min = None, log_P_max = None,
+              chem_label = None, plt_label = None,
+              legend_location = 'upper right'):    
     ''' 
     Plot the mixing ratio profiles defining the atmosphere.
     
@@ -614,7 +625,10 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     log_X_range = log_X_max - log_X_min    
     
     # Calculate appropriate axis spacing
-    major_spacing = 1.0
+    if (log_X_range <= 10):
+        major_spacing = 1.0
+    else:
+        major_spacing = 2.0
     minor_spacing = major_spacing/10
 
     if (log_P_min == None):
@@ -642,6 +656,9 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
         
     ax.xaxis.set_major_locator(xmajorLocator_X)
     ax.xaxis.set_minor_locator(xminorLocator_X)
+
+    label_x_position = 0.02*log_X_range + log_X_min
+    label_y_position = np.power(10.0, (0.94*(log_P_min - log_P_max) + log_P_max))
     
     # Plot mixing ratio profiles
     
@@ -803,24 +820,34 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     ax.set_ylabel(r'Pressure (bar)', fontsize = 20)
     ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))  
     ax.tick_params(labelsize=12)
+
+    # Add plot label
+    if (chem_label == None):
+        ax.text(label_x_position, label_y_position, model_name, fontsize = 16)
+    else:
+        ax.text(label_x_position, label_y_position, chem_label, fontsize = 16)
+
         
     # Add legend
-    legend = ax.legend(loc='upper right', shadow=True, prop={'size':14}, 
+    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':14}, 
                        frameon=True, columnspacing=1.0)
     frame = legend.get_frame()
-    frame.set_facecolor('0.90') 
+    frame.set_facecolor('0.90')
+    legend.set_bbox_to_anchor([0.0, 0.92], transform=None)
     
     fig.set_size_inches(9.0, 9.0)
 
     #plt.tight_layout()
 
     # Write figure to file
-    plt.savefig(output_dir + model_name + '_chem.pdf', bbox_inches='tight')
+    file_name = output_dir + planet_name + '_' + model_name + '_chem.pdf'
+
+    plt.savefig(file_name, bbox_inches='tight')
 
     return fig
 
 
-def plot_spectra(spectra, planet, model, data_properties = None,
+def plot_spectra(spectra, planet, data_properties = None,
                  plot_full_res = True, bin_spectra = True, R_to_bin = 100, 
                  wl_min = None, wl_max = None, transit_depth_min = None,
                  transit_depth_max = None, show_data = False, plt_label = None,
@@ -837,7 +864,7 @@ def plot_spectra(spectra, planet, model, data_properties = None,
 
     # Unpack model and atmospheric properties
     planet_name = planet['planet_name']
-    model_name = model['model_name']
+ #   model_name = model['model_name']
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
@@ -1203,10 +1230,10 @@ def plot_spectra(spectra, planet, model, data_properties = None,
 
     # Write figure to file
     if (plt_label == None):
-        file_name = (output_dir + planet_name + '_' + model_name + 
+        file_name = (output_dir + planet_name + '_' +
                      '_transmission_spectra.pdf')
     else:
-        file_name = (output_dir + planet_name + '_' + model_name +
+        file_name = (output_dir + planet_name + '_' +
                      '_' + plt_label + '_transmission_spectra.pdf')
 
     plt.savefig(file_name, bbox_inches='tight')

@@ -14,7 +14,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        offsets_applied, error_inflation, PT_dim, X_dim, cloud_dim, 
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
-                       Atmosphere_dimension, opaque_Iceberg):
+                       Atmosphere_dimension, opaque_Iceberg, surface):
     
     ''' Counts how many free parameters describe each chosen model feature.
     
@@ -40,6 +40,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
     if (object_type == 'directly_imaged'):
         physical_params += ['d']             # Distance to system (pc)
+
+    if (surface == True):
+        physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
 
     N_physical_params = len(physical_params)   # Store number of physical parameters
     params += physical_params                  # Add physical parameter names to combined list
@@ -682,6 +685,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_PT = 6
     elif (PT_profile == 'slope'):   # Piette & Madhusudhan (2020) profile
         len_PT = 8
+    elif (PT_profile == 'file_read'):   # User provided file
+        len_PT = 0
     
     # Store length of mixing ratio state arrays
     if (X_profile == 'gradient'):    # MacDonald & Lewis (2022) profile  
@@ -690,12 +695,14 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_X = 8
     elif (X_profile == 'isochem'):
         len_X = 4      # To cover multi-D cases, we use same log_X format as gradient profile
+    elif (X_profile == 'file_read'):   # User provided file
+        len_X = 0
     
     # Store number of parametrised chemical species in model
     N_param_species = len(param_species)
     
     # Initialise state arrays
-    PT_state = np.zeros(len_PT)   
+    PT_state = np.zeros(len_PT)
     log_X_state = np.zeros(shape=(N_param_species, len_X))
        
     #***** Process PT profile parameters into PT state array *****#    
