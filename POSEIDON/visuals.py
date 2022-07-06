@@ -1539,7 +1539,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black']
+        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'black']
     else:
         data_colours = data_colour_list
 
