@@ -228,6 +228,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     error_inflation = model['error_inflation']
     offsets_applied = model['offsets_applied']
     radius_unit = model['radius_unit']
+    surface = model['surface']
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
@@ -252,7 +253,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         each free parameter used by the forward model.
         
         '''
-
 
         # Assign prior distribution to each free parameter
         for i, parameter in enumerate(param_names):
@@ -503,6 +503,10 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             loglikelihood = -1.0e100   
             return loglikelihood
 
+        # For a retrieval we do not have user provided P-T or chemical profiles
+        T_input = None
+        log_X_input = None
+
         #***** Step 1: unpack parameter values from prior sample *****#
         
         physical_params, PT_params, \
@@ -524,12 +528,18 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         else:
             log_g = None
 
+        # Unpack surface pressure if set as a free parameter
+        if (surface == True):
+            P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+        else:
+            P_surf = None
+
         #***** Step 2: generate atmosphere corresponding to parameter draw *****#
 
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
-                                     log_g, He_fraction, N_slice_EM, N_slice_DN,
-                                     retrieval_run = True)
+                                     log_g, T_input, log_X_input, P_surf,
+                                     He_fraction, N_slice_EM, N_slice_DN)
 
         #***** Step 3: generate spectrum of atmosphere ****#
 

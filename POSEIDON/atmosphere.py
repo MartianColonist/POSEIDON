@@ -982,7 +982,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              log_X_state, included_species, bulk_species, param_species, 
              active_species, cia_pairs, ff_pairs, bf_species, N_sectors, 
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
-             He_fraction):
+             He_fraction, T_input, X_input):
     
     ''' Main function to evaluate radial profiles of various quantities.
     
@@ -1026,7 +1026,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         is_physical => boolean specifying if P-T profile within allowed T range
        
     '''
-            
+
     # For an isothermal profile
     if (PT_profile == 'isotherm'):
         
@@ -1127,6 +1127,15 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # Gaussian smooth P-T profile
         T_smooth = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
 
+    # Read user provided P-T profile
+    elif (PT_profile == 'file_read'):
+
+        # Initialise temperature array
+        T = T_input.reshape((len(P), 1, 1))   # 1D profile => N_sectors = N_zones = 1
+        
+        # Gaussian smooth P-T profile
+        T_smooth = T   # No need to Gaussian smooth a user profile
+
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
     
@@ -1136,26 +1145,33 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
     if (X_profile in ['gradient', 'two-gradients']):
         species_has_profile[np.isin(param_species, species_vert_gradient)] = 1  
     
-    # Compute 4D mixing ratio array
-    if (X_profile in ['isochem', 'gradient']):
-        X_param = compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, 
-                                           param_species, species_has_profile, 
-                                           alpha, beta, phi, theta)
-                                           
-    elif (X_profile == 'two-gradients'):
-        X_param = compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, 
-                                                param_species, species_has_profile, 
-                                                alpha, beta, phi, theta)
-    
-    # Gaussian smooth any profiles with a vertical profile
-    for q, species in enumerate(param_species):
-        if (species_has_profile[q] == 1):
-            X_param[q,:,:,:] = gauss_conv(X_param[q,:,:,:], sigma=3, axis=0, 
-                                          mode='nearest')
+    # Read user provided mixing ratio profiles
+    if (X_profile == 'file_read'):
+        X = X_input.reshape((N_species, len(P), 1, 1))   
+
+    else:   # Alternatively, compute 4D mixing ratio array
+
+        # For isochemical or gradient profiles
+        if (X_profile in ['isochem', 'gradient']):
+            X_param = compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, 
+                                            param_species, species_has_profile, 
+                                            alpha, beta, phi, theta)
+
+        # For two-gradient profiles                            
+        elif (X_profile == 'two-gradients'):
+            X_param = compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, 
+                                                    param_species, species_has_profile, 
+                                                    alpha, beta, phi, theta) 
+
+        # Gaussian smooth any profiles with a vertical profile
+        for q, species in enumerate(param_species):
+            if (species_has_profile[q] == 1):
+                X_param[q,:,:,:] = gauss_conv(X_param[q,:,:,:], sigma=3, axis=0, 
+                                            mode='nearest')
         
-    # Add bulk mixing ratios to form full mixing ratio array
-    X = add_bulk_component(P, X_param, N_species, N_sectors, N_zones, 
-                           bulk_species, He_fraction)
+        # Add bulk mixing ratios to form full mixing ratio array
+        X = add_bulk_component(P, X_param, N_species, N_sectors, N_zones, 
+                            bulk_species, He_fraction)
     
     # Check if any mixing ratios are negative (i.e. trace species sum to > 1, so bulk < 0)
     if (np.any(X[0,:,:,:] < 0.0)): 

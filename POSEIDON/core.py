@@ -194,7 +194,8 @@ def define_model(model_name, bulk_species, param_species,
                  error_inflation = 'No', radius_unit = 'R_J',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
-                 species_DN_gradient = [], species_vert_gradient = []):
+                 species_DN_gradient = [], species_vert_gradient = [],
+                 surface = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -211,17 +212,17 @@ def define_model(model_name, bulk_species, param_species,
             (Options: transiting / directly_imaged).
         PT_profile (str):
             Chosen P-T profile parametrisation 
-            (Options: isotherm / gradient / two-gradients / Madhu / slope).
+            (Options: isotherm / gradient / two-gradients / Madhu / slope / file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients).
+            (Options: isochem / gradient / two-gradients / file_read).
         cloud_model (str):
             Chosen cloud parametrisation 
             (Options: cloud-free / MacMad17 / Iceberg).
         cloud_type (str):
             Cloud extinction type to consider 
             (Options: deck / haze / deck_haze).
-        opaque_Iceberg (Bool):
+        opaque_Iceberg (bool):
             If using the Iceberg cloud model, True disables the kappa parameter.
         gravity_setting (str):
             Whether log_g is fixed or a free parameter.
@@ -266,6 +267,9 @@ def define_model(model_name, bulk_species, param_species,
             Chemical species with a day-night mixing ratio gradient.
         species_vert_gradient (list of str):
             Chemical species with a vertical mixing ratio gradient.
+        surface (bool):
+            If True, model a surface via an opaque cloud deck.
+
     
     Returns:
         model (dict):
@@ -328,7 +332,7 @@ def define_model(model_name, bulk_species, param_species,
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
-                                      opaque_Iceberg)
+                                      opaque_Iceberg, surface)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -353,7 +357,7 @@ def define_model(model_name, bulk_species, param_species,
              'stellar_param_names': stellar_param_names, 
              'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
-             'X_dim': X_dim, 'cloud_dim': cloud_dim
+             'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface
             }
 
     return model
@@ -503,13 +507,13 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
             'bf_stored': bf_stored, 'T_fine': T_fine, 'log_P_fine': log_P_fine
            }
 
-    return opac  
+    return opac
 
 
-def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params, 
-                    cloud_params = [], geometry_params = [], log_g = None,
-                    He_fraction = 0.17, N_slice_EM = 2, N_slice_DN = 4,
-                    retrieval_run = False):
+def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
+                    log_X_params = [], cloud_params = [], geometry_params = [],
+                    log_g = None, T_input = [], X_input = [], P_surf = None,
+                    He_fraction = 0.17, N_slice_EM = 2, N_slice_DN = 4):
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
     full generality, this function generates 3D pressure-temperature and mixing 
@@ -525,32 +529,30 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params,
             Model pressure grid (bar).
         P_ref (float):
             Reference pressure (bar).
-        log_g (float):
-            Gravitational field of planet - only needed for free log_g parameter
         R_p_ref (float):
             Planet radius corresponding to reference pressure (m).
         PT_params (np.array of float):
             Parameters defining the pressure-temperature field.
-        log_X_params (2D np.array of float):
+        log_X_params (np.array of float):
             Parameters defining the log-mixing ratio field.
         cloud_params (np.array of float):
             Parameters defining atmospheric aerosols.
         geometry_params (np.array of float):
             Terminator opening angle parameters.
-        ignore_species (list):
-            Any chemical species to ignore in generating atmosphere.
+        log_g (float):
+            Gravitational field of planet - only needed for free log_g parameter
+        T_input (np.array of float):
+            Temperature profile provided directly by the user.
+        X_input (2D np.array of float):
+            Mixing ratio profiles provided directly by the user.
+        P_surf (float):
+            Surface pressure of the planet.
         He_fraction (float):
             Assumed H2/He ratio (0.17 default corresponds to the Sun).
         N_slice_EM (even int):
             Number of azimuthal slices in the evening-morning transition region.
         N_slice_DN (even int):
             Number of zenith slices in the day-night transition region.
-        P_deep (float):
-            For P-T gradient profile, P > P_deep is isothermal.
-        P_high (float):
-            For P-T gradient profile, P < P_high is isothermal.
-        retrieval_run (bool):
-            True if a retrieval is being run, False for forward models.
     
     Returns:
         atmosphere (dict):
@@ -585,7 +587,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params,
         g_p = planet['planet_gravity']   # For fixed g, load from planet object
     elif (gravity_setting == 'free'):
         if (log_g is None):
-            raise Exception("Must provide 'log_g' when log_g a free parameter")
+            raise Exception("Must provide 'log_g' when log_g is a free parameter")
         else:
             g_p = np.power(10.0, log_g)/100   # Convert log cm/s^2 to m/s^2
 
@@ -596,6 +598,16 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params,
     CIA_pairs = model['CIA_pairs']
     ff_pairs = model['ff_pairs']
     bf_species = model['bf_species']
+
+    # User input checks
+    if (((T_input != []) or (X_input != [])) and Atmosphere_dimension > 1):
+        raise Exception("Only 1D P-T and mixing ratio profiles are currently " +
+                        "supported as user inputs. Multidimensional inputs " +
+                        "will be added soon!")
+    if ((PT_profile == 'file_read') and (T_input == [])):
+        raise Exception("No user-provided P-T profile. Did you read in a file?")
+    if ((X_profile == 'file_read') and (X_input == [])):
+        raise Exception("No user-provided composition profile. Did you read in a file?")
 
     #***** First, establish model geometry *****# 
 
@@ -618,21 +630,11 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params,
                                              N_slice_EM, N_slice_DN, 
                                              alpha, beta)
 
-    #***** Generate state arrays for the PT and mixing ratio profiles *****# 
-
-    # For forward models, reformat mixing ratio parameters to flat array
-  #  if (retrieval_run is False):
-  #      log_X_flat_array = reformat_log_X(log_X_params, param_species, X_profile, 
-  #                                        X_dim, TwoD_type, TwoD_param_scheme, 
-  #                                        species_EM_gradient, species_DN_gradient, 
-  #                                        species_vert_gradient)
-  #  else:
-  #      log_X_flat_array = log_X_params
-    log_X_flat_array = log_X_params
+    #***** Generate state arrays for the PT and mixing ratio profiles *****#
 
     # Recast PT and mixing ratio parameters as state arrays used by atmosphere.py
     PT_state, \
-    log_X_state = generate_state(PT_params, log_X_flat_array, param_species, 
+    log_X_state = generate_state(PT_params, log_X_params, param_species, 
                                  PT_dim, X_dim, PT_profile, X_profile, TwoD_type, 
                                  TwoD_param_scheme, species_EM_gradient, 
                                  species_DN_gradient, species_vert_gradient)
@@ -646,7 +648,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params,
                            R_p_ref, log_X_state, chemical_species, bulk_species, 
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
-                           beta, phi, theta, species_vert_gradient, He_fraction)
+                           beta, phi, theta, species_vert_gradient, He_fraction,
+                           T_input, X_input)
 
     #***** Store cloud / haze / aerosol properties *****#
 
@@ -658,13 +661,13 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params,
 
     # Package atmosphere properties
     atmosphere = {'P': P, 'T': T, 'g': g_p, 'n': n, 'r': r, 'r_up': r_up,
-                  'r_low': r_low, 'dr': dr, 'X': X, 'X_active': X_active, 
-                  'X_CIA': X_CIA, 'X_ff': X_ff, 'X_bf': X_bf, 'mu': mu, 
-                  'N_sectors': N_sectors, 'N_zones': N_zones, 'alpha': alpha,
-                  'beta': beta, 'phi': phi, 'theta': theta, 'phi_edge': phi_edge, 
-                  'theta_edge': theta_edge, 'dphi': dphi, 'dtheta': dtheta,
-                  'kappa_cloud_0': kappa_cloud_0, 'P_cloud': P_cloud, 
-                  'f_cloud': f_cloud, 'phi_cloud_0': phi_cloud_0, 
+                  'r_low': r_low, 'dr': dr, 'P_surf': P_surf, 'X': X, 
+                  'X_active': X_active, 'X_CIA': X_CIA, 'X_ff': X_ff,
+                  'X_bf': X_bf, 'mu': mu, 'N_sectors': N_sectors, 
+                  'N_zones': N_zones, 'alpha': alpha, 'beta': beta, 'phi': phi, 
+                  'theta': theta, 'phi_edge': phi_edge, 'theta_edge': theta_edge,
+                  'dphi': dphi, 'dtheta': dtheta, 'kappa_cloud_0': kappa_cloud_0, 
+                  'P_cloud': P_cloud, 'f_cloud': f_cloud, 'phi_cloud_0': phi_cloud_0, 
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
                   'is_physical': is_physical
                  }
@@ -743,6 +746,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             (Options: transmission / emission / direct_emission).
         write_spectrum (bool):
             If True, writes the spectrum to './POSEIDON_output/PLANET/spectra/'.
+        disable_continuum (bool):
+            If True, turns off CIA and Rayleigh scattering opacities.
 
     Returns:
         spectrum (np.array of float):
@@ -790,6 +795,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     n = atmosphere['n']
     T = atmosphere['T']
     P = atmosphere['P']
+    P_surf = atmosphere['P_surf']
     X = atmosphere['X']
     X_active = atmosphere['X_active']
     X_CIA = atmosphere['X_CIA']
@@ -819,6 +825,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     else:
         enable_deck = 0
 
+    if (P_surf != None):
+        enable_deck = 1
+    else:
+        P_surf = 100.0   # Set surface pressure to 100 bar if not defined
+
     #***** Calculate extinction coefficients *****#
 
     # Unpack lists of chemical species in this model
@@ -844,7 +855,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                   X_ff, X_bf, a, gamma, P_cloud,
                                                   kappa_cloud_0, Rayleigh_stored, 
                                                   enable_haze, enable_deck, 
-                                                  N_sectors, N_zones, 
+                                                  N_sectors, N_zones, P_surf,
                                                   opacity_database, disable_continuum)
         
     # If using opacity sampling, we can use pre-interpolated cross sections
@@ -870,7 +881,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                               CIA_stored, Rayleigh_stored, 
                                               ff_stored, bf_stored, enable_haze, 
                                               enable_deck, N_sectors, N_zones,
-                                              T_fine, log_P_fine)
+                                              T_fine, log_P_fine, P_surf)
 
     # Generate transmission spectrum        
     if (spectrum_type == 'transmission'):
@@ -931,7 +942,7 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None)
     '''
 
     # If the user is running the retrieval tutorial, point to the reference data
-    if (data_dir == 'Tutorial'):
+    if (data_dir == 'Tutorial/WASP-999b'):
         data_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
                                    '.', 'reference_data/observations/WASP-999b/'))
 
@@ -1046,6 +1057,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'a1': [0.02, 2.00], 'a2': [0.02, 2.00],
                              'log_P1': [-6, 2], 'log_P2': [-6, 2],
                              'log_P3': [-2, 2], 'log_P_mid': [-5, 1],
+                             'log_P_surf': [-4, 1],
                              'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
                              'log_X': [-12, -1], 'Delta_log_X': [-8, 8], 
                              'log_a': [-4, 8], 'gamma': [-20, 2], 

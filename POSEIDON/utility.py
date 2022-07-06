@@ -6,6 +6,7 @@ import pandas as pd
 import pymultinest
 from numba.core.decorators import jit
 from spectres import spectres
+from scipy.interpolate import interp1d as Interp
 
 
 def create_directories(base_dir, planet_name):
@@ -163,9 +164,7 @@ def read_data(data_dir, fname):
     
     '''
     
-   # data_dir = '../../observations/' + planet_name + '/'
-
-    data = pd.read_csv(data_dir + '/' + fname, sep = ' ', header=None)
+    data = pd.read_csv(data_dir + '/' + fname, sep = '[\s]{1,20}', header=None)
     wavelength = np.array(data[0])  # Wavelengths (um)
     bin_size = np.array(data[1])    # Spectral bin size (um)
     spectrum = np.array(data[2])    # Transit depth
@@ -175,19 +174,108 @@ def read_data(data_dir, fname):
 
     
 def read_spectrum(planet_name, fname):
-    
-    ''' Read in a pre-computed transmission spectrum.
+    ''' 
+    Read in a pre-computed transmission spectrum.
     
     '''
 
     # Identify output directory location where the spectrum will be saved
     input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
     
-    data = pd.read_csv(input_dir + fname, sep = ' ', header=None)
+    data = pd.read_csv(input_dir + fname, sep = '[\s]{1,20}', header=None)
     wavelength = np.array(data[0])  # Wavelengths (um)
     spectrum = np.array(data[1])    # Transit depth
     
     return wavelength, spectrum
+
+
+def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_column = None, 
+                 T_column = None, skiprows = False):
+    '''
+    Read an external file containing the temeprature as a function of pressure.
+
+    '''
+
+
+    # If the user is running the tutorial, point to the reference data folder
+    if (PT_file_dir == 'Tutorial/TRAPPIST-1e'):
+        PT_file_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
+                                      '.', 'reference_data/models/TRAPPIST-1e/'))
+    
+    PT_file = pd.read_csv(PT_file_dir + '/' + PT_file_name, sep = '[\s]{1,20}', 
+                          header = None, skiprows = skiprows, engine = 'python')
+    
+    # Read pressure
+    if (P_column != None):
+        P_raw = np.array(PT_file[int(P_column)-1])
+    else:
+        P_raw = np.array(PT_file[0])
+
+    # Read temperature
+    if (T_column != None):
+        T_raw = np.array(PT_file[int(T_column)-1])
+    else:
+        T_raw = np.array(PT_file[1])
+    
+    # Flip arrays if necessary so that arrays begin at bottom of the atmosphere
+    if (P_raw[0] < P_raw[-1]):
+        P_raw = P_raw[::-1]
+        T_raw = T_raw[::-1]
+
+    # Interpolate the file temperature profile onto the POSEIDON model P grid
+    PT_interp = Interp(np.log10(P_raw), T_raw, kind='linear', bounds_error=False, 
+                       fill_value=(T_raw[-1], T_raw[0]))
+    T_interp = PT_interp(np.log10(P_grid))                  
+    
+    return T_interp
+
+
+def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_file, 
+                   chem_species_model, skiprows = None):
+    '''
+    Read an external file containing mixing ratios as a function of pressure.
+
+    '''
+    
+    # If the user is running the tutorial, point to the reference data folder
+    if (chem_file_dir == 'Tutorial/TRAPPIST-1e'):
+        chem_file_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
+                                        '.', 'reference_data/models/TRAPPIST-1e/'))
+
+    chem_file_input = pd.read_csv(chem_file_dir + '/' + chem_file_name, sep = '[\s]{1,20}', 
+                                  header = None, skiprows = skiprows, engine = 'python')
+    
+    # Read pressure and mixing ratios
+    P_raw = np.array(chem_file_input)[:,0]
+    X_raw = np.array(chem_file_input)[:,1:]
+
+    # Flip arrays if necessary so that arrays begin at bottom of the atmosphere
+    if (P_raw[0] < P_raw[-1]):
+        P_raw = P_raw[::-1]
+        X_raw = X_raw[::-1,:]
+    
+    # Initialise interpolated mixing ratio array
+    X_interp = np.zeros(shape=(len(chem_species_model), len(P_grid)))  
+
+    # Loop over chemical species, interpolating each onto the POSEIDON model P grid        
+    for q in range(len(chem_species_model)):
+    
+        species = chem_species_model[q]
+
+        # Chemicals not included in the external file will have zero mixing ratio
+        if (species in chem_species_file):
+
+            # Find column index in file containing the model chemical species
+            idx = chem_species_file.index(species)
+
+            # Interpolate from chemistry pressure grid onto model pressure grid
+            chem_interp = Interp(np.log10(P_raw), X_raw[:,idx],
+                                 kind = 'linear', bounds_error = False, 
+                                 fill_value = (X_raw[-1,idx], 
+                                               X_raw[0,idx]))
+            X_interp[q,:] = chem_interp(np.log10(P_grid))                  
+    
+    return X_interp
 
 
 def bin_spectrum_fast(wl_native, spectrum_native, R_bin):
@@ -326,7 +414,7 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_spectrum_retrieved.txt'
 
     # Read retrieved spectrum confidence intervals
-    spec_file = pd.read_csv(fname, sep = ' ', header = None, skiprows = 1)
+    spec_file = pd.read_csv(fname, sep = '[\s]{1,20}', header = None, skiprows = 1)
 
     wl = np.array(spec_file[0])           # Wavelengths (um)
     spec_low2 = np.array(spec_file[1])    # -2σ
@@ -355,7 +443,7 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_PT_retrieved.txt'
 
     # Read retrieved temperature confidence intervals
-    PT_file = pd.read_csv(fname, sep = ' ', header = None, skiprows = 1)
+    PT_file = pd.read_csv(fname, sep = '[\s]{1,20}', header = None, skiprows = 1)
 
     P = np.array(PT_file[0])         # Pressure (bar)
     T_low2 = np.array(PT_file[1])    # -2σ
@@ -419,7 +507,7 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
     for q in range(N_species):
 
         # Read retrieved mixing ratio confidence intervals
-        X_file = pd.read_csv(fname, sep = ' ', header = None, 
+        X_file = pd.read_csv(fname, sep = '[\s]{1,20}', header = None, 
                              skiprows = block_line_numbers[q], nrows = N_D)
 
         P = np.array(X_file[0])                  # Pressure (bar)
