@@ -164,7 +164,8 @@ def read_data(data_dir, fname):
     
     '''
     
-    data = pd.read_csv(data_dir + '/' + fname, sep = '[\s]{1,20}', header=None)
+    data = pd.read_csv(data_dir + '/' + fname, sep = '[\s]{1,20}', 
+                       engine = 'python', header=None)
     wavelength = np.array(data[0])  # Wavelengths (um)
     bin_size = np.array(data[1])    # Spectral bin size (um)
     spectrum = np.array(data[2])    # Transit depth
@@ -182,7 +183,8 @@ def read_spectrum(planet_name, fname):
     # Identify output directory location where the spectrum will be saved
     input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
     
-    data = pd.read_csv(input_dir + fname, sep = '[\s]{1,20}', header=None)
+    data = pd.read_csv(input_dir + fname, sep = '[\s]{1,20}', 
+                       engine = 'python', header=None)
     wavelength = np.array(data[0])  # Wavelengths (um)
     spectrum = np.array(data[1])    # Transit depth
     
@@ -414,7 +416,8 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_spectrum_retrieved.txt'
 
     # Read retrieved spectrum confidence intervals
-    spec_file = pd.read_csv(fname, sep = '[\s]{1,20}', header = None, skiprows = 1)
+    spec_file = pd.read_csv(fname, sep = '[\s]{1,20}', engine = 'python', 
+                            header = None, skiprows = 1)
 
     wl = np.array(spec_file[0])           # Wavelengths (um)
     spec_low2 = np.array(spec_file[1])    # -2σ
@@ -443,7 +446,8 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_PT_retrieved.txt'
 
     # Read retrieved temperature confidence intervals
-    PT_file = pd.read_csv(fname, sep = '[\s]{1,20}', header = None, skiprows = 1)
+    PT_file = pd.read_csv(fname, sep = '[\s]{1,20}', engine = 'python', 
+                          header = None, skiprows = 1)
 
     P = np.array(PT_file[0])         # Pressure (bar)
     T_low2 = np.array(PT_file[1])    # -2σ
@@ -508,7 +512,8 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
 
         # Read retrieved mixing ratio confidence intervals
         X_file = pd.read_csv(fname, sep = '[\s]{1,20}', header = None, 
-                             skiprows = block_line_numbers[q], nrows = N_D)
+                             skiprows = block_line_numbers[q], nrows = N_D,
+                             engine = 'python')
 
         P = np.array(X_file[0])                  # Pressure (bar)
         log_X_low2[q,:] = np.array(X_file[1])    # -2σ
