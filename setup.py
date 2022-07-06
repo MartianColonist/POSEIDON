@@ -3,7 +3,7 @@ import os
 
 setup(
     name = 'POSEIDON',
-    version = '0.7.3',
+    version = '0.8.0',
     description = 'Exoplanet atmospheric retrieval package',
     long_description = open(os.path.join(
                             os.path.dirname(__file__), 'README.rst')).read(),
