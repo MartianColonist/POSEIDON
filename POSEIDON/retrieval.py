@@ -633,9 +633,14 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
     # Unpack model properties
     radius_unit = model['radius_unit']
     N_params_cum = model['N_params_cum']
-    
+    surface = model['surface']
+
     # Load relevant output directory
     output_prefix = retrieval_name + '-'
+
+    # For a retrieval we do not have user provided P-T or chemical profiles
+    T_input = None
+    log_X_input = None
     
     # Run PyMultiNest analyser to extract posterior samples
     analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
@@ -680,11 +685,17 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
         else:
             log_g = None
 
+        # Unpack surface pressure if set as a free parameter
+        if (surface == True):
+            P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+        else:
+            P_surf = None
+
         # Generate atmosphere corresponding to parameter draw
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
-                                     log_g, He_fraction, N_slice_EM, N_slice_DN,
-                                     retrieval_run = True)
+                                     log_g, T_input, log_X_input, P_surf,
+                                     He_fraction, N_slice_EM, N_slice_DN)
 
         # Generate spectrum of atmosphere
         spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
