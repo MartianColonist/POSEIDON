@@ -887,7 +887,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
                kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
                bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
-               N_zones, T_fine, log_P_fine, P_surf, P_deep = 10.0):                          # DOES P_DEEP SOLVE BD PROBLEM?!
+               N_zones, T_fine, log_P_fine, P_surf, P_deep = 1000.0):                          # DOES P_DEEP SOLVE BD PROBLEM?!
     
     ''' Main function to evaluate extinction coefficients for molecules / atoms,
         Rayleigh scattering, hazes, and clouds for parameter combination
