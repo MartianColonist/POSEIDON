@@ -825,10 +825,12 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     else:
         enable_deck = 0
 
+    # Check if a surface is enabled
     if (P_surf != None):
-        enable_deck = 1
+        enable_surface = 1
     else:
-        P_surf = 100.0   # Set surface pressure to 100 bar if not defined
+        enable_surface = 0
+        P_surf = 100.0      # Set surface pressure to 100 bar if not defined
 
     #***** Calculate extinction coefficients *****#
 
@@ -854,7 +856,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                   n, T, P, wl, X, X_active, X_CIA, 
                                                   X_ff, X_bf, a, gamma, P_cloud,
                                                   kappa_cloud_0, Rayleigh_stored, 
-                                                  enable_haze, enable_deck, 
+                                                  enable_haze, enable_deck,
+                                                  enable_surface,
                                                   N_sectors, N_zones, P_surf,
                                                   opacity_database, disable_continuum)
         
@@ -868,7 +871,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         ff_stored = opac['ff_stored']
         bf_stored = opac['bf_stored']
 
-        # Also unpack fine temeprature and pressure grids from pre-interpolation
+        # Also unpack fine temperature and pressure grids from pre-interpolation
         T_fine = opac['T_fine']
         log_P_fine = opac['log_P_fine']
         
@@ -880,8 +883,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                               kappa_cloud_0, sigma_stored, 
                                               CIA_stored, Rayleigh_stored, 
                                               ff_stored, bf_stored, enable_haze, 
-                                              enable_deck, N_sectors, N_zones,
-                                              T_fine, log_P_fine, P_surf)
+                                              enable_deck, enable_surface,
+                                              N_sectors, N_zones, T_fine, 
+                                              log_P_fine, P_surf)
 
     # Generate transmission spectrum        
     if (spectrum_type == 'transmission'):
