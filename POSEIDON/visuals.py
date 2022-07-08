@@ -1921,6 +1921,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
             
             T_min_i = np.min(PT_low2[i][0])
             T_min = min(T_min, T_min_i)
+
+        T_min = np.floor(T_min/100)*100 - 200.0    # Round down to nearest 100
             
     # If the user did not specify a temperature range, find min and max from input models
     if (T_max == None):
@@ -1933,12 +1935,10 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
             T_max_i = np.max(PT_high2[i][0])
             T_max = max(T_max, T_max_i)
 
-    # Find minimum and maximum temperatures in atmosphere
-    T_min = np.floor(T_min/100)*100 - 200.0    # Round down to nearest 100
-    T_max = np.ceil(T_max/100)*100 + 200.0     # Round up to nearest 100
+        T_max = np.ceil(T_max/100)*100 + 200.0     # Round up to nearest 100
 
     # Find range to plot
-    T_range = T_max - T_min  
+    T_range = T_max - T_min
     
     # Calculate appropriate axis spacing
     if (T_range >= 500.0):
