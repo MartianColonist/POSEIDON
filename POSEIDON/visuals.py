@@ -1,11 +1,8 @@
 # Plotting routines to visualise POSEIDON output*****
 
 from enum import unique
-import pymultinest
 import numpy as np
-import h5py
 import scipy.constants as sc
-from scipy.ndimage import gaussian_filter1d as gauss_conv
 import colorsys
 import matplotlib
 from pylab import rcParams
@@ -435,7 +432,7 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
     # 1D temperature profile
     if (Atmosphere_dimension == 1):
         if (PT_label == None):
-            ax.semilogy(T[:,0,0], P, lw=1.5, color = colour, label = 'P-T Profile')
+            ax.semilogy(T[:,0,0], P, lw=1.5, color = colour, label = model_name)
         else:
             ax.semilogy(T[:,0,0], P, lw=1.5, color = colour, label = PT_label)
 
@@ -622,7 +619,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
         log_X_max = log_X_max + 1.0
         
     # Find range to plot
-    log_X_range = log_X_max - log_X_min    
+    log_X_range = log_X_max - log_X_min
     
     # Calculate appropriate axis spacing
     if (log_X_range <= 10):
@@ -656,9 +653,6 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
         
     ax.xaxis.set_major_locator(xmajorLocator_X)
     ax.xaxis.set_minor_locator(xminorLocator_X)
-
-    label_x_position = 0.02*log_X_range + log_X_min
-    label_y_position = np.power(10.0, (0.94*(log_P_min - log_P_max) + log_P_max))
     
     # Plot mixing ratio profiles
     
@@ -822,18 +816,34 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     ax.tick_params(labelsize=12)
 
     # Add plot label
-    if (chem_label == None):
-        ax.text(label_x_position, label_y_position, model_name, fontsize = 16)
-    else:
-        ax.text(label_x_position, label_y_position, chem_label, fontsize = 16)
+    if (chem_label != None):
+        if ('left' in legend_location):
+            ax.text(0.02, 0.98, chem_label, horizontalalignment='left', 
+                    verticalalignment='top', transform=ax.transAxes, fontsize = 16)
+        elif ('right' in legend_location):
+            ax.text(0.98, 0.98, chem_label, horizontalalignment='right', 
+                    verticalalignment='top', transform=ax.transAxes, fontsize = 16)
 
-        
     # Add legend
     legend = ax.legend(loc=legend_location, shadow=True, prop={'size':14}, 
                        frameon=True, columnspacing=1.0)
     frame = legend.get_frame()
     frame.set_facecolor('0.90')
-    legend.set_bbox_to_anchor([0.0, 0.92], transform=None)
+
+    if (legend_location == 'upper left'):
+        if (chem_label != None):
+            legend.set_bbox_to_anchor([0.0, 0.94], transform=None)
+        else:
+            legend.set_bbox_to_anchor([0.0, 0.98], transform=None)
+    elif (legend_location == 'upper right'):
+        if (chem_label != None):
+            legend.set_bbox_to_anchor([0.0, 0.94], transform=None)
+        else:
+            legend.set_bbox_to_anchor([1.0, 0.98], transform=None)
+    elif (legend_location == 'lower left'):
+        legend.set_bbox_to_anchor([0.0, 0.0], transform=None)
+    elif (legend_location == 'lower right'):
+        legend.set_bbox_to_anchor([1.0, 0.0], transform=None)
     
     fig.set_size_inches(9.0, 9.0)
 
@@ -853,7 +863,7 @@ def plot_spectra(spectra, planet, data_properties = None,
                  transit_depth_max = None, show_data = False, plt_label = None,
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
-                 data_marker_size_list = []):
+                 data_marker_size_list = [], figure_shape = 'default'):
     ''' 
     Plot a collection of individual model transmission spectra.
     
@@ -864,7 +874,6 @@ def plot_spectra(spectra, planet, data_properties = None,
 
     # Unpack model and atmospheric properties
     planet_name = planet['planet_name']
- #   model_name = model['model_name']
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
@@ -1040,11 +1049,11 @@ def plot_spectra(spectra, planet, data_properties = None,
     transit_depth_range = [transit_depth_min_plt, transit_depth_max_plt]
     
     # Place planet name in top left corner
-    planet_name_x_position = 0.008*(wl_range[1]-wl_range[0]) + wl_range[0]
-    planet_name_y_position = (0.92*(transit_depth_range[1]-transit_depth_range[0]) + 
-                                    transit_depth_range[0])
-    label_y_position = (0.86*(transit_depth_range[1]-transit_depth_range[0]) + 
-                              transit_depth_range[0])
+  #  planet_name_x_position = 0.008*(wl_range[1]-wl_range[0]) + wl_range[0]
+  #  planet_name_y_position = (0.92*(transit_depth_range[1]-transit_depth_range[0]) + 
+  #                                  transit_depth_range[0])
+  #  label_y_position = (0.86*(transit_depth_range[1]-transit_depth_range[0]) + 
+  #                            transit_depth_range[0])
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
@@ -1057,7 +1066,13 @@ def plot_spectra(spectra, planet, data_properties = None,
 #    yminorLocator_H   = MultipleLocator(0.2)
 
     # Generate figure and axes
-    fig = plt.figure()  
+    fig = plt.figure()
+
+    # Set figure size
+    if (figure_shape == 'default'):
+        fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
+    elif (figure_shape == 'wide'):
+        fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
     
     ax1 = plt.gca()
     
@@ -1155,10 +1170,12 @@ def plot_spectra(spectra, planet, data_properties = None,
     ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
 
     # Add planet name label
-    ax1.text(planet_name_x_position, planet_name_y_position, planet_name, fontsize = 16)
-
+    ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
+             verticalalignment='top', transform=ax1.transAxes, fontsize = 16)
+  
     if (plt_label != None):
-        ax1.text(planet_name_x_position, label_y_position, plt_label, fontsize = 14)
+        ax1.text(0.03, 0.90, plt_label, horizontalalignment='left', 
+                 verticalalignment='top', transform=ax1.transAxes, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
     if (wl_max <= 1.0):
@@ -1482,7 +1499,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            transit_depth_min = None, transit_depth_max = None, 
                            colour_list = [], spectra_labels = [],
                            data_colour_list = [], data_labels = [],
-                           data_marker_list = [], data_marker_size_list = []):
+                           data_marker_list = [], data_marker_size_list = [],
+                           figure_shape = 'default'):
     ''' 
     Plot retrieved transmission spectra.
     
@@ -1665,11 +1683,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
  
     # Set y range
     transit_depth_range = [transit_depth_min_plt, transit_depth_max_plt]
-    
-    # Place planet name in top left corner
-    planet_name_x_position = 0.008*(wl_range[1]-wl_range[0]) + wl_range[0]
-    planet_name_y_position = (0.92*(transit_depth_range[1]-transit_depth_range[0]) + 
-                                    transit_depth_range[0])
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
@@ -1682,7 +1695,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 #    yminorLocator_H   = MultipleLocator(0.2)
 
     # Generate figure and axes
-    fig = plt.figure()  
+    fig = plt.figure()
+
+    # Set figure size
+    if (figure_shape == 'default'):
+        fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
+    elif (figure_shape == 'wide'):
+        fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
     
     ax1 = plt.gca()
     
@@ -1800,8 +1819,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
 
     # Add planet name label
-    ax1.text(planet_name_x_position, planet_name_y_position, planet_name, fontsize = 16)
-   # ax1.text(planet_name_x_position, planet_name_y_position, model_name, fontsize = 16)
+    ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
+             verticalalignment='top', transform=ax1.transAxes, fontsize = 16)
 
     # Decide at which wavelengths to place major tick labels
     if (wl_max <= 1.0):
@@ -1866,7 +1885,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
   #  frame.set_facecolor('0.90') 
             
     plt.tight_layout()
-
 
     # Write figure to file
     if (plt_label == None):
