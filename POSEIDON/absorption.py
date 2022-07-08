@@ -886,8 +886,8 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
 def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species,
                n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
                kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
-               bf_stored, enable_haze, enable_deck, N_sectors, N_zones,
-               T_fine, log_P_fine, P_surf, P_deep = 10.0):                          # DOES P_DEEP SOLVE BD PROBLEM?!
+               bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
+               N_zones, T_fine, log_P_fine, P_surf, P_deep = 10.0):                          # DOES P_DEEP SOLVE BD PROBLEM?!
     
     ''' Main function to evaluate extinction coefficients for molecules / atoms,
         Rayleigh scattering, hazes, and clouds for parameter combination
@@ -916,7 +916,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
     N_wl = len(wl)     # Number of wavelengths on model grid
     N_layers = len(P)  # Number of layers
     
-    # Define extinction coefficent arrays
+    # Define extinction coefficient arrays
     kappa_clear = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     
@@ -1021,14 +1021,17 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                         # Add haze scattering to total extinction in layer i, sector j, for each wavelength
                         kappa_cloud[i,j,k,l] += haze_amp * slope[l]
                         
-            # If a cloud deck or surface is enabled in this model
+            # If a cloud deck is enabled in this model
             if (enable_deck == 1):
                 
                 # Set extinction inside cloud deck
                 kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
 
+            # If a surface is enabled in this model
+            if (enable_surface == 1):
+
                 # Set extinction to infinity below surface
-                kappa_cloud[(P > P_surf),j,k,:] = np.inf
+                kappa_clear[(P > P_surf),j,k,:] = 1.0e250
             
     return kappa_clear, kappa_cloud
 
@@ -1041,7 +1044,7 @@ def interpolate_cia_LBL(P, log_cia, nu_model, nu_cia, T, T_grid_cia, N_T_cia,
     
     ''' Interpolates a collisionally-induced absorption (CIA) binary cross 
         section onto the T value in each layer of the model atmosphere.
-        Special function optimsied for line-by-line case.
+        Special function optimised for line-by-line case.
         
     '''
    
@@ -1054,8 +1057,8 @@ def interpolate_cia_LBL(P, log_cia, nu_model, nu_cia, T, T_grid_cia, N_T_cia,
     for i in range(N_layers):    # Loop over layer temperatures
     
         T_i = T[i]               # Temperature to interpolate to
-        T1 = T_grid_cia[y[i]]    # Closest lower temperaure on CIA opacity grid 
-        T2 = T_grid_cia[y[i]+1]  # Closest higher temperaure on CIA opacity grid 
+        T1 = T_grid_cia[y[i]]    # Closest lower temperature on CIA opacity grid 
+        T2 = T_grid_cia[y[i]+1]  # Closest higher temperature on CIA opacity grid 
         
         for k in range(N_nu):  # Loop over wavenumbers
             
@@ -1269,8 +1272,8 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                       a, gamma, P_cloud, kappa_cloud_0, N_species, N_species_active,
                       N_cia_pairs, N_ff_pairs, N_bf_species, sigma_interp,
                       cia_interp, Rayleigh_stored, ff_stored, bf_stored, 
-                      enable_haze, enable_deck, kappa_clear, kappa_cloud,
-                      P_surf, disable_continuum):
+                      enable_haze, enable_deck, enable_surface, kappa_clear, 
+                      kappa_cloud, P_surf, disable_continuum):
     
     ''' Computes extinction coefficients for given sector and zone. 
         Special function optimised for line-by-line case.
@@ -1364,20 +1367,23 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                 # Add haze scattering to total extinction in layer i, sector j, for each wavelength
                 kappa_cloud[i,j,k,l] += haze_amp * slope[l]
 
-        # If a cloud deck or surface is enabled in this model
+        # If a cloud deck is enabled in this model
         if (enable_deck == 1):
             
             # Set extinction inside cloud deck
             kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
 
+        # If a surface is enabled in this model
+        if (enable_surface == 1):
+
             # Set extinction to infinity below surface
-            kappa_cloud[(P > P_surf),j,k,:] = np.inf
+            kappa_clear[(P > P_surf),j,k,:] = 1.0e250
         
     
 def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs, 
                    bf_species, n, T, P, wl_model, X, X_active, X_cia, X_ff, X_bf, 
                    a, gamma, P_cloud, kappa_cloud_0, Rayleigh_stored, enable_haze, 
-                   enable_deck, N_sectors, N_zones, P_surf,
+                   enable_deck, enable_surface, N_sectors, N_zones, P_surf,
                    opacity_database = 'High-T', disable_continuum = False):
     
     ''' Evaluate extinction coefficients for molecules / atoms, Rayleigh 
@@ -1385,7 +1391,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
         line-by-line case.
         
         Here, kappa = n[layer] * sigma[P_layer, T_layer, wl], where
-        the cross sections are all evalauted on their native (line-by-line) 
+        the cross sections are all evaluated on their native (line-by-line) 
         wavenumber resolution with interpolation to the T and P in each layer.
         
         The output extinction coefficient arrays are given as a function
@@ -1555,8 +1561,8 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                               P, a, gamma, P_cloud, kappa_cloud_0, N_species, 
                               N_species_active, N_cia_pairs, N_ff_pairs, N_bf_species, 
                               sigma_interp, cia_interp, Rayleigh_stored, ff_stored, 
-                              bf_stored, enable_haze, enable_deck, kappa_clear, 
-                              kappa_cloud, P_surf, disable_continuum)
+                              bf_stored, enable_haze, enable_deck, enable_surface,
+                              kappa_clear, kappa_cloud, P_surf, disable_continuum)
                     
     print("Finished producing extinction coefficients")
             

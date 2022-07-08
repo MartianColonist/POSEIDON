@@ -305,7 +305,7 @@ def extend_rad_transfer_grids(phi_edge, theta_edge, R_s, d, R_max, f_cloud,
     # Count cloudy zones working from dayside to nightside (theta > 0 from terminator plane towards night)
     cloudy_zones[(theta_grid >= theta_0)] = 1
     
-    # Initialise array containing zone indicies each angular slice falls in
+    # Initialise array containing zone indices each angular slice falls in
     k_zone_back = np.zeros(shape=(N_zones)).astype(np.int64)
     
     # For each zone angle
@@ -381,7 +381,7 @@ def extend_rad_transfer_grids(phi_edge, theta_edge, R_s, d, R_max, f_cloud,
     # Now create arrays storing which original sector and background sector
     # a given angle lies in (to avoid computing transmissivities multiple times)
     
-    # Initialise array containing sector indicies each angular slice falls in
+    # Initialise array containing sector indices each angular slice falls in
     j_sector = np.zeros(shape=(N_phi)).astype(np.int64)
     j_sector_back = np.zeros(shape=(N_phi)).astype(np.int64)
     
@@ -477,7 +477,6 @@ def delta_ray_geom(N_phi, N_b, b, b_p, y_p, phi_grid, R_s_sq):
     ''' Compute the ray tracing factor in the geometric limit.
     
     '''
-    
     
     delta_ray = np.zeros(shape=(N_b, N_phi))
     
