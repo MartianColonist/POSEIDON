@@ -180,14 +180,17 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
         # Colour each segment according to atmospheric temperature
         colors = np.array(T_colors)
         p.set_array(colors)
-        p.set_clim([0.98*np.min(T_pole), 1.02*np.max(T_pole)])
+        if (N_zones_init > 1):
+            p.set_clim([0.98*np.min(T_pole), 1.02*np.max(T_pole)])
+        elif (N_sectors_init > 1):
+            p.set_clim([0.98*np.min(T_term), 1.02*np.max(T_term)])
         ax.add_collection(p)
         
         # Add labels
         if (plot_labels == True):
-            ax.text(0.04, 0.90, 'Morning', horizontalalignment='left', 
+            ax.text(0.04, 0.90, 'Evening', horizontalalignment='left', 
                     verticalalignment='top', transform=ax.transAxes, fontsize = 14)
-            ax.text(0.96, 0.90, 'Evening', horizontalalignment='right', 
+            ax.text(0.96, 0.90, 'Morning', horizontalalignment='right', 
                     verticalalignment='top', transform=ax.transAxes, fontsize = 14)
 
         ax.set_xlim([-1.4*r_max, 1.4*r_max])
@@ -261,7 +264,10 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
         # Colour each segment according to atmospheric temperature
         colors = np.array(T_colors)
         p.set_array(colors)
-        p.set_clim([0.98*np.min(T_pole), 1.02*np.max(T_pole)])
+        if (N_zones_init > 1):
+            p.set_clim([0.98*np.min(T_pole), 1.02*np.max(T_pole)])
+        elif (N_sectors_init > 1):
+            p.set_clim([0.98*np.min(T_term), 1.02*np.max(T_term)])
         ax.add_collection(p)
 
         # Add labels
