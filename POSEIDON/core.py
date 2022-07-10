@@ -608,6 +608,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
         raise Exception("No user-provided P-T profile. Did you read in a file?")
     if ((X_profile == 'file_read') and (X_input == [])):
         raise Exception("No user-provided composition profile. Did you read in a file?")
+    if ((cloud_params == []) and (cloud_model != 'cloud-free')):
+        raise Exception("Cloud parameters must be provided for cloudy models.")
+    if ((geometry_params == []) and (Atmosphere_dimension > 1)):
+        raise Exception("Geometry parameters must be provided for 2D or 3D models.")
 
     #***** First, establish model geometry *****# 
 
