@@ -5,6 +5,7 @@ Forward Model Tutorials
    :maxdepth: 2
 
    notebooks/transmission_basic
+   notebooks/transmission_2D
    notebooks/transmission_terrestrial
    notebooks/emission_basic
    notebooks/brown_dwarf
