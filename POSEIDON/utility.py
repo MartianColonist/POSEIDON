@@ -26,10 +26,10 @@ def create_directories(base_dir, planet_name):
     '''
         
     # Specify desired paths of output directories to be created
-    output_dir = base_dir + '/POSEIDON_output' 
+    output_dir = base_dir + '/POSEIDON_output'
     planet_dir = output_dir + '/' + planet_name
     output_directories = [planet_dir + '/spectra', planet_dir + '/plots',
-                          planet_dir + '/geometry', planet_dir + '/retrievals']
+                          planet_dir + '/retrievals']
             
     # Create main output directory
     if (os.path.exists(output_dir) == False):
@@ -525,12 +525,10 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
     return P, chemical_species, log_X_low2, log_X_low1, log_X_median, \
            log_X_high1, log_X_high2
 
+''' 
+Deprecated functions
 
 def write_output_binned(planet_name, wl, spectrum_binned, description):
-    
-    ''' Writes out a given model (binned) spectrum.
-    
-    '''
     
     # Write spectrum
     f = open('../../output/spectra/' + planet_name + '/' + planet_name + '_' + 
@@ -562,7 +560,7 @@ def write_data(planet_name, wl_data, bin_size, spectrum, err_data, instrument):
         f.write('%.8f %.8f %.8e %.8e \n' %(wl_data[j], bin_size[j], spectrum[j], err_data[j]))
         
     f.close()
-    
+'''  
 
 def plot_collection(new_y, new_x, collection = []):
     
@@ -733,7 +731,7 @@ def generate_latex_param_names(param_names):
                          'Phi', 'Chi', 'Psi', 'Omega']
     
     # Define key parameters used in subscripts of parameter names
-    phrases = ['high', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 'Night', 
+    phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 'Night', 
                'cloud', 'rel', '0', 'het', 'phot', 'p']
     
     # Initialise output array
@@ -816,6 +814,11 @@ def generate_latex_param_names(param_names):
                 components += ['_']
                 lens += [1]
                 captured_characters[idx:idx+1] = 1
+            if (char in ['-', '+']):
+                idxs += [idx]
+                components += ['charge']
+                lens += [1]
+                captured_characters[idx:idx+1] = 1
             if ((char.isdigit()) and (param[idx-1] != '_')):
                 idxs += [idx]
                 components += ['digit']
@@ -840,8 +843,9 @@ def generate_latex_param_names(param_names):
         # Count number of letters, digits, and phrases appearing in this parameter name
         N_letter = np.count_nonzero(components_sort == 'letter')
         N_digit = np.count_nonzero(components_sort == 'digit')
+        N_charge = np.count_nonzero(components_sort == 'charge')
         N_phrase = np.count_nonzero(components_sort == 'phrase')
-        N_letter_digit = N_letter + N_digit
+        N_letter_digit = N_letter + N_digit + N_charge
         
         # Start LaTeX string for this parameter
         latex_name = '$'
@@ -883,7 +887,7 @@ def generate_latex_param_names(param_names):
                 latex_name += ('\\' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ' \, ')
             elif (components_sort[i] in ['greek_low', 'greek_up']):
                 latex_name += ('\\' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]])
-            elif (components_sort[i] in ['digit', 'letter']):
+            elif (components_sort[i] in ['digit', 'letter', 'charge']):
                 if (letter_digit_bracket_open == 0):
                     latex_name += '\mathrm{'
                     letter_digit_bracket_open = 1
@@ -893,11 +897,15 @@ def generate_latex_param_names(param_names):
                             latex_name += ('_' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ' ')  
                         elif (components_sort[i] == 'letter'):
                             latex_name += param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]]
+                        elif (components_sort[i] == 'charge'):
+                            latex_name += ('^' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ' ')
                     elif (N_letter_digit == 1):
                         if (components_sort[i] == 'digit'):
                             latex_name += ('_' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + '}')  
                         elif (components_sort[i] == 'letter'):
                             latex_name += (param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + '}')
+                        elif (components_sort[i] == 'charge'):
+                            latex_name += ('^' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + '}')
                         letter_digit_bracket_open = 0
                 N_letter_digit -= 1
             elif (components_sort[i] == 'phrase'):
