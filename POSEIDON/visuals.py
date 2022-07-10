@@ -111,7 +111,7 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
     # Slice through the terminator plane
     if (perspective == 'terminator'):
 
-        # In single zone case, can skip edge-finding calculations
+        # In single sector case, can skip edge-finding calculations
         if (len(phi) == 1):
             phi_prime_edge_all = np.array([-90.0, 90.0, -90.0])
             
@@ -166,9 +166,6 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
             # Plot planet core (circular, below atmosphere)
             planet_core = Circle((0.0, 0.0), r[0,0,0]/R_p, facecolor='black', edgecolor='None')
             ax.add_artist(planet_core)
-            
-        ax.set_xlim([-1.2*r_max, 1.2*r_max])
-        ax.set_ylim([-1.2*r_max, 1.2*r_max])
         
         ax.set_title("Terminator Plane", fontsize = 16, pad=10)
         
@@ -188,8 +185,13 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
         
         # Add labels
         if (plot_labels == True):
-            ax.text(0.7*r_term_max, 1.02*r_term_max, 'Morning', fontsize = 14)
-            ax.text(-1.1*r_term_max, 1.02*r_term_max, 'Evening', fontsize = 14)     
+            ax.text(0.04, 0.90, 'Morning', horizontalalignment='left', 
+                    verticalalignment='top', transform=ax.transAxes, fontsize = 14)
+            ax.text(0.96, 0.90, 'Evening', horizontalalignment='right', 
+                    verticalalignment='top', transform=ax.transAxes, fontsize = 14)
+
+        ax.set_xlim([-1.4*r_max, 1.4*r_max])
+        ax.set_ylim([-1.4*r_max, 1.4*r_max])
   
     # Slice through the north-south pole plane
     elif (perspective == 'day-night'):
@@ -245,9 +247,6 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
             # Plot planet core (circular, below atmosphere)
             planet_core = Circle((0.0, 0.0), r[0,0,0]/R_p, facecolor='black', edgecolor='None')
             ax.add_artist(planet_core)
-            
-        ax.set_xlim([-1.2*r_max, 1.2*r_max])
-        ax.set_ylim([-1.2*r_max, 1.2*r_max])
         
         ax.set_title("Day-Night Transition", fontsize = 16, pad=10)
         
@@ -267,16 +266,26 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
 
         # Add labels
         if (plot_labels == True):
-            ax.text(0.7*r_pole_max, 0.90*r_pole_max, 'Night', fontsize = 14)
-            ax.text(-0.28*r_pole_max, 1.08*r_pole_max, 'Terminator', fontsize = 14)
-            ax.text(-0.9*r_pole_max, 0.90*r_pole_max, 'Day', fontsize = 14)
-            
-            ax.text(-0.9*r_pole_max, 1.07*r_pole_max, 'Star', fontsize = 14)
-            ax.annotate('', xy=(-1.1*r_pole_max, 1.02*r_pole_max), xytext=(-0.5*r_pole_max, 1.02*r_pole_max), 
+            ax.text(0.12, 0.97, 'Star', horizontalalignment='left', 
+                    verticalalignment='top', transform=ax.transAxes, fontsize = 14)
+            ax.annotate('', xy=(0.04, 0.92), xytext=(0.30, 0.92), 
+                        xycoords = 'axes fraction', textcoords = 'axes fraction',
                         arrowprops=dict(arrowstyle='->', color='black', alpha=0.8))
-            ax.text(0.55*r_pole_max, 1.07*r_pole_max, 'Observer', fontsize = 14)
-            ax.annotate('', xy=(0.5*r_pole_max, 1.02*r_pole_max), xytext=(1.1*r_pole_max, 1.02*r_pole_max), 
-                        arrowprops=dict(arrowstyle='<-', color='black', alpha=0.8))
+            ax.text(0.92, 0.97, 'Observer', horizontalalignment='right', 
+                    verticalalignment='top', transform=ax.transAxes, fontsize = 14)
+            ax.annotate('', xy=(0.96, 0.92), xytext=(0.70, 0.92), 
+                        xycoords = 'axes fraction', textcoords = 'axes fraction',
+                        arrowprops=dict(arrowstyle='->', color='black', alpha=0.8))
+
+            ax.text(0.05, 0.80, 'Day', horizontalalignment='left', 
+                    verticalalignment='top', transform=ax.transAxes, fontsize = 14)
+            ax.text(0.50, 0.97, 'Terminator', horizontalalignment='center', 
+                    verticalalignment='top', transform=ax.transAxes, fontsize = 14)
+            ax.text(0.95, 0.80, 'Night', horizontalalignment='right', 
+                    verticalalignment='top', transform=ax.transAxes, fontsize = 14)
+
+        ax.set_xlim([-1.4*r_max, 1.4*r_max])
+        ax.set_ylim([-1.4*r_max, 1.4*r_max])
 
     return p
     
@@ -345,12 +354,14 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     cb.locator = tick_locator
     cb.update_ticks()
     cb.formatter.set_useOffset(False)
+    cb.ax.set_title(r'$T \, \, \rm{(K)}$', horizontalalignment='left')
     
     plt.tight_layout()
-    
+
     # Write figure to file
-    plt.savefig(output_dir + model_name + '_Geometry.png', 
-                bbox_inches='tight', dpi=800)
+    file_name = output_dir + planet_name + '_' + model_name + '_Geometry.png'
+
+    plt.savefig(file_name, bbox_inches='tight', dpi=800)
 
     return fig
 
@@ -550,8 +561,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
               colour_list = [], show_profiles = [],
               log_X_min = None, log_X_max = None,
               log_P_min = None, log_P_max = None,
-              chem_label = None, plt_label = None,
-              legend_location = 'upper right'):    
+              legend_title = None, legend_location = 'upper right'):    
     ''' 
     Plot the mixing ratio profiles defining the atmosphere.
     
@@ -681,6 +691,12 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
                     ax.semilogy(log_X[chemical_species == species,:,0,0][0],
                                 P, lw=1.5, ls='-', color = colours[q],
                                 label=latex_species[q])
+
+                # Do the same for bulk species
+                elif (species in ['H2', 'He']):
+                    ax.semilogy(log_X[chemical_species == species,:,0,0][0],
+                                P, lw=1.5, ls='-', color = colours[q],
+                                label=latex_species[q])
                 
                 # Otherwise, plot user choices
                 else:
@@ -694,7 +710,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
 
                         if (profile_to_plot == 'day'):
                             ax.semilogy(log_X[chemical_species == species,:,0,0][0], 
-                                        P, lw=1.5, ls=':', color = colours[q], 
+                                        P, lw=3.0, ls=':', color = colours[q], 
                                         label=latex_species[q] + ' (Day)')
                         if (profile_to_plot == 'night'):
                             ax.semilogy(log_X[chemical_species == species,:,0,-1][0], 
@@ -715,6 +731,12 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
                     ax.semilogy(log_X[chemical_species == species,:,0,0][0],
                                 P, lw=1.5, ls='-', color = colours[q],
                                 label=latex_species[q])
+
+                # Do the same for bulk species
+                elif (species in ['H2', 'He']):
+                    ax.semilogy(log_X[chemical_species == species,:,0,0][0],
+                                P, lw=1.5, ls='-', color = colours[q],
+                                label=latex_species[q])
                 
                 # Otherwise, plot user choices
                 else:
@@ -728,7 +750,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
                             
                         if (profile_to_plot == 'evening'):
                             ax.semilogy(log_X[chemical_species == species,:,0,0][0], 
-                                        P, lw=1.5, ls=':', color = colours[q], 
+                                        P, lw=3.0, ls=':', color = colours[q], 
                                         label=latex_species[q] + ' (Evening)')
                         if (profile_to_plot == 'morning'):
                             ax.semilogy(log_X[chemical_species == species,:,-1,0][0], 
@@ -815,35 +837,21 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))  
     ax.tick_params(labelsize=12)
 
-    # Add plot label
-    if (chem_label != None):
-        if ('left' in legend_location):
-            ax.text(0.02, 0.98, chem_label, horizontalalignment='left', 
-                    verticalalignment='top', transform=ax.transAxes, fontsize = 16)
-        elif ('right' in legend_location):
-            ax.text(0.98, 0.98, chem_label, horizontalalignment='right', 
-                    verticalalignment='top', transform=ax.transAxes, fontsize = 16)
-
     # Add legend
     legend = ax.legend(loc=legend_location, shadow=True, prop={'size':14}, 
-                       frameon=True, columnspacing=1.0)
+                       frameon=True, columnspacing=1.0, title = legend_title,
+                       title_fontsize = 16)
     frame = legend.get_frame()
     frame.set_facecolor('0.90')
 
     if (legend_location == 'upper left'):
-        if (chem_label != None):
-            legend.set_bbox_to_anchor([0.0, 0.94], transform=None)
-        else:
-            legend.set_bbox_to_anchor([0.0, 0.98], transform=None)
+        legend.set_bbox_to_anchor([0.02, 0.98], transform=None)
     elif (legend_location == 'upper right'):
-        if (chem_label != None):
-            legend.set_bbox_to_anchor([0.0, 0.94], transform=None)
-        else:
-            legend.set_bbox_to_anchor([1.0, 0.98], transform=None)
+        legend.set_bbox_to_anchor([0.98, 0.98], transform=None)
     elif (legend_location == 'lower left'):
-        legend.set_bbox_to_anchor([0.0, 0.0], transform=None)
+        legend.set_bbox_to_anchor([0.02, 0.02], transform=None)
     elif (legend_location == 'lower right'):
-        legend.set_bbox_to_anchor([1.0, 0.0], transform=None)
+        legend.set_bbox_to_anchor([0.98, 0.98], transform=None)
     
     fig.set_size_inches(9.0, 9.0)
 
@@ -1121,11 +1129,19 @@ def plot_spectra(spectra, planet, data_properties = None,
             # Calculate binned wavelength and spectrum grid
             wl_binned, spec_binned = bin_spectrum_fast(wl, spec, R_to_bin)
 
+            if (plot_full_res == True):
+                colour_binned = scale_lightness(colours[i], 0.4)
+                lw_binned = 1.0
+                label_i += ' (R = ' + str(R_to_bin) + ')'
+            else:
+                colour_binned = colours[i]
+                lw_binned = 2.0
+
             # Plot binned spectrum
-            ax1.plot(wl_binned, spec_binned, lw=1.0, alpha=0.8, 
-                     color=scale_lightness(colours[i], 0.4), 
+            ax1.plot(wl_binned, spec_binned, lw=lw_binned, alpha=0.8, 
+                     color=colour_binned, 
                      zorder=N_spectra+N_plotted_binned, 
-                     label=label_i + ' (R = ' + str(R_to_bin) + ')')
+                     label=label_i)
             
             N_plotted_binned += 1
 
@@ -1241,17 +1257,20 @@ def plot_spectra(spectra, planet, data_properties = None,
     frame.set_facecolor('0.90') 
         
     for legline in legend.legendHandles:
-        legline.set_linewidth(1.0)
+        if (plot_full_res == True):
+            legline.set_linewidth(1.0)
+        else:
+            legline.set_linewidth(2.0)
     
     plt.tight_layout()
 
     # Write figure to file
     if (plt_label == None):
-        file_name = (output_dir + planet_name + '_' +
+        file_name = (output_dir + planet_name +
                      '_transmission_spectra.pdf')
     else:
-        file_name = (output_dir + planet_name + '_' +
-                     '_' + plt_label + '_transmission_spectra.pdf')
+        file_name = (output_dir + planet_name + '_' + plt_label + 
+                     '_transmission_spectra.pdf')
 
     plt.savefig(file_name, bbox_inches='tight')
 
