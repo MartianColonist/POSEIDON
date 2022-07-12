@@ -7,5 +7,3 @@ Forward Model Tutorials
    notebooks/transmission_basic
    notebooks/transmission_2D
    notebooks/transmission_terrestrial
-   notebooks/emission_basic
-   notebooks/brown_dwarf
