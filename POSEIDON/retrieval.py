@@ -488,7 +488,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         Evaluates the log-likelihood for a given point in parameter space.
         
         Works by generating a PT profile, calculating the opacity in the
-        model atmsophere, computing the resulting spectrum and finally 
+        model atmosphere, computing the resulting spectrum and finally 
         convolving and integrating the spectrum to produce model data 
         points for each instrument.
         
@@ -564,9 +564,9 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             if (model['stellar_contam'] == 'one-spot'):
 
                 # Unpack stellar contamination parameters
-                f, T_het, T_phot = stellar_params         
+                f, T_het, T_phot = stellar_params
                 
-                # Find photoshpere and spot / faculae intensities at relevant effective temperatures
+                # Find photosphere and spot / faculae intensities at relevant effective temperatures
                 I_het = I_het_grid[closest_index(T_het, T_het_grid[0], 
                                                 T_het_grid[-1], len(T_het_grid)),:]
                 I_phot = I_phot_grid[closest_index(T_phot, T_phot_grid[0], 

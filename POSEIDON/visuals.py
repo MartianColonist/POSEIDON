@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import colorConverter
 from matplotlib.patches import Circle, Wedge
 from matplotlib.collections import PatchCollection
-from matplotlib.ticker import MultipleLocator, AutoLocator, FormatStrFormatter, \
-                              FuncFormatter, ScalarFormatter, NullFormatter
+from matplotlib.ticker import MultipleLocator, FormatStrFormatter, \
+                              ScalarFormatter, NullFormatter
 from matplotlib import gridspec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
@@ -33,17 +33,8 @@ warnings.filterwarnings("ignore", message="This figure includes Axes that are " 
                                            "not compatible with tight_layout, " +
                                            "so results might be incorrect.")
 
-from .utility import confidence_intervals, bin_spectrum_fast, closest_index, \
-                     generate_latex_param_names, round_sig_figs, file_name_check
-from .absorption import H_minus_bound_free, H_minus_free_free
+from .utility import bin_spectrum_fast, generate_latex_param_names, round_sig_figs
 from .instrument import bin_spectrum_to_data
-
-
-# import warnings
-
-# warnings.filterwarnings( "ignore", module = "matplotlib\..*" )
-
-
 
               
 # Define some more flexible linestyles for convenience
