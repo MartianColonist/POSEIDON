@@ -22,7 +22,6 @@ setup(
                         'numba',
                         'pandas',
                         'pysynphot',
-                        'mpi4py',
                         'pymultinest',
                         'corner',
                         'spectres',
