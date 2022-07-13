@@ -105,12 +105,12 @@ Step 3: Install POSEIDON from GitHub
 ____________________________________
 
 Now all that is left is to obtain POSEIDON from GitHub and install the module.
-You can download `POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON_rev>`_
+You can download `POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON>`_
 or clone the repository:
 
 .. code-block:: bash
 		
-   git clone https://github.com/MartianColonist/POSEIDON_dev.git
+   git clone https://github.com/MartianColonist/POSEIDON.git
 
 Then navigate into the 'POSEIDON_dev' directory and install the package via:
 
