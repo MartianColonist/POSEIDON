@@ -1,5 +1,5 @@
+sphinx=4.4.0
 nbsphinx
-sphinx
 sphinx-autoapi
 sphinx-rtd-theme
 sphinxcontrib-napoleon
