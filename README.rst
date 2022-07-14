@@ -7,14 +7,6 @@
    </div>
    <br/><br/>
 
-.. image:: https://readthedocs.org/projects/poseidon-retrievals/badge/?version=latest
-   :target: https://poseidon-retrievals.readthedocs.io/en/latest/?badge=latest
-   :alt: Documentation Status
-
-.. image:: https://img.shields.io/badge/License-BSD_3--Clause-blue.svg
-   :target: https://github.com/MartianColonist/POSEIDON/blob/main/LICENSE
-   :alt: GitHub License
-
 **A Python Package for Multidimensional Atmospheric Retrievals of Exoplanet Spectra**
 
 POSEIDON is a spectral modelling and atmospheric retrieval code for exoplanets.
@@ -48,3 +40,12 @@ Support
 
 POSEIDON is currently in the open beta stage of testing, so any feedback, bug reports,
 or questions are certainly welcome! Please reach out to rmacdonald@astro.cornell.edu 
+
+
+.. image:: https://readthedocs.org/projects/poseidon-retrievals/badge/?version=latest
+   :target: https://poseidon-retrievals.readthedocs.io/en/latest/?badge=latest
+   :alt: Documentation Status
+
+.. image:: https://img.shields.io/badge/License-BSD_3--Clause-blue.svg
+   :target: https://github.com/MartianColonist/POSEIDON/blob/main/LICENSE
+   :alt: GitHub License
