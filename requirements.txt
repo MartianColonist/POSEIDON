@@ -1,9 +1,0 @@
-astropy>=4
-numpy
-scipy
-matplotlib
-corner
-h5py
-pandas
-mpi4py>=3.0
-pymultinest>=2.9
