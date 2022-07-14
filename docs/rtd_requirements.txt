@@ -1,2 +1,4 @@
 nbsphinx
 sphinx
+sphinx-autoapi
+pandoc
