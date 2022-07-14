@@ -21,6 +21,7 @@ setup(
                         'h5py',
                         'numba',
                         'pandas',
+                        'mpi4py',
                         'pysynphot',
                         'pymultinest',
                         'corner',
