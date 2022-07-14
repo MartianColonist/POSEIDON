@@ -2,4 +2,5 @@ nbsphinx
 sphinx
 sphinx-autoapi
 sphinx-rtd-theme
+sphinxcontrib-napoleon
 pandoc
