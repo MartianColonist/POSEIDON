@@ -6,3 +6,4 @@ sphinx-rtd-theme
 sphinxcontrib-napoleon
 pandoc
 jupyter
+IPython
