@@ -1,9 +1,4 @@
-sphinx==4.4.0
-nbsphinx==0.8.9
-sphinx-autoapi==1.8.4
-sphinx-rtd-theme==1.0.0
+nbsphinx
+sphinx-autoapi
+sphinx_rtd_theme>=0.3.1
 ipython
-sphinxcontrib-napoleon==0.7
-sphinxcontrib-jsmath==1.0.1
-pandoc
-
