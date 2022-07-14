@@ -175,6 +175,9 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
             p.set_clim([0.98*np.min(T_pole), 1.02*np.max(T_pole)])
         elif (N_sectors_init > 1):
             p.set_clim([0.98*np.min(T_term), 1.02*np.max(T_term)])
+        else:
+            p.set_clim([0.98*np.min(T_pole), 1.02*np.max(T_pole)])
+
         ax.add_collection(p)
         
         # Add labels
@@ -259,6 +262,9 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
             p.set_clim([0.98*np.min(T_pole), 1.02*np.max(T_pole)])
         elif (N_sectors_init > 1):
             p.set_clim([0.98*np.min(T_term), 1.02*np.max(T_term)])
+        else:
+            p.set_clim([0.98*np.min(T_pole), 1.02*np.max(T_pole)])
+
         ax.add_collection(p)
 
         # Add labels
@@ -276,7 +282,7 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
 
             ax.text(0.05, 0.80, 'Day', horizontalalignment='left', 
                     verticalalignment='top', transform=ax.transAxes, fontsize = 14)
-            ax.text(0.50, 0.97, 'Terminator', horizontalalignment='center', 
+            ax.text(0.50, 0.98, 'Terminator', horizontalalignment='center', 
                     verticalalignment='top', transform=ax.transAxes, fontsize = 14)
             ax.text(0.95, 0.80, 'Night', horizontalalignment='right', 
                     verticalalignment='top', transform=ax.transAxes, fontsize = 14)
@@ -351,7 +357,7 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     cb.locator = tick_locator
     cb.update_ticks()
     cb.formatter.set_useOffset(False)
-    cb.ax.set_title(r'$T \, \, \rm{(K)}$', horizontalalignment='left')
+    cb.ax.set_title(r'$T \, \, \rm{(K)}$', horizontalalignment='left', pad=10)
     
     plt.tight_layout()
 
