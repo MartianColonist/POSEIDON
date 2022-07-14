@@ -1,6 +1,8 @@
 sphinx==4.4.0
+python==3.9
 nbsphinx
 sphinx-autoapi
 sphinx-rtd-theme
 sphinxcontrib-napoleon
 pandoc
+jupyter
