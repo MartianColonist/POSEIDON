@@ -1,4 +1,5 @@
 nbsphinx
 sphinx
 sphinx-autoapi
+sphinx-rtd-theme
 pandoc
