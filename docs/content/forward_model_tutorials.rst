@@ -6,4 +6,5 @@ Forward Model Tutorials
 
    notebooks/transmission_basic
    notebooks/transmission_2D
+   notebooks/high_res
    notebooks/transmission_terrestrial
