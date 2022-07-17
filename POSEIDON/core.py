@@ -1063,6 +1063,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
 
     # Set default priors (used if user doesn't specify one or more priors)
     prior_ranges_defaults = {'T': [400, T_eq+200], 'Delta_T': [0, 1000],
+                             'T_mid': [400, 3000], 'T_high': [400, 3000],
                              'a1': [0.02, 2.00], 'a2': [0.02, 2.00],
                              'log_P1': [-6, 2], 'log_P2': [-6, 2],
                              'log_P3': [-2, 2], 'log_P_mid': [-5, 1],
