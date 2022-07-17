@@ -1384,7 +1384,8 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                    bf_species, n, T, P, wl_model, X, X_active, X_cia, X_ff, X_bf, 
                    a, gamma, P_cloud, kappa_cloud_0, Rayleigh_stored, enable_haze, 
                    enable_deck, enable_surface, N_sectors, N_zones, P_surf,
-                   opacity_database = 'High-T', disable_continuum = False):
+                   opacity_database = 'High-T', disable_continuum = False,
+                   suppress_print = False):
     
     ''' Evaluate extinction coefficients for molecules / atoms, Rayleigh 
         scattering, hazes, and clouds. Special function optimised for 
@@ -1400,7 +1401,8 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
     
     '''
     
-    print("Reading in cross sections in line-by-line mode...")
+    if (suppress_print == False):
+        print("Reading in cross sections in line-by-line mode...")
     
     #***** First, initialise the various quantities needed *****#
 
@@ -1476,7 +1478,8 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                 
                 del log_cia_q, nu_cia_q, w_T_cia_q, y_cia_q  # Clear raw cross section to free up memory
                 
-                print(cia_pair_q + " done")
+                if (suppress_print == False):
+                    print(cia_pair_q + " done")
                 
             cia_file.close()
             
@@ -1496,7 +1499,8 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                 else:
                     raise Exception("Unsupported free-free opacity.")
                 
-                print(ff_pair_q + " done")
+                if (suppress_print == False):
+                    print(ff_pair_q + " done")
                 
             #***** Process bound-free absorption *****#
              
@@ -1514,7 +1518,8 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                 else:
                     raise Exception("Unsupported bound-free opacity.")
                 
-                print(bf_species_q + " done")
+                if (suppress_print == False):
+                    print(bf_species_q + " done")
                 
             #***** Process molecular and atomic opacities *****#
             
@@ -1550,7 +1555,8 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                 
                 del log_sigma_q, nu_q, w_T_q, y_q   # Clear raw cross section to free up memory
                 
-                print(species_q + " done")
+                if (suppress_print == False):
+                    print(species_q + " done")
                 
             opac_file.close()
             
@@ -1563,8 +1569,9 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                               sigma_interp, cia_interp, Rayleigh_stored, ff_stored, 
                               bf_stored, enable_haze, enable_deck, enable_surface,
                               kappa_clear, kappa_cloud, P_surf, disable_continuum)
-                    
-    print("Finished producing extinction coefficients")
+
+    if (suppress_print == False):
+        print("Finished producing extinction coefficients")
             
     return kappa_clear, kappa_cloud
 

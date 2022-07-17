@@ -727,7 +727,7 @@ def check_atmosphere_physical(atmosphere, opac):
 
 def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
-                     disable_continuum = False):
+                     disable_continuum = False, suppress_print = False):
     '''
     Solves the radiative transfer equation to compute the transmission
     spectrum of the model atmosphere.
@@ -863,7 +863,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                   enable_haze, enable_deck,
                                                   enable_surface,
                                                   N_sectors, N_zones, P_surf,
-                                                  opacity_database, disable_continuum)
+                                                  opacity_database, disable_continuum,
+                                                  suppress_print)
         
     # If using opacity sampling, we can use pre-interpolated cross sections
     elif (opac['opacity_treatment'] == 'opacity_sampling'):
