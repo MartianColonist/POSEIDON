@@ -14,9 +14,9 @@ POSEIDON's features currently include:
 
 * Transmission spectra modelling for 1D, 2D, and 3D exoplanet atmospheres.
 * Rapid atmospheric retrievals that can run on your laptop.
-* Model planets ranging from ultra-hot Jupiters to temperate terrestrial worlds.
+* Model support for planets ranging from ultra-hot Jupiters to temperate terrestrials.
+* Parametric prescriptions for stellar contamination, multidimensional clouds, and more.
 * High-resolution line-by-line models (:math:`R \sim 10^6`) for cross correlation analyses.
-* Stellar contamination and multidimensional clouds.
 
 The initial public release of POSEIDON contains tutorials on generating model 
 transmission spectra with TRIDENT and running atmospheric retrievals.
@@ -39,6 +39,7 @@ If you only use the forward model, TRIDENT, please cite `MacDonald & Lewis (2022
    
    content/forward_model_tutorials
    content/retrieval_tutorials
+   content/opacity_database
    
 .. toctree::
    :maxdepth: 2
