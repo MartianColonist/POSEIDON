@@ -1516,7 +1516,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            colour_list = [], spectra_labels = [],
                            data_colour_list = [], data_labels = [],
                            data_marker_list = [], data_marker_size_list = [],
-                           figure_shape = 'default'):
+                           wl_axis = 'log', figure_shape = 'default'):
     ''' 
     Plot retrieved transmission spectra.
     
@@ -1655,7 +1655,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         if (transit_depth_max_plt < max(ydata + err_data)):
             transit_depth_max_plt = max(ydata + err_data)
             
-        transit_depth_max_plt = 1.020*transit_depth_max_plt  # Extend slightly above
+        transit_depth_max_plt = 1.040*transit_depth_max_plt  # Extend slightly above
         
     else:
         transit_depth_max_plt = transit_depth_max
@@ -1721,8 +1721,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     
     ax1 = plt.gca()
     
-    # Set x axis to be logarithmic by default
-    ax1.set_xscale("log")
+    # Set x axis to be linear or logarithmic
+    ax1.set_xscale(wl_axis)
 
     # Assign formatter objects to axes
     ax1.xaxis.set_major_locator(xmajorLocator)
