@@ -1284,7 +1284,9 @@ def plot_spectra(spectra, planet, data_properties = None,
 
 def plot_data(data, planet, wl_min = None, wl_max = None, 
               transit_depth_min = None, transit_depth_max = None, 
-              colour_list = [], data_labels = []):
+              plt_label = None, colour_list = [], data_labels = [], 
+              data_marker_list = [], data_marker_size_list = [],
+              wl_axis = 'log', figure_shape = 'default'):
     ''' 
     Plot a collection of datasets.
     
@@ -1316,13 +1318,29 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
         raise Exception("Number of dataset labels does not match number of datasets.")
+    if ((data_marker_list != []) and (N_datasets != len(data_marker_list))):
+        raise Exception("Number of dataset markers does not match number of datasets.")
+    if ((data_marker_size_list != []) and (N_datasets != len(data_marker_size_list))):
+        raise Exception("Number of dataset marker sizes does not match number of datasets.")
         
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
         colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black']
     else:
         colours = colour_list
-                
+
+    # Define data marker symbols (default or user choice)
+    if (data_marker_list == []):   # If user did not specify a custom colour list
+        data_markers = ['o', 's', 'D', '*', 'X', 'p']
+    else:
+        data_markers = data_marker_list
+
+    # Define data marker sizes (default or user choice)
+    if (data_marker_size_list == []):   # If user did not specify a custom colour list
+        data_markers_size = [3, 3, 3, 3, 3, 3]
+    else:
+        data_markers_size = data_marker_size_list
+       
     # If the user did not specify a wavelength range, find min and max from input data
     if (wl_min == None):
         wl_min_plt = np.min(wl_data - 4*bin_size)  # Minimum at twice the bin width for the shortest wavelength data
@@ -1387,11 +1405,6 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
  
     # Set y range
     transit_depth_range = [transit_depth_min_plt, transit_depth_max_plt]
-    
-    # Place planet name in top left corner
-    planet_name_x_position = 0.008*(wl_range[1]-wl_range[0]) + wl_range[0]
-    planet_name_y_position = (0.92*(transit_depth_range[1]-transit_depth_range[0]) + 
-                                    transit_depth_range[0])
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
@@ -1400,12 +1413,18 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
     yminorLocator = MultipleLocator(yminor_spacing)
 
     # Generate figure and axes
-    fig = plt.figure()  
+    fig = plt.figure()
+
+    # Set figure size
+    if (figure_shape == 'default'):
+        fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
+    elif (figure_shape == 'wide'):
+        fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
     
     ax1 = plt.gca()
     
-    # Set x axis to be logarithmic by default
-    ax1.set_xscale("log")
+    # Set x axis to be linear or logarithmic
+    ax1.set_xscale(wl_axis)
 
     # Assign formatter objects to axes
     ax1.xaxis.set_major_locator(xmajorLocator)
@@ -1436,11 +1455,12 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
 
         # Plot dataset
         markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                           xerr=bin_size_i, marker='o', 
-                                           markersize=3, capsize=2, ls='none', 
-                                           color=colours[i], elinewidth=0.8, 
-                                           ecolor = 'black', alpha=0.8, 
-                                           label=label_i) 
+                                            xerr=bin_size_i, marker=data_markers[i], 
+                                            markersize=data_markers_size[i], 
+                                            capsize=2, ls='none', elinewidth=0.8, 
+                                            color=colours[i], alpha = 0.8,
+                                            ecolor = 'black', label=label_i)
+
         [markers.set_alpha(1.0)]
             
     # Set axis ranges
@@ -1452,7 +1472,13 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
     ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
 
     # Add planet name label
-    ax1.text(planet_name_x_position, planet_name_y_position, planet_name, fontsize = 16)
+    ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
+             verticalalignment='top', transform=ax1.transAxes, fontsize = 16)
+  
+    # Add plot label
+    if (plt_label != None):
+        ax1.text(0.03, 0.90, plt_label, horizontalalignment='left', 
+                 verticalalignment='top', transform=ax1.transAxes, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
     if (wl_max_plt <= 1.0):
@@ -1510,7 +1536,13 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
     plt.tight_layout()
 
     # Write figure to file
-    file_name = output_dir + planet_name + '_data.pdf'
+    if (plt_label == None):
+        file_name = (output_dir + planet_name +
+                     '_data.pdf')
+    else:
+        file_name = (output_dir + planet_name + '_' + plt_label + 
+                     '_data.pdf')
+
     plt.savefig(file_name, bbox_inches='tight')
 
     return fig
