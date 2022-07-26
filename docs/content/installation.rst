@@ -31,7 +31,8 @@ Next, you need to create two new environment variables: one pointing to the
 directory containing the opacity files and a second to the (unzipped) stellar
 grid folder. 
 
-* Linux environment variables:
+Linux environment variables
+---------------------------
   
 Enter the following lines into a terminal:
 
@@ -50,7 +51,8 @@ directory) in a text editor and add the following two lines at the bottom:
    export POSEIDON_input_data="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/opacity/"
    export PYSYN_CDBS="/𝗣𝗔𝗧𝗛/𝗧𝗢/𝗬𝗢𝗨𝗥/𝗜𝗡𝗣𝗨𝗧/𝗗𝗜𝗥𝗘𝗖𝗧𝗢𝗥𝗬/stellar_grids/"
 
-* Mac OS environment variables:
+Mac OS environment variables
+----------------------------
 
 Check whether your terminals use bash (older OS) or zsh (newer OS).
 
@@ -105,12 +107,12 @@ Step 3: Install POSEIDON from GitHub
 ____________________________________
 
 Now all that is left is to obtain POSEIDON from GitHub and install the module.
-You can download `POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON_rev>`_
+You can download `POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON>`_
 or clone the repository:
 
 .. code-block:: bash
 		
-   git clone https://github.com/MartianColonist/POSEIDON_dev.git
+   git clone https://github.com/MartianColonist/POSEIDON.git
 
 Then navigate into the 'POSEIDON_dev' directory and install the package via:
 
@@ -118,4 +120,7 @@ Then navigate into the 'POSEIDON_dev' directory and install the package via:
 		
    pip install .
 
-And that, splendidly, is all there is to it. Onwards to the tutorials!
+And that, splendidly, is all there is to it. Onwards to the tutorials! 
+
+The best place to begin is the quick start guide 
+`"Generating Transmission Spectra" <notebooks/transmission_basic.html>`_

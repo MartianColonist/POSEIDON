@@ -1,5 +1,6 @@
 docs/_build/
 docs/_build/html
+docs/content/future
 docs/content/notebooks/POSEIDON_output
 __pycache__
 .DS_Store
@@ -8,7 +9,6 @@ __pycache__
 build/
 dist/
 POSEIDON.egg-info/
-POSEIDON_run/
 inputs/
 run/
 .vscode

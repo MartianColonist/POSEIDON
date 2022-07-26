@@ -62,7 +62,7 @@ html_logo = "_static/POSEIDON_logo_clear.png"
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+html_static_path = ['_static', '_static/notebook_images']
 
 nbsphinx_prolog = """
 {% set docname = env.doc2path(env.docname, base=None) %}
