@@ -2,7 +2,7 @@ import numpy as np
 import h5py
 from scipy.interpolate import RegularGridInterpolator
 
-database = h5py.File('../output/database.hdf5', 'r')
+database = h5py.File('./database.hdf5', 'r')
 T_low = 300
 T_high = 4000
 T_step = 100
