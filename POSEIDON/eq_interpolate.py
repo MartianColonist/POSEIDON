@@ -42,7 +42,7 @@ C_O_num = len(c_o_grid)
 ### P, Met are in logarithmic scale; T, C_O are in linear scale
 def getMR(P_arr, T_arr, C_O, Met, molecules):
     assert len(P_arr) == len(T_arr), "Pressure and temperature have different length."
-    database = h5py.File('../output/database.hdf5', 'r')
+    database = h5py.File('./database.hdf5', 'r')
     size = len(P_arr)
     C_O = np.full(size, C_O)
     Met = np.full(size, Met)
