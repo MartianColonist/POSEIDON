@@ -1,55 +1,133 @@
 import numpy as np
 import h5py
+import os
 from scipy.interpolate import RegularGridInterpolator
 
-database = h5py.File('./eq_database.hdf5', 'r')
-T_low = 300
-T_high = 4000
-T_step = 100
+print("Reading in database for equillrium chemistry model...")
 
-P_low = -7
-P_high = 2
-P_step = 0.5
+# Find the directory where the user downloaded the POSEIDON opacity data
+database_path = os.environ.get("POSEIDON_input_data")
+if database_path == None:
+    raise Exception("POSEIDON cannot locate the database for equillibrium chemistry.\n"
+                    "Please set the 'POSEIDON_input_data' variable in " +
+                    "your .bashrc or .bash_profile to point to the " +
+                    "directory containing the POSEIDON opacity database.")
+database = h5py.File(database_path+'eq_database.hdf5', 'r')
+temperature_gird = np.array(database['Info'+'/T grid'])
+pressure_grid = np.array(database['Info'+'/P grid'])
+metallicity_grid = np.array(database['Info'+'/M/H grid'])
+c_o_grid = np.array(database['Info'+'/C/O grid'])
 
-Met_low = -1
-Met_high = 4
-Met_step = 0.05
+def print_grid_info():
+    print("Temperature grid:"+str(temperature_gird))
+    print("Pressure grid:"+str(pressure_grid))
+    print("Metallicity grid:"+str(metallicity_grid))
+    print("C/O grid:"+str(c_o_grid))
 
-C_O_low = 0.2
-C_O_high = 2
-C_O_step = 0.05
-# finer between 0.9 and 1.1
-C_O_finer_low = 0.9
-C_O_finer_high = 1.1
-C_O_finer_step = 0.01
+def get_grid_info(parameter):
+    if parameter in ["T", "t", "Temperature", "Temp", "temperature", "temp"]:
+        return temperature_gird
+    if parameter in ["P", "p", "Pressure", "pressure"]:
+        return pressure_grid
+    if parameter in ["C/O", "c/o", "C-O", "c-o", "C_O", "c_o"]:
+        return c_o_grid
+    if parameter in ["M/H", "Met", "met", "Metallicity", "metallicity"]:
+        return metallicity_grid
+    raise Exception("Your input is not associated with any parameters.\n"
+                    "Please check specification for a list of accepted input.")
 
-def get_num(low, high, step):
-  return int((high-low)/step)+1
-
-T_num = get_num(T_low, T_high, T_step)
-P_num = get_num(P_low, P_high, P_step)
-Met_num = get_num(Met_low, Met_high, Met_step)
-
-temperature_gird = np.linspace(T_low, T_high, T_num)
-pressure_grid = np.logspace(P_low, P_high, P_num)
-metallicity_grid = np.logspace(Met_low, Met_high, Met_num)
-c_o_grid = np.concatenate((np.linspace(C_O_low, C_O_finer_low, get_num(C_O_low, C_O_finer_low, C_O_step), endpoint=False), \
-           np.linspace(C_O_finer_low, C_O_finer_high, get_num(C_O_finer_low, C_O_finer_high, C_O_finer_step), endpoint=False), np.linspace(C_O_finer_high, C_O_high, get_num(C_O_low, C_O_finer_low, C_O_step))))
-
-C_O_num = len(c_o_grid)
-
+def get_supported_species():
+    return ['H2O', 'CO2', 'OH', 'C2H2', 'C2H4', 'H2S',
+            'O2', 'O3', 'NH3', 'SiO', 'CH4', 'CO', 'C2', 
+            'CaH', 'CrH', 'FeH', 'HCl', 'K', 'MgH', 'N2', 
+            'Na', 'NO', 'NO2', 'OCS', 'PH3', 'SH', 'SiH',
+            'SO2', 'TiH', 'TiO', 'VO']
 
 ### P, Met are in logarithmic scale; T, C_O are in linear scale
-def getMR(P_arr, T_arr, C_O, Met, molecules):
-    assert len(P_arr) == len(T_arr), "Pressure and temperature have different length."
-    database = h5py.File('./eq_database.hdf5', 'r')
-    size = len(P_arr)
-    C_O = np.full(size, C_O)
-    Met = np.full(size, Met)
-    MR_dict = {}
-    for _, molecule in enumerate(molecules):
-        array = np.array(database[molecule+'/log(X)'])
+def get_MR(log_P, T, C_O, log_Met, species, return_dict=True):
+    '''
+    Inquire the traces of a list of chemical species at a given combination of C/O ratio, 
+    metallicity, and pressure-temperature profile, assuming equillibrium chemistry.
+
+    Args:
+        log_P (float or array of float): 
+            Pressure profile provided by the user (in log scale and in bar).
+             A single value will be expanded into an array np.full(length, P), where length == max(len(P_array), len(T_array), len(C_O), len(Met)).
+            10^{-7} to 10^{2} bar are supported.
+
+        T (float or array of float):
+            Temperature profile provided by the user (in Kelvin).
+             A single value will be expanded into an array np.full(length, T), where length == max(len(P_array), len(T_array), len(C_O), len(Met)).
+            300 to 4000 K are supported.
+
+        C_O (float or array of float):
+            Carbon to Oxygen (C/O) ratio provided by the user.
+            A single value will be expanded into an array np.full(length, C_O), where length == max(len(P_array), len(T_array), len(C_O), len(Met)).
+            0.2 to 2 are supported.
+
+        log_Met (float or array of float):
+            Stellar metallicity (in log scale. 0 represents a metallicity of 10^0=1)
+            A single value will be expanded into an array np.full(length, Met), where length == max(len(P_array), len(T_array), len(C_O), len(Met)).
+            -1 to 4 are supported.
+
+        species (string or list of string):
+            A list of chemical species to calculate mixing ratios for.
+            Supported species are ['H2O', 'CO2', 'OH', 'C2H2', 'C2H4', 'H2S',
+                                   'O2', 'O3', 'NH3', 'SiO', 'CH4', 'CO', 'C2', 
+                                   'CaH', 'CrH', 'FeH', 'HCl', 'K', 'MgH', 'N2', 
+                                   'Na', 'NO', 'NO2', 'OCS', 'PH3', 'SH', 'SiH',
+                                   'SO2', 'TiH', 'TiO', 'VO']
+
+        return_dict (boolean):
+            If False, return an array of shape (len(species), len(P_array)). The order is the same as species.
+
+    Returns:
+        MR_dict (dict) (if return_dict=True):
+            A dictionary with keys being the names for species inquired and values being mixing ratios (in log scale).
+
+        MR_array (array of float) (if return_dict=False):
+            An array containing the mixing ratios of the inquired species (in the same order as the order in species)
+
+    Prerequisites:
+        len(P_array) = len(T_array)
+    '''
+
+    np.seterr(divide = 'ignore')
+    len_P, len_T, len_C_O, len_Met = np.array(log_P).size, np.array(T).size, np.array(C_O).size, np.array(log_Met).size
+    max_len = max(len_P, len_T, len_C_O, len_Met)
+    assert len_P in (1, max_len) and len_T in (1, max_len) and len_C_O in (1, max_len) and len_Met in (1, max_len), "Input shape not accepted"
+
+    # Below is how the database is constructed. Utilizing this information simplifies interpolation and reduces database size.
+
+    C_O_num = len(c_o_grid)
+    Met_num = len(metallicity_grid)
+    T_num = len(temperature_gird)
+    P_num = len(pressure_grid)
+    if len_P == 1:
+        log_P = np.full(max_len, log_P)
+    if len_T == 1:
+        T = np.full(max_len, T)
+    if len_C_O == 1:
+        C_O = np.full(max_len, C_O)
+    if len_Met == 1:
+        log_Met = np.full(max_len, log_Met)
+    def interpolate(species):
+        array = np.array(database[species+'/log(X)'])
         array = array.reshape(Met_num, C_O_num, T_num, P_num)
         grid = RegularGridInterpolator((np.log10(metallicity_grid), c_o_grid, temperature_gird, np.log10(pressure_grid)), np.log10(array))
-        MR_dict[molecule] = grid(np.vstack((Met, C_O, T_arr, P_arr)).T)
-    return MR_dict
+        return grid(np.vstack((log_Met, C_O, T, log_P)).T)
+    if not return_dict:
+        if isinstance(species, str):
+            return interpolate(species)
+        MR_list = []
+        for _, molecule in enumerate(species):
+            MR_list.append(interpolate(molecule))
+        MR_array = np.array(MR_list)
+        return MR_array
+    else:
+        MR_dict = {}
+        if isinstance(species, str):
+            species = [species]
+        for _, molecule in enumerate(species):
+            MR_dict[molecule] = interpolate(molecule)
+        return MR_dict
