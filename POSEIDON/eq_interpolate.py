@@ -40,11 +40,13 @@ def get_grid(parameter):
                     "Please check specification for a list of accepted input.")
 
 def get_supported_species():
-    return ['H2O', 'CO2', 'OH', 'C2H2', 'C2H4', 'H2S',
-            'O2', 'O3', 'NH3', 'SiO', 'CH4', 'CO', 'C2', 
-            'CaH', 'CrH', 'FeH', 'HCl', 'K', 'MgH', 'N2', 
-            'Na', 'NO', 'NO2', 'OCS', 'PH3', 'SH', 'SiH',
-            'SO2', 'TiH', 'TiO', 'VO']
+    return ['H2O', 'CO2', 'OH', 'SO', 'C2H2', 
+            'C2H4', 'H2S', 'O2', 'O3', 'HCN',
+            'NH3', 'SiO', 'CH4', 'CO', 'C2', 
+            'CaH', 'CrH', 'FeH', 'HCl', 'K',
+            'MgH', 'N2', 'Na', 'NO', 'NO2',
+            'OCS', 'PH3', 'SH', 'SiH', 'SO2',
+            'TiH', 'TiO', 'VO'] # add H-
 
 ### P, Met are in logarithmic scale; T, C_O are in linear scale
 def read_logX(log_P, T, C_O, log_Met, species, return_dict=True):
@@ -75,8 +77,8 @@ def read_logX(log_P, T, C_O, log_Met, species, return_dict=True):
 
         species (string or list of string):
             A list of chemical species to calculate mixing ratios for.
-            Supported species are ['H2O', 'CO2', 'OH', 'C2H2', 'C2H4', 'H2S',
-                                   'O2', 'O3', 'NH3', 'SiO', 'CH4', 'CO', 'C2', 
+            Supported species are ['H2O', 'CO2', 'OH', 'SO', 'C2H2', 'C2H4', 'H2S',
+                                   'O2', 'O3', 'HCN', 'NH3', 'SiO', 'CH4', 'CO', 'C2', 
                                    'CaH', 'CrH', 'FeH', 'HCl', 'K', 'MgH', 'N2', 
                                    'Na', 'NO', 'NO2', 'OCS', 'PH3', 'SH', 'SiH',
                                    'SO2', 'TiH', 'TiO', 'VO']
@@ -122,9 +124,9 @@ def read_logX(log_P, T, C_O, log_Met, species, return_dict=True):
 
     def not_valid(params, grid, is_log):
         if is_log:
-            return (10**params[0] < grid[0] and not np.isclose(10**params[0], grid[0])) or (10**params[-1] > grid[-1] and not np.isclose(10**params[-1], grid[-1]))
+            return (10**params[0] < grid[0]) or (10**params[-1] > grid[-1])
         else:
-            return (params[0] < grid[0] and not np.isclose(params[0], grid[0])) or (params[-1] > grid[-1] and not np.isclose(params[-1], grid[-1]))
+            return (params[0] < grid[0]) or (params[-1] > grid[-1])
 
     if not_valid(log_P, pressure_grid, True):
         raise Exception("Requested pressure is out of the grid. Use get_grid_info() to check the information about the grid.")
@@ -138,7 +140,7 @@ def read_logX(log_P, T, C_O, log_Met, species, return_dict=True):
     def interpolate(species):
         array = np.array(database[species+'/log(X)'])
         array = array.reshape(Met_num, C_O_num, T_num, P_num)
-        grid = RegularGridInterpolator((np.log10(metallicity_grid), c_o_grid, temperature_gird, np.log10(pressure_grid)), np.log10(array)) # since log(X) is corrected to log space, we should change np.log10(array) into just array.
+        grid = RegularGridInterpolator((np.log10(metallicity_grid), c_o_grid, temperature_gird, np.log10(pressure_grid)), array) # since log(X) is corrected to log space, we should change np.log10(array) into just array.
         return grid(np.vstack((log_Met, C_O, T, log_P)).T)
     if not return_dict:
         if isinstance(species, str):
