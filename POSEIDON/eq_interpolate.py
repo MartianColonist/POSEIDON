@@ -19,12 +19,15 @@ metallicity_grid = np.array(database['Info'+'/M/H grid'])
 c_o_grid = np.array(database['Info'+'/C/O grid'])
 
 def print_grid_info():
-    print("Temperature grid:"+str(temperature_gird))
-    print("Pressure grid:"+str(pressure_grid))
-    print("Metallicity grid:"+str(metallicity_grid))
-    print("C/O grid:"+str(c_o_grid))
+    print("Temperature grid: "+str(temperature_gird))
+    print("_________________________________________________________________________")
+    print("Pressure grid: "+str(pressure_grid))
+    print("_________________________________________________________________________")
+    print("Metallicity grid: "+str(metallicity_grid))
+    print("_________________________________________________________________________")
+    print("C/O grid: "+str(c_o_grid))
 
-def get_grid_info(parameter):
+def get_grid(parameter):
     if parameter in ["T", "t", "Temperature", "Temp", "temperature", "temp"]:
         return temperature_gird
     if parameter in ["P", "p", "Pressure", "pressure"]:
@@ -44,7 +47,7 @@ def get_supported_species():
             'SO2', 'TiH', 'TiO', 'VO']
 
 ### P, Met are in logarithmic scale; T, C_O are in linear scale
-def get_MR(log_P, T, C_O, log_Met, species, return_dict=True):
+def read_logX(log_P, T, C_O, log_Met, species, return_dict=True):
     '''
     Inquire the traces of a list of chemical species at a given combination of C/O ratio, 
     metallicity, and pressure-temperature profile, assuming equillibrium chemistry.
@@ -52,7 +55,7 @@ def get_MR(log_P, T, C_O, log_Met, species, return_dict=True):
     Args:
         log_P (float or array of float): 
             Pressure profile provided by the user (in log scale and in bar).
-             A single value will be expanded into an array np.full(length, P), where length == max(len(P_array), len(T_array), len(C_O), len(Met)).
+            A single value will be expanded into an array np.full(length, P), where length == max(len(P_array), len(T_array), len(C_O), len(Met)).
             10^{-7} to 10^{2} bar are supported.
 
         T (float or array of float):
@@ -91,18 +94,23 @@ def get_MR(log_P, T, C_O, log_Met, species, return_dict=True):
     Prerequisites:
         len(P_array) = len(T_array)
     '''
+    
+    supported_species = get_supported_species()
+    if isinstance(species, str):
+        if species not in supported_species: 
+            raise Exception("Your species is not supported. Use get_supported_species to check the list of supported species.")
+    else:
+        for molecule in species:
+            if molecule not in supported_species: 
+                raise Exception("At least one of your species is not supported. Use get_supported_species to check the list of supported species.")
 
     np.seterr(divide = 'ignore')
     len_P, len_T, len_C_O, len_Met = np.array(log_P).size, np.array(T).size, np.array(C_O).size, np.array(log_Met).size
     max_len = max(len_P, len_T, len_C_O, len_Met)
-    assert len_P in (1, max_len) and len_T in (1, max_len) and len_C_O in (1, max_len) and len_Met in (1, max_len), "Input shape not accepted"
+    if not (len_P in (1, max_len) and len_T in (1, max_len) and len_C_O in (1, max_len) and len_Met in (1, max_len)):
+        raise Exception("Input shape not accepted. The lengths must either be the same or 1 (to be extended).")
 
-    # Below is how the database is constructed. Utilizing this information simplifies interpolation and reduces database size.
-
-    C_O_num = len(c_o_grid)
-    Met_num = len(metallicity_grid)
-    T_num = len(temperature_gird)
-    P_num = len(pressure_grid)
+    C_O_num, Met_num, T_num, P_num = len(c_o_grid), len(metallicity_grid), len(temperature_gird), len(pressure_grid)
     if len_P == 1:
         log_P = np.full(max_len, log_P)
     if len_T == 1:
@@ -111,10 +119,26 @@ def get_MR(log_P, T, C_O, log_Met, species, return_dict=True):
         C_O = np.full(max_len, C_O)
     if len_Met == 1:
         log_Met = np.full(max_len, log_Met)
+
+    def not_valid(params, grid, is_log):
+        if is_log:
+            return (10**params[0] < grid[0] and not np.isclose(10**params[0], grid[0])) or (10**params[-1] > grid[-1] and not np.isclose(10**params[-1], grid[-1]))
+        else:
+            return (params[0] < grid[0] and not np.isclose(params[0], grid[0])) or (params[-1] > grid[-1] and not np.isclose(params[-1], grid[-1]))
+
+    if not_valid(log_P, pressure_grid, True):
+        raise Exception("Requested pressure is out of the grid. Use get_grid_info() to check the information about the grid.")
+    if not_valid(T, temperature_gird, False):
+        raise Exception("Requested temperature is out of the grid. Use get_grid_info() to check the information about the grid.")
+    if not_valid(C_O, c_o_grid, False):
+        raise Exception("Requested C/O is out of the grid. Use get_grid_info() to check the information about the grid.")
+    if not_valid(log_Met, metallicity_grid, True):
+        raise Exception("Requested M/H is out of the grid. Use get_grid_info() to check the information about the grid.")
+
     def interpolate(species):
         array = np.array(database[species+'/log(X)'])
         array = array.reshape(Met_num, C_O_num, T_num, P_num)
-        grid = RegularGridInterpolator((np.log10(metallicity_grid), c_o_grid, temperature_gird, np.log10(pressure_grid)), np.log10(array))
+        grid = RegularGridInterpolator((np.log10(metallicity_grid), c_o_grid, temperature_gird, np.log10(pressure_grid)), np.log10(array)) # since log(X) is corrected to log space, we should change np.log10(array) into just array.
         return grid(np.vstack((log_Met, C_O, T, log_P)).T)
     if not return_dict:
         if isinstance(species, str):
@@ -127,7 +151,8 @@ def get_MR(log_P, T, C_O, log_Met, species, return_dict=True):
     else:
         MR_dict = {}
         if isinstance(species, str):
-            species = [species]
+            MR_dict[species] = interpolate(species)
+            return MR_dict
         for _, molecule in enumerate(species):
             MR_dict[molecule] = interpolate(molecule)
         return MR_dict
