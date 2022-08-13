@@ -1,5 +1,5 @@
 '''
-Values of various physical constants used by POSEIDON
+Values of various physical constants used by POSEIDON.
 
 '''
 
