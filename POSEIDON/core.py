@@ -1,5 +1,5 @@
 ''' 
-POSEIDON CORE ROUTINE
+POSEIDON CORE ROUTINE.
 
 Copyright 2022, Ryan J. MacDonald.
 
@@ -19,13 +19,12 @@ import scipy.constants as sc
 from mpi4py import MPI
 from spectres import spectres
 
-from .constants import R_Sun, R_J, R_E
+from .constants import R_J, R_E
 
 from .utility import create_directories, write_spectrum, read_data
-from .stellar import planck_lambda, load_stellar_pysynphot, \
-                     stellar_contamination_general
+from .stellar import planck_lambda, load_stellar_pysynphot
 from .supported_opac import supported_species, supported_cia, inactive_species
-from .parameters import assign_free_params, reformat_log_X, generate_state, \
+from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
                         extinction_LBL
@@ -41,27 +40,38 @@ rank = comm.Get_rank()
 
 
 def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, 
-                stellar_spectrum = True, grid = 'blackbody',
+                stellar_spectrum = False, grid = 'blackbody',
                 heterogeneous = False, f_het = 0.0, T_het = None):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
+
+    Stellar spectra are only required to compute transmission spectra if the
+    star has unocculted stellar heterogeneities (spots/faculae) - since the 
+    stellar intensity cancels out in the transit depth. Hence a stellar 
+    spectrum is only added to the stellar dictionary if the user requests it.
 
     Args:
         R_s (float): 
             Stellar radius (m).
         T_eff (float):
             Stellar effective temperature (K).
-        err_T_s (float):
-            A priori 1-sigma error on stellar effective temperature (K).
-        Met_s (float),
-            Stellar metallicity [log10(Fe/H_star / Fe/H_solar)].
-        log_g_s (int):
+        log_g (float):
             Stellar log surface gravity (log10(cm/s^2) by convention).
+        Met (float):
+            Stellar metallicity [log10(Fe/H_star / Fe/H_solar)].
+        T_eff_error (float):
+            A priori 1-sigma error on stellar effective temperature (K).
         stellar_spectrum (bool):
             If True, compute a stellar spectrum.
         grid (string):
             Stellar model grid to use if 'stellar_spectrum' is True.
             (Options: blackbody / cbk04 / phoenix).
+        heterogeneous (bool):
+            if True, add contributions from unocculted spots/faculae.
+        f_het (float):
+            Fraction of stellar photosphere covered by spots/faculae.
+        T_het (float):
+            Temperature of the heterogeneity (K). 
     
     Returns:
         star (dict):
@@ -128,7 +138,11 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
 def create_planet(planet_name, R_p, mass = None, gravity = None, 
                   log_g = None, T_eq = None, d = None, d_err = None, b_p = 0.0):
     '''
-    Initialise the stellar dictionary object used by POSEIDON.
+    Initialise the planet dictionary object used by POSEIDON.
+
+    The user only need provide one out of 'mass', 'gravity', or 'log_g'
+    (depending on their unit of preference). Note that 'gravity' follows SI
+    units (m/s^2), whilst 'log_g' follows the CGS convention (log_10 cm/s^2).
 
     Args:
         planet_name (str):
@@ -140,7 +154,7 @@ def create_planet(planet_name, R_p, mass = None, gravity = None,
         gravity (float):
             Planetary gravity corresponding to observed radius (m/s^2).
         log_g (float):
-            Instead of g, can provide log_10 (g / cm/s^2).
+            Instead of g, the user can provide log_10 (g / cm/s^2).
         T_eq (float):
             Planetary equilibrium temperature (zero albedo) (K). 
         d (float):
@@ -252,7 +266,7 @@ def define_model(model_name, bulk_species, param_species,
         cloud_dim (int):
             Dimensionality of the cloud model prescription (only the Iceberg
             cloud model supports 3D clouds)
-            (Options: 1 / 2 / 3).object_type = 'transiting', 
+            (Options: 1 / 2 / 3).
         TwoD_type (str):
             For 2D models, specifies whether the model considers day-night
             gradients or evening-morning gradients
@@ -262,18 +276,17 @@ def define_model(model_name, bulk_species, param_species,
             free parameters (e.g. day & night vs. terminator & day-night diff.)
             (Options: absolute / difference).
         species_EM_gradient (list of str):
-            Chemical species with an evening-morning mixing ratio gradient.
+            List of chemical species with an evening-morning mixing ratio gradient.
         species_DN_gradient (list of str):
-            Chemical species with a day-night mixing ratio gradient.
+            List of chemical species with a day-night mixing ratio gradient.
         species_vert_gradient (list of str):
-            Chemical species with a vertical mixing ratio gradient.
+            List of chemical species with a vertical mixing ratio gradient.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
 
-    
     Returns:
         model (dict):
-            A specific description of the desired POSEIDON model.
+            Dictionary containing the description of the desired POSEIDON model.
 
     '''
 
@@ -369,15 +382,15 @@ def wl_grid_constant_R(wl_min, wl_max, R):
 
     Args:
         wl_min (float):
-            Minimum wavelength of grid (micron).
+            Minimum wavelength of grid (μm).
         wl_max (float): 
-            Maximum wavelength of grid (micron).
+            Maximum wavelength of grid (μm).
         R (int or float):
             Spectral resolution of desired wavelength grid.
     
     Returns:
         wl (np.array of float):
-            Model wavelength grid (micron).
+            Model wavelength grid (μm).
 
     '''
 
@@ -398,28 +411,27 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
 
     Args:
         wl_min (float):
-            Minimum wavelength of grid (micron).
+            Minimum wavelength of grid (μm).
         wl_max (float): 
-            Maximum wavelength of grid (micron).
-        line_by_line_R (float):
+            Maximum wavelength of grid (μm).
+        line_by_line_res (float):
             Wavenumber resolution of pre-computer opacity database (0.01 cm^-1).
     
     Returns:
         wl (np.array of float):
-            Model wavelength grid (micron).
+            Model wavelength grid (μm).
 
     '''
 
     nu_min = 1.0e4/wl_max   # Minimum wavenumber on output grid
     nu_max = 1.0e4/wl_min   # Maximum wavenumber on output grid
     
-    # Round so wavenumber grid bounds to match cross section resolution (0.01 cm^-1)
+    # Round so wavenumber grid bounds match cross section resolution (0.01 cm^-1)
     nu_min = np.around(nu_min, np.abs(np.int(np.log10(line_by_line_res))))
     nu_max = np.around(nu_max, np.abs(np.int(np.log10(line_by_line_res))))
     
     # Find number of wavenumber points on grid
     N_nu = np.int((nu_max - nu_min)/line_by_line_res)
-    N_wl = N_nu
     
     # Initialise line-by-line model wavenumber grid
     nu = np.linspace(nu_max, nu_min, N_nu)                          # Decreasing wavenumber order
@@ -446,7 +458,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         model (dict):
             A specific description of a given POSEIDON model.
         wl (np.array of float):
-            Model wavelength grid (microns).
+            Model wavelength grid (μm).
         opacity_treatment (str):
             Choice between opacity sampling or line-by-line cross sections
             (Options: opacity_sampling / line_by_line).
@@ -461,8 +473,8 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
     Returns:
         opac (dict):
             Collection of numpy arrays storing cross sections for the molecules, 
-            atoms, and ions contained in the model. Separate arrays store 
-            standard cross sections, CIA, free-free and bound-free opacity, 
+            atoms, and ions contained in the model. The separate arrays store 
+            standard cross sections, CIA, free-free + bound-free opacity, 
             and Rayleigh scattering cross sections.
     
     '''
@@ -540,15 +552,15 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
         geometry_params (np.array of float):
             Terminator opening angle parameters.
         log_g (float):
-            Gravitational field of planet - only needed for free log_g parameter
+            Gravitational field of planet - only needed for free log_g parameter.
         T_input (np.array of float):
-            Temperature profile provided directly by the user.
+            Temperature profile (only if provided directly by the user).
         X_input (2D np.array of float):
-            Mixing ratio profiles provided directly by the user.
+            Mixing ratio profiles (only if provided directly by the user).
         P_surf (float):
             Surface pressure of the planet.
         He_fraction (float):
-            Assumed H2/He ratio (0.17 default corresponds to the Sun).
+            Assumed H2/He ratio (0.17 default corresponds to the solar ratio).
         N_slice_EM (even int):
             Number of azimuthal slices in the evening-morning transition region.
         N_slice_DN (even int):
@@ -556,8 +568,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     
     Returns:
         atmosphere (dict):
-            Collection of the atmospheric properties required to compute the
-            resultant spectra of the planet.
+            Collection of atmospheric properties required to compute the
+            resultant spectrum of the planet.
     
     '''
 
@@ -599,7 +611,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     ff_pairs = model['ff_pairs']
     bf_species = model['bf_species']
 
-    # User input checks
+    # Checks for validity of user inputs
     if (((T_input != []) or (X_input != [])) and Atmosphere_dimension > 1):
         raise Exception("Only 1D P-T and mixing ratio profiles are currently " +
                         "supported as user inputs. Multidimensional inputs " +
@@ -613,7 +625,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     if ((geometry_params == []) and (Atmosphere_dimension > 1)):
         raise Exception("Geometry parameters must be provided for 2D or 3D models.")
 
-    #***** First, establish model geometry *****# 
+    #***** Establish model geometry *****# 
 
     # Check that the number of azimuthal and zenith slices are even
     if ((N_slice_EM % 2 != 0) or (N_slice_DN % 2 != 0)):
@@ -625,8 +637,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                                             N_slice_EM, N_slice_DN)
 
     # Unpack terminator opening angles (for 2D or 3D models)
-    alpha, beta = unpack_geometry_params(param_names, N_params_cum, 
-                                         geometry_params)
+    alpha, beta = unpack_geometry_params(param_names, geometry_params,
+                                         N_params_cum)
 
     # Compute discretised angular grids for multidimensional atmospheres
     phi, theta, phi_edge, \
@@ -707,6 +719,7 @@ def check_atmosphere_physical(atmosphere, opac):
         T_min = np.min(T)
         T_max = np.max(T)
 
+        # Only need to check fine temperature grid when using opacity sampling
         if (opac['opacity_treatment'] == 'opacity_sampling'):
 
             # Unpack fine temperature grid (opacity sampling only)
@@ -721,16 +734,18 @@ def check_atmosphere_physical(atmosphere, opac):
             else:
                 return True
 
+        # For line-by-line models, there is not fine temperature grid
         else:
             return True
             
 
 def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
-                     disable_continuum = False, suppress_print = False):
+                     disable_continuum = False, suppress_print = False,
+                     Gauss_quad = 2):
     '''
-    Solves the radiative transfer equation to compute the transmission
-    spectrum of the model atmosphere.
+    Calculate extinction coefficients, then solve the radiative transfer 
+    equation to compute the spectrum of the model atmosphere.
 
     Args:
         planet (dict):
@@ -744,18 +759,25 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         opac (dict):
             Collection of cross sections and other opacity sources.
         wl (np.array of float):
-            Model wavelength grid (microns)
+            Model wavelength grid (μm).
         spectrum_type (str):
             The type of spectrum for POSEIDON to compute
             (Options: transmission / emission / direct_emission).
-        write_spectrum (bool):
+        save_spectrum (bool):
             If True, writes the spectrum to './POSEIDON_output/PLANET/spectra/'.
         disable_continuum (bool):
             If True, turns off CIA and Rayleigh scattering opacities.
+        suppress_print (bool):
+            if True, turn off opacity print statements (in line-by-line mode).
+        Gauss_quad (int):
+            Gaussian quadrature order for integration over emitting surface
+            * Only for emission spectra *
+            (Options: 2 / 3).
 
     Returns:
         spectrum (np.array of float):
-            The desired atmospheric spectrum.
+            The spectrum of the atmosphere (transmission or emission).
+    
     '''
 
     # Check if the atmosphere is unphysical (e.g. temperature out of bounds)
@@ -775,8 +797,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         raise Exception("Only transmission spectra and emission " +
                         "spectra are currently supported.")
     elif (('emission' in spectrum_type) and 
-         ((PT_dim + X_dim + cloud_dim) != 3)):
-        raise Exception("Only 1D emission spectra currently supported.")
+         ((PT_dim or X_dim or cloud_dim) == 3)):
+        raise Exception("Only 1D or 2D emission spectra currently supported.")
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
@@ -861,10 +883,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                   X_ff, X_bf, a, gamma, P_cloud,
                                                   kappa_cloud_0, Rayleigh_stored, 
                                                   enable_haze, enable_deck,
-                                                  enable_surface,
-                                                  N_sectors, N_zones, P_surf,
-                                                  opacity_database, disable_continuum,
-                                                  suppress_print)
+                                                  enable_surface, N_sectors, 
+                                                  N_zones, P_surf, opacity_database, 
+                                                  disable_continuum, suppress_print)
         
     # If using opacity sampling, we can use pre-interpolated cross sections
     elif (opac['opacity_treatment'] == 'opacity_sampling'):
@@ -910,8 +931,21 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         if (d is None):
             d = 1        # This value only used for flux ratios, so it cancels
 
+        # Find zone index for the emission spectrum atmospheric region
+        if (spectrum_type == 'dayside_emission'):
+            zone_idx = 0
+        elif (spectrum_type == 'nightside_emission'):
+            zone_idx = -1
+        else:
+            zone_idx = 0
+
+        # Use atmospheric properties from dayside/nightside
+        kappa = kappa_clear[:,0,zone_idx,:]  # Only consider one region for 1D models
+        dz = dr[:,0,zone_idx]   # Only consider one region for 1D/2D models
+        T = T[:,0,zone_idx]     # Only consider one region for 1D/2D models
+
         # Compute planet flux
-        F_p = emission_rad_transfer(T, dr, wl, kappa_clear)
+        F_p = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
 
         # Convert planet surface flux to observed flux at Earth
         F_p_obs = (R_p / d)**2 * F_p
@@ -947,7 +981,31 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
 def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None):
     '''
-    ADD DOCSTRING
+    Load the user provided datasets into the format expected by POSEIDON. 
+    Also generate the functions required for POSEIDON to later calculate 
+    the binned data for each instrument (e.g. the PSFs for each instrument)
+    corresponding to model spectra.
+
+    Args:
+        data_dir (str):
+            Path to the directory containing the user's data files.
+        datasets (list of str):
+            List containing file names of the user's data files.
+        instruments (list of str):
+            List containing the instrument names corresponding to each data file
+            (e.g. WFC3_G141, JWST_NIRSpec_PRISM, JWST_NIRISS_SOSS_Ord2).
+        wl_model (np.array of float):
+            Model wavelength grid (μm).
+        offset_datasets (list of str):
+            If applying a relative offset to one or more datasets, this list
+            gives the file names of the datasets that will have free offsets
+            applied (note: currently only supports *one* offset dataset). 
+
+    Returns:
+        data (dict):
+            Collection of data properties required for POSEIDON's instrument
+            simulator (i.e. to create simulated binned data during retrievals).
+    
     '''
 
     # If the user is running the retrieval tutorial, point to the reference data
@@ -994,14 +1052,14 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None)
         bin_right = np.concatenate([bin_right, bin_right_i])  # Length for each dataset: len_data[i]
         norm = np.concatenate([norm, norm_i])                 # Length for each dataset: len_data[i]
         
-    N_data = len(ydata)  # Total number of data points
-    
     # Cumulative sum of data lengths for indexing later
     len_data_idx = np.append(np.array([0]), np.cumsum(len_data)).astype(np.int64)       
 
     # For relative offsets, find which data indices the offset applies to
     if (offset_datasets is not None):
         offset_datasets = np.array(offset_datasets)
+        if (len(offset_datasets > 1)):
+            raise Exception("Error: only one dataset can have a free offset.")
         if (offset_datasets[0] in datasets):
             offset_dataset_idx = np.where(datasets == offset_datasets[0])[0][0]
             offset_data_start = len_data_idx[offset_dataset_idx]  # Data index of first point with offset
@@ -1032,7 +1090,43 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None)
 
 def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     '''
-    ADD DOCSTRING
+    Initialise the priors for each free parameter for a POSEIDON retrieval.
+    
+    If the user does not provide a prior type or prior range for one or more
+    of the parameters, this function will prescribe a default prior with
+    a wide range. Thus the user can choose the degree to which they would
+    like to 'micromanage' the assignment of priors.
+    
+    Disclaimer: while using default priors can be good for exploratory 
+    retrievals, for a publication we *strongly* suggest you explicitly specify 
+    your priors - you'll need to give your priors in a Table somewhere anyway, 
+    so it's generally a good idea to know what they are ;)
+
+    Args:
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        star (dict):
+            Collection of stellar properties used by POSEIDON.
+        model (dict):
+            A specific description of a given POSEIDON model.
+        data (dict):
+            Collection of data properties in POSEIDON format.
+        prior_types (dict):
+            User-provided dictionary containing the prior type for each 
+            free parameter in the retrieval moel
+            (Options: uniform, gaussian, sine, CLR).
+        prior_ranges (dict):
+            User-provided dictionary containing numbers defining the prior range
+            for each free parameter in the retrieval model
+            (Options: for 'uniform' [low, high], for 'gaussian' [mean, std],
+                      for 'sine' [high] - only for 2D/3D angle parameters,
+                      for 'CLR' [low] - only for mixing ratios).
+
+    Returns:
+        priors (dict):
+            Collection of the prior types and ranges used by POSEIDON's
+            retrieval module.
+    
     '''
 
     # Unpack parameter names
@@ -1062,13 +1156,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                                    prior_ranges['R_p_ref'][1]/R_p_norm]
 
     # Set default priors (used if user doesn't specify one or more priors)
-    prior_ranges_defaults = {'T': [400, T_eq+200], 'Delta_T': [0, 1000],
-                             'T_mid': [400, 3000], 'T_high': [400, 3000],
-                             'a1': [0.02, 2.00], 'a2': [0.02, 2.00],
-                             'log_P1': [-6, 2], 'log_P2': [-6, 2],
-                             'log_P3': [-2, 2], 'log_P_mid': [-5, 1],
-                             'log_P_surf': [-4, 1],
-                             'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
+    prior_ranges_defaults = {'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
+                             'log_g': [2.0, 5.0], 'T': [400, T_eq+200], 
+                             'Delta_T': [0, 1000], 'T_mid': [400, 3000],
+                             'T_high': [400, 3000], 'a1': [0.02, 2.00], 
+                             'a2': [0.02, 2.00], 'log_P1': [-6, 2], 
+                             'log_P2': [-6, 2], 'log_P3': [-2, 2],
+                             'log_P_mid': [-5, 1], 'log_P_surf': [-4, 1],
                              'log_X': [-12, -1], 'Delta_log_X': [-8, 8], 
                              'log_a': [-4, 8], 'gamma': [-20, 2], 
                              'log_P_cloud': [-6, 2], 'phi_cloud': [0, 1],
@@ -1118,6 +1212,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     prior_ranges[parameter] = prior_ranges['T']
                 else:
                     prior_ranges[parameter] = prior_ranges_defaults['T']
+
+            # Check if user didn't specify a distance prior for an imaged object 
+            elif (parameter == 'd'):
+                raise Exception("Error: no prior range provided for the system " +
+                                " distance. Perhaps there is GAIA data you can " +
+                                "use to prescribe a Gaussian prior for the " +
+                                "'d' parameter?")
             
             # For all other non-specified parameters, use the default values
             else:
@@ -1228,8 +1329,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     CLR_limit_check = CLR_limit
 
                 if (CLR_limit != CLR_limit_check):
-                    raise Exception("When using a CLR prior, all mixing ratio parameters " + 
-                                    "must have the same lower limit.")
+                    raise Exception("When using a CLR prior, all mixing ratio " + 
+                                    "parameters must have the same lower limit.")
                 else:
                     CLR_limit_check = CLR_limit
 
@@ -1237,13 +1338,5 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     priors = {'prior_ranges': prior_ranges, 'prior_types': prior_types}
 
     return priors
-
-
-
-
-
-
-
-
 
 
