@@ -165,6 +165,10 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         
     # 2D model (asymmetric terminator or day-night transition)
     elif (PT_dim == 2):
+
+        # Check that a 2D model type has been specified 
+        if (TwoD_type not in ['D-N', 'E-M']):
+            raise Exception("Error: 2D model type is not 'D-N' or 'E-M'.")
         
         # Parametrisation with separate morning / evening or day / night profiles
         if (TwoD_param_scheme == 'absolute'):
