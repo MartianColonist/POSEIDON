@@ -504,8 +504,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             return loglikelihood
 
         # For a retrieval we do not have user provided P-T or chemical profiles
-        T_input = None
-        log_X_input = None
+        T_input = []
+        log_X_input = []
 
         #***** Step 1: unpack parameter values from prior sample *****#
         
