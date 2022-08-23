@@ -57,6 +57,6 @@ Documentation for `POSEIDON`, with step-by-step tutorials illustrating research 
 
 RJM expresses gratitude to the developers of many open source Python packages used by `POSEIDON`, in particular `Numba` [@Lam:2015], `numpy` [@Harris:2020], `Matplotlib` [@Hunter:2007], `SciPy` [@Virtanen:2020], and `Spectres` [@Carnall:2017].
 
-RJM acknowledges financial support from the UK's Science and Technology Facilities Council (STFC) during the early development of `POSEIDON`. RJM thanks Nikole Lewis, Ishan Mishra, Jonathan Gomez Barrientos, John Kappelmeier, Antonia Peters, Kath Landgren, and Ruizhe Wang for helpful discussions.
+RJM acknowledges financial support from the UK's Science and Technology Facilities Council (STFC) during the early development of `POSEIDON` and support from NASA Grant 80NSSC20K0586 issued through the James Webb Space Telescope Guaranteed Time Observer Program. RJM thanks Nikole Lewis, Ishan Mishra, Jonathan Gomez Barrientos, John Kappelmeier, Antonia Peters, Kath Landgren, and Ruizhe Wang for helpful discussions.
 
 # References
