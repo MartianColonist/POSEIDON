@@ -1,4 +1,7 @@
-# Various miscellaneous functions
+''' 
+Various miscellaneous functions.
+
+'''
 
 import os
 import numpy as np
@@ -57,25 +60,37 @@ def create_directories(base_dir, planet_name):
         
 
 @jit(nopython = True)
-def prior_index(val, vec, start):
-    
-    ''' Finds the index of a grid closest to a specified value.
-    
+def prior_index(value, grid, start = 0):
+    ''' 
+    Search a grid to find the previous index closest to a specified value (i.e. 
+    the index of the grid where the grid value is last less than the value). 
+    This function assumes the input grid monotonically increases.
+
+    Args:
+        value (float):
+            Value for which the prior grid index is desired.
+        grid (np.array of float):
+            Input grid.
+        start (int):
+            Optional start index when existing knowledge is available.
+
+    Returns:
+        index (int):
+            Prior index of the grid corresponding to the value.
+
     '''
-    
-    value_tmp = val
-    
-    if (value_tmp > vec[-1]):
-        return (len(vec) - 1)
+        
+    if (value > grid[-1]):
+        return (len(grid) - 1)
     
     # Check if value out of bounds, if so set to edge value
-    if (value_tmp < vec[0]): value_tmp = vec[0]
-    if (value_tmp > vec[-2]): value_tmp = vec[-2]
+    if (value < grid[0]): value = grid[0]
+    if (value > grid[-2]): value = grid[-2]
     
     index = start
     
-    for i in range(len(vec)-start):
-        if (vec[i+start] > value_tmp): 
+    for i in range(len(grid)-start):
+        if (grid[i+start] > value): 
             index = (i+start) - 1
             break
             
@@ -84,28 +99,48 @@ def prior_index(val, vec, start):
 
 
 @jit(nopython=True)
-def prior_index_V2(val, grid_start, grid_end, N_grid):
-    
-    ''' Finds the previous index of a UNIFORM grid closest to a specified value.
-        A uniform grid dramatically speeds calculation over a non-uniform grid.
-       
+def prior_index_V2(value, grid_start, grid_end, N_grid):
+    ''' 
+    Find the previous index of a *uniformly spaced* grid closest to a specified 
+    value. When a uniform grid can be assumed, this function is much faster 
+    than 'prior_index' due to there being no need for a loop. However, 
+    for non-uniform grids one should still default to 'prior_index'.
+    This function assumes the input grid monotonically increases.
+
+    Args:
+        value (float):
+            The value for which the prior grid index is desired.
+        grid_start (float):
+            The value at the left edge of the uniform grid (array[0]).
+        grid_start (float):
+            The value at the right edge of the uniform grid (array[-1]).
+        N_grid (int):
+            The number of points on the uniform grid.
+
+    Returns:
+        (int):
+            Prior index of the grid corresponding to the value.
+
     '''
     
-    if (val < grid_start): 
+    # Set to lower boundary
+    if (value < grid_start):
         return 0
     
-    elif (val > grid_end):
+    # Set to upper boundary
+    elif (value > grid_end):
         return N_grid-1
     
+    # Use the equation of a straight line, then round down to integer.
     else:
-        i = (N_grid-1) * ((val - grid_start) / (grid_end - grid_start))
+        i = (N_grid-1) * ((value - grid_start) / (grid_end - grid_start))
         return int(i)
 
 
 @jit(nopython=True)
-def closest_index(val, grid_start, grid_end, N_grid):
+def closest_index(value, grid_start, grid_end, N_grid):
     '''
-    Finds the index of a uniform grid closest to a specified value.
+    Same as 'prior_index_V2', but for the closest index (i.e. can also round up).
 
     Args:
         val (float): 
@@ -119,85 +154,204 @@ def closest_index(val, grid_start, grid_end, N_grid):
 
     Returns:
         (int):
-            The index of the uniform grid closest to 'val'.
+            The index of the uniform grid closest to 'value'.
 
     '''
 
-    if (val < grid_start): 
+    # Set to lower boundary
+    if (value < grid_start): 
         return 0
     
-    elif (val > grid_end):
+    # Set to upper boundary
+    elif (value > grid_end):
         return N_grid-1
     
+    # Use the equation of a straight line, then round to nearest integer.
     else:
-        i = (N_grid-1) * ((val - grid_start) / (grid_end - grid_start))
-        if ((i%1)<=0.5):
-            return int(i)
+        i = (N_grid-1) * ((value - grid_start) / (grid_end - grid_start))
+        if ((i%1) <= 0.5):
+            return int(i)     # Round down
         else:
-            return int(i)+1
+            return int(i)+1   # Round up
         
 
 def size_profile(arr):
-    
-    ''' Profiles the size of a numpy array (returns size in Megabytes).
-    
+    '''
+    Profile the disk storage size of a numpy array. The resultant size in
+    Megabytes is printed to the terminal.
+
+    Args:
+        arr (np.array): 
+            Any numpy array.
+
+    Returns:
+        None
+
     '''
     
     print("%d Mb" % ((arr.size * arr.itemsize)/1048576.0))
 
 
-def file_name_check(file_path):
+def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half', 
+              spectrum_unit = '(Rp/Rs)^2', skiprows = None):
+    '''
+    Read an external dataset file. The expected file format is:
 
-    filename, extension = os.path.splitext(file_path)
-    counter = 1
+    wavelength | bin half width | spectrum | error on spectrum
 
-    while os.path.exists(file_path):
-        file_path = filename + " (" + str(counter) + ")" + extension
-        counter += 1
+    Args:
+        data_dir (str):
+            Path to the directory containing the data file.
+        fname (str):
+            File name of data file.
+        wl_unit (str):
+            Unit of wavelength column (first column in file)
+            (Options: micron (or equivalent) / nm / A / m)
+        bin_width (str):
+            Whether bin width (second column) is half or full width
+            (Options: half / full).
+        spectrum_unit (str):
+            Unit of spectrum (third column) and spectrum errors (fourth column)
+            (Options: (Rp/Rs)^2 / Rp/Rs / Fp/Fs / Fp (or equivalent units)).
+        skiprows (int):
+            The number of rows to skip (e.g. use 1 if file has a header line).
 
-    return file_path
-        
+    Returns:
+        wl_data (np.array of float): 
+            Bin centre wavelengths of data points (μm).
+        half_bin (np.array of float): 
+            Bin half widths of data points (μm).
+        spectrum (np.array of float):
+            Transmission or emission spectrum dataset.
+        err (np.array of float):
+            1σ error bar on spectral data.
 
-def read_data(data_dir, fname):
-    ''' 
-    Read a transmission spectrum dataset.
-    
     '''
     
+    # Load data file
     data = pd.read_csv(data_dir + '/' + fname, sep = '[\s]{1,20}', 
-                       engine = 'python', header=None)
-    wavelength = np.array(data[0])  # Wavelengths (um)
-    bin_size = np.array(data[1])    # Spectral bin size (um)
-    spectrum = np.array(data[2])    # Transit depth
-    err = np.array(data[3])         # Error on transit depth
+                       header = None, skiprows = skiprows, engine = 'python')
+
+    # Load wavelength and half bin width, then convert both to μm
+    if (wl_unit in ['micron', 'um', 'μm']):
+        wl_data = np.array(data[0])
+        wl_bin = np.array(data[1])
+    elif (wl_unit == 'nm'):
+        wl_data = np.array(data[0]) * 1e-3
+        wl_bin = np.array(data[1]) * 1e-3
+    elif (wl_unit == 'A'):
+        wl_data = np.array(data[0]) * 1e-4
+        wl_bin = np.array(data[1]) * 1e-4
+    elif (wl_unit == 'm'):
+        wl_data = np.array(data[0]) * 1e6
+        wl_bin = np.array(data[1]) * 1e6
+    else:
+        raise Exception("Error: unrecognised wavelength unit when reading data.")
+
+    # Divide bin widths by 2 if the file contains full bin widths
+    if (bin_width == 'half'):
+        half_bin = wl_bin
+    elif (bin_width == 'full'):
+        half_bin = wl_bin/2.0
+    else:
+        raise Exception("Error: unrecognised bin width unit when reading data.")
+
+    # Load spectrum and errors (converting to transit depth if Rp/Rs provided).
+    if (spectrum_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 
+                          'transit_depth', 'eclipse_depth', 
+                          'Fp/Fs', 'Fp/F*', 'Fp']):
+        spectrum = np.array(data[2])
+        err = np.array(data[3])
+    elif (spectrum_unit == 'ppm'):
+        spectrum = np.array(data[2]) * 1e-6
+        err = np.array(data[3]) * 1e-6
+    elif (spectrum_unit in ['%', 'percent']):
+        spectrum = np.array(data[2]) * 1e-2
+        err = np.array(data[3]) * 1e-2
+    elif (spectrum_unit in ['Rp/Rs', 'Rp/R*']):
+        spectrum = (np.array(data[2]))**2
+        err = (2.0 * (np.array(data[3]) / np.array(data[2]))) * spectrum  # Error propagation for Rp/Rs -> (Rp/Rs)^2
+    else:
+        raise Exception("Error: unrecognised spectrum unit when reading file.")
     
-    return wavelength, bin_size, spectrum, err
+    return wl_data, half_bin, spectrum, err
 
     
-def read_spectrum(planet_name, fname):
-    ''' 
-    Read in a pre-computed transmission spectrum.
-    
+def read_spectrum(planet_name, fname, wl_unit = 'micron'):
+    '''
+    Read a previously computed spectrum from the POSEIDON output folder
+    (POSEIDON_output/planet_name/spectra).
+
+    Args:
+        planet_name (str):
+            Identifier for planet object (e.g. HD209458b).
+        fname (str):
+            Name of spectrum file.
+        wl_unit (str):
+            Unit of wavelength column (first column in file)
+            (Options: micron (or equivalent) / nm / A / m)
+
+    Returns:
+        wavelength (np.array of float): 
+            Model wavelength grid (μm).
+        spectrum (np.array of float):
+            Transmission or emission spectrum.
+
     '''
 
-    # Identify output directory location where the spectrum will be saved
+    # Load POSEIDON directory location where the spectrum is stored
     input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
     
+    # Open file
     data = pd.read_csv(input_dir + fname, sep = '[\s]{1,20}', 
                        engine = 'python', header=None)
-    wavelength = np.array(data[0])  # Wavelengths (um)
-    spectrum = np.array(data[1])    # Transit depth
+
+    # Load wavelength then convert to μm
+    if (wl_unit in ['micron', 'um', 'μm']):
+        wavelength = np.array(data[0])
+    elif (wl_unit == 'nm'):
+        wavelength = np.array(data[0]) * 1e-3
+    elif (wl_unit == 'A'):
+        wavelength = np.array(data[0]) * 1e-4
+    elif (wl_unit == 'm'):
+        wavelength = np.array(data[0]) * 1e6
+    else:
+        raise Exception("Error: unrecognised wavelength unit when reading file.")
+
+    # Load spectrum (transit or eclipse depth)
+    spectrum = np.array(data[1])
     
     return wavelength, spectrum
 
 
-def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_column = None, 
-                 T_column = None, skiprows = False):
+def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_unit = 'bar',
+                 P_column = None, T_column = None, skiprows = None):
     '''
-    Read an external file containing the temeprature as a function of pressure.
+    Read an external file containing the temperature as a function of pressure.
+
+    Args:
+        PT_file_dir (str):
+            Directory containing the pressure-temperature file.
+        PT_file_name (str):
+            Name of pressure-temperature profile file.
+        P_grid (np.array of float):
+            POSEIDON model pressure grid (to interpolate external profile onto).
+        P_unit (str):
+            Pressure unit in external file
+            (Options: bar / Pa / atm).
+        P_column (int):
+            File column containing the pressure.
+        T_column (int):
+            File column containing the temperature.
+        skiprows (int):
+            The number of rows to skip (e.g. use 1 if file has a header line).
+
+    Returns:
+        T_interp (np.array of float): 
+            Temperature profile from external file interpolated onto the
+            POSEIDON model's pressure grid (K).
 
     '''
-
 
     # If the user is running the tutorial, point to the reference data folder
     if (PT_file_dir == 'Tutorial/TRAPPIST-1e'):
@@ -212,6 +366,17 @@ def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_column = None,
         P_raw = np.array(PT_file[int(P_column)-1])
     else:
         P_raw = np.array(PT_file[0])
+
+
+    # Convert pressure grid from file into bar
+    if (P_unit == 'bar'):
+        P_raw = P_raw
+    elif (P_unit == 'Pa'):
+        P_raw = P_raw / 1e5
+    elif (P_unit == 'atm'):
+        P_raw = P_raw * 1.01325
+    else:
+        raise Exception("Error: unrecognised pressure unit when reading file.")
 
     # Read temperature
     if (T_column != None):
@@ -232,10 +397,33 @@ def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_column = None,
     return T_interp
 
 
-def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_file, 
-                   chem_species_model, skiprows = None):
+def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_in_file, 
+                   chem_species_in_model, P_unit = 'bar', skiprows = None):
     '''
     Read an external file containing mixing ratios as a function of pressure.
+
+    Args:
+        chem_file_dir (str):
+            Directory containing the mixing ratio file.
+        chem_file_name (str):
+            Name of mixing ratio file.
+        P_grid (np.array of float):
+            POSEIDON model pressure grid (to interpolate mixing ratios onto).
+        chem_species_in_file (list of str):
+            The chemical species included in the external file.
+        chem_species_in_model (list of str):
+            The chemical species included in the POSEIDON model.
+        P_unit (str):
+            Pressure unit in external file
+            (Options: bar / Pa / atm).
+        skiprows (int):
+            The number of rows to skip (e.g. use 1 if file has a header line).
+
+    Returns:
+        X_interp (2D np.array of float): 
+            Mixing ratio profiles from external file interpolated onto the
+            POSEIDON model's pressure grid. Only includes the chemical species
+            specified in the POSEIDON model (i.e. chem_species_in_model).
 
     '''
     
@@ -256,19 +444,29 @@ def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_file,
         P_raw = P_raw[::-1]
         X_raw = X_raw[::-1,:]
     
+    # Convert pressure grid from file into bar
+    if (P_unit == 'bar'):
+        P_raw = P_raw
+    elif (P_unit == 'Pa'):
+        P_raw = P_raw / 1e5
+    elif (P_unit == 'atm'):
+        P_raw = P_raw * 1.01325
+    else:
+        raise Exception("Error: unrecognised pressure unit when reading file.")
+
     # Initialise interpolated mixing ratio array
-    X_interp = np.zeros(shape=(len(chem_species_model), len(P_grid)))  
+    X_interp = np.zeros(shape=(len(chem_species_in_model), len(P_grid)))  
 
     # Loop over chemical species, interpolating each onto the POSEIDON model P grid        
-    for q in range(len(chem_species_model)):
+    for q in range(len(chem_species_in_model)):
     
-        species = chem_species_model[q]
+        species = chem_species_in_model[q]
 
         # Chemicals not included in the external file will have zero mixing ratio
-        if (species in chem_species_file):
+        if (species in chem_species_in_file):
 
             # Find column index in file containing the model chemical species
-            idx = chem_species_file.index(species)
+            idx = chem_species_in_file.index(species)
 
             # Interpolate from chemistry pressure grid onto model pressure grid
             chem_interp = Interp(np.log10(P_raw), X_raw[:,idx],
@@ -281,6 +479,27 @@ def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_file,
 
 
 def bin_spectrum_fast(wl_native, spectrum_native, R_bin):
+    '''
+    Bin a model spectrum down to a specific spectral resolution. 
+    
+    This is a wrapper around the Python package SpectRes (for details on the 
+    resampling algorithm, see https://arxiv.org/abs/1705.05165).
+
+    Args:
+        wl_native (np.array of float): 
+            Input wavelength grid (μm).
+        spectrum_native (np.array of float): 
+            Input spectrum.
+        R_bin (float or int):
+            Spectral resolution (R = wl/dwl) to re-bin the spectrum onto.
+
+    Returns:
+        wl_binned (np.array of float): 
+            New wavelength grid spaced at R = R_bin (μm).
+        spectrum_binned (np.array of float):
+            Re-binned spectrum at resolution R = R_bin.
+
+    '''
         
     # Create binned wavelength grid at resolution R_bin
     delta_log_wl_bins = 1.0/R_bin
@@ -289,10 +508,15 @@ def bin_spectrum_fast(wl_native, spectrum_native, R_bin):
     log_wl_binned = np.linspace(np.log(wl_native[0]), np.log(wl_native[-1]), N_wl_bins)    
     wl_binned = np.exp(log_wl_binned)
     
+    # Call Spectres routine
     spectrum_binned = spectres(wl_binned, wl_native, spectrum_native,
                                verbose = False)
-    
-    return wl_binned[1:-1], spectrum_binned[1:-1]   # Cut out first and last values to avoid nans
+
+    # Cut out first and last values to avoid SpectRes boundary NaNs
+    wl_binned = wl_binned[1:-1]
+    spectrum_binned = spectrum_binned[1:-1]  
+
+    return wl_binned, spectrum_binned
                 
 
 def write_spectrum(planet_name, model_name, spectrum, wl):
@@ -524,43 +748,7 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
     
     return P, chemical_species, log_X_low2, log_X_low1, log_X_median, \
            log_X_high1, log_X_high2
-
-''' 
-Deprecated functions
-
-def write_output_binned(planet_name, wl, spectrum_binned, description):
-    
-    # Write spectrum
-    f = open('../../output/spectra/' + planet_name + '/' + planet_name + '_' + 
-             description + '_best_binned.dat','w')
-    
-    for i in range(len(wl)):
-        f.write('%.8e %.8e \n' %(wl[i], spectrum_binned[i]))
-        
-    f.close()
-    
-    
-def write_geometry(planet_name, r, T, theta_edge, phi_edge, description):
-    
-    file = '../../output/geometry/' + planet_name + '/' + planet_name + '_' + description + '.npy'
-    
-    with open(file, 'wb') as f:
-        np.save(f, r)
-        np.save(f, T)
-        np.save(f, theta_edge)
-        np.save(f, phi_edge)
-    
-    
-def write_data(planet_name, wl_data, bin_size, spectrum, err_data, instrument):
-    
-    # Write spectrum
-    f = open('../../observations/' + planet_name + '/' + planet_name + '_SYNTHETIC_' + instrument + '.dat','w')
-    
-    for j in range(len(wl_data)):
-        f.write('%.8f %.8f %.8e %.8e \n' %(wl_data[j], bin_size[j], spectrum[j], err_data[j]))
-        
-    f.close()
-'''  
+ 
 
 def plot_collection(new_y, new_x, collection = []):
     

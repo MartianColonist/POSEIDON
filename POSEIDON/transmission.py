@@ -5,16 +5,6 @@ from numba.core.decorators import jit
 from .absorption import extinction, extinction_LBL
 
 from .utility import prior_index, closest_index
-
-#from utility import prior_index
-#from atmosphere import profiles
-#from instrument import make_model_data
-#from geometry import angular_grids
-#from stellar import stellar_contamination_single_spot
-#from parameters import unpack_cloud_params, unpack_geometry_params
-#from config import N_D, R_s, T_s, b_p, opacity_treatment, TwoD_type, \
-#                   N_slice_EM, N_slice_DN, term_transition, stellar_contam, \
-#                   rad_transfer, load_observations, P_deep
                    
 
 @jit(nopython=True)
