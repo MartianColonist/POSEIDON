@@ -194,17 +194,17 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
                 
                 # One final check that all X_i > 10^(-12)
                 if (X[i] < 1.0e-12): 
-                    return (np.ones(n)*(-50.0))    # Fails check -> return dummy array of log values
+                    return (np.ones(n+1)*(-50.0))    # Fails check -> return dummy array of log values
             
-            return np.log10(X[1:])   # Return vector of log-mixing ratios
+            return np.log10(X)   # Return vector of log-mixing ratios
         
         elif ((np.max(CLR) - np.min(CLR)) > (-1.0 * limit * np.log(10.0))):
         
-            return (np.ones(n)*(-50.0))   # Fails check -> return dummy array of log values
+            return (np.ones(n+1)*(-50.0))   # Fails check -> return dummy array of log values
     
     elif (np.abs(np.sum(CLR[1:n])) > prior_upper_CLR):   # If falls outside of allowed triangular subspace
         
-        return (np.ones(n)*(-50.0))    # Fails check -> return dummy array of log values
+        return (np.ones(n+1)*(-50.0))    # Fails check -> return dummy array of log values
 
 
 def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
@@ -504,8 +504,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             return loglikelihood
 
         # For a retrieval we do not have user provided P-T or chemical profiles
-        T_input = None
-        log_X_input = None
+        T_input = []
+        log_X_input = []
 
         #***** Step 1: unpack parameter values from prior sample *****#
         

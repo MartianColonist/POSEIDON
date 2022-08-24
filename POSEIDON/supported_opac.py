@@ -1,8 +1,12 @@
-# Supported opacity sources in the current version of POSEIDON
+''' 
+Supported opacity sources in the current version of POSEIDON.
+
+'''
+
 
 import numpy as np
 
-# Chemical species qith cross sections included in opacity database
+# Chemical species with cross sections included in opacity database
 supported_species = np.array(['AlH', 'AlO', 'BeH', 'C2H2', 'CH', 'CH4', 'CO', 
                               'CO2', 'CaH', 'CaO', 'CrH', 'Cs', 'Fe', 'Fe+', 
                               'FeH', 'H2', 'H2O', 'H2S', 'H3+', 'HCN', 'K', 
