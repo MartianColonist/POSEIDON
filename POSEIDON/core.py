@@ -124,6 +124,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
 
         F_star = None
         wl_star = None
+        I_phot = None
+        I_het = None
 
     # Package stellar properties
     star = {'stellar_radius': R_s, 'stellar_T_eff': T_eff, 
