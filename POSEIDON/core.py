@@ -40,7 +40,7 @@ rank = comm.Get_rank()
 
 
 def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, 
-                stellar_spectrum = False, grid = 'blackbody',
+                stellar_spectrum = False, stellar_grid = 'blackbody',
                 heterogeneous = False, f_het = 0.0, T_het = None):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
@@ -82,7 +82,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
     # Compute stellar spectrum
     if (stellar_spectrum == True):
 
-        if (grid == 'blackbody'):
+        if (stellar_grid == 'blackbody'):
 
             # Create fiducial wavelength grid for blackbody spectrum
             wl_min = 0.2
@@ -99,7 +99,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
 
             # Obtain photosphere spectrum by interpolating stellar grids
             wl_star, I_phot = load_stellar_pysynphot(T_eff, Met, log_g, 
-                                                     grid = grid)
+                                                     stellar_grid)
 
         # For uniform stellar surfaces
         if (heterogeneous == False):
@@ -114,7 +114,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
         elif (heterogeneous == True):
 
             # Obtain heterogeneity spectrum by interpolation
-            _, I_het = load_stellar_pysynphot(T_het, Met, log_g, grid = grid)
+            _, I_het = load_stellar_pysynphot(T_het, Met, log_g, stellar_grid)
 
             # Evaluate total stellar flux as a weighted sum of each region 
             F_star = np.pi * ((f_het * I_het) + (1.0 - f_het) * I_phot)
@@ -981,7 +981,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     return spectrum
 
 
-def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None):
+def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
+              wl_unit = 'micron', bin_width = 'half', spectrum_unit = '(Rp/Rs)^2', 
+              skiprows = None):
     '''
     Load the user provided datasets into the format expected by POSEIDON. 
     Also generate the functions required for POSEIDON to later calculate 
@@ -1001,7 +1003,18 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None)
         offset_datasets (list of str):
             If applying a relative offset to one or more datasets, this list
             gives the file names of the datasets that will have free offsets
-            applied (note: currently only supports *one* offset dataset). 
+            applied (note: currently only supports *one* offset dataset).
+        wl_unit (str):
+            Unit of wavelength column (first column in file)
+            (Options: micron (or equivalent) / nm / A / m)
+        bin_width (str):
+            Whether bin width (second column) is half or full width
+            (Options: half / full).
+        spectrum_unit (str):
+            Unit of spectrum (third column) and spectrum errors (fourth column)
+            (Options: (Rp/Rs)^2 / Rp/Rs / Fp/Fs / Fp (or equivalent units)).
+        skiprows (int):
+            The number of rows to skip (e.g. use 1 if file has a header line).
 
     Returns:
         data (dict):
@@ -1030,7 +1043,9 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None)
     for i in range(len(datasets)):
         
         # Read data files
-        wl_data_i, half_bin_i, ydata_i, err_data_i = read_data(data_dir, datasets[i])
+        wl_data_i, half_bin_i, \
+        ydata_i, err_data_i = read_data(data_dir, datasets[i], wl_unit,
+                                        bin_width, spectrum_unit, skiprows)
         
         # Combine datasets
         wl_data = np.concatenate([wl_data, wl_data_i])
