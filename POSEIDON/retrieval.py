@@ -6,6 +6,7 @@ import os
 import pymultinest
 from mpi4py import MPI
 from scipy.special import ndtri
+from spectres import spectres
 from numba.core.decorators import jit
 from scipy.special import erfcinv
 from scipy.special import lambertw as W
@@ -230,6 +231,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     radius_unit = model['radius_unit']
     surface = model['surface']
 
+    R_p = planet['planet_radius']
+
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
 
@@ -244,7 +247,32 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
     global allowed_simplex    # Needs to be global, as prior function has no return
 
-    allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior     
+    allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
+
+
+
+    d = planet['system_distance']
+
+    if (d is None):
+        d = 1        # This value only used for flux ratios, so it cancels
+
+    # Load stellar spectrum
+    F_s = star['F_star']
+    wl_s = star['wl_star']
+    R_s = star['stellar_radius']
+
+    if (F_s != None):
+
+        # Interpolate stellar spectrum onto planet spectrum wavelength grid
+        F_s_interp = spectres(wl, wl_s, F_s)
+
+        # Convert stellar surface flux to observed flux at Earth
+        F_s_obs = (R_s / d)**2 * F_s_interp
+
+    else:
+
+        # Stellar flux not needed for transmission spectra
+        F_s_obs = None
     
     # Define the prior transformation function
     def Prior(cube, ndim, nparams):
@@ -514,13 +542,17 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         geometry_params, stellar_params, \
         offset_params, err_inflation_params = split_params(cube, N_params_cum)
 
-        R_p_ref = physical_params[0]   # Reference radius is first physical parameter
+        if (spectrum_type == 'transmission'):
+            R_p_ref = physical_params[0]   # Reference radius is first physical parameter
 
-        # Convert normalised radius drawn by MultiNest back into SI
-        if (radius_unit == 'R_J'):
-            R_p_ref *= R_J
-        elif (radius_unit == 'R_E'):
-            R_p_ref *= R_E
+            # Convert normalised radius drawn by MultiNest back into SI
+            if (radius_unit == 'R_J'):
+                R_p_ref *= R_J
+            elif (radius_unit == 'R_E'):
+                R_p_ref *= R_E
+
+        else:
+            R_p_ref = R_p
 
         # Unpack log(gravity) if set as a free parameter
         if ('log_g' in physical_param_names):
@@ -580,7 +612,16 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             
         #***** Step 5: convolve spectrum with instrument PSF and bin to data resolution ****#
 
-        ymodel = bin_spectrum_to_data(spectrum, wl, data)
+        if (spectrum_type == 'transmission'):
+            ymodel = bin_spectrum_to_data(spectrum, wl, data)
+        else:
+            F_p_binned = bin_spectrum_to_data(spectrum, wl, data)
+            if (spectrum_type == 'direct_emission'):
+                ymodel = F_p_binned
+            else:
+                F_s_binned = bin_spectrum_to_data(F_s_obs, wl, data)
+                ymodel = F_p_binned/F_s_binned
+
                                                                          
         #***** Step 6: inflate error bars (optional) ****#
         
@@ -635,6 +676,8 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
     N_params_cum = model['N_params_cum']
     surface = model['surface']
 
+    R_p = planet['planet_radius']
+
     # Load relevant output directory
     output_prefix = retrieval_name + '-'
 
@@ -671,13 +714,17 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
         offset_params, err_inflation_params = split_params(samples[sample[i],:], 
                                                            N_params_cum)
 
-        R_p_ref = physical_params[0]   # Reference radius is first physical parameter
+        if (spectrum_type == 'transmission'):
+            R_p_ref = physical_params[0]   # Reference radius is first physical parameter
 
-        # Convert normalised radius into SI
-        if (radius_unit == 'R_J'):
-            R_p_ref *= R_J
-        elif (radius_unit == 'R_E'):
-            R_p_ref *= R_E
+            # Convert normalised radius drawn by MultiNest back into SI
+            if (radius_unit == 'R_J'):
+                R_p_ref *= R_J
+            elif (radius_unit == 'R_E'):
+                R_p_ref *= R_E
+
+        else:
+            R_p_ref = R_p
 
         # Unpack log(gravity) if set as a free parameter
         if ('log_g' in physical_param_names):

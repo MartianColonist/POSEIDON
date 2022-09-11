@@ -12,7 +12,7 @@ from .utility import prior_index
 
 
 @jit(nopython = True)
-def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 10.0):
+def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 1.0e-2):
     
     ''' Computes the temperature profile for an atmosphere using a re-arranged
         form of the P-T profile in Madhusudhan & Seager (2009).
