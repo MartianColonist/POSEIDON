@@ -14,7 +14,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        offsets_applied, error_inflation, PT_dim, X_dim, cloud_dim, 
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
-                       Atmosphere_dimension, opaque_Iceberg, surface):
+                       Atmosphere_dimension, opaque_Iceberg, surface, spectrum_type):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -117,7 +117,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
     #***** Physical property parameters *****#
 
-    physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
+    if (spectrum_type == 'transmission'):
+        physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
 
     if (gravity_setting == 'free'):
         physical_params += ['log_g']         # log_10 surface gravity (cm / s^2)
@@ -157,7 +158,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         elif (PT_profile == 'two-gradients'):  
             PT_params += ['T_high', 'T_mid', 'log_P_mid', 'T_deep']
         elif (PT_profile == 'Madhu'):     
-            PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_deep']
+            PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_ref']
         elif (PT_profile == 'slope'):
             PT_params += ['T_phot', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
                           'Delta_T_1-0.1b', 'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 
