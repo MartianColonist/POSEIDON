@@ -478,7 +478,7 @@ def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_in_file,
     return X_interp
 
 
-def bin_spectrum_fast(wl_native, spectrum_native, R_bin):
+def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
     '''
     Bin a model spectrum down to a specific spectral resolution. 
     
@@ -492,12 +492,16 @@ def bin_spectrum_fast(wl_native, spectrum_native, R_bin):
             Input spectrum.
         R_bin (float or int):
             Spectral resolution (R = wl/dwl) to re-bin the spectrum onto.
+        err_data (np.array of float):
+            1σ errors on the spectral data.
 
     Returns:
         wl_binned (np.array of float): 
             New wavelength grid spaced at R = R_bin (μm).
         spectrum_binned (np.array of float):
             Re-binned spectrum at resolution R = R_bin.
+        err_binned (np.array of float):
+            Re-binned errors at resolution R = R_bin.
 
     '''
         
@@ -509,14 +513,29 @@ def bin_spectrum_fast(wl_native, spectrum_native, R_bin):
     wl_binned = np.exp(log_wl_binned)
     
     # Call Spectres routine
-    spectrum_binned = spectres(wl_binned, wl_native, spectrum_native,
-                               verbose = False)
+    if (err_data != []):
+        spectrum_binned, err_binned = spectres(wl_binned, wl_native, spectrum_native,
+                                               spec_errs = err_data, verbose = False)
 
-    # Cut out first and last values to avoid SpectRes boundary NaNs
-    wl_binned = wl_binned[1:-1]
-    spectrum_binned = spectrum_binned[1:-1]  
+        # Cut out first and last values to avoid SpectRes boundary NaNs
+        wl_binned = wl_binned[1:-1]
+        spectrum_binned = spectrum_binned[1:-1]
 
-    return wl_binned, spectrum_binned
+        # Replace Spectres boundary NaNs with second and penultimate values
+        err_binned[0] = err_binned[1]
+        err_binned[-1] = err_binned[-2]
+
+    # Call Spectres routine
+    else:
+        spectrum_binned = spectres(wl_binned, wl_native, spectrum_native,
+                                   verbose = False)
+
+        # Cut out first and last values to avoid SpectRes boundary NaNs
+        wl_binned = wl_binned[1:-1]
+        spectrum_binned = spectrum_binned[1:-1]
+        err_binned = None
+
+    return wl_binned, spectrum_binned, err_binned
                 
 
 def write_spectrum(planet_name, model_name, spectrum, wl):

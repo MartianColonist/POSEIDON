@@ -33,7 +33,7 @@ warnings.filterwarnings("ignore", message="This figure includes Axes that are " 
                                            "not compatible with tight_layout, " +
                                            "so results might be incorrect.")
 
-from .utility import bin_spectrum_fast, generate_latex_param_names, round_sig_figs
+from .utility import bin_spectrum, generate_latex_param_names, round_sig_figs
 from .instrument import bin_spectrum_to_data
 
               
@@ -1176,7 +1176,7 @@ def plot_spectra(spectra, planet, data_properties = None,
             N_plotted_binned = 0  # Counter for number of plotted binned spectra
             
             # Calculate binned wavelength and spectrum grid
-            wl_binned, spec_binned = bin_spectrum_fast(wl, spec, R_to_bin)
+            wl_binned, spec_binned, _ = bin_spectrum(wl, spec, R_to_bin)
 
             if (plot_full_res == True):
                 colour_binned = scale_lightness(colours[i], 0.4)
@@ -1756,7 +1756,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for i in range(N_spectra):
 
                 (spec_low2, wl) = spectra_low2[i]
-                _, spec_low2_binned = bin_spectrum_fast(wl, spec_low2, R_to_bin)
+                _, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
 
                 transit_depth_min_i = np.min(spec_low2_binned)
                 y_min_plt = min(y_min_plt, transit_depth_min_i)
@@ -1778,7 +1778,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for i in range(N_spectra):
 
                 (spec_high2, wl) = spectra_high2[i]
-                _, spec_high2_binned = bin_spectrum_fast(wl, spec_high2, R_to_bin)
+                _, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
 
                 transit_depth_max_i = np.max(spec_high2_binned)
                 y_max_plt = max(y_max_plt, transit_depth_max_i)
@@ -1803,7 +1803,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for i in range(N_spectra):
 
                 (spec_low2, wl) = spectra_low2[i]
-                _, spec_low2_binned = bin_spectrum_fast(wl, spec_low2, R_to_bin)
+                _, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
 
                 FpFs_min_i = np.min(spec_low2_binned)
                 y_min_plt = min(y_min_plt, FpFs_min_i)
@@ -1825,7 +1825,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for i in range(N_spectra):
 
                 (spec_high2, wl) = spectra_high2[i]
-                _, spec_high2_binned = bin_spectrum_fast(wl, spec_high2, R_to_bin)
+                _, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
 
                 FpFs_max_i = np.max(spec_high2_binned)
                 y_max_plt = max(y_max_plt, FpFs_max_i)
@@ -1937,11 +1937,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             label_i = spectra_labels[i]
         
         # Calculate binned wavelength and retrieved spectra confidence intervals
-        wl_binned, spec_med_binned = bin_spectrum_fast(wl, spec_med, R_to_bin)
-        wl_binned, spec_low1_binned = bin_spectrum_fast(wl, spec_low1, R_to_bin)
-        wl_binned, spec_low2_binned = bin_spectrum_fast(wl, spec_low2, R_to_bin)
-        wl_binned, spec_high1_binned = bin_spectrum_fast(wl, spec_high1, R_to_bin)
-        wl_binned, spec_high2_binned = bin_spectrum_fast(wl, spec_high2, R_to_bin)
+        wl_binned, spec_med_binned, _ = bin_spectrum(wl, spec_med, R_to_bin)
+        wl_binned, spec_low1_binned, _ = bin_spectrum(wl, spec_low1, R_to_bin)
+        wl_binned, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
+        wl_binned, spec_high1_binned, _ = bin_spectrum(wl, spec_high1, R_to_bin)
+        wl_binned, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
         
         # Only add sigma intervals to legend for one model (avoids clutter)
         if (N_spectra == 1):
@@ -2548,7 +2548,7 @@ def plot_FpFs(planet, model, FpFs, wl, R_to_bin = 100):
     ax.plot(wl, FpFs, lw=0.5, alpha=0.4, color = 'crimson', label=r'Flux Ratio')
 
     # Calculate binned wavelength and spectrum grid
-    wl_binned, FpFs_binned = bin_spectrum_fast(wl, FpFs, R_to_bin)
+    wl_binned, FpFs_binned, _ = bin_spectrum(wl, FpFs, R_to_bin)
 
     # Plot binned spectrum
     ax.plot(wl_binned, FpFs_binned, lw=1.0, alpha=0.8, 
@@ -2649,7 +2649,7 @@ def plot_Fp(planet, model, Fp, wl, R_to_bin = 100):
             label='Flux (R = 15,000)')
 
     # Calculate binned wavelength and spectrum grid
-    wl_binned, Fp_binned = bin_spectrum_fast(wl, Fp, R_to_bin)
+    wl_binned, Fp_binned, _ = bin_spectrum(wl, Fp, R_to_bin)
 
     # Plot binned spectrum
     ax.plot(wl_binned, Fp_binned, lw=1.0, alpha=0.8, 
