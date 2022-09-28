@@ -608,8 +608,17 @@ def H_minus_free_free(wl_um, T_arr):
     return alpha_ff
 
 
+def get_id_within_node(comm, rank):
 
-def shared_memory_array(rank, comm, shape):
+    nodename =  MPI.Get_processor_name()
+    nodelist = comm.allgather(nodename)
+
+    process_id = len([i for i in nodelist[:rank] if i==nodename]) 
+
+    return process_id
+
+
+def shared_memory_array(process_id, comm, shape):
     ''' 
     Creates a numpy array shared in memory across multiple cores.
     
@@ -621,13 +630,13 @@ def shared_memory_array(rank, comm, shape):
     # Create a shared array of size given by product of each dimension
     size = np.prod(shape)
     itemsize = MPI.DOUBLE.Get_size() 
-    
-    if (rank == 0): 
+
+    if (process_id == 0): 
         nbytes = size * itemsize   # Array memory allocated for first process
     else:  
         nbytes = 0   # No memory storage on other processes
         
-    # On rank 0, create the shared block
+    # On rank / process_id 0, create the shared block
     # On other ranks, get a handle to it (known as a window in MPI speak)
     new_comm = MPI.Comm.Split(comm)
     win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
@@ -679,16 +688,19 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
     N_nu = len(nu_model)    # Number of wavenumbers on model grid
     N_wl = len(wl_model)    # Number of wavelengths on model grid
         
+    # Identify the 'local rank' within each node
+    process_id = get_id_within_node(comm, rank)
+
     # Initialise output opacity arrays
-    cia_stored = shared_memory_array(rank, comm, (N_cia_pairs, N_T_fine, N_wl))                      # Collision-induced absorption
-    ff_stored = shared_memory_array(rank, comm, (N_ff_pairs, N_T_fine, N_wl))                        # Free-free
-    bf_stored = shared_memory_array(rank, comm, (N_bf_species, N_wl))                                # Bound-free
-    sigma_stored = shared_memory_array(rank, comm, (N_species_active, N_P_fine, N_T_fine, N_wl))     # Molecular and atomic opacities
-    Rayleigh_stored = shared_memory_array(rank, comm, (N_species, N_wl))                             # Rayleigh scattering
-    eta_stored = shared_memory_array(rank, comm, (N_species, N_wl))                                  # Refractive indices
+    cia_stored = shared_memory_array(process_id, comm, (N_cia_pairs, N_T_fine, N_wl))                      # Collision-induced absorption
+    ff_stored = shared_memory_array(process_id, comm, (N_ff_pairs, N_T_fine, N_wl))                        # Free-free
+    bf_stored = shared_memory_array(process_id, comm, (N_bf_species, N_wl))                                # Bound-free
+    sigma_stored = shared_memory_array(process_id, comm, (N_species_active, N_P_fine, N_T_fine, N_wl))     # Molecular and atomic opacities
+    Rayleigh_stored = shared_memory_array(process_id, comm, (N_species, N_wl))                             # Rayleigh scattering
+    eta_stored = shared_memory_array(process_id, comm, (N_species, N_wl))                                  # Refractive indices
     
     # When using multiple cores, only the first core needs to handle interpolation
-    if (rank == 0):
+    if (process_id == 0):
         
         print("Reading in cross sections in opacity sampling mode...")
 
@@ -876,7 +888,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
     # Force secondary processors to wait for the primary to finish interpolating cross sections
     comm.Barrier()
 
-    if (rank == 0): 
+    if (process_id == 0): 
         print("Opacity pre-interpolation complete.")
             
     return sigma_stored, cia_stored, Rayleigh_stored, eta_stored, ff_stored, bf_stored
