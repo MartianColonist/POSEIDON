@@ -211,7 +211,7 @@ def define_model(model_name, bulk_species, param_species,
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-                 surface = False, spectrum_type = 'emission'):
+                 surface = False, spectrum_type = 'transmission'):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
