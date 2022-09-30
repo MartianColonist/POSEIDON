@@ -868,6 +868,99 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     return fig
 
 
+def set_spectrum_wl_ticks(wl_min, wl_max, wl_axis = 'log'):
+    '''
+    Calculates default x axis tick spacing for spectra plots in POSEIDON.
+
+    '''
+
+    wl_range = wl_max - wl_min
+
+    # For plots over a wide wavelength range
+    if (wl_range > 0.2):
+        if (wl_max <= 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
+            wl_ticks_2 = np.array([])
+            wl_ticks_3 = np.array([])
+            wl_ticks_4 = np.array([])
+        elif (wl_max <= 2.0):
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+            else:
+                wl_ticks_1 = np.array([])
+            wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+            wl_ticks_3 = np.array([])
+            wl_ticks_4 = np.array([])
+        elif (wl_max <= 3.0):
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
+            else:
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 3)+0.01, 0.5)
+            wl_ticks_3 = np.array([])
+            wl_ticks_4 = np.array([])
+        elif (wl_max <= 5.0):
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.2)
+                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+            elif (wl_min < 3.0):
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
+                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+            else:
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.array([])
+                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 0.2)
+            wl_ticks_4 = np.array([])
+        elif (wl_max <= 10.0):
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
+                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
+            elif (wl_min < 3.0):
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
+                if (wl_axis == 'log'):
+                    wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.5)
+                elif (wl_axis == 'linear'):
+                    wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+            else:
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.array([])
+                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 1.0)
+            wl_ticks_4 = np.array([])
+        else:
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+            else:
+                wl_ticks_1 = np.array([])
+            wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+            wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+            wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
+
+        wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
+
+    # For high-resolution (zoomed in) spectra
+    else:
+
+        # Aim for 10 x-axis labels
+        wl_spacing = round_sig_figs((wl_max - wl_min), 1)/10
+        
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(wl_spacing))), 1)
+        
+        # If last digit of x labels would be 3,6,7,8,or 9, bump up to 10
+        if (wl_spacing > 5*np.power(10, major_exponent)):
+            wl_spacing = 1*np.power(10, major_exponent+1)
+        elif (wl_spacing == 3*np.power(10, major_exponent)):
+            wl_spacing = 2*np.power(10, major_exponent)
+
+        wl_ticks = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, wl_spacing)
+
+    return wl_ticks
+
+    
 def plot_spectra(spectra, planet, data_properties = None,
                  plot_full_res = True, bin_spectra = True, R_to_bin = 100, 
                  wl_min = None, wl_max = None, transit_depth_min = None,
@@ -1118,10 +1211,6 @@ def plot_spectra(spectra, planet, data_properties = None,
     ymajorFormatter.set_powerlimits((0,0))
     yminorLocator = MultipleLocator(yminor_spacing)
 
-#    ymajorLocator_H   = MultipleLocator(1)
-#    ymajorFormatter_H = FormatStrFormatter('%.0f')
-#    yminorLocator_H   = MultipleLocator(0.2)
-
     # Generate figure and axes
     fig = plt.figure()
 
@@ -1144,12 +1233,6 @@ def plot_spectra(spectra, planet, data_properties = None,
     ax1.yaxis.set_major_locator(ymajorLocator)
     ax1.yaxis.set_major_formatter(ymajorFormatter)
     ax1.yaxis.set_minor_locator(yminorLocator)
-    
-  #  ax2 = ax1.twinx()
- 
-  #  ax2.yaxis.set_major_locator(ymajorLocator_H)
-  #  ax2.yaxis.set_major_formatter(ymajorFormatter_H)
-  #  ax2.yaxis.set_minor_locator(yminorLocator_H)
     
     for i in range(N_spectra):
         
@@ -1247,83 +1330,10 @@ def plot_spectra(spectra, planet, data_properties = None,
                  verticalalignment='top', transform=ax1.transAxes, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
-    if (wl_range > 0.2):
-        if (wl_max <= 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
-            wl_ticks_2 = np.array([])
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 2.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 3.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 3)+0.01, 0.5)
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 5.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            elif (wl_min < 3.0):
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 0.2)
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 10.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-            elif (wl_min < 3.0):
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 1.0)
-            wl_ticks_4 = np.array([])
-        else:
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
-            wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
-            wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
-
-        wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
+    wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
-        # Plot wl tick labels
-        ax1.set_xticks(wl_ticks)
-    
-    # Compute equivalent scale height for secondary axis
- #   base_depth = (R_p*R_p)/(R_s*R_s)
-    
-    #photosphere_T = 560.0
- #   photosphere_T = T_eq
-    
-#    H_sc = (sc.k*photosphere_T)/(mu*g_0)
-#    depth_values = np.array([transit_depth_range[0], transit_depth_range[1]])
-#    N_sc = ((depth_values - base_depth)*(R_s*R_s))/(2.0*R_p*H_sc)
-    
-#    ax2.set_ylim([N_sc[0], N_sc[1]])
-#    ax2.set_ylabel(r'$\mathrm{Scale \, \, Heights}$', fontsize = 16)
+    # Plot wl tick labels
+    ax1.set_xticks(wl_ticks)
     
     legend = ax1.legend(loc='upper right', shadow=True, prop={'size':10}, 
                         ncol=1, frameon=True)    #legend settings
@@ -1332,7 +1342,7 @@ def plot_spectra(spectra, planet, data_properties = None,
     frame.set_facecolor('0.90') 
         
     for legline in legend.legendHandles:
-        if (plot_full_res == True):
+        if ((plot_full_res == True) or (show_data == True)):
             legline.set_linewidth(1.0)
         else:
             legline.set_linewidth(2.0)
@@ -1414,17 +1424,14 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
        
     # If the user did not specify a wavelength range, find min and max from input data
     if (wl_min == None):
-        wl_min_plt = np.min(wl_data - 4*bin_size)  # Minimum at twice the bin width for the shortest wavelength data
+        wl_min = np.min(wl_data - 4*bin_size)  # Minimum at twice the bin width for the shortest wavelength data
     else:
-        wl_min_plt = wl_min
+        wl_min = wl_min
  
     if (wl_max == None):
-        wl_max_plt = np.max(wl_data + 4*bin_size)  # Maximum at twice the bin width for the longest wavelength data
+        wl_max = np.max(wl_data + 4*bin_size)  # Maximum at twice the bin width for the longest wavelength data
     else:
-        wl_max_plt = wl_max
-
-    # Set x range
-    wl_range = wl_max_plt - wl_min_plt
+        wl_max = wl_max
 
     # If the user did not specify a transit depth range, find min and max from input models
     if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
@@ -1455,7 +1462,7 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
     #***** Format x and y ticks *****#
 
     # Create x formatting objects
-    if (wl_max_plt < 1.0):    # If plotting over the optical range
+    if (wl_max < 1.0):    # If plotting over the optical range
         xmajorLocator = MultipleLocator(0.1)
         xminorLocator = MultipleLocator(0.02)
         
@@ -1550,7 +1557,7 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
         [markers.set_alpha(1.0)]
             
     # Set axis ranges
-    ax1.set_xlim([wl_min_plt, wl_max_plt])
+    ax1.set_xlim([wl_min, wl_max])
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
@@ -1571,46 +1578,8 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
                  verticalalignment='top', transform=ax1.transAxes, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
-    if (wl_max_plt <= 1.0):
-        wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), round_sig_figs(wl_max_plt, 2)+0.01, 0.1)
-        wl_ticks_2 = np.array([])
-        wl_ticks_3 = np.array([])
-        wl_ticks_4 = np.array([])
-    elif (wl_max_plt <= 2.0):
-        if (wl_min_plt < 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
-        else:
-            wl_ticks_1 = np.array([])
-        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max_plt, 2)+0.01, 0.2)
-        wl_ticks_3 = np.array([])
-        wl_ticks_4 = np.array([])
-    elif (wl_max_plt <= 3.0):
-        if (wl_min_plt < 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
-        else:
-            wl_ticks_1 = np.array([])
-        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max_plt, 3)+0.01, 0.5)
-        wl_ticks_3 = np.array([])
-        wl_ticks_4 = np.array([])
-    elif (wl_max_plt <= 10.0):
-        if (wl_min_plt < 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
-        else:
-            wl_ticks_1 = np.array([])
-        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
-        wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max_plt, 2)+0.01, 1.0)
-        wl_ticks_4 = np.array([])
-    else:
-        if (wl_min_plt < 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
-        else:
-            wl_ticks_1 = np.array([])
-        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
-        wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
-        wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max_plt, 2)+0.01, 2.0)
-
-    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
-    
+    wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
+        
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
     
@@ -1741,9 +1710,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             
             wl_max_i = np.max(spectra_median[i][1])
             wl_max = max(wl_max, wl_max_i)
-
-    # Set x range
-    wl_range = wl_max - wl_min
 
     # If the user did not specify a transit depth range, find min and max from input models
     if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
@@ -1912,12 +1878,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ax1.yaxis.set_major_formatter(ymajorFormatter)
     ax1.yaxis.set_minor_locator(yminorLocator)
     
-  #  ax2 = ax1.twinx()
- 
-  #  ax2.yaxis.set_major_locator(ymajorLocator_H)
-  #  ax2.yaxis.set_major_formatter(ymajorFormatter_H)
-  #  ax2.yaxis.set_minor_locator(yminorLocator_H)
-                         
     for i in range(N_spectra):
         
         # Extract spectrum and wavelength grid
@@ -2022,82 +1982,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
              verticalalignment='top', transform=ax1.transAxes, fontsize = 16)
 
     # Decide at which wavelengths to place major tick labels
-    if (wl_range > 0.2):
-        if (wl_max <= 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
-            wl_ticks_2 = np.array([])
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 2.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 3.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 3)+0.01, 0.5)
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 5.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            elif (wl_min < 3.0):
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 0.2)
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 10.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-            elif (wl_min < 3.0):
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 1.0)
-            wl_ticks_4 = np.array([])
-        else:
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
-            wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
-            wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
-
-        wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
+    wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
-        # Plot wl tick labels
-        ax1.set_xticks(wl_ticks)
-    
-    # Compute equivalent scale height for secondary axis
- #   base_depth = (R_p*R_p)/(R_s*R_s)
-    
- #   photosphere_T = T_eq
-    
-#    H_sc = (sc.k*photosphere_T)/(mu*g_0)
-#    depth_values = np.array([transit_depth_range[0], transit_depth_range[1]])
-#    N_sc = ((depth_values - base_depth)*(R_s*R_s))/(2.0*R_p*H_sc)
-    
-#    ax2.set_ylim([N_sc[0], N_sc[1]])
-#    ax2.set_ylabel(r'$\mathrm{Scale \, \, Heights}$', fontsize = 16)
+    # Plot wl tick labels
+    ax1.set_xticks(wl_ticks)
 
     legend = ax1.legend(loc='upper right', shadow=True, prop={'size':10}, 
                         ncol=1, frameon=False)    #legend settings
