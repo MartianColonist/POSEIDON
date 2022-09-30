@@ -1233,7 +1233,6 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # If cloud model has patchy gaps
         if (cloud_dim != 1):
             phi_c = clouds_in[np.where(cloud_param_names == 'phi_cloud')[0][0]]    
-       #     phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
             phi_0 = 0.0       # Cloud start position doesn't matter for MacMad17
             f_cloud = phi_c   # Rename for consistency with Iceberg cloud
             theta_0 = -90.0   # Uniform from day to night
@@ -1252,7 +1251,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # If cloud deck enabled
         if (enable_deck == 1):
             
-            kappa_cloud_0 = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_kappa_cloud')[0][0]])
+            # Check if cloud is fixed to be opaque
+            if ('log_kappa_cloud' in cloud_param_names):
+                kappa_cloud_0 = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_kappa_cloud')[0][0]])
+            else:
+                kappa_cloud_0 = 1.0e250
+
             P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
             
             if (cloud_dim == 1):
