@@ -203,8 +203,8 @@ def init_instrument(wl, wl_data, half_width, instrument):
     elif (instrument == 'IRAC2'): 
         sens_file = inst_dir + '/Spitzer/IRAC2_sensitivity.dat'
     elif (instrument.startswith('JWST')): 
-        if (instrument == 'NIRSpec_Prism'): # Catch common misspelling of PRISM
-            instrument = 'NIRSpec_PRISM'
+        if (instrument == 'JWST_NIRSpec_Prism'): # Catch common misspelling of PRISM
+            instrument = 'JWST_NIRSpec_PRISM'
         sens_file = inst_dir + '/JWST/' + instrument + '_sensitivity.dat'
     
     # If instrument does not have a known sensitivity function, just use a top hat
