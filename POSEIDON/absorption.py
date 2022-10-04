@@ -618,7 +618,7 @@ def get_id_within_node(comm, rank):
     return process_id
 
 
-def shared_memory_array(process_id, comm, shape):
+def shared_memory_array(rank, comm, shape):
     ''' 
     Creates a numpy array shared in memory across multiple cores.
     
@@ -631,12 +631,12 @@ def shared_memory_array(process_id, comm, shape):
     size = np.prod(shape)
     itemsize = MPI.DOUBLE.Get_size() 
 
-    if (process_id == 0): 
+    if (rank == 0): 
         nbytes = size * itemsize   # Array memory allocated for first process
     else:  
         nbytes = 0   # No memory storage on other processes
         
-    # On rank / process_id 0, create the shared block
+    # On rank 0, create the shared block
     # On other ranks, get a handle to it (known as a window in MPI speak)
     new_comm = MPI.Comm.Split(comm)
     win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
@@ -689,20 +689,31 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
     N_wl = len(wl_model)    # Number of wavelengths on model grid
         
     # Identify the 'local rank' within each node
-    process_id = get_id_within_node(comm, rank)
+   # N_nodes, process_id = get_id_within_node(comm, rank)
+
+    # Split communicator into separate communicators for each node
+  #  color = int(rank / N_nodes)
+
+  #  node_comm = comm.Split(color=color)
+  #  node_rank = node_comm.Get_rank()
+
+    node_rank = rank
+    node_comm = comm
 
     # Initialise output opacity arrays
-    cia_stored = shared_memory_array(process_id, comm, (N_cia_pairs, N_T_fine, N_wl))                      # Collision-induced absorption
-    ff_stored = shared_memory_array(process_id, comm, (N_ff_pairs, N_T_fine, N_wl))                        # Free-free
-    bf_stored = shared_memory_array(process_id, comm, (N_bf_species, N_wl))                                # Bound-free
-    sigma_stored = shared_memory_array(process_id, comm, (N_species_active, N_P_fine, N_T_fine, N_wl))     # Molecular and atomic opacities
-    Rayleigh_stored = shared_memory_array(process_id, comm, (N_species, N_wl))                             # Rayleigh scattering
-    eta_stored = shared_memory_array(process_id, comm, (N_species, N_wl))                                  # Refractive indices
+    cia_stored = shared_memory_array(node_rank, node_comm, (N_cia_pairs, N_T_fine, N_wl))                      # Collision-induced absorption
+    ff_stored = shared_memory_array(node_rank, node_comm, (N_ff_pairs, N_T_fine, N_wl))                        # Free-free
+    bf_stored = shared_memory_array(node_rank, node_comm, (N_bf_species, N_wl))                                # Bound-free
+    sigma_stored = shared_memory_array(node_rank, node_comm, (N_species_active, N_P_fine, N_T_fine, N_wl))     # Molecular and atomic opacities
+    Rayleigh_stored = shared_memory_array(node_rank, node_comm, (N_species, N_wl))                             # Rayleigh scattering
+    eta_stored = shared_memory_array(node_rank, node_comm, (N_species, N_wl))                                  # Refractive indices
     
     # When using multiple cores, only the first core needs to handle interpolation
-    if (process_id == 0):
+    if (node_rank == 0):
         
-        print("Reading in cross sections in opacity sampling mode...")
+        if (rank == 0):
+        
+            print("Reading in cross sections in opacity sampling mode...")
 
         # Find the directory where the user downloaded the POSEIDON opacity data
         opacity_path = os.environ.get("POSEIDON_input_data")
@@ -798,7 +809,8 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
     
             del cia_pre_inp_q, nu_cia_q, w_T_cia_q, y_cia_q
             
-            print(cia_pair_q + " done")
+            if (rank == 0):
+                print(cia_pair_q + " done")
             
         #***** Process free-free absorption *****#
         
@@ -813,7 +825,8 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             else:
                 raise Exception("Unsupported free-free opacity.")
             
-            print(ff_pair_q + " done")
+            if (rank == 0):
+                print(ff_pair_q + " done")
             
         #***** Process bound-free absorption *****#
         
@@ -828,7 +841,8 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             else:
                 raise Exception("Unsupported bound-free opacity.")
             
-            print(bf_species_q + " done")
+            if (rank == 0):
+                print(bf_species_q + " done")
             
         #***** Process molecular and atomic opacities *****#
 
@@ -868,7 +882,8 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
                     
             del sigma_pre_inp_q, nu_q, w_T_q, y_q  
             
-            print(species_q + " done")
+            if (rank == 0):
+                print(species_q + " done")
             
         #***** Process Rayleigh scattering cross sections *****#
         
@@ -886,9 +901,9 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
         cia_file.close()
         
     # Force secondary processors to wait for the primary to finish interpolating cross sections
-    comm.Barrier()
+    node_comm.Barrier()
 
-    if (process_id == 0): 
+    if (rank == 0): 
         print("Opacity pre-interpolation complete.")
             
     return sigma_stored, cia_stored, Rayleigh_stored, eta_stored, ff_stored, bf_stored
