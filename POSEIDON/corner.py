@@ -765,7 +765,7 @@ def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
 
 
 def generate_cornerplot(planet, model, retrieval_name = None, true_vals = None,
-                        colour_scheme = '#984ea3'):
+                        colour_scheme = '#984ea3', span = None):
 
     ''' Generate giant triangle plot of doom to visualise the results of a 
         POSEIDON retrieval.
@@ -828,7 +828,7 @@ def generate_cornerplot(planet, model, retrieval_name = None, true_vals = None,
         fig, axes = cornerplot(results, quantiles=[0.1587, 0.5, 0.8413],  
                                smooth_hist=30, smooth_corr=0.02, color_plt=colour_scheme,
                                color_quantile='royalblue', show_titles=True, labels=params_latex, 
-                               param_names=param_names, truths=true_vals, 
+                               param_names=param_names, truths=true_vals, span=span,
                                truth_color='green', label_kwargs={'fontsize':18}, 
                                hist_kwargs={'histtype':'stepfilled','edgecolor':None},
                                hist2d_kwargs={'plot_contours':True,'fill_contours':True,

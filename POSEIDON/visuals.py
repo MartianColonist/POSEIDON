@@ -974,6 +974,11 @@ def plot_spectra(spectra, planet, data_properties = None,
     Plot a collection of individual model transmission spectra.
     
     '''
+
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+        plot_type = 'transmission'
+    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+        plot_type = 'emission'
     
     # Find number of spectra to plot
     N_spectra = len(spectra)
@@ -1070,7 +1075,7 @@ def plot_spectra(spectra, planet, data_properties = None,
     wl_range = wl_max - wl_min
    
     # If the user did not specify a transit depth range, find min and max from input models
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (plot_type == 'transmission'):
 
         if (transit_depth_min == None):
             
@@ -1115,7 +1120,7 @@ def plot_spectra(spectra, planet, data_properties = None,
             y_max_plt = transit_depth_max
 
     # If the user did not specify an Fp/Fs range, find min and max from input models
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (plot_type == 'emission'):
 
         if (FpFs_min == None):
             
@@ -1316,9 +1321,9 @@ def plot_spectra(spectra, planet, data_properties = None,
     # Set axis labels
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (plot_type == 'transmission'):
         ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
 
     # Add planet name label
@@ -1351,11 +1356,10 @@ def plot_spectra(spectra, planet, data_properties = None,
 
     # Write figure to file
     if (plt_label == None):
-        file_name = (output_dir + planet_name +
-                     '_transmission_spectra.pdf')
+        file_name = (output_dir + planet_name + '_' + plot_type + '_spectra.pdf')
     else:
-        file_name = (output_dir + planet_name + '_' + plt_label + 
-                     '_transmission_spectra.pdf')
+        file_name = (output_dir + planet_name + '_' + plt_label + '_' +
+                     plot_type + '_spectra.pdf')
 
     plt.savefig(file_name, bbox_inches='tight')
 
@@ -1933,8 +1937,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             ymodel_median = bin_spectrum_to_data(spec_med, wl, data_properties)
 
             ax1.scatter(wl_data, ymodel_median, color = binned_colours[i], 
-                        s=5, marker='D', lw=0.1, alpha=0.8, zorder=100, edgecolor='black',
-                        label = label_i + r' (Binned)')
+                        s=5, marker='D', lw=0.1, alpha=0.8, edgecolor='black',
+                        label = label_i + r' (Binned)', zorder = 200)
             
     # Overplot datapoints
     for i in range(N_datasets):
@@ -1961,7 +1965,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                                             markersize=data_markers_size[i], 
                                             capsize=2, ls='none', elinewidth=0.8, 
                                             color=data_colours[i], alpha = 0.8,
-                                            ecolor = 'black', label=label_i)
+                                            ecolor = 'black', label=label_i,
+                                            zorder = 100)
 
         [markers.set_alpha(1.0)]
     
