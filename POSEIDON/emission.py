@@ -93,6 +93,9 @@ def emission_rad_transfer(T, dz, wl, kappa, Gauss_quad = 2):
     
     # Initialise surface flux array
     F = np.zeros(len(wl))
+
+    # Initialise differential optical depth array
+    dtau = np.zeros(shape=(len(T), len(wl)))
     
     # For each wavelength
     for k in range(len(wl)):
@@ -104,10 +107,11 @@ def emission_rad_transfer(T, dz, wl, kappa, Gauss_quad = 2):
             for i in range(len(T)):
     
                 # Compute vertical optical depth across the layer
-                tau_vert = kappa[i,k] * dz[i]
+                dtau_vert = kappa[i,k] * dz[i]
+                dtau[i,k] = dtau_vert
                 
                 # Compute transmissivity of the layer
-                Trans = np.exp((-1.0 * tau_vert)/mu[j])
+                Trans = np.exp((-1.0 * dtau_vert)/mu[j])
                 
                 # Solve for emergent intensity from the layer top
                 I[j,k] = Trans * I[j,k] + (1.0 - Trans) * B[i,k]
@@ -115,5 +119,42 @@ def emission_rad_transfer(T, dz, wl, kappa, Gauss_quad = 2):
             # Add contribution of this ray/angle to the surface flux
             F[k] += 2.0 * np.pi * mu[j] * I[j,k] * W[j]
     
-    return F
+    return F, dtau
 
+
+@jit(nopython = True)
+def determine_photosphere_radii(dtau, r_low, wl, photosphere_tau = 2/3):
+    '''
+    Interpolate optical depth to find the radius corresponding to the
+    photosphere (by default at tau = 2/3).
+
+    Args:
+        dtau (2D np.array of float):
+            Vertical optical depth across each layer (starting from the top of
+            the atmosphere) as a function of layer and wavelength.
+        r_low (np.array of float):
+            Radius at the lower boundary of each layer (m).
+        wl (np.array of float): 
+            Wavelength grid (μm).
+        photosphere_tau (float):
+            Optical depth to determine photosphere radius.
+    
+    Returns:
+        R_p_eff (np.array of float):
+            Photosphere radius as a function of wavelength (m).
+
+    '''
+
+    # Initialise photosphere radius array
+    R_p_eff = np.zeros(len(wl))
+
+    # Calculate photosphere radius at tau = 2/3 for each wavelength
+    for k in range(len(wl)):
+
+        # Find cumulative optical depth from top of atmosphere down at each wavelength
+        tau_lambda = np.cumsum(dtau[:,k])
+
+        # Interpolate layer boundary radii to find radius where tau = 2/3 (lower because we are integrating down) 
+        R_p_eff[k] = np.interp(photosphere_tau, tau_lambda, r_low)
+
+    return R_p_eff

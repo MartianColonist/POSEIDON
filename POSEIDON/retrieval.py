@@ -230,8 +230,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     offsets_applied = model['offsets_applied']
     radius_unit = model['radius_unit']
     surface = model['surface']
-
     R_p = planet['planet_radius']
+    d = planet['system_distance']
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
@@ -249,19 +249,18 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
     allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
 
+    # Interpolate stellar spectrum onto planet wavelength grid (one-time operation)
+    if ((spectrum_type != 'transmission') and (star != None)):
 
+        # Load stellar spectrum
+        F_s = star['F_star']
+        wl_s = star['wl_star']
+        R_s = star['stellar_radius']
 
-    d = planet['system_distance']
-
-    if (d is None):
-        d = 1        # This value only used for flux ratios, so it cancels
-
-    # Load stellar spectrum
-    F_s = star['F_star']
-    wl_s = star['wl_star']
-    R_s = star['stellar_radius']
-
-    if (F_s != None):
+        # Distance only used for flux ratios, so set it to 1 since it cancels
+        if (d is None):
+            planet['system_distance'] = 1
+            d = planet['system_distance']
 
         # Interpolate stellar spectrum onto planet spectrum wavelength grid
         F_s_interp = spectres(wl, wl_s, F_s)
@@ -269,6 +268,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         # Convert stellar surface flux to observed flux at Earth
         F_s_obs = (R_s / d)**2 * F_s_interp
 
+    # Skip for directly imaged planets or brown dwarfs
     else:
 
         # Stellar flux not needed for transmission spectra
@@ -542,17 +542,14 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         geometry_params, stellar_params, \
         offset_params, err_inflation_params = split_params(cube, N_params_cum)
 
-        if (spectrum_type == 'transmission'):
-            R_p_ref = physical_params[0]   # Reference radius is first physical parameter
+        # Unpack reference radius parameter
+        R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
 
-            # Convert normalised radius drawn by MultiNest back into SI
-            if (radius_unit == 'R_J'):
-                R_p_ref *= R_J
-            elif (radius_unit == 'R_E'):
-                R_p_ref *= R_E
-
-        else:
-            R_p_ref = R_p
+        # Convert normalised radius drawn by MultiNest back into SI
+        if (radius_unit == 'R_J'):
+            R_p_ref *= R_J
+        elif (radius_unit == 'R_E'):
+            R_p_ref *= R_E
 
         # Unpack log(gravity) if set as a free parameter
         if ('log_g' in physical_param_names):
@@ -575,8 +572,16 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         #***** Step 3: generate spectrum of atmosphere ****#
 
-        spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                    spectrum_type)
+        # For emission spectra retrievals we directly compute Fp (instead of Fp/F*)
+        # so we can convolve and bin Fp and F* separately when comparing to data
+        if ('emission' in spectrum_type):
+            spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                        spectrum_type = ('direct_' + spectrum_type))   # Always Fp (even for secondary eclipse)
+
+        # For transmission spectra
+        else:
+            spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                        spectrum_type)
 
         # Reject unphysical spectra (forced to be NaN by function above)
         if (np.any(np.isnan(spectrum))):
@@ -616,13 +621,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             ymodel = bin_spectrum_to_data(spectrum, wl, data)
         else:
             F_p_binned = bin_spectrum_to_data(spectrum, wl, data)
-            if (spectrum_type == 'direct_emission'):
+            if ('direct' in spectrum_type):
                 ymodel = F_p_binned
             else:
                 F_s_binned = bin_spectrum_to_data(F_s_obs, wl, data)
                 ymodel = F_p_binned/F_s_binned
-
-                                                                         
+                                  
         #***** Step 6: inflate error bars (optional) ****#
         
         # Compute effective error, if unknown systematics included
@@ -714,17 +718,14 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
         offset_params, err_inflation_params = split_params(samples[sample[i],:], 
                                                            N_params_cum)
 
-        if (spectrum_type == 'transmission'):
-            R_p_ref = physical_params[0]   # Reference radius is first physical parameter
+        # Unpack reference radius parameter
+        R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
 
-            # Convert normalised radius drawn by MultiNest back into SI
-            if (radius_unit == 'R_J'):
-                R_p_ref *= R_J
-            elif (radius_unit == 'R_E'):
-                R_p_ref *= R_E
-
-        else:
-            R_p_ref = R_p
+        # Convert normalised radius drawn by MultiNest back into SI
+        if (radius_unit == 'R_J'):
+            R_p_ref *= R_J
+        elif (radius_unit == 'R_E'):
+            R_p_ref *= R_E
 
         # Unpack log(gravity) if set as a free parameter
         if ('log_g' in physical_param_names):

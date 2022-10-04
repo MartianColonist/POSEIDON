@@ -32,7 +32,7 @@ from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
 from .instrument import init_instrument
 from .transmission import TRIDENT
-from .emission import emission_rad_transfer
+from .emission import emission_rad_transfer, determine_photosphere_radii
 
 
 comm = MPI.COMM_WORLD
@@ -744,7 +744,7 @@ def check_atmosphere_physical(atmosphere, opac):
 def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
                      disable_continuum = False, suppress_print = False,
-                     Gauss_quad = 2):
+                     Gauss_quad = 2, use_photosphere_radius = True):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -775,6 +775,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             Gaussian quadrature order for integration over emitting surface
             * Only for emission spectra *
             (Options: 2 / 3).
+        use_photosphere_radius (bool):
+            If True, use R_p at tau = 2/3 for emission spectra prefactor.
 
     Returns:
         spectrum (np.array of float):
@@ -929,14 +931,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     # Generate emission spectrum
     elif ('emission' in spectrum_type):
 
-        # If distance not specified, use fiducial value
-        if (d is None):
-            d = 1        # This value only used for flux ratios, so it cancels
-
         # Find zone index for the emission spectrum atmospheric region
-        if (spectrum_type == 'dayside_emission'):
+        if ('dayside' in spectrum_type):
             zone_idx = 0
-        elif (spectrum_type == 'nightside_emission'):
+        elif ('nightside' in spectrum_type):
             zone_idx = -1
         else:
             zone_idx = 0
@@ -947,16 +945,23 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         T = T[:,0,zone_idx]     # Only consider one region for 1D/2D models
 
         # Compute planet flux
-        F_p = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+        F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
 
-        # Convert planet surface flux to observed flux at Earth
-        F_p_obs = (R_p / d)**2 * F_p
+        # Calculate effective photosphere radius at tau = 2/3
+        if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
+            R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]), wl, photosphere_tau = 2/3)
+        else:
+            R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
+        
+        # If distance not specified, use fiducial value
+        if (d is None):
+            d = 1        # This value only used for flux ratios, so it cancels
 
-        spectrum = F_p_obs
-
-        '''
         # For direct emission spectra (brown dwarfs and directly imaged planets)        
-        if (spectrum_type == 'direct_emission'):
+        if ('direct' in spectrum_type):
+
+            # Convert planet surface flux to observed flux at Earth
+            F_p_obs = (R_p_eff / d)**2 * F_p
 
             # Direct spectrum is F_p observed at Earth
             spectrum = F_p_obs
@@ -974,10 +979,12 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # Convert stellar surface flux to observed flux at Earth
             F_s_obs = (R_s / d)**2 * F_s_interp
 
+            # Convert planet surface flux to observed flux at Earth
+            F_p_obs = (R_p_eff / d)**2 * F_p
+
             # Final spectrum is the planet-star flux ratio
             spectrum = F_p_obs / F_s_obs
-        '''
-
+        
     # Write spectrum to file
     if (save_spectrum == True):
         write_spectrum(planet['planet_name'], model['model_name'], spectrum, wl)

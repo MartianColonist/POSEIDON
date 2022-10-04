@@ -117,8 +117,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
     #***** Physical property parameters *****#
 
-    if (spectrum_type == 'transmission'):
-        physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
+ #   if (spectrum_type == 'transmission'):
+    physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
 
     if (gravity_setting == 'free'):
         physical_params += ['log_g']         # log_10 surface gravity (cm / s^2)
