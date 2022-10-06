@@ -1185,7 +1185,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
 
     # Set default priors (used if user doesn't specify one or more priors)
     prior_ranges_defaults = {'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
-                             'log_g': [2.0, 5.0], 'T': [400, T_eq+200], 
+                             'log_g': [2.0, 5.0], 'T': [400, 3000], 
                              'Delta_T': [0, 1000], 'T_mid': [400, 3000],
                              'T_high': [400, 3000], 'a1': [0.02, 2.00], 
                              'a2': [0.02, 2.00], 'log_P1': [-6, 2], 
@@ -1219,6 +1219,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                         prior_ranges[parameter] = prior_ranges['log_P_X_mid']
                     else:
                         prior_ranges[parameter] = prior_ranges_defaults['log_P_mid']
+
+                # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
+                elif ('Delta_log_' in parameter):
+                    if ('Delta_log_X' in prior_ranges):
+                        prior_ranges[parameter] = prior_ranges['Delta_log_X']
+                    else:
+                        prior_ranges[parameter] = prior_ranges_defaults['Delta_log_X']
                     
                 # Set non-specified mixing ratio prior to that for 'log_X'
                 elif ('log_' in parameter):
@@ -1227,13 +1234,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     else:
                         prior_ranges[parameter] = prior_ranges_defaults['log_X']
 
-                # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
-                elif ('Delta_log_' in parameter):
-                    if ('Delta_log_X' in prior_ranges):
-                        prior_ranges[parameter] = prior_ranges['Delta_log_X']
-                    else:
-                        prior_ranges[parameter] = prior_ranges_defaults['Delta_log_X']
-                
+            # Set non-specified temperature difference parameters to that for 'Delta_T'
+            elif ('Delta_T_' in parameter):
+                if ('Delta_T' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['Delta_T']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['Delta_T']
+
             # Set non-specified temperature parameters to that for 'T'
             elif ('T_' in parameter):
                 if ('T' in prior_ranges):
@@ -1265,6 +1272,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     else:
                         prior_types[parameter] = 'uniform'
 
+                # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
+                elif ('Delta_log_' in parameter):
+                    if ('Delta_log_X' in prior_types):
+                        prior_types[parameter] = prior_types['Delta_log_X']
+                    else:
+                        prior_types[parameter] = 'uniform'
+
                 # Set non-specified mixing ratio prior to that for 'log_X'
                 elif ('log_' in parameter):
                     if ('log_X' in prior_types):
@@ -1274,14 +1288,14 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                             prior_types[parameter] = 'CLR'
                         else:
                             prior_types[parameter] = 'uniform'
-
-                # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
-                elif ('Delta_log_' in parameter):
-                    if ('Delta_log_X' in prior_types):
-                        prior_types[parameter] = prior_types['Delta_log_X']
-                    else:
-                        prior_types[parameter] = 'uniform'
                 
+            # Set non-specified temperature difference parameters to that for 'Delta_T'
+            elif ('Delta_T_' in parameter):
+                if ('Delta_T' in prior_types):
+                    prior_types[parameter] = prior_types['Delta_T']
+                else:
+                    prior_types[parameter] = 'uniform'
+
             # Set non-specified temperature parameters to that for 'T'
             elif ('T_' in parameter):
                 if ('T' in prior_types):
@@ -1309,6 +1323,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_ranges['Delta_log_X']
     if (('T' in prior_ranges) and (PT_profile != 'isotherm')):
         del prior_ranges['T']
+    if (('Delta_T' in prior_ranges) and (PT_profile != 'gradient')):
+        del prior_ranges['Delta_T']
 
     # Remove group prior types for mixing ratio and temperature parameters
     if ('log_P_X_mid' in prior_types):
@@ -1319,6 +1335,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_types['Delta_log_X']
     if (('T' in prior_types) and (PT_profile != 'isotherm')):
         del prior_types['T']
+    if (('Delta_T' in prior_types) and (PT_profile != 'gradient')):
+        del prior_types['Delta_T']
 
     CLR_limit_check = 0   # Tracking variable for CLR limit check below
 
