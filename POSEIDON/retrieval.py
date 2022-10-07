@@ -686,8 +686,8 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
     output_prefix = retrieval_name + '-'
 
     # For a retrieval we do not have user provided P-T or chemical profiles
-    T_input = None
-    log_X_input = None
+    T_input = []
+    log_X_input = []
     
     # Run PyMultiNest analyser to extract posterior samples
     analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
