@@ -307,7 +307,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 # Sine priors
                 elif (prior_types[parameter] == 'sine'):
 
-                    max_value = prior_ranges[parameter][0]
+                    max_value = prior_ranges[parameter][1]
 
                     if parameter in ['alpha', 'beta']:
                         cube[i] = (180.0/np.pi)*2.0*np.arcsin(cube[i] * np.sin((np.pi/180.0)*(max_value/2.0)))
