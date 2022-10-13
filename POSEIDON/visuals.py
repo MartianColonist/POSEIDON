@@ -2624,3 +2624,152 @@ def plot_Fp(planet, model, Fp, wl, R_to_bin = 100):
     plt.savefig(file_name, bbox_inches='tight')
 
     return fig
+
+
+def plot_chem_histogram(nbins, X_i_vals, colour, oldax, shrink_factor):
+    
+    weights = np.ones_like(X_i_vals)/float(len(X_i_vals))
+    
+    x,w,patches = oldax.hist(X_i_vals, bins=nbins, color=colour, histtype='stepfilled', alpha=0.4, edgecolor='None', weights=weights, density=True, stacked=True)
+    x,w,patches = oldax.hist(X_i_vals, bins=nbins, histtype='stepfilled', lw = 0.8, facecolor='None', weights=weights, density=True, stacked=True)
+        
+    oldax.set_ylim(0, (1.1+shrink_factor)*x.max())
+    
+    low3, low2, low1, median, high1, high2, high3 = confidence_intervals(len(X_i_vals), X_i_vals, 0)
+    
+    return low1, median, high1
+
+
+def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_species):
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+    
+    fig = plt.figure()  
+    fig.set_size_inches(5, 2.5)
+    #fig.set_size_inches(10.3, 7.5)
+       
+    # Initialise histogram grid (use subplot2grid for irregular spacings)
+    gs = gridspec.GridSpec(1, 2) 
+   
+    # Colours for histograms
+    colours = ['dodgerblue', 'orangered']
+   
+    # Names of the parameters to be plotted
+    parameters = []
+    parameters.append(r"$\rm{log}(\rm{O / H}) \, \, (\times \, \rm{solar})$")
+    parameters.append(r"$\rm{C / O}$")
+
+    N_samples, _ = np.shape(X_vals)
+   
+    # Empty arrays for mu, O/H, and C/O
+    O_to_H_vals = np.zeros(shape=(N_samples))
+    C_to_O_vals = np.zeros(shape=(N_samples))
+   
+    O_to_H_solar = np.power(10.0, (8.69-12.0))  # Asplund (2009) ~ 4.9e-4  (Present day photosphere value)
+   
+    # Work out mean molecular mass and metallicity for each retrieved chemistry vector (functions defined in profile.py)
+    for i in range(N_samples):
+   
+        O_to_H_vals[i] = compute_O_to_H(X_vals[i,:], chemical_species) / O_to_H_solar
+        C_to_O_vals[i] = compute_C_to_O(X_vals[i,:], chemical_species)
+   
+    for i in range(len(parameters)):
+   
+        count = i+1
+
+        plt.subplot(gs[0,i])
+   
+        oldax = plt.gca()
+   
+        if (count == 1): low1, median, high1 = plot_chem_histogram(35, np.log10(O_to_H_vals), colours[i], oldax, 0.0)
+        if (count == 2): low1, median, high1 = plot_chem_histogram(50, C_to_O_vals, colours[i], oldax, 0.0)
+
+        print(str(median) + ' (+' + str(high1-median) + ')' + ' (-' + str(median-low1) + ')')
+   	
+        newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
+        newax.set_ylim(0, 1)
+   	
+        ylim = newax.get_ylim()
+        y = ylim[0] + 0.06*(ylim[1] - ylim[0])
+   
+        newax.errorbar(x=median, y=y,
+                       xerr=np.transpose([[median - low1, high1 - median]]), 
+                       color='lightgreen', ecolor='green', markersize=3, 
+                       markeredgewidth = 0.6, linewidth=0.9, capthick=0.9, capsize=1.7, marker='s')
+                      
+        oldax.set_yticks([])
+       
+        oldax.tick_params(axis='both', which='major', labelsize=8)
+        newax.tick_params(axis='both', which='major', labelsize=8)
+    
+        # Custom plotting options for each histogram          
+        if (count == 1):
+            oldax.set_xlim([-0.2, 2.8])
+            newax.text(0.05, 0.88, r'O/H', color='navy', fontsize = 10)
+            newax.text(1.9, 0.88, r'$1.41^{+0.38}_{-0.46}$', color='navy', fontsize = 9.5)
+            newax.axvline(x=0.0, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
+            newax.set_yticklabels([])
+            
+        if (count == 2):
+            oldax.set_xlim([0.0, 1.0])
+            newax.text(0.10, 0.88, r'C/O', color='maroon', fontsize = 10)
+            newax.text(0.7, 0.88, r'$0.00^{+0.09}_{-0.00}$', color='maroon', fontsize = 9.5)
+            newax.axvline(x=0.55, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
+            newax.set_yticklabels([])
+
+        plt.xlabel(parameters[i], fontsize = 12, labelpad = 1)
+        
+  #  plt.tight_layout(pad = 0.7, w_pad = 0.2, h_pad = 0.8)
+        
+    # Write figure to file
+    file_name = output_dir + model_name + '_element_ratios.png'
+
+    plt.savefig(file_name, bbox_inches='tight')
+
+
+def plot_composition(planet, model):
+
+    # Unpack model and atmospheric properties
+    planet_name = planet['planet_name']
+    model_name = model['model_name']
+    param_species = model['param_species']
+    N_params_cum = model['N_params_cum']
+
+    # Unpack number of free parameters
+    param_names = model['param_names']
+    n_params = len(param_names)
+
+    # Identify output directory location
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+
+    # Load relevant output directory
+    output_prefix = model_name + '-'
+
+    # Change directory into MultiNest result file folder
+    os.chdir(output_dir + 'MultiNest_raw/')
+    
+    # Run PyMultiNest analyser to extract posterior samples
+    analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
+                                    verbose = False)
+    samples = analyzer.get_equal_weighted_posterior()[:,:-1]
+
+    # Change directory back to directory where user's python script is located
+    os.chdir('../../../../')
+
+    # Find total number of available posterior samples from MultiNest 
+    N_samples = len(samples[:,0])
+    N_species = len(param_species)
+
+    log_X_stored = np.zeros(shape=(N_samples, N_species))
+    
+    # Generate spectrum and PT profiles from selected samples
+    for i in range(N_samples):
+
+        # Convert MultiNest parameter samples into POSEIDON function inputs
+        _, _, log_X_stored[i,:], _, _, _, _, _ = split_params(samples[i], 
+                                                              N_params_cum)
+
+    # Plot elemental ratios
+    plot_retrieved_element_ratios(np.power(10.0, log_X_stored), planet_name, 
+                                  model_name, param_species)
