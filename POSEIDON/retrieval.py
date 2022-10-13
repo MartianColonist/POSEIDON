@@ -574,7 +574,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         # For emission spectra retrievals we directly compute Fp (instead of Fp/F*)
         # so we can convolve and bin Fp and F* separately when comparing to data
-        if ('emission' in spectrum_type):
+        if (('emission' in spectrum_type) and (spectrum_type != 'direct_emission')):
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                         spectrum_type = ('direct_' + spectrum_type))   # Always Fp (even for secondary eclipse)
 
