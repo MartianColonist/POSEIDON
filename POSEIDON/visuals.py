@@ -1,11 +1,13 @@
 # Plotting routines to visualise POSEIDON output*****
 
 from enum import unique
+import os
 import numpy as np
 import scipy.constants as sc
 import colorsys
 import matplotlib
 from pylab import rcParams
+import pymultinest
 import matplotlib.style
 from matplotlib import ticker
 import matplotlib.pyplot as plt
@@ -33,9 +35,11 @@ warnings.filterwarnings("ignore", message="This figure includes Axes that are " 
                                            "not compatible with tight_layout, " +
                                            "so results might be incorrect.")
 
-from .utility import bin_spectrum, generate_latex_param_names, round_sig_figs
+from .utility import bin_spectrum, generate_latex_param_names, round_sig_figs, \
+                     confidence_intervals
 from .instrument import bin_spectrum_to_data
-
+from .atmosphere import compute_O_to_H, compute_C_to_O
+from .parameters import split_params
               
 # Define some more flexible linestyles for convenience
 linestyles = {
@@ -968,8 +972,8 @@ def plot_spectra(spectra, planet, data_properties = None,
                  FpFs_min = None, FpFs_max = None, y_unit = 'transit_depth', 
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
-                 data_marker_size_list = [], 
-                 wl_axis = 'log', figure_shape = 'default'):
+                 data_marker_size_list = [], wl_axis = 'log', 
+                 figure_shape = 'default', legend_location = 'upper right'):
     ''' 
     Plot a collection of individual model transmission spectra.
     
@@ -979,6 +983,8 @@ def plot_spectra(spectra, planet, data_properties = None,
         plot_type = 'transmission'
     elif (y_unit in ['Fp/Fs', 'Fp/F*']):
         plot_type = 'emission'
+    elif (y_unit in ['Fp']):
+        plot_type = 'direct_emission'
     
     # Find number of spectra to plot
     N_spectra = len(spectra)
@@ -1325,6 +1331,8 @@ def plot_spectra(spectra, planet, data_properties = None,
         ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
     elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+    elif (plot_type == 'direct_emission'):
+        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
@@ -1340,7 +1348,7 @@ def plot_spectra(spectra, planet, data_properties = None,
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
     
-    legend = ax1.legend(loc='upper right', shadow=True, prop={'size':10}, 
+    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, 
                         ncol=1, frameon=True)    #legend settings
   #  legend.set_bbox_to_anchor([0.75, 0.98], transform=None)
     frame = legend.get_frame()
@@ -1451,7 +1459,7 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
             y_max_plt = transit_depth_max
 
     # If the user did not specify an Fp/Fs range, find min and max from input models
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'Fp']):
 
         if (FpFs_min == None):
             y_min_plt = 0.995 * np.min(ydata - err_data) # Extend slightly below
@@ -1571,6 +1579,8 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
         ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
     elif (y_unit in ['Fp/Fs', 'Fp/F*']):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+    elif (y_unit in ['Fp']):
+        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
@@ -1620,7 +1630,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            colour_list = [], spectra_labels = [],
                            data_colour_list = [], data_labels = [],
                            data_marker_list = [], data_marker_size_list = [],
-                           wl_axis = 'log', figure_shape = 'default'):
+                           wl_axis = 'log', figure_shape = 'default',
+                           legend_location = 'upper right'):
     ''' 
     Plot retrieved transmission spectra.
     
@@ -1763,7 +1774,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             y_max_plt = transit_depth_max
 
     # If the user did not specify an Fp/Fs range, find min and max from input models
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'Fp']):
 
         if (FpFs_min == None):
             
@@ -1981,6 +1992,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
     elif (y_unit in ['Fp/Fs', 'Fp/F*']):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+    elif (y_unit in ['Fp']):
+        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
@@ -1992,7 +2005,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
 
-    legend = ax1.legend(loc='upper right', shadow=True, prop={'size':10}, 
+    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, 
                         ncol=1, frameon=False)    #legend settings
   #  legend.set_bbox_to_anchor([0.75, 0.98], transform=None)
   #  frame = legend.get_frame()
@@ -2015,7 +2028,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       PT_high2, T_true = None, Atmosphere_dimension = 1, 
                       TwoD_type = None, plt_label = None, show_profiles = [],
                       PT_labels = [], colour_list = [], log_P_min = None,
-                      log_P_max = None, T_min = None, T_max = None):
+                      log_P_max = None, T_min = None, T_max = None,
+                      legend_location = 'lower left'):
         
     ''' Plot a retrieved Pressure-Temperature (P-T) profile.
         
@@ -2162,7 +2176,7 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
     ax.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax.legend(loc='lower left', shadow=True, prop={'size':14}, ncol=1, 
+    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
