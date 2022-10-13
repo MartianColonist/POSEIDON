@@ -10,6 +10,7 @@ from spectres import spectres
 from numba.core.decorators import jit
 from scipy.special import erfcinv
 from scipy.special import lambertw as W
+from scipy.constants import parsec
 
 from .constants import R_J, R_E
 
@@ -229,6 +230,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     error_inflation = model['error_inflation']
     offsets_applied = model['offsets_applied']
     radius_unit = model['radius_unit']
+    distance_unit = model['distance_unit']
     surface = model['surface']
     R_p = planet['planet_radius']
     d = planet['system_distance']
@@ -557,6 +559,20 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         else:
             log_g = None
 
+        # Unpack system distance if set as a free parameter
+        if ('d' in physical_param_names):
+            d_sampled = physical_params[np.where(physical_param_names == 'd')[0][0]]
+
+            # Convert distance drawn by MultiNest (in parsec) back into SI
+            if (distance_unit == 'pc'):
+                d_sampled *= parsec
+
+            # Redefine object distance to sampled value 
+            planet['system_distance'] = d_sampled
+
+        else:
+            d_sampled = planet['system_distance']
+
         # Unpack surface pressure if set as a free parameter
         if (surface == True):
             P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
@@ -677,6 +693,7 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
 
     # Unpack model properties
     radius_unit = model['radius_unit']
+    distance_unit = model['distance_unit']
     N_params_cum = model['N_params_cum']
     surface = model['surface']
 
@@ -732,6 +749,20 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
             log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
         else:
             log_g = None
+
+        # Unpack system distance if set as a free parameter
+        if ('d' in physical_param_names):
+            d_sampled = physical_params[np.where(physical_param_names == 'd')[0][0]]
+
+            # Convert distance drawn by MultiNest (in parsec) back into SI
+            if (distance_unit == 'pc'):
+                d_sampled *= parsec
+
+            # Redefine object distance to sampled value 
+            planet['system_distance'] = d_sampled
+
+        else:
+            d_sampled = planet['system_distance']
 
         # Unpack surface pressure if set as a free parameter
         if (surface == True):

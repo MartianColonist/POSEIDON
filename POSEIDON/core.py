@@ -18,9 +18,9 @@ from numba.core.decorators import jit
 import scipy.constants as sc
 from mpi4py import MPI
 from spectres import spectres
+from scipy.constants import parsec
 
 from .constants import R_J, R_E
-
 from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot
 from .supported_opac import supported_species, supported_cia, inactive_species
@@ -205,9 +205,9 @@ def define_model(model_name, bulk_species, param_species,
                  object_type = 'transiting', PT_profile = 'isotherm', 
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
                  cloud_type = 'deck', opaque_Iceberg = False,
-                 gravity_setting = 'fixed',
-                 stellar_contam = 'No', offsets_applied = 'No', 
-                 error_inflation = 'No', radius_unit = 'R_J',
+                 gravity_setting = 'fixed', stellar_contam = 'No', 
+                 offsets_applied = 'No', error_inflation = 'No', 
+                 radius_unit = 'R_J', distance_unit = 'pc',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
@@ -255,6 +255,9 @@ def define_model(model_name, bulk_species, param_species,
         radius_unit (str)
             Planet radius unit used to report retrieval results
             (Options: R_J / R_E)
+        distance_unit (str):
+            Distance to system unit used to report retrieval results
+            (Options: pc)
         PT_dim (int):
             Dimensionality of the pressure-temperature field (uniform -> 1, 
             a day-night or evening-morning gradient -> 2, both day-night and 
@@ -358,7 +361,8 @@ def define_model(model_name, bulk_species, param_species,
              'chemical_species': chemical_species, 'bulk_species': bulk_species,
              'active_species': active_species, 'CIA_pairs': CIA_pairs,
              'ff_pairs': ff_pairs, 'bf_species': bf_species,
-             'param_species': param_species, 'radius_unit': radius_unit,
+             'param_species': param_species, 
+             'radius_unit': radius_unit, 'distance_unit': distance_unit,
              'species_EM_gradient': species_EM_gradient,
              'species_DN_gradient': species_DN_gradient,
              'species_vert_gradient': species_vert_gradient,
@@ -1162,6 +1166,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     X_param_names = model['X_param_names']
     PT_profile = model['PT_profile']
     radius_unit = model['radius_unit']
+    distance_unit = model['distance_unit']
     Atmosphere_dimension = model['Atmosphere_dimension']
     
     # Unpack planet and star properties
@@ -1183,10 +1188,16 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         R_p_norm = R_J
     elif (radius_unit == 'R_E'):
         R_p_norm = R_E
-
     if ('R_p_ref' in prior_ranges):
         prior_ranges['R_p_ref'] = [prior_ranges['R_p_ref'][0]/R_p_norm,
                                    prior_ranges['R_p_ref'][1]/R_p_norm]
+
+    # Normalise retrieved system distance parameter into parsecs
+    if (distance_unit == 'pc'):
+        d_norm = parsec
+    if ('d' in prior_ranges):
+        prior_ranges['d'] = [prior_ranges['d'][0]/d_norm,
+                             prior_ranges['d'][1]/d_norm]
 
     # Set default priors (used if user doesn't specify one or more priors)
     prior_ranges_defaults = {'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
