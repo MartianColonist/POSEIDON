@@ -1167,8 +1167,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Unpack planet and star properties
     R_p = planet['planet_radius']
     T_eq = planet['planet_T_eq']
-    T_s = star['stellar_T_eff']
-    err_T_s = star['stellar_T_eff_error']
+
+    if (star != None):
+        T_s = star['stellar_T_eff']
+        err_T_s = star['stellar_T_eff_error']
+    else:
+        T_s = 0.0
+        err_T_s = 0.0
 
     # Unpack data error bars (not error inflation parameter prior)
     err_data = data['err_data']    
