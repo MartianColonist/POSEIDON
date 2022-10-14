@@ -2682,10 +2682,8 @@ def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_spec
    
         oldax = plt.gca()
    
-        if (count == 1): low1, median, high1 = plot_chem_histogram(35, np.log10(O_to_H_vals), colours[i], oldax, 0.0)
-        if (count == 2): low1, median, high1 = plot_chem_histogram(50, C_to_O_vals, colours[i], oldax, 0.0)
-
-        print(str(median) + ' (+' + str(high1-median) + ')' + ' (-' + str(median-low1) + ')')
+        if (count == 1): low1, median, high1 = plot_chem_histogram(40, np.log10(O_to_H_vals), colours[i], oldax, 0.0)
+        if (count == 2): low1, median, high1 = plot_chem_histogram(40, C_to_O_vals, colours[i], oldax, 0.0)
    	
         newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
         newax.set_ylim(0, 1)
@@ -2702,19 +2700,29 @@ def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_spec
        
         oldax.tick_params(axis='both', which='major', labelsize=8)
         newax.tick_params(axis='both', which='major', labelsize=8)
-    
+
+        median = round_sig_figs(median, 2)
+        upper_sigma = round_sig_figs((high1-median), 2)
+        lower_sigma = round_sig_figs((median-low1), 2)
+
         # Custom plotting options for each histogram          
         if (count == 1):
-            oldax.set_xlim([-0.2, 2.8])
-            newax.text(0.05, 0.88, r'O/H', color='navy', fontsize = 10)
-            newax.text(1.9, 0.88, r'$1.41^{+0.38}_{-0.46}$', color='navy', fontsize = 9.5)
+            oldax.set_xlim([-0.4, 0.6])
+            newax.text(0.04, 0.96, r'O/H', color='navy', fontsize = 10, 
+                       horizontalalignment='left', verticalalignment='top', transform=newax.transAxes)
+            newax.text(0.96, 0.96, r'$' + str(median) + '^{+' + str(upper_sigma) + 
+                       '}_{-' + str(lower_sigma) + '}$', color='navy', fontsize = 10,
+                       horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
             newax.axvline(x=0.0, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
             newax.set_yticklabels([])
             
         if (count == 2):
             oldax.set_xlim([0.0, 1.0])
-            newax.text(0.10, 0.88, r'C/O', color='maroon', fontsize = 10)
-            newax.text(0.7, 0.88, r'$0.00^{+0.09}_{-0.00}$', color='maroon', fontsize = 9.5)
+            newax.text(0.04, 0.96, r'C/O', color='maroon', fontsize = 10, 
+                       horizontalalignment='left', verticalalignment='top', transform=newax.transAxes)
+            newax.text(0.96, 0.96, r'$' + str(median) + '^{+' + str(upper_sigma) + 
+                       '}_{-' + str(lower_sigma) + '}$', color='maroon', fontsize = 10,
+                       horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
             newax.axvline(x=0.55, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
             newax.set_yticklabels([])
 
@@ -2725,7 +2733,7 @@ def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_spec
     # Write figure to file
     file_name = output_dir + model_name + '_element_ratios.png'
 
-    plt.savefig(file_name, bbox_inches='tight')
+    plt.savefig(file_name, bbox_inches='tight', dpi=300)
 
 
 def plot_composition(planet, model):
