@@ -673,6 +673,8 @@ def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
                     title_fmt = '.4f'
                 else:
                     title_fmt = '.2f'
+            elif ('d' in param_name):
+                title_fmt = '.3f'
                     
             else:
                 title_fmt = title_fmt_default
