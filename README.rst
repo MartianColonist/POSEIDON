@@ -23,9 +23,9 @@ can be found in the
 Attribution
 -----------
 
-If you use POSEIDON in your work, the best citation (for now) is `MacDonald & Madhusudhan (2017) 
-<https://ui.adsabs.harvard.edu/abs/2017MNRAS.469.1979M/abstract>`_. A JOSS paper
-describing this open source release is currently in prep.
+If you use POSEIDON in your work, please cite `MacDonald & Madhusudhan (2017) 
+<https://ui.adsabs.harvard.edu/abs/2017MNRAS.469.1979M/abstract>`_ and 
+`MacDonald (submitted) <https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5>`_.
 
 License
 -------
@@ -49,3 +49,7 @@ or questions are certainly welcome! Please reach out to rmacdonald@astro.cornell
 .. image:: https://img.shields.io/badge/License-BSD_3--Clause-blue.svg
    :target: https://github.com/MartianColonist/POSEIDON/blob/main/LICENSE
    :alt: GitHub License
+
+.. image:: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5/status.svg
+   :target: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5
+   :alt: Journal of Open Source Software Paper Status
