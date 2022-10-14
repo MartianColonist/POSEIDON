@@ -337,6 +337,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 # For 2D models, the prior range for 'Delta' parameters can change to satisfy mixing ratio priors
                 elif (Atmosphere_dimension == 2):
 
+                    min_value = prior_ranges[parameter][0]
+                    max_value = prior_ranges[parameter][1]
+
+                    cube[i] = ((cube[i] * (max_value - min_value)) + min_value)
+                    
+                    '''
                     # Absolute mixing ratio parameter comes first
                     if ('Delta' not in parameter):
 
@@ -372,6 +378,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                         min_value_delta = max(min_prior_delta, -largest_delta)
                         
                         cube[i] = ((cube[i] * (max_value_delta - min_value_delta)) + min_value_delta) 
+                        '''
                     
                 # For 3D models, the prior ranges for 'Delta' parameters can change to satisfy mixing ratio priors
                 elif (Atmosphere_dimension == 3):
