@@ -6,10 +6,12 @@ import numpy as np
 import h5py
 from mpi4py import MPI
 import scipy.constants as sc
-from numba.core.decorators import jit
+from numba import cuda, jit
+import math
+import cupy as cp
                    
 from .species_data import polarisabilities
-from .utility import prior_index, prior_index_V2, closest_index          
+from .utility import prior_index, prior_index_V2, closest_index, closest_index_GPU
            
 
 @jit(nopython = True)
@@ -1061,6 +1063,159 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                 kappa_clear[(P > P_surf),j,k,:] = 1.0e250
             
     return kappa_clear, kappa_cloud
+
+
+@cuda.jit
+def extinction_GPU(kappa_clear, kappa_cloud, i_bot, N_species, N_species_active, 
+                   N_cia_pairs, N_ff_pairs, N_bf_species, n, T, P, wl, X, X_active, 
+                   X_cia, X_ff, X_bf, a, gamma, P_cloud, kappa_cloud_0, sigma_stored, 
+                   cia_stored, Rayleigh_stored, ff_stored, bf_stored, enable_haze,
+                   enable_deck, enable_surface, N_sectors, N_zones, T_fine, 
+                   log_P_fine, P_surf, P_deep = 1000.0):               
+    
+    ''' Main function to evaluate extinction coefficients for molecules / atoms,
+        Rayleigh scattering, hazes, and clouds for parameter combination
+        chosen in retrieval step.
+        
+        Takes in cross sections pre-interpolated to 'fine' P and T grids
+        before retrieval run (so no interpolation is required at each step).
+        Instead, for each atmospheric layer the extinction coefficient
+        is simply kappa = n * sigma[log_P_nearest, T_nearest, wl], where the
+        'nearest' values are the closest P_fine, T_fine points to the
+        actual P, T values in each layer. This results in a large speed gain.
+        
+        The output extinction coefficient arrays are given as a function
+        of layer number (indexed from low to high altitude), terminator
+        sector, and wavelength.
+    
+    '''
+    
+    thread = cuda.grid(1)
+    stride = cuda.gridsize(1)
+    
+    N_wl = len(wl)     # Number of wavelengths on model grid
+    N_layers = len(P)  # Number of layers
+    
+    # Fine temperature grid (for pre-interpolating opacities)    
+    N_T_fine = len(T_fine)
+    N_P_fine = len(log_P_fine)
+            
+    # For each terminator sector (terminator plane)
+    for j in range(N_sectors):
+            
+        # For each terminator zone (along day-night transition)
+        for k in range(N_zones):
+            
+            # For each layer, find closest pre-computed cross section to P_fine, T_fine
+            for i in range(i_bot, N_layers):
+                
+                n_level = n[i,j,k]
+                
+                # Find closest index in fine temperature array to given layer temperature
+                idx_T_fine = closest_index_GPU(T[i,j,k], T_fine[0], T_fine[-1], N_T_fine)
+                idx_P_fine = closest_index_GPU(math.log10(P[i]), log_P_fine[0], log_P_fine[-1], N_P_fine)
+                
+                # For each collisionally-induced absorption (CIA) pair
+                for q in range(N_cia_pairs): 
+                    
+                    n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
+                    n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
+                    n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+                    
+                    # For each wavelength
+                    for l in range(thread, N_wl, stride):
+                        
+                        # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
+                        
+                # For each free-free absorption pair
+                for q in range(N_ff_pairs): 
+                    
+                    n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
+                    n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
+                    n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
+                    
+                    # For each wavelength
+                    for l in range(thread, N_wl, stride):
+                        
+                        # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
+                        
+                # For each source of bound-free absorption (photodissociation)
+                for q in range(N_bf_species): 
+                    
+                    n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    
+                    # For each wavelength
+                    for l in range(thread, N_wl, stride):
+                        
+                        # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                
+                # For each molecular / atomic species with active absorption features
+                for q in range(N_species_active): 
+                    
+                    n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
+                    
+                    # For each wavelength
+                    for l in range(thread, N_wl, stride):
+                        
+                        # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
+                    
+                # For each molecular / atomic species
+                for q in range(N_species):  
+                    
+                    n_q = n_level*X[q,i,j,k]   # Number density of given species
+                    
+                    # For each wavelength
+                    for l in range(thread, N_wl, stride):
+                                
+                        # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+        
+            # If haze is enabled in this model  
+            if (enable_haze == 1):
+                
+                # For each layer
+                for i in range(i_bot, N_layers):
+                    
+                    haze_amp = (n[i,j,k] * a * 5.31e-31)   # Final factor is H2 Rayleigh scattering cross section at 350 nm
+                    
+                    # For each wavelength
+                    for l in range(thread, N_wl, stride):
+
+                        # Generalised scattering slope for haze
+                        slope = math.pow(wl[l]/0.35, gamma)
+
+                        # Add haze scattering to total extinction in layer i, sector j, for each wavelength
+                        kappa_cloud[i,j,k,l] += haze_amp * slope
+                        
+            # If a cloud deck is enabled in this model
+            if (enable_deck == 1):
+                
+                # For each wavelength
+                for l in range(thread, N_wl, stride):
+
+                    # For each layer
+                    for i in range(i_bot, N_layers):
+
+                        # Set extinction inside cloud deck
+                        if P[i] > P_cloud:
+                            kappa_cloud[i,j,k,l] += kappa_cloud_0
+
+            # If a surface is enabled in this model
+            if (enable_surface == 1):
+
+                # For each wavelength
+                for l in range(thread, N_wl, stride):
+
+                    # For each layer
+                    for i in range(i_bot, N_layers):
+
+                        # Set extinction to infinity below surface
+                        if P[i] > P_surf:
+                            kappa_clear[i,j,k,l] = 1.0e250
 
 
 #***** Special optimised functions for line-by-line case *****#

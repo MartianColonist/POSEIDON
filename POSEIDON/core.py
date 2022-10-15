@@ -13,7 +13,11 @@ os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['CBLAS_NUM_THREADS'] = '1'
 
+os.environ['block'] = '128'
+os.environ['thread'] = '128'
+
 import numpy as np
+import cupy as cp
 from numba.core.decorators import jit
 import scipy.constants as sc
 from mpi4py import MPI
@@ -27,16 +31,24 @@ from .supported_opac import supported_species, supported_cia, inactive_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
-                        extinction_LBL
+                        extinction_LBL, extinction_GPU
 from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
 from .instrument import init_instrument
 from .transmission import TRIDENT
-from .emission import emission_rad_transfer, determine_photosphere_radii
+from .emission import emission_rad_transfer, determine_photosphere_radii, \
+                      emission_rad_transfer_GPU, determine_photosphere_radii_GPU
 
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
+
+block = int(os.environ['block'])
+thread = int(os.environ['thread'])
+
+import warnings
+
+warnings.filterwarnings("ignore") # Suppress numba performance warning
 
 
 def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, 
@@ -748,7 +760,8 @@ def check_atmosphere_physical(atmosphere, opac):
 def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
                      disable_continuum = False, suppress_print = False,
-                     Gauss_quad = 2, use_photosphere_radius = True):
+                     Gauss_quad = 2, use_photosphere_radius = True,
+                     device = 'cpu'):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -908,21 +921,61 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # Also unpack fine temperature and pressure grids from pre-interpolation
         T_fine = opac['T_fine']
         log_P_fine = opac['log_P_fine']
+
+        # Running POSEIDON on the CPU
+        if (device == 'cpu'):
         
-        # Calculate extinction coefficients in standard mode
-        kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
-                                              CIA_pairs, ff_pairs, bf_species,
-                                              n, T, P, wl, X, X_active, X_CIA, 
-                                              X_ff, X_bf, a, gamma, P_cloud, 
-                                              kappa_cloud_0, sigma_stored, 
-                                              CIA_stored, Rayleigh_stored, 
-                                              ff_stored, bf_stored, enable_haze, 
-                                              enable_deck, enable_surface,
-                                              N_sectors, N_zones, T_fine, 
-                                              log_P_fine, P_surf)
+            # Calculate extinction coefficients in standard mode
+            kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
+                                                  CIA_pairs, ff_pairs, bf_species,
+                                                  n, T, P, wl, X, X_active, X_CIA, 
+                                                  X_ff, X_bf, a, gamma, P_cloud, 
+                                                  kappa_cloud_0, sigma_stored, 
+                                                  CIA_stored, Rayleigh_stored, 
+                                                  ff_stored, bf_stored, enable_haze, 
+                                                  enable_deck, enable_surface,
+                                                  N_sectors, N_zones, T_fine, 
+                                                  log_P_fine, P_surf)
+
+        # Running POSEIDON on the GPU
+        elif (device == 'gpu'):
+
+            N_wl = len(wl)     # Number of wavelengths on model grid
+            N_layers = len(P)  # Number of layers
+
+            # Define extinction coefficient arrays explicitly on GPU
+            kappa_clear = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+            kappa_cloud = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+
+            # Find index of deep pressure below which atmosphere is opaque
+            P_deep = 1000       # Default value of P_deep (needs to be high for brown dwarfs)
+            i_bot = np.argmin(np.abs(P - P_deep))
+
+            # Store length variables for mixing ratio arrays 
+            N_species = len(chemical_species)        # Number of chemical species
+            N_species_active = len(active_species)   # Number of spectrally active species
+            
+            N_cia_pairs = len(CIA_pairs)             # Number of cia pairs included
+            N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
+            N_bf_species = len(bf_species)           # Number of bound-free species included
+        
+            # Calculate extinction coefficients in standard mode
+            extinction_GPU[block, thread](kappa_clear, kappa_cloud, i_bot, N_species, 
+                                          N_species_active, N_cia_pairs, N_ff_pairs, 
+                                          N_bf_species, n, T, P, wl, X, X_active, 
+                                          X_CIA, X_ff, X_bf, a, gamma, P_cloud, 
+                                          kappa_cloud_0, sigma_stored, 
+                                          CIA_stored, Rayleigh_stored, 
+                                          ff_stored, bf_stored, enable_haze, 
+                                          enable_deck, enable_surface,
+                                          N_sectors, N_zones, T_fine, 
+                                          log_P_fine, P_surf, P_deep)
 
     # Generate transmission spectrum        
     if (spectrum_type == 'transmission'):
+
+        if (device == 'gpu'):
+            raise Exception("GPU transmission spectra not yet supported.")
 
         # Place planet at mid-transit (spectrum identical due to translational symmetry)
         y_p = 0   # Coordinate of planet centre along orbit (y=0 at mid-transit)
@@ -948,12 +1001,36 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         dz = dr[:,0,zone_idx]   # Only consider one region for 1D/2D models
         T = T[:,0,zone_idx]     # Only consider one region for 1D/2D models
 
-        # Compute planet flux
-        F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+        # Compute planet flux (on CPU or GPU)
+        if (device == 'cpu'):
+            F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+        elif (device == 'gpu'):
+            F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa, Gauss_quad)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
-            R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]), wl, photosphere_tau = 2/3)
+            
+            # Running POSEIDON on the CPU
+            if (device == 'cpu'):
+                R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]), wl, photosphere_tau = 2/3)
+            
+            # Running POSEIDON on the GPU
+            elif (device == 'gpu'):
+
+                # Initialise photosphere radius array
+                R_p_eff = cp.zeros(len(wl))
+                dtau_flipped = cp.flip(dtau, axis=0)
+                r_low_flipped = np.ascontiguousarray(np.flip(r_low[:,0,zone_idx]))
+
+                # Find cumulative optical depth from top of atmosphere down at each wavelength
+                tau_lambda = cp.cumsum(dtau_flipped, axis=0)
+
+                # Calculate photosphere radius using GPU
+                determine_photosphere_radii_GPU[block, thread](tau_lambda, r_low_flipped, wl, R_p_eff, 2/3)
+
+                # Convert back to numpy array on CPU
+                R_p_eff = cp.asnumpy(R_p_eff)          
+        
         else:
             R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
         
