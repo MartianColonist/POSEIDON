@@ -462,7 +462,8 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
     
 
 def read_opacities(model, wl, opacity_treatment = 'opacity_sampling', 
-                   T_fine = None, log_P_fine = None, opacity_database = 'High-T'):
+                   T_fine = None, log_P_fine = None, opacity_database = 'High-T',
+                   device = 'cpu'):
     '''
     Load the various cross sections required by a given model. When using 
     opacity sampling, the native high-resolution are pre-interpolated onto 
@@ -528,6 +529,15 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         # No need for pre-computed arrays for line-by-line, so keep empty arrays
         sigma_stored, CIA_stored, \
         ff_stored, bf_stored = (np.array([]) for _ in range(4))
+
+    # Move cross sections to GPU memory to speed up later computations
+    if (device == 'gpu'):
+        sigma_stored = cp.asarray(sigma_stored)
+        CIA_stored = cp.asarray(CIA_stored)
+        Rayleigh_stored = cp.asarray(Rayleigh_stored)
+        eta_stored = cp.asarray(eta_stored)
+        ff_stored = cp.asarray(ff_stored)
+        bf_stored = cp.asarray(bf_stored)
 
     # Package opacity data required by our model in memory
     opac = {'opacity_database': opacity_database, 
