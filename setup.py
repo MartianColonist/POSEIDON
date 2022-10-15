@@ -3,7 +3,7 @@ import os
 
 setup(
     name = 'POSEIDON',
-    version = '0.9.0',
+    version = '0.9.1',
     description = 'Exoplanet atmospheric retrieval package',
     long_description = open(os.path.join(
                             os.path.dirname(__file__), 'README.rst')).read(),
@@ -16,6 +16,7 @@ setup(
     python_requires = '<3.10',
     install_requires = ['numpy',
                         'scipy',
+                        'cupy'
                         'matplotlib<=3.5.1',
                         'astropy',
                         'h5py',
