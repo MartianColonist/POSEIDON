@@ -681,7 +681,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     log_X_state = generate_state(PT_params, log_X_params, param_species, 
                                  PT_dim, X_dim, PT_profile, X_profile, TwoD_type, 
                                  TwoD_param_scheme, species_EM_gradient, 
-                                 species_DN_gradient, species_vert_gradient)
+                                 species_DN_gradient, species_vert_gradient,
+                                 alpha, beta)
 
     #***** Compute P-T, radial, mixing ratio, and other atmospheric profiles *****#
 
@@ -1289,12 +1290,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Set default priors (used if user doesn't specify one or more priors)
     prior_ranges_defaults = {'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
                              'log_g': [2.0, 5.0], 'T': [400, 3000], 
-                             'Delta_T': [0, 1000], 'T_mid': [400, 3000],
-                             'T_high': [400, 3000], 'a1': [0.02, 2.00], 
-                             'a2': [0.02, 2.00], 'log_P1': [-6, 2], 
-                             'log_P2': [-6, 2], 'log_P3': [-2, 2],
-                             'log_P_mid': [-5, 1], 'log_P_surf': [-4, 1],
-                             'log_X': [-12, -1], 'Delta_log_X': [-8, 8], 
+                             'Delta_T': [0, 1000], 'Grad_T': [-200, 0],
+                             'T_mid': [400, 3000], 'T_high': [400, 3000], 
+                             'a1': [0.02, 2.00], 'a2': [0.02, 2.00], 
+                             'log_P1': [-6, 2], 'log_P2': [-6, 2], 
+                             'log_P3': [-2, 2], 'log_P_mid': [-5, 1], 
+                             'log_P_surf': [-4, 1], 'log_X': [-12, -1], 
+                             'Delta_log_X': [-10, 10], 'Grad_log_X': [-1, 1], 
                              'log_a': [-4, 8], 'gamma': [-20, 2], 
                              'log_P_cloud': [-6, 2], 'phi_cloud': [0, 1],
                              'log_kappa_cloud': [-10, -4], 'f_cloud': [0, 1],
@@ -1329,6 +1331,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                         prior_ranges[parameter] = prior_ranges['Delta_log_X']
                     else:
                         prior_ranges[parameter] = prior_ranges_defaults['Delta_log_X']
+
+                # Set non-specified mixing ratio gradient prior to that for 'Grad_log_X'
+                elif ('Grad_' in parameter):
+                    if ('Grad_log_X' in prior_ranges):
+                        prior_ranges[parameter] = prior_ranges['Grad_log_X']
+                    else:
+                        prior_ranges[parameter] = prior_ranges_defaults['Grad_log_X']
                     
                 # Set non-specified mixing ratio prior to that for 'log_X'
                 elif ('log_' in parameter):
@@ -1343,6 +1352,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     prior_ranges[parameter] = prior_ranges['Delta_T']
                 else:
                     prior_ranges[parameter] = prior_ranges_defaults['Delta_T']
+
+            # Set non-specified temperature gradient parameters to that for 'Grad_T'
+            elif ('Grad_' in parameter):
+                if ('Grad_T' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['Grad_T']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['Grad_T']
 
             # Set non-specified temperature parameters to that for 'T'
             elif ('T_' in parameter):
@@ -1382,6 +1398,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     else:
                         prior_types[parameter] = 'uniform'
 
+                # Set non-specified mixing ratio gradient prior to that for 'Grad_log_X'
+                elif ('Grad_' in parameter):
+                    if ('Grad_log_X' in prior_types):
+                        prior_types[parameter] = prior_types['Grad_log_X']
+                    else:
+                        prior_types[parameter] = 'uniform'
+
                 # Set non-specified mixing ratio prior to that for 'log_X'
                 elif ('log_' in parameter):
                     if ('log_X' in prior_types):
@@ -1396,6 +1419,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
             elif ('Delta_T_' in parameter):
                 if ('Delta_T' in prior_types):
                     prior_types[parameter] = prior_types['Delta_T']
+                else:
+                    prior_types[parameter] = 'uniform'
+
+            # Set non-specified temperature gradient parameters to that for 'Grad_T'
+            elif ('Grad_' in parameter):
+                if ('Grad_T' in prior_types):
+                    prior_types[parameter] = prior_types['Grad_T']
                 else:
                     prior_types[parameter] = 'uniform'
 
@@ -1424,10 +1454,14 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_ranges['log_X']
     if ('Delta_log_X' in prior_ranges):
         del prior_ranges['Delta_log_X']
+    if ('Grad_log_X' in prior_ranges):
+        del prior_ranges['Grad_log_X']
     if (('T' in prior_ranges) and (PT_profile != 'isotherm')):
         del prior_ranges['T']
     if (('Delta_T' in prior_ranges) and (PT_profile != 'gradient')):
         del prior_ranges['Delta_T']
+    if (('Grad_T' in prior_ranges) and (PT_profile != 'gradient')):
+        del prior_ranges['Grad_T']
 
     # Remove group prior types for mixing ratio and temperature parameters
     if ('log_P_X_mid' in prior_types):
@@ -1436,10 +1470,14 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_types['log_X']
     if ('Delta_log_X' in prior_types):
         del prior_types['Delta_log_X']
+    if ('Grad_log_X' in prior_types):
+        del prior_types['Grad_log_X']
     if (('T' in prior_types) and (PT_profile != 'isotherm')):
         del prior_types['T']
     if (('Delta_T' in prior_types) and (PT_profile != 'gradient')):
         del prior_types['Delta_T']
+    if (('Grad_T' in prior_types) and (PT_profile != 'gradient')):
+        del prior_types['Grad_T']
 
     CLR_limit_check = 0   # Tracking variable for CLR limit check below
 
