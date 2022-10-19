@@ -8,7 +8,14 @@ from mpi4py import MPI
 import scipy.constants as sc
 from numba import cuda, jit
 import math
-import cupy as cp
+
+from .utility import mock_missing
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = mock_missing('cupy')
+
                    
 from .species_data import polarisabilities
 from .utility import prior_index, prior_index_V2, closest_index, closest_index_GPU

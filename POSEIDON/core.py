@@ -17,7 +17,6 @@ os.environ['block'] = '128'
 os.environ['thread'] = '128'
 
 import numpy as np
-import cupy as cp
 from numba.core.decorators import jit
 import scipy.constants as sc
 from mpi4py import MPI
@@ -38,6 +37,13 @@ from .instrument import init_instrument
 from .transmission import TRIDENT
 from .emission import emission_rad_transfer, determine_photosphere_radii, \
                       emission_rad_transfer_GPU, determine_photosphere_radii_GPU
+
+from .utility import mock_missing
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = mock_missing('cupy')
 
 
 comm = MPI.COMM_WORLD
