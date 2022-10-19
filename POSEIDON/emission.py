@@ -6,11 +6,15 @@ Radiative transfer calculations for generating emission spectra.
 import numpy as np
 import scipy.constants as sc
 from numba import jit, cuda
-import cupy as cp
 import math
 import os
 
-from .utility import interp_GPU
+from .utility import mock_missing, interp_GPU
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = mock_missing('cupy')
 
 block = int(os.environ['block'])
 thread = int(os.environ['thread'])
