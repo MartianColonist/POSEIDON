@@ -47,7 +47,7 @@ def zone_boundaries(N_b, N_sectors, N_zones, b, r_up, k_zone_back,
                     
                     # If geometric expressions go above the maximum altitude, set to top of atmosphere
                     r_max[i,j,k] = np.minimum(r_up[-1,j,k_in], r_max_geom)
-                
+         
     return r_min, r_max
 
 
@@ -174,8 +174,8 @@ def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back,
                             
                             # Check for layers falling outside of region sampled by ray
                             if ((r_low[l,j_sector_back_in,k_in] >= r_max[i,j_sector_back_in,k]) or
-                                (r_up[l,j_sector_back_in,k_in] < r_min[i,j_sector_back_in,k]) or
-                                (b[i] > r_max[i,j_sector_back_in,k])):             
+                                (r_up[l,j_sector_back_in,k_in] <= r_min[i,j_sector_back_in,k]) or
+                                (b[i] >= r_max[i,j_sector_back_in,k])):             
                                 
                                 Path[i,j,k,l] = 0.0  # No path if layer outside region
                                 
@@ -192,12 +192,12 @@ def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back,
                                     s2 = np.sqrt(r_up_sq[l,j_sector_back_in,k_in] - b_sq[i])
                                     s1 = 0.0
                                     
-                                if (r_low[l,j_sector_back_in,k_in] >= r_min[i,j_sector_back_in,k]): 
+                                if (r_low[l,j_sector_back_in,k_in] > r_min[i,j_sector_back_in,k]): 
                                     
                                     s3 = np.sqrt(r_low_sq[l,j_sector_back_in,k_in] - b_sq[i])
                                     s4 = 0.0
                                     
-                                else:     #  elif (r_low[l,j,k_in] < r_min[i,j,k]): 
+                                else:     #  elif (r_low[l,j,k_in] <= r_min[i,j,k]): 
                                     
                                     s4 = np.sqrt(r_min_sq[i,j_sector_back_in,k] - b_sq[i])
                                     s3 = 0.0
@@ -212,8 +212,7 @@ def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back,
                                 
             # Update angular sector pre-computation completion index
             j_sector_last = j_sector_back_in
-            
-    
+
     return Path
 
 
