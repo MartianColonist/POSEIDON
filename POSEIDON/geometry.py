@@ -1,4 +1,7 @@
-# Functions to compute geometric aspects of the model atmosphere.
+''' 
+Functions to compute geometric aspects of the model atmosphere.
+
+'''
 
 import numpy as np
 from numba.core.decorators import jit
@@ -6,16 +9,27 @@ from numba.core.decorators import jit
 
 def atmosphere_regions(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN):
     '''
-    Establish the number of sectors (Evening-Morning) and zones (Day-Night)
-    required to discretise the background atmosphere of the model.
-        
-        Inputs:
-            
-        TBD
-        
-        Outputs:
-            
-        TBD
+    Establish the number of azimuthal sectors (Evening-Morning) and zenith 
+    zones (Day-Night) required to discretise the background atmosphere.
+
+    Args:
+        Atmosphere_dimension (int):
+            The dimensionality of the model atmosphere
+            (Options: 1 / 2 / 3).
+        TwoD_type (str):
+            For 2D models, specifies whether the model considers day-night
+            gradients or evening-morning gradients
+            (Options: D-N / E-M).
+        N_slice_EM (even int):
+            Number of azimuthal slices in the evening-morning transition region.
+        N_slice_DN (even int):
+            Number of zenith slices in the day-night transition region.
+    
+    Returns:
+        N_sectors (int):
+            Number of azimuthal sectors comprising the background atmosphere.
+        N_zones (int):
+            Number of zenith zones comprising the background atmosphere.
     
     '''
     
@@ -25,7 +39,7 @@ def atmosphere_regions(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN):
         N_sectors = 1
         N_zones = 1
      
-    # For 2D models, need to treat asymmetric Evening-Morning and Day-Night seperately
+    # For 2D models, need to treat asymmetric Evening-Morning and Day-Night separately
     elif (Atmosphere_dimension == 2):
         
         # 2D model with Evening-Morning differences
@@ -74,25 +88,48 @@ def atmosphere_regions(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN):
 @jit(nopython=True)
 def angular_grids(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN, 
                   alpha, beta):
+    '''
+    Compute the grids of angles (sector / zone centres, edges, and differential 
+    extents) for a given discretised atmosphere. 
 
-    ''' Compute the grids of angles (sector / zone centres, edges, and 
-        differential extents) for a given discretised atmosphere. 
+    By convention, the angles are defined as:
+
+    phi: angle in terminator plane measured clockwise from North pole.
+    theta: angle from terminator plane measured towards nightside.
     
-        By convention, the angles are defined as:
+    Due to (assumed) North-South symmetry in all cases, we only need
+    to consider theta > -pi/2 and/or phi < pi/2 (i.e. northern hemisphere).
+
+    Args:
+        Atmosphere_dimension (int):
+            The dimensionality of the model atmosphere
+            (Options: 1 / 2 / 3).
+        TwoD_type (str):
+            For 2D models, specifies whether the model considers day-night
+            gradients or evening-morning gradients
+            (Options: D-N / E-M).
+        N_slice_EM (even int):
+            Number of azimuthal slices in the evening-morning transition region.
+        N_slice_DN (even int):
+            Number of zenith slices in the day-night transition region.
+        alpha (float):
+            Terminator opening angle (degrees).
+        beta (float):
+            Day-night opening angle (degrees).
     
-        phi -> angle in terminator plane measured clockwise from North pole.
-        theta -> angle from terminator plane measured towards nightside.
-        
-        Due to (assumed) North-South symmetry in all cases, we only need
-        to consider -pi/2 < theta or phi < pi/2 (i.e. northern hemisphere).
-        
-        Inputs:
-            
-        TBD
-        
-        Outputs:
-            
-        TBD
+    Returns:
+        phi (np.array of float):
+            Mid-sector angles (radians).
+        theta (np.array of float):
+            Mid-zone angles (radians).
+        phi_edge (np.array of float):
+            Boundary angles for each sector (radians).
+        theta_edge (np.array of float):
+            Boundary angles for each zone (radians).
+        dphi (np.array of float):
+            Angular width of each sector (radians).
+        dtheta (np.array of float):
+            Angular width of each zone (radians).
     
     '''
 
