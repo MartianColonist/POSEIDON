@@ -2640,7 +2640,8 @@ def plot_chem_histogram(nbins, X_i_vals, colour, oldax, shrink_factor):
     return low1, median, high1
 
 
-def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_species):
+def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_species,
+                                  abundance_fmt = '.2f'):
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
@@ -2684,7 +2685,11 @@ def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_spec
    
         if (count == 1): low1, median, high1 = plot_chem_histogram(40, np.log10(O_to_H_vals), colours[i], oldax, 0.0)
         if (count == 2): low1, median, high1 = plot_chem_histogram(40, C_to_O_vals, colours[i], oldax, 0.0)
-   	
+            
+        fmt = "{{0:{0}}}".format(abundance_fmt).format
+        overlay = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
+        overlay = overlay.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
+
         newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
         newax.set_ylim(0, 1)
    	
@@ -2707,21 +2712,19 @@ def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_spec
 
         # Custom plotting options for each histogram          
         if (count == 1):
-            oldax.set_xlim([-0.4, 0.6])
-            newax.text(0.04, 0.96, r'O/H', color='navy', fontsize = 10, 
+            oldax.set_xlim([-0.2, 2.6])
+            newax.text(0.06, 0.96, r'O/H', color='navy', fontsize = 10, 
                        horizontalalignment='left', verticalalignment='top', transform=newax.transAxes)
-            newax.text(0.96, 0.96, r'$' + str(median) + '^{+' + str(upper_sigma) + 
-                       '}_{-' + str(lower_sigma) + '}$', color='navy', fontsize = 10,
+            newax.text(0.96, 0.96, overlay, color='navy', fontsize = 10,
                        horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
             newax.axvline(x=0.0, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
             newax.set_yticklabels([])
             
         if (count == 2):
             oldax.set_xlim([0.0, 1.0])
-            newax.text(0.04, 0.96, r'C/O', color='maroon', fontsize = 10, 
+            newax.text(0.06, 0.96, r'C/O', color='maroon', fontsize = 10, 
                        horizontalalignment='left', verticalalignment='top', transform=newax.transAxes)
-            newax.text(0.96, 0.96, r'$' + str(median) + '^{+' + str(upper_sigma) + 
-                       '}_{-' + str(lower_sigma) + '}$', color='maroon', fontsize = 10,
+            newax.text(0.96, 0.96, overlay, color='maroon', fontsize = 10,
                        horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
             newax.axvline(x=0.55, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
             newax.set_yticklabels([])
