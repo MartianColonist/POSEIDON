@@ -11,11 +11,13 @@ tags:
 authors:
   - name: Ryan J. MacDonald
     orcid: 0000-0003-4816-3469
-    affiliation: 1
+    affiliation: "1, 2"
 affiliations:
-  - name: Department of Astronomy and Carl Sagan Institute, Cornell University, 122 Sciences Drive, Ithaca, NY 14853, USA
+  - name: Department of Astronomy, University of Michigan, 1085 S. University Ave., Ann Arbor, MI 48109, USA
     index: 1
-date: 05 August 2022
+  - name: Department of Astronomy and Carl Sagan Institute, Cornell University, 122 Sciences Drive, Ithaca, NY 14853, USA
+    index: 2
+date: 04 November 2022
 bibliography: paper.bib
 
 aas-doi: 10.3847/1538-4357/ac47fe
