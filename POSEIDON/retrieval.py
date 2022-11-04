@@ -337,19 +337,15 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 # For 2D models, the prior range for 'Delta' parameters can change to satisfy mixing ratio priors
                 elif (Atmosphere_dimension == 2):
 
-                    min_value = prior_ranges[parameter][0]
-                    max_value = prior_ranges[parameter][1]
-
-                    cube[i] = ((cube[i] * (max_value - min_value)) + min_value)
-                    
-                    '''
                     # Absolute mixing ratio parameter comes first
                     if ('Delta' not in parameter):
 
                         min_value = prior_ranges[parameter][0]
                         max_value = prior_ranges[parameter][1]
 
-                        cube[i] = ((cube[i] * (max_value - min_value)) + min_value)
+                        last_value = ((cube[i] * (max_value - min_value)) + min_value)
+
+                        cube[i] = last_value
 
                         # Store name of previous parameter for delta prior
                         prev_parameter = parameter
@@ -365,7 +361,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                         max_prior_delta = prior_ranges[parameter][1]
 
                         # Load chosen abundance from previous parameter
-                        sampled_abundance = cube[i-1]
+                        sampled_abundance = last_value
 
                         # Find largest gradient such that the abundances in all
                         # atmospheric regions satisfy the absolute abundance constraint
@@ -377,8 +373,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                         max_value_delta = min(max_prior_delta, largest_delta)
                         min_value_delta = max(min_prior_delta, -largest_delta)
                         
-                        cube[i] = ((cube[i] * (max_value_delta - min_value_delta)) + min_value_delta) 
-                        '''
+                        cube[i] = ((cube[i] * (max_value_delta - min_value_delta)) + min_value_delta)
                     
                 # For 3D models, the prior ranges for 'Delta' parameters can change to satisfy mixing ratio priors
                 elif (Atmosphere_dimension == 3):
