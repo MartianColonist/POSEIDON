@@ -39,7 +39,7 @@ The second major use case for `POSEIDON` is atmospheric retrieval --- illustrate
 
 ![Schematic architecture of the `POSEIDON` atmospheric retrieval code. Users can call `POSEIDON` in two main ways: (i) to generate a model exoplanet spectrum for a specified planet atmosphere (green arrows); or (ii) to fit an observed exoplanet spectrum by statistical sampling of a model's atmospheric properties (purple arrows). The diagram highlights code inputs (circles), algorithm steps (rectangles), and code outputs (bottom green or purples boxes). \label{fig:POSEIDON_architecture}](figures/POSEIDON_Architecture_2022){width=100%}
 
-`POSEIDON` was first described in the exoplanet literature by [@MacDonald:2017]. Since then, the code has been used in 17 peer-reviewed publications [e.g., @Sedaghati:2017; @Kaltenegger:2020; @Alam:2021]. Most recently, a detailed description of `POSEIDON`'s new multi-dimensional forward model, `TRIDENT`, was provided by [@MacDonald:2022].
+`POSEIDON` was first described in the exoplanet literature by [@MacDonald:2017]. Since then, the code has been used in 17 peer-reviewed publications [e.g., @Sedaghati:2017; @Kaltenegger:2020; @Alam:2021]. Most recently, a detailed description of `POSEIDON`'s new multidimensional forward model, `TRIDENT`, was provided by [@MacDonald:2022].
 
 # Statement of Need
 
