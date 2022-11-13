@@ -117,6 +117,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
     #***** Physical property parameters *****#
 
+ #   if (spectrum_type == 'transmission'):
     physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
 
     if (gravity_setting == 'free'):
@@ -157,7 +158,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         elif (PT_profile == 'two-gradients'):  
             PT_params += ['T_high', 'T_mid', 'log_P_mid', 'T_deep']
         elif (PT_profile == 'Madhu'):     
-            PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_deep']
+            PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_ref']
         elif (PT_profile == 'slope'):
             PT_params += ['T_phot', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
                           'Delta_T_1-0.1b', 'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 
@@ -203,6 +204,16 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 elif (PT_profile == 'two-gradients'):            
                     PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Delta_T_DN_high', 
                                   'Delta_T_DN_mid', 'log_P_mid', 'T_deep']
+
+        # Gradient parameter prescription from MacDonald & Lewis (2023)
+        elif (TwoD_param_scheme == 'gradient'):
+
+            if (TwoD_type == 'D-N'):
+                if (PT_profile == 'gradient'):
+                    PT_params += ['T_bar_DN_high', 'Grad_theta_T_high', 'T_deep']
+                elif (PT_profile == 'two-gradients'):            
+                    PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Grad_theta_T_high', 
+                                  'Grad_theta_T_mid', 'log_P_mid', 'T_deep']
     
     # 3D model (asymmetric terminator + day-night transition)
     elif (PT_dim == 3):
@@ -332,6 +343,33 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                                              'log_P_' + species + '_mid', 'log_' + species + '_deep']
                         else:   # No altitude variation for this species
                             X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
+
+                    else:       # No Day-Night variation for this species
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            if (X_profile == 'gradient'):  
+                                X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                            elif (X_profile == 'two-gradients'):  
+                                X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                            'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                        else:   # No altitude variation for this species
+                            X_params += ['log_' + species]
+
+            # Gradient parameter prescription from MacDonald & Lewis (2023)
+            if (TwoD_param_scheme == 'gradient'):
+
+                # Species with variation only across the terminator (2D Day-Night X_i)
+                if (TwoD_type == 'D-N'):                
+                    if ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            if (X_profile == 'gradient'):  
+                                X_params += ['log_' + species + '_bar_DN_high', 'Grad_theta_log_' + species + '_high', 
+                                             'log_' + species + '_deep']
+                            elif (X_profile == 'two-gradients'):  
+                                X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
+                                             'Grad_theta_log_' + species + '_high', 'Grad_theta_log_' + species + '_mid', 
+                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                        else:   # No altitude variation for this species
+                            X_params += ['log_' + species + '_bar_DN', 'Grad_theta_log_' + species + '_DN']
 
                     else:       # No Day-Night variation for this species
                         if ((species_vert_gradient != []) and (species in species_vert_gradient)):
@@ -589,7 +627,7 @@ def split_params(params_drawn, N_params_cumulative):
     
 def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                    X_profile, TwoD_type, TwoD_param_scheme, species_EM_gradient,
-                   species_DN_gradient, species_vert_gradient):
+                   species_DN_gradient, species_vert_gradient, alpha, beta):
     '''
     Convert the P-T profile and mixing ratio parameters into the state array
     format expected by the POSEIDON.atmosphere module. This function is called
@@ -708,6 +746,12 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             elif (TwoD_param_scheme == 'difference'):
                 T_bar = PT_in[0]
                 Delta_T = PT_in[1]
+            elif (TwoD_param_scheme == 'gradient'):
+                T_bar = PT_in[0]
+                if (TwoD_type == 'D-N'):
+                    Delta_T = -1.0 * (PT_in[1] * beta)    # Delta_T = Grad_T * beta
+                elif (TwoD_type == 'E-M'):
+                    Delta_T = -1.0 * (PT_in[1] * alpha)    # Delta_T = - Grad_T * beta
             T_deep = PT_in[2]
 
         # Convert input parameters into average terminator temperatures and differences (high and mid atmosphere) 
@@ -722,6 +766,15 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                 T_bar_mid = PT_in[1]
                 Delta_T_high = PT_in[2]
                 Delta_T_mid = PT_in[3]
+            elif (TwoD_param_scheme == 'gradient'):
+                T_bar_high = PT_in[0]
+                T_bar_mid = PT_in[1]
+                if (TwoD_type == 'D-N'):
+                    Delta_T_high = -1.0 * (PT_in[2] * beta)
+                    Delta_T_mid = -1.0 * (PT_in[3] * beta)
+                elif (TwoD_type == 'E-M'):
+                    Delta_T_high = -1.0 * (PT_in[2] * alpha)
+                    Delta_T_mid = -1.0 * (PT_in[3] * alpha)
             log_P_mid = PT_in[4]
             T_deep = PT_in[5]
 
@@ -851,6 +904,12 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                     elif (TwoD_param_scheme == 'difference'):
                         log_X_bar = log_X_in[count]
                         Delta_log_X = log_X_in[count+1]
+                    elif (TwoD_param_scheme == 'gradient'):
+                        log_X_bar = log_X_in[count]
+                        if (TwoD_type == 'D-N'):
+                            Delta_log_X = -1.0 * (log_X_in[count+1] * beta)
+                        elif (TwoD_type == 'E-M'):
+                            Delta_log_X = -1.0 * (log_X_in[count+1] * alpha)
                     count += 2
                 else:
                     log_X_bar = log_X_in[count]
@@ -868,6 +927,12 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                     elif (TwoD_param_scheme == 'difference'):
                         log_X_bar = log_X_in[count]
                         Delta_log_X = log_X_in[count+1]
+                    elif (TwoD_param_scheme == 'gradient'):
+                        log_X_bar = log_X_in[count]
+                        if (TwoD_type == 'D-N'):
+                            Delta_log_X = -1.0 * (log_X_in[count+1] * beta)
+                        elif (TwoD_type == 'E-M'):
+                            Delta_log_X = -1.0 * (log_X_in[count+1] * alpha)
                     if ((species_vert_gradient != []) and (species in species_vert_gradient)):
                         log_X_deep = log_X_in[count+2]
                         count += 3
@@ -899,6 +964,15 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                             log_X_bar_mid = log_X_in[count+1]
                             Delta_log_X_high = log_X_in[count+2]
                             Delta_log_X_mid = log_X_in[count+3]
+                        elif (TwoD_param_scheme == 'gradient'):
+                            log_X_bar_high = log_X_in[count]
+                            log_X_bar_mid = log_X_in[count+1]
+                            if (TwoD_type == 'D-N'):
+                                Delta_log_X_high = -1.0 * (log_X_in[count+2] * beta)
+                                Delta_log_X_mid = -1.0 * (log_X_in[count+3] * beta)
+                            elif (TwoD_type == 'E-M'):
+                                Delta_log_X_high = -1.0 * (log_X_in[count+2] * alpha)
+                                Delta_log_X_mid = -1.0 * (log_X_in[count+3] * alpha)
                         log_P_X_mid = log_X_in[count+4]
                         log_X_deep = log_X_in[count+5]
                         count += 6
@@ -913,6 +987,13 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                             log_X_bar_mid = log_X_bar_high
                             Delta_log_X_high = log_X_in[count+1]
                             Delta_log_X_mid = Delta_log_X_high
+                        elif (TwoD_param_scheme == 'gradient'):
+                            if (TwoD_type == 'D-N'):
+                                Delta_log_X_high = -1.0 * (log_X_in[count+1] * beta)
+                                Delta_log_X_mid = Delta_log_X_high
+                            elif (TwoD_type == 'E-M'):
+                                Delta_log_X_high = -1.0 * (log_X_in[count+1] * alpha)
+                                Delta_log_X_mid = Delta_log_X_high
                         log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
                         log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
                         count += 2
@@ -1232,7 +1313,6 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # If cloud model has patchy gaps
         if (cloud_dim != 1):
             phi_c = clouds_in[np.where(cloud_param_names == 'phi_cloud')[0][0]]    
-       #     phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
             phi_0 = 0.0       # Cloud start position doesn't matter for MacMad17
             f_cloud = phi_c   # Rename for consistency with Iceberg cloud
             theta_0 = -90.0   # Uniform from day to night
@@ -1251,7 +1331,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # If cloud deck enabled
         if (enable_deck == 1):
             
-            kappa_cloud_0 = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_kappa_cloud')[0][0]])
+            # Check if cloud is fixed to be opaque
+            if ('log_kappa_cloud' in cloud_param_names):
+                kappa_cloud_0 = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_kappa_cloud')[0][0]])
+            else:
+                kappa_cloud_0 = 1.0e250
+
             P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
             
             if (cloud_dim == 1):

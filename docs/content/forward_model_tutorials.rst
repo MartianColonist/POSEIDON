@@ -8,3 +8,4 @@ Forward Model Tutorials
    notebooks/transmission_2D
    notebooks/high_res
    notebooks/transmission_terrestrial
+   notebooks/emission_basic

@@ -12,7 +12,7 @@ from .utility import prior_index
 
 
 @jit(nopython = True)
-def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 10.0):
+def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 1.0e-2):
     
     ''' Computes the temperature profile for an atmosphere using a re-arranged
         form of the P-T profile in Madhusudhan & Seager (2009).
@@ -787,7 +787,7 @@ def locate_X(X, species, included_species):
     '''   
     
     if (species in included_species):
-        X_species = X[included_species == species,:,:,:]
+        X_species = X[included_species == species]
     else:
         X_species = 0.0
         
@@ -883,7 +883,6 @@ def compute_O_to_H(X, all_species):
     
     '''
     
-    X_H2 = locate_X(X, 'H2', all_species)
     X_H2O = locate_X(X, 'H2O', all_species)
     X_CH4 = locate_X(X, 'CH4', all_species)
     X_NH3 = locate_X(X, 'NH3', all_species)
@@ -899,9 +898,11 @@ def compute_O_to_H(X, all_species):
     X_CrH = locate_X(X, 'CrH', all_species)
     X_FeH = locate_X(X, 'FeH', all_species)
     X_ScH = locate_X(X, 'ScH', all_species)
+
+    X_H2 = (1.0 - X_H2O)/(1.0 + 0.17) #locate_X(X, 'H2', all_species)
     
     O_to_H = ((X_H2O + X_CO + 2*X_CO2 + X_TiO + X_VO + X_AlO + X_CaO)/
-              (2*X_H2 + 2*X_H2O + 4*X_CH4 + 3*X_NH3 + X_HCN + +2*X_C2H2 + X_TiH + X_CrH + X_FeH + X_ScH))
+              (2*X_H2 + 2*X_H2O + 4*X_CH4 + 3*X_NH3 + X_HCN + 2*X_C2H2 + X_TiH + X_CrH + X_FeH + X_ScH))
     
     return O_to_H
 

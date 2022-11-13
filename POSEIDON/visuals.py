@@ -1,11 +1,13 @@
 # Plotting routines to visualise POSEIDON output*****
 
 from enum import unique
+import os
 import numpy as np
 import scipy.constants as sc
 import colorsys
 import matplotlib
 from pylab import rcParams
+import pymultinest
 import matplotlib.style
 from matplotlib import ticker
 import matplotlib.pyplot as plt
@@ -33,9 +35,11 @@ warnings.filterwarnings("ignore", message="This figure includes Axes that are " 
                                            "not compatible with tight_layout, " +
                                            "so results might be incorrect.")
 
-from .utility import bin_spectrum_fast, generate_latex_param_names, round_sig_figs
+from .utility import bin_spectrum, generate_latex_param_names, round_sig_figs, \
+                     confidence_intervals
 from .instrument import bin_spectrum_to_data
-
+from .atmosphere import compute_O_to_H, compute_C_to_O
+from .parameters import split_params
               
 # Define some more flexible linestyles for convenience
 linestyles = {
@@ -868,6 +872,99 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     return fig
 
 
+def set_spectrum_wl_ticks(wl_min, wl_max, wl_axis = 'log'):
+    '''
+    Calculates default x axis tick spacing for spectra plots in POSEIDON.
+
+    '''
+
+    wl_range = wl_max - wl_min
+
+    # For plots over a wide wavelength range
+    if (wl_range > 0.2):
+        if (wl_max <= 1.0):
+            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
+            wl_ticks_2 = np.array([])
+            wl_ticks_3 = np.array([])
+            wl_ticks_4 = np.array([])
+        elif (wl_max <= 2.0):
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+            else:
+                wl_ticks_1 = np.array([])
+            wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+            wl_ticks_3 = np.array([])
+            wl_ticks_4 = np.array([])
+        elif (wl_max <= 3.0):
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
+            else:
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 3)+0.01, 0.5)
+            wl_ticks_3 = np.array([])
+            wl_ticks_4 = np.array([])
+        elif (wl_max <= 5.0):
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.2)
+                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+            elif (wl_min < 3.0):
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
+                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+            else:
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.array([])
+                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 0.2)
+            wl_ticks_4 = np.array([])
+        elif (wl_max <= 10.0):
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
+                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
+            elif (wl_min < 3.0):
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
+                if (wl_axis == 'log'):
+                    wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.5)
+                elif (wl_axis == 'linear'):
+                    wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+            else:
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.array([])
+                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 1.0)
+            wl_ticks_4 = np.array([])
+        else:
+            if (wl_min < 1.0):
+                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+            else:
+                wl_ticks_1 = np.array([])
+            wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+            wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+            wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
+
+        wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
+
+    # For high-resolution (zoomed in) spectra
+    else:
+
+        # Aim for 10 x-axis labels
+        wl_spacing = round_sig_figs((wl_max - wl_min), 1)/10
+        
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(wl_spacing))), 1)
+        
+        # If last digit of x labels would be 3,6,7,8,or 9, bump up to 10
+        if (wl_spacing > 5*np.power(10, major_exponent)):
+            wl_spacing = 1*np.power(10, major_exponent+1)
+        elif (wl_spacing == 3*np.power(10, major_exponent)):
+            wl_spacing = 2*np.power(10, major_exponent)
+
+        wl_ticks = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, wl_spacing)
+
+    return wl_ticks
+
+    
 def plot_spectra(spectra, planet, data_properties = None,
                  plot_full_res = True, bin_spectra = True, R_to_bin = 100, 
                  wl_min = None, wl_max = None, transit_depth_min = None,
@@ -875,12 +972,19 @@ def plot_spectra(spectra, planet, data_properties = None,
                  FpFs_min = None, FpFs_max = None, y_unit = 'transit_depth', 
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
-                 data_marker_size_list = [], 
-                 wl_axis = 'log', figure_shape = 'default'):
+                 data_marker_size_list = [], wl_axis = 'log', 
+                 figure_shape = 'default', legend_location = 'upper right'):
     ''' 
     Plot a collection of individual model transmission spectra.
     
     '''
+
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+        plot_type = 'transmission'
+    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+        plot_type = 'emission'
+    elif (y_unit in ['Fp']):
+        plot_type = 'direct_emission'
     
     # Find number of spectra to plot
     N_spectra = len(spectra)
@@ -977,7 +1081,7 @@ def plot_spectra(spectra, planet, data_properties = None,
     wl_range = wl_max - wl_min
    
     # If the user did not specify a transit depth range, find min and max from input models
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (plot_type == 'transmission'):
 
         if (transit_depth_min == None):
             
@@ -1022,7 +1126,7 @@ def plot_spectra(spectra, planet, data_properties = None,
             y_max_plt = transit_depth_max
 
     # If the user did not specify an Fp/Fs range, find min and max from input models
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (plot_type == 'emission'):
 
         if (FpFs_min == None):
             
@@ -1118,10 +1222,6 @@ def plot_spectra(spectra, planet, data_properties = None,
     ymajorFormatter.set_powerlimits((0,0))
     yminorLocator = MultipleLocator(yminor_spacing)
 
-#    ymajorLocator_H   = MultipleLocator(1)
-#    ymajorFormatter_H = FormatStrFormatter('%.0f')
-#    yminorLocator_H   = MultipleLocator(0.2)
-
     # Generate figure and axes
     fig = plt.figure()
 
@@ -1144,12 +1244,6 @@ def plot_spectra(spectra, planet, data_properties = None,
     ax1.yaxis.set_major_locator(ymajorLocator)
     ax1.yaxis.set_major_formatter(ymajorFormatter)
     ax1.yaxis.set_minor_locator(yminorLocator)
-    
-  #  ax2 = ax1.twinx()
- 
-  #  ax2.yaxis.set_major_locator(ymajorLocator_H)
-  #  ax2.yaxis.set_major_formatter(ymajorFormatter_H)
-  #  ax2.yaxis.set_minor_locator(yminorLocator_H)
     
     for i in range(N_spectra):
         
@@ -1176,7 +1270,7 @@ def plot_spectra(spectra, planet, data_properties = None,
             N_plotted_binned = 0  # Counter for number of plotted binned spectra
             
             # Calculate binned wavelength and spectrum grid
-            wl_binned, spec_binned = bin_spectrum_fast(wl, spec, R_to_bin)
+            wl_binned, spec_binned, _ = bin_spectrum(wl, spec, R_to_bin)
 
             if (plot_full_res == True):
                 colour_binned = scale_lightness(colours[i], 0.4)
@@ -1233,10 +1327,12 @@ def plot_spectra(spectra, planet, data_properties = None,
     # Set axis labels
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (plot_type == 'transmission'):
         ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+    elif (plot_type == 'direct_emission'):
+        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
@@ -1247,92 +1343,19 @@ def plot_spectra(spectra, planet, data_properties = None,
                  verticalalignment='top', transform=ax1.transAxes, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
-    if (wl_range > 0.2):
-        if (wl_max <= 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
-            wl_ticks_2 = np.array([])
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 2.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 3.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 3)+0.01, 0.5)
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 5.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            elif (wl_min < 3.0):
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 0.2)
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 10.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-            elif (wl_min < 3.0):
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 1.0)
-            wl_ticks_4 = np.array([])
-        else:
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
-            wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
-            wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
-
-        wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
+    wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
-        # Plot wl tick labels
-        ax1.set_xticks(wl_ticks)
+    # Plot wl tick labels
+    ax1.set_xticks(wl_ticks)
     
-    # Compute equivalent scale height for secondary axis
- #   base_depth = (R_p*R_p)/(R_s*R_s)
-    
-    #photosphere_T = 560.0
- #   photosphere_T = T_eq
-    
-#    H_sc = (sc.k*photosphere_T)/(mu*g_0)
-#    depth_values = np.array([transit_depth_range[0], transit_depth_range[1]])
-#    N_sc = ((depth_values - base_depth)*(R_s*R_s))/(2.0*R_p*H_sc)
-    
-#    ax2.set_ylim([N_sc[0], N_sc[1]])
-#    ax2.set_ylabel(r'$\mathrm{Scale \, \, Heights}$', fontsize = 16)
-    
-    legend = ax1.legend(loc='upper right', shadow=True, prop={'size':10}, 
+    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, 
                         ncol=1, frameon=True)    #legend settings
   #  legend.set_bbox_to_anchor([0.75, 0.98], transform=None)
     frame = legend.get_frame()
     frame.set_facecolor('0.90') 
         
     for legline in legend.legendHandles:
-        if (plot_full_res == True):
+        if ((plot_full_res == True) or (show_data == True)):
             legline.set_linewidth(1.0)
         else:
             legline.set_linewidth(2.0)
@@ -1341,11 +1364,10 @@ def plot_spectra(spectra, planet, data_properties = None,
 
     # Write figure to file
     if (plt_label == None):
-        file_name = (output_dir + planet_name +
-                     '_transmission_spectra.pdf')
+        file_name = (output_dir + planet_name + '_' + plot_type + '_spectra.pdf')
     else:
-        file_name = (output_dir + planet_name + '_' + plt_label + 
-                     '_transmission_spectra.pdf')
+        file_name = (output_dir + planet_name + '_' + plt_label + '_' +
+                     plot_type + '_spectra.pdf')
 
     plt.savefig(file_name, bbox_inches='tight')
 
@@ -1414,17 +1436,14 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
        
     # If the user did not specify a wavelength range, find min and max from input data
     if (wl_min == None):
-        wl_min_plt = np.min(wl_data - 4*bin_size)  # Minimum at twice the bin width for the shortest wavelength data
+        wl_min = np.min(wl_data - 4*bin_size)  # Minimum at twice the bin width for the shortest wavelength data
     else:
-        wl_min_plt = wl_min
+        wl_min = wl_min
  
     if (wl_max == None):
-        wl_max_plt = np.max(wl_data + 4*bin_size)  # Maximum at twice the bin width for the longest wavelength data
+        wl_max = np.max(wl_data + 4*bin_size)  # Maximum at twice the bin width for the longest wavelength data
     else:
-        wl_max_plt = wl_max
-
-    # Set x range
-    wl_range = wl_max_plt - wl_min_plt
+        wl_max = wl_max
 
     # If the user did not specify a transit depth range, find min and max from input models
     if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
@@ -1440,7 +1459,7 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
             y_max_plt = transit_depth_max
 
     # If the user did not specify an Fp/Fs range, find min and max from input models
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'Fp']):
 
         if (FpFs_min == None):
             y_min_plt = 0.995 * np.min(ydata - err_data) # Extend slightly below
@@ -1455,7 +1474,7 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
     #***** Format x and y ticks *****#
 
     # Create x formatting objects
-    if (wl_max_plt < 1.0):    # If plotting over the optical range
+    if (wl_max < 1.0):    # If plotting over the optical range
         xmajorLocator = MultipleLocator(0.1)
         xminorLocator = MultipleLocator(0.02)
         
@@ -1550,7 +1569,7 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
         [markers.set_alpha(1.0)]
             
     # Set axis ranges
-    ax1.set_xlim([wl_min_plt, wl_max_plt])
+    ax1.set_xlim([wl_min, wl_max])
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
@@ -1560,6 +1579,8 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
         ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
     elif (y_unit in ['Fp/Fs', 'Fp/F*']):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+    elif (y_unit in ['Fp']):
+        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
@@ -1571,46 +1592,8 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
                  verticalalignment='top', transform=ax1.transAxes, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
-    if (wl_max_plt <= 1.0):
-        wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), round_sig_figs(wl_max_plt, 2)+0.01, 0.1)
-        wl_ticks_2 = np.array([])
-        wl_ticks_3 = np.array([])
-        wl_ticks_4 = np.array([])
-    elif (wl_max_plt <= 2.0):
-        if (wl_min_plt < 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
-        else:
-            wl_ticks_1 = np.array([])
-        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max_plt, 2)+0.01, 0.2)
-        wl_ticks_3 = np.array([])
-        wl_ticks_4 = np.array([])
-    elif (wl_max_plt <= 3.0):
-        if (wl_min_plt < 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
-        else:
-            wl_ticks_1 = np.array([])
-        wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max_plt, 3)+0.01, 0.5)
-        wl_ticks_3 = np.array([])
-        wl_ticks_4 = np.array([])
-    elif (wl_max_plt <= 10.0):
-        if (wl_min_plt < 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
-        else:
-            wl_ticks_1 = np.array([])
-        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
-        wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max_plt, 2)+0.01, 1.0)
-        wl_ticks_4 = np.array([])
-    else:
-        if (wl_min_plt < 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min_plt, 1), 1.0, 0.2)
-        else:
-            wl_ticks_1 = np.array([])
-        wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
-        wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
-        wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max_plt, 2)+0.01, 2.0)
-
-    wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
-    
+    wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
+        
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
     
@@ -1647,7 +1630,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            colour_list = [], spectra_labels = [],
                            data_colour_list = [], data_labels = [],
                            data_marker_list = [], data_marker_size_list = [],
-                           wl_axis = 'log', figure_shape = 'default'):
+                           wl_axis = 'log', figure_shape = 'default',
+                           legend_location = 'upper right'):
     ''' 
     Plot retrieved transmission spectra.
     
@@ -1742,9 +1726,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             wl_max_i = np.max(spectra_median[i][1])
             wl_max = max(wl_max, wl_max_i)
 
-    # Set x range
-    wl_range = wl_max - wl_min
-
     # If the user did not specify a transit depth range, find min and max from input models
     if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
     
@@ -1756,7 +1737,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for i in range(N_spectra):
 
                 (spec_low2, wl) = spectra_low2[i]
-                _, spec_low2_binned = bin_spectrum_fast(wl, spec_low2, R_to_bin)
+                _, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
 
                 transit_depth_min_i = np.min(spec_low2_binned)
                 y_min_plt = min(y_min_plt, transit_depth_min_i)
@@ -1778,7 +1759,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for i in range(N_spectra):
 
                 (spec_high2, wl) = spectra_high2[i]
-                _, spec_high2_binned = bin_spectrum_fast(wl, spec_high2, R_to_bin)
+                _, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
 
                 transit_depth_max_i = np.max(spec_high2_binned)
                 y_max_plt = max(y_max_plt, transit_depth_max_i)
@@ -1793,7 +1774,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             y_max_plt = transit_depth_max
 
     # If the user did not specify an Fp/Fs range, find min and max from input models
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'Fp']):
 
         if (FpFs_min == None):
             
@@ -1803,7 +1784,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for i in range(N_spectra):
 
                 (spec_low2, wl) = spectra_low2[i]
-                _, spec_low2_binned = bin_spectrum_fast(wl, spec_low2, R_to_bin)
+                _, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
 
                 FpFs_min_i = np.min(spec_low2_binned)
                 y_min_plt = min(y_min_plt, FpFs_min_i)
@@ -1825,7 +1806,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for i in range(N_spectra):
 
                 (spec_high2, wl) = spectra_high2[i]
-                _, spec_high2_binned = bin_spectrum_fast(wl, spec_high2, R_to_bin)
+                _, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
 
                 FpFs_max_i = np.max(spec_high2_binned)
                 y_max_plt = max(y_max_plt, FpFs_max_i)
@@ -1912,12 +1893,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ax1.yaxis.set_major_formatter(ymajorFormatter)
     ax1.yaxis.set_minor_locator(yminorLocator)
     
-  #  ax2 = ax1.twinx()
- 
-  #  ax2.yaxis.set_major_locator(ymajorLocator_H)
-  #  ax2.yaxis.set_major_formatter(ymajorFormatter_H)
-  #  ax2.yaxis.set_minor_locator(yminorLocator_H)
-                         
     for i in range(N_spectra):
         
         # Extract spectrum and wavelength grid
@@ -1937,11 +1912,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             label_i = spectra_labels[i]
         
         # Calculate binned wavelength and retrieved spectra confidence intervals
-        wl_binned, spec_med_binned = bin_spectrum_fast(wl, spec_med, R_to_bin)
-        wl_binned, spec_low1_binned = bin_spectrum_fast(wl, spec_low1, R_to_bin)
-        wl_binned, spec_low2_binned = bin_spectrum_fast(wl, spec_low2, R_to_bin)
-        wl_binned, spec_high1_binned = bin_spectrum_fast(wl, spec_high1, R_to_bin)
-        wl_binned, spec_high2_binned = bin_spectrum_fast(wl, spec_high2, R_to_bin)
+        wl_binned, spec_med_binned, _ = bin_spectrum(wl, spec_med, R_to_bin)
+        wl_binned, spec_low1_binned, _ = bin_spectrum(wl, spec_low1, R_to_bin)
+        wl_binned, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
+        wl_binned, spec_high1_binned, _ = bin_spectrum(wl, spec_high1, R_to_bin)
+        wl_binned, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
         
         # Only add sigma intervals to legend for one model (avoids clutter)
         if (N_spectra == 1):
@@ -1973,8 +1948,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             ymodel_median = bin_spectrum_to_data(spec_med, wl, data_properties)
 
             ax1.scatter(wl_data, ymodel_median, color = binned_colours[i], 
-                        s=5, marker='D', lw=0.1, alpha=0.8, zorder=100, edgecolor='black',
-                        label = label_i + r' (Binned)')
+                        s=5, marker='D', lw=0.1, alpha=0.8, edgecolor='black',
+                        label = label_i + r' (Binned)', zorder = 200)
             
     # Overplot datapoints
     for i in range(N_datasets):
@@ -2001,7 +1976,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                                             markersize=data_markers_size[i], 
                                             capsize=2, ls='none', elinewidth=0.8, 
                                             color=data_colours[i], alpha = 0.8,
-                                            ecolor = 'black', label=label_i)
+                                            ecolor = 'black', label=label_i,
+                                            zorder = 100)
 
         [markers.set_alpha(1.0)]
     
@@ -2016,90 +1992,20 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
     elif (y_unit in ['Fp/Fs', 'Fp/F*']):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+    elif (y_unit in ['Fp']):
+        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
              verticalalignment='top', transform=ax1.transAxes, fontsize = 16)
 
     # Decide at which wavelengths to place major tick labels
-    if (wl_range > 0.2):
-        if (wl_max <= 1.0):
-            wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), round_sig_figs(wl_max, 2)+0.01, 0.1)
-            wl_ticks_2 = np.array([])
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 2.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 3.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 3)+0.01, 0.5)
-            wl_ticks_3 = np.array([])
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 5.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            elif (wl_min < 3.0):
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 0.2)
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 10.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-            elif (wl_min < 3.0):
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 1.0)
-            wl_ticks_4 = np.array([])
-        else:
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
-            wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
-            wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
-
-        wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
+    wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
-        # Plot wl tick labels
-        ax1.set_xticks(wl_ticks)
-    
-    # Compute equivalent scale height for secondary axis
- #   base_depth = (R_p*R_p)/(R_s*R_s)
-    
- #   photosphere_T = T_eq
-    
-#    H_sc = (sc.k*photosphere_T)/(mu*g_0)
-#    depth_values = np.array([transit_depth_range[0], transit_depth_range[1]])
-#    N_sc = ((depth_values - base_depth)*(R_s*R_s))/(2.0*R_p*H_sc)
-    
-#    ax2.set_ylim([N_sc[0], N_sc[1]])
-#    ax2.set_ylabel(r'$\mathrm{Scale \, \, Heights}$', fontsize = 16)
+    # Plot wl tick labels
+    ax1.set_xticks(wl_ticks)
 
-    legend = ax1.legend(loc='upper right', shadow=True, prop={'size':10}, 
+    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, 
                         ncol=1, frameon=False)    #legend settings
   #  legend.set_bbox_to_anchor([0.75, 0.98], transform=None)
   #  frame = legend.get_frame()
@@ -2122,7 +2028,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       PT_high2, T_true = None, Atmosphere_dimension = 1, 
                       TwoD_type = None, plt_label = None, show_profiles = [],
                       PT_labels = [], colour_list = [], log_P_min = None,
-                      log_P_max = None, T_min = None, T_max = None):
+                      log_P_max = None, T_min = None, T_max = None,
+                      legend_location = 'lower left'):
         
     ''' Plot a retrieved Pressure-Temperature (P-T) profile.
         
@@ -2269,7 +2176,7 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
     ax.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax.legend(loc='lower left', shadow=True, prop={'size':14}, ncol=1, 
+    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
@@ -2548,7 +2455,7 @@ def plot_FpFs(planet, model, FpFs, wl, R_to_bin = 100):
     ax.plot(wl, FpFs, lw=0.5, alpha=0.4, color = 'crimson', label=r'Flux Ratio')
 
     # Calculate binned wavelength and spectrum grid
-    wl_binned, FpFs_binned = bin_spectrum_fast(wl, FpFs, R_to_bin)
+    wl_binned, FpFs_binned, _ = bin_spectrum(wl, FpFs, R_to_bin)
 
     # Plot binned spectrum
     ax.plot(wl_binned, FpFs_binned, lw=1.0, alpha=0.8, 
@@ -2649,7 +2556,7 @@ def plot_Fp(planet, model, Fp, wl, R_to_bin = 100):
             label='Flux (R = 15,000)')
 
     # Calculate binned wavelength and spectrum grid
-    wl_binned, Fp_binned = bin_spectrum_fast(wl, Fp, R_to_bin)
+    wl_binned, Fp_binned, _ = bin_spectrum(wl, Fp, R_to_bin)
 
     # Plot binned spectrum
     ax.plot(wl_binned, Fp_binned, lw=1.0, alpha=0.8, 
@@ -2717,3 +2624,163 @@ def plot_Fp(planet, model, Fp, wl, R_to_bin = 100):
     plt.savefig(file_name, bbox_inches='tight')
 
     return fig
+
+
+def plot_chem_histogram(nbins, X_i_vals, colour, oldax, shrink_factor):
+    
+    weights = np.ones_like(X_i_vals)/float(len(X_i_vals))
+    
+    x,w,patches = oldax.hist(X_i_vals, bins=nbins, color=colour, histtype='stepfilled', alpha=0.4, edgecolor='None', weights=weights, density=True, stacked=True)
+    x,w,patches = oldax.hist(X_i_vals, bins=nbins, histtype='stepfilled', lw = 0.8, facecolor='None', weights=weights, density=True, stacked=True)
+        
+    oldax.set_ylim(0, (1.1+shrink_factor)*x.max())
+    
+    low3, low2, low1, median, high1, high2, high3 = confidence_intervals(len(X_i_vals), X_i_vals, 0)
+    
+    return low1, median, high1
+
+
+def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_species,
+                                  abundance_fmt = '.2f'):
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+    
+    fig = plt.figure()  
+    fig.set_size_inches(5, 2.5)
+    #fig.set_size_inches(10.3, 7.5)
+       
+    # Initialise histogram grid (use subplot2grid for irregular spacings)
+    gs = gridspec.GridSpec(1, 2) 
+   
+    # Colours for histograms
+    colours = ['dodgerblue', 'orangered']
+   
+    # Names of the parameters to be plotted
+    parameters = []
+    parameters.append(r"$\rm{log}(\rm{O / H}) \, \, (\times \, \rm{solar})$")
+    parameters.append(r"$\rm{C / O}$")
+
+    N_samples, _ = np.shape(X_vals)
+   
+    # Empty arrays for mu, O/H, and C/O
+    O_to_H_vals = np.zeros(shape=(N_samples))
+    C_to_O_vals = np.zeros(shape=(N_samples))
+   
+    O_to_H_solar = np.power(10.0, (8.69-12.0))  # Asplund (2009) ~ 4.9e-4  (Present day photosphere value)
+   
+    # Work out mean molecular mass and metallicity for each retrieved chemistry vector (functions defined in profile.py)
+    for i in range(N_samples):
+   
+        O_to_H_vals[i] = compute_O_to_H(X_vals[i,:], chemical_species) / O_to_H_solar
+        C_to_O_vals[i] = compute_C_to_O(X_vals[i,:], chemical_species)
+   
+    for i in range(len(parameters)):
+   
+        count = i+1
+
+        plt.subplot(gs[0,i])
+   
+        oldax = plt.gca()
+   
+        if (count == 1): low1, median, high1 = plot_chem_histogram(40, np.log10(O_to_H_vals), colours[i], oldax, 0.0)
+        if (count == 2): low1, median, high1 = plot_chem_histogram(40, C_to_O_vals, colours[i], oldax, 0.0)
+            
+        fmt = "{{0:{0}}}".format(abundance_fmt).format
+        overlay = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
+        overlay = overlay.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
+
+        newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
+        newax.set_ylim(0, 1)
+   	
+        ylim = newax.get_ylim()
+        y = ylim[0] + 0.06*(ylim[1] - ylim[0])
+   
+        newax.errorbar(x=median, y=y,
+                       xerr=np.transpose([[median - low1, high1 - median]]), 
+                       color='lightgreen', ecolor='green', markersize=3, 
+                       markeredgewidth = 0.6, linewidth=0.9, capthick=0.9, capsize=1.7, marker='s')
+                      
+        oldax.set_yticks([])
+       
+        oldax.tick_params(axis='both', which='major', labelsize=8)
+        newax.tick_params(axis='both', which='major', labelsize=8)
+
+        median = round_sig_figs(median, 2)
+        upper_sigma = round_sig_figs((high1-median), 2)
+        lower_sigma = round_sig_figs((median-low1), 2)
+
+        # Custom plotting options for each histogram          
+        if (count == 1):
+            oldax.set_xlim([-0.2, 2.6])
+            newax.text(0.06, 0.96, r'O/H', color='navy', fontsize = 10, 
+                       horizontalalignment='left', verticalalignment='top', transform=newax.transAxes)
+            newax.text(0.96, 0.96, overlay, color='navy', fontsize = 10,
+                       horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
+            newax.axvline(x=0.0, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
+            newax.set_yticklabels([])
+            
+        if (count == 2):
+            oldax.set_xlim([0.0, 1.0])
+            newax.text(0.06, 0.96, r'C/O', color='maroon', fontsize = 10, 
+                       horizontalalignment='left', verticalalignment='top', transform=newax.transAxes)
+            newax.text(0.96, 0.96, overlay, color='maroon', fontsize = 10,
+                       horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
+            newax.axvline(x=0.55, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
+            newax.set_yticklabels([])
+
+        plt.xlabel(parameters[i], fontsize = 12, labelpad = 1)
+        
+  #  plt.tight_layout(pad = 0.7, w_pad = 0.2, h_pad = 0.8)
+        
+    # Write figure to file
+    file_name = output_dir + model_name + '_element_ratios.png'
+
+    plt.savefig(file_name, bbox_inches='tight', dpi=300)
+
+
+def plot_composition(planet, model):
+
+    # Unpack model and atmospheric properties
+    planet_name = planet['planet_name']
+    model_name = model['model_name']
+    param_species = model['param_species']
+    N_params_cum = model['N_params_cum']
+
+    # Unpack number of free parameters
+    param_names = model['param_names']
+    n_params = len(param_names)
+
+    # Identify output directory location
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+
+    # Load relevant output directory
+    output_prefix = model_name + '-'
+
+    # Change directory into MultiNest result file folder
+    os.chdir(output_dir + 'MultiNest_raw/')
+    
+    # Run PyMultiNest analyser to extract posterior samples
+    analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
+                                    verbose = False)
+    samples = analyzer.get_equal_weighted_posterior()[:,:-1]
+
+    # Change directory back to directory where user's python script is located
+    os.chdir('../../../../')
+
+    # Find total number of available posterior samples from MultiNest 
+    N_samples = len(samples[:,0])
+    N_species = len(param_species)
+
+    log_X_stored = np.zeros(shape=(N_samples, N_species))
+    
+    # Generate spectrum and PT profiles from selected samples
+    for i in range(N_samples):
+
+        # Convert MultiNest parameter samples into POSEIDON function inputs
+        _, _, log_X_stored[i,:], _, _, _, _, _ = split_params(samples[i], 
+                                                              N_params_cum)
+
+    # Plot elemental ratios
+    plot_retrieved_element_ratios(np.power(10.0, log_X_stored), planet_name, 
+                                  model_name, param_species)

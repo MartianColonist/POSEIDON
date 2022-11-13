@@ -203,8 +203,10 @@ def init_instrument(wl, wl_data, half_width, instrument):
     elif (instrument == 'IRAC2'): 
         sens_file = inst_dir + '/Spitzer/IRAC2_sensitivity.dat'
     elif (instrument.startswith('JWST')): 
-        if (instrument == 'NIRSpec_Prism'): # Catch common misspelling of PRISM
-            instrument = 'NIRSpec_PRISM'
+        if (instrument == 'JWST_NIRSpec_Prism'): # Catch common misspelling of PRISM
+            instrument = 'JWST_NIRSpec_PRISM'
+        if ('NRS' in instrument):                # If G395H split into detectors, use common sensitivity function
+            instrument = 'JWST_NIRSpec_G395H'
         sens_file = inst_dir + '/JWST/' + instrument + '_sensitivity.dat'
     
     # If instrument does not have a known sensitivity function, just use a top hat
@@ -340,17 +342,17 @@ def make_model_data(spectrum, wl, sigma, sensitivity, bin_left, bin_cent,
         for n in range(N_bins):
             
             # Extend convolution beyond bin edge by max(1, 2 PSF std) model grid spaces (std rounded to integer)
-            extention = max(1, int(2 * sigma[n]))   
+            extension = max(1, int(2 * sigma[n]))   
             
             # Convolve spectrum with PSF width appropriate for a given bin 
-            spectrum_conv = gauss_conv(spectrum[(bin_left[n]-extention):(bin_right[n]+extention)], 
+            spectrum_conv = gauss_conv(spectrum[(bin_left[n]-extension):(bin_right[n]+extension)], 
                                        sigma=sigma[n], mode='nearest')
 
             # Catch a (surprisingly common) error
-            if (len(spectrum_conv[extention:-extention]) != len(sensitivity[bin_left[n]:bin_right[n]])):
+            if (len(spectrum_conv[extension:-extension]) != len(sensitivity[bin_left[n]:bin_right[n]])):
                 raise Exception("Error: Model wavelength range not wide enough to encompass all data.")
 
-            integrand = spectrum_conv[extention:-extention] * sensitivity[bin_left[n]:bin_right[n]]
+            integrand = spectrum_conv[extension:-extension] * sensitivity[bin_left[n]:bin_right[n]]
         
             # Integrate convolved spectrum over instrument sensitivity function
             data[n] = trapz(integrand, wl[bin_left[n]:bin_right[n]])   
