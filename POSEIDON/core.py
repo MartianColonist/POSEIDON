@@ -13,30 +13,48 @@ os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['CBLAS_NUM_THREADS'] = '1'
 
+os.environ['block'] = '128'
+os.environ['thread'] = '128'
+
 import numpy as np
 from numba.core.decorators import jit
 import scipy.constants as sc
 from mpi4py import MPI
 from spectres import spectres
+from scipy.constants import parsec
 
 from .constants import R_J, R_E
-
 from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot
 from .supported_opac import supported_species, supported_cia, inactive_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
-                        extinction_LBL
+                        extinction_LBL, extinction_GPU
 from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
 from .instrument import init_instrument
 from .transmission import TRIDENT
-from .emission import emission_rad_transfer
+from .emission import emission_rad_transfer, determine_photosphere_radii, \
+                      emission_rad_transfer_GPU, determine_photosphere_radii_GPU
+
+from .utility import mock_missing
+
+try:
+    import cupy as cp
+except ImportError:
+    cp = mock_missing('cupy')
 
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
+
+block = int(os.environ['block'])
+thread = int(os.environ['thread'])
+
+import warnings
+
+warnings.filterwarnings("ignore") # Suppress numba performance warning
 
 
 def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, 
@@ -205,9 +223,9 @@ def define_model(model_name, bulk_species, param_species,
                  object_type = 'transiting', PT_profile = 'isotherm', 
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
                  cloud_type = 'deck', opaque_Iceberg = False,
-                 gravity_setting = 'fixed',
-                 stellar_contam = 'No', offsets_applied = 'No', 
-                 error_inflation = 'No', radius_unit = 'R_J',
+                 gravity_setting = 'fixed', stellar_contam = 'No', 
+                 offsets_applied = 'No', error_inflation = 'No', 
+                 radius_unit = 'R_J', distance_unit = 'pc',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
@@ -255,6 +273,9 @@ def define_model(model_name, bulk_species, param_species,
         radius_unit (str)
             Planet radius unit used to report retrieval results
             (Options: R_J / R_E)
+        distance_unit (str):
+            Distance to system unit used to report retrieval results
+            (Options: pc)
         PT_dim (int):
             Dimensionality of the pressure-temperature field (uniform -> 1, 
             a day-night or evening-morning gradient -> 2, both day-night and 
@@ -358,7 +379,8 @@ def define_model(model_name, bulk_species, param_species,
              'chemical_species': chemical_species, 'bulk_species': bulk_species,
              'active_species': active_species, 'CIA_pairs': CIA_pairs,
              'ff_pairs': ff_pairs, 'bf_species': bf_species,
-             'param_species': param_species, 'radius_unit': radius_unit,
+             'param_species': param_species, 
+             'radius_unit': radius_unit, 'distance_unit': distance_unit,
              'species_EM_gradient': species_EM_gradient,
              'species_DN_gradient': species_DN_gradient,
              'species_vert_gradient': species_vert_gradient,
@@ -446,7 +468,8 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
     
 
 def read_opacities(model, wl, opacity_treatment = 'opacity_sampling', 
-                   T_fine = None, log_P_fine = None, opacity_database = 'High-T'):
+                   T_fine = None, log_P_fine = None, opacity_database = 'High-T',
+                   device = 'cpu'):
     '''
     Load the various cross sections required by a given model. When using 
     opacity sampling, the native high-resolution are pre-interpolated onto 
@@ -512,6 +535,15 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         # No need for pre-computed arrays for line-by-line, so keep empty arrays
         sigma_stored, CIA_stored, \
         ff_stored, bf_stored = (np.array([]) for _ in range(4))
+
+    # Move cross sections to GPU memory to speed up later computations
+    if (device == 'gpu'):
+        sigma_stored = cp.asarray(sigma_stored)
+        CIA_stored = cp.asarray(CIA_stored)
+        Rayleigh_stored = cp.asarray(Rayleigh_stored)
+        eta_stored = cp.asarray(eta_stored)
+        ff_stored = cp.asarray(ff_stored)
+        bf_stored = cp.asarray(bf_stored)
 
     # Package opacity data required by our model in memory
     opac = {'opacity_database': opacity_database, 
@@ -655,7 +687,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     log_X_state = generate_state(PT_params, log_X_params, param_species, 
                                  PT_dim, X_dim, PT_profile, X_profile, TwoD_type, 
                                  TwoD_param_scheme, species_EM_gradient, 
-                                 species_DN_gradient, species_vert_gradient)
+                                 species_DN_gradient, species_vert_gradient,
+                                 alpha, beta)
 
     #***** Compute P-T, radial, mixing ratio, and other atmospheric profiles *****#
 
@@ -744,7 +777,8 @@ def check_atmosphere_physical(atmosphere, opac):
 def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
                      disable_continuum = False, suppress_print = False,
-                     Gauss_quad = 2):
+                     Gauss_quad = 2, use_photosphere_radius = True,
+                     device = 'cpu'):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -775,6 +809,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             Gaussian quadrature order for integration over emitting surface
             * Only for emission spectra *
             (Options: 2 / 3).
+        use_photosphere_radius (bool):
+            If True, use R_p at tau = 2/3 for emission spectra prefactor.
 
     Returns:
         spectrum (np.array of float):
@@ -902,21 +938,61 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # Also unpack fine temperature and pressure grids from pre-interpolation
         T_fine = opac['T_fine']
         log_P_fine = opac['log_P_fine']
+
+        # Running POSEIDON on the CPU
+        if (device == 'cpu'):
         
-        # Calculate extinction coefficients in standard mode
-        kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
-                                              CIA_pairs, ff_pairs, bf_species,
-                                              n, T, P, wl, X, X_active, X_CIA, 
-                                              X_ff, X_bf, a, gamma, P_cloud, 
-                                              kappa_cloud_0, sigma_stored, 
-                                              CIA_stored, Rayleigh_stored, 
-                                              ff_stored, bf_stored, enable_haze, 
-                                              enable_deck, enable_surface,
-                                              N_sectors, N_zones, T_fine, 
-                                              log_P_fine, P_surf)
+            # Calculate extinction coefficients in standard mode
+            kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
+                                                  CIA_pairs, ff_pairs, bf_species,
+                                                  n, T, P, wl, X, X_active, X_CIA, 
+                                                  X_ff, X_bf, a, gamma, P_cloud, 
+                                                  kappa_cloud_0, sigma_stored, 
+                                                  CIA_stored, Rayleigh_stored, 
+                                                  ff_stored, bf_stored, enable_haze, 
+                                                  enable_deck, enable_surface,
+                                                  N_sectors, N_zones, T_fine, 
+                                                  log_P_fine, P_surf)
+
+        # Running POSEIDON on the GPU
+        elif (device == 'gpu'):
+
+            N_wl = len(wl)     # Number of wavelengths on model grid
+            N_layers = len(P)  # Number of layers
+
+            # Define extinction coefficient arrays explicitly on GPU
+            kappa_clear = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+            kappa_cloud = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+
+            # Find index of deep pressure below which atmosphere is opaque
+            P_deep = 1000       # Default value of P_deep (needs to be high for brown dwarfs)
+            i_bot = np.argmin(np.abs(P - P_deep))
+
+            # Store length variables for mixing ratio arrays 
+            N_species = len(chemical_species)        # Number of chemical species
+            N_species_active = len(active_species)   # Number of spectrally active species
+            
+            N_cia_pairs = len(CIA_pairs)             # Number of cia pairs included
+            N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
+            N_bf_species = len(bf_species)           # Number of bound-free species included
+        
+            # Calculate extinction coefficients in standard mode
+            extinction_GPU[block, thread](kappa_clear, kappa_cloud, i_bot, N_species, 
+                                          N_species_active, N_cia_pairs, N_ff_pairs, 
+                                          N_bf_species, n, T, P, wl, X, X_active, 
+                                          X_CIA, X_ff, X_bf, a, gamma, P_cloud, 
+                                          kappa_cloud_0, sigma_stored, 
+                                          CIA_stored, Rayleigh_stored, 
+                                          ff_stored, bf_stored, enable_haze, 
+                                          enable_deck, enable_surface,
+                                          N_sectors, N_zones, T_fine, 
+                                          log_P_fine, P_surf, P_deep)
 
     # Generate transmission spectrum        
     if (spectrum_type == 'transmission'):
+
+        if (device == 'gpu'):
+            raise Exception("GPU transmission spectra not yet supported.")
 
         # Place planet at mid-transit (spectrum identical due to translational symmetry)
         y_p = 0   # Coordinate of planet centre along orbit (y=0 at mid-transit)
@@ -929,14 +1005,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     # Generate emission spectrum
     elif ('emission' in spectrum_type):
 
-        # If distance not specified, use fiducial value
-        if (d is None):
-            d = 1        # This value only used for flux ratios, so it cancels
-
         # Find zone index for the emission spectrum atmospheric region
-        if (spectrum_type == 'dayside_emission'):
+        if ('dayside' in spectrum_type):
             zone_idx = 0
-        elif (spectrum_type == 'nightside_emission'):
+        elif ('nightside' in spectrum_type):
             zone_idx = -1
         else:
             zone_idx = 0
@@ -946,14 +1018,48 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         dz = dr[:,0,zone_idx]   # Only consider one region for 1D/2D models
         T = T[:,0,zone_idx]     # Only consider one region for 1D/2D models
 
-        # Compute planet flux
-        F_p = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+        # Compute planet flux (on CPU or GPU)
+        if (device == 'cpu'):
+            F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+        elif (device == 'gpu'):
+            F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa, Gauss_quad)
 
-        # Convert planet surface flux to observed flux at Earth
-        F_p_obs = (R_p / d)**2 * F_p
+        # Calculate effective photosphere radius at tau = 2/3
+        if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
+            
+            # Running POSEIDON on the CPU
+            if (device == 'cpu'):
+                R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]), wl, photosphere_tau = 2/3)
+            
+            # Running POSEIDON on the GPU
+            elif (device == 'gpu'):
+
+                # Initialise photosphere radius array
+                R_p_eff = cp.zeros(len(wl))
+                dtau_flipped = cp.flip(dtau, axis=0)
+                r_low_flipped = np.ascontiguousarray(np.flip(r_low[:,0,zone_idx]))
+
+                # Find cumulative optical depth from top of atmosphere down at each wavelength
+                tau_lambda = cp.cumsum(dtau_flipped, axis=0)
+
+                # Calculate photosphere radius using GPU
+                determine_photosphere_radii_GPU[block, thread](tau_lambda, r_low_flipped, wl, R_p_eff, 2/3)
+
+                # Convert back to numpy array on CPU
+                R_p_eff = cp.asnumpy(R_p_eff)          
+        
+        else:
+            R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
+        
+        # If distance not specified, use fiducial value
+        if (d is None):
+            d = 1        # This value only used for flux ratios, so it cancels
 
         # For direct emission spectra (brown dwarfs and directly imaged planets)        
-        if (spectrum_type == 'direct_emission'):
+        if ('direct' in spectrum_type):
+
+            # Convert planet surface flux to observed flux at Earth
+            F_p_obs = (R_p_eff / d)**2 * F_p
 
             # Direct spectrum is F_p observed at Earth
             spectrum = F_p_obs
@@ -971,9 +1077,12 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # Convert stellar surface flux to observed flux at Earth
             F_s_obs = (R_s / d)**2 * F_s_interp
 
+            # Convert planet surface flux to observed flux at Earth
+            F_p_obs = (R_p_eff / d)**2 * F_p
+
             # Final spectrum is the planet-star flux ratio
             spectrum = F_p_obs / F_s_obs
-
+        
     # Write spectrum to file
     if (save_spectrum == True):
         write_spectrum(planet['planet_name'], model['model_name'], spectrum, wl)
@@ -1151,13 +1260,19 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     X_param_names = model['X_param_names']
     PT_profile = model['PT_profile']
     radius_unit = model['radius_unit']
+    distance_unit = model['distance_unit']
     Atmosphere_dimension = model['Atmosphere_dimension']
     
     # Unpack planet and star properties
     R_p = planet['planet_radius']
     T_eq = planet['planet_T_eq']
-    T_s = star['stellar_T_eff']
-    err_T_s = star['stellar_T_eff_error']
+
+    if (star != None):
+        T_s = star['stellar_T_eff']
+        err_T_s = star['stellar_T_eff_error']
+    else:
+        T_s = 0.0
+        err_T_s = 0.0
 
     # Unpack data error bars (not error inflation parameter prior)
     err_data = data['err_data']    
@@ -1167,20 +1282,27 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         R_p_norm = R_J
     elif (radius_unit == 'R_E'):
         R_p_norm = R_E
-
     if ('R_p_ref' in prior_ranges):
         prior_ranges['R_p_ref'] = [prior_ranges['R_p_ref'][0]/R_p_norm,
                                    prior_ranges['R_p_ref'][1]/R_p_norm]
 
+    # Normalise retrieved system distance parameter into parsecs
+    if (distance_unit == 'pc'):
+        d_norm = parsec
+    if ('d' in prior_ranges):
+        prior_ranges['d'] = [prior_ranges['d'][0]/d_norm,
+                             prior_ranges['d'][1]/d_norm]
+
     # Set default priors (used if user doesn't specify one or more priors)
     prior_ranges_defaults = {'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
-                             'log_g': [2.0, 5.0], 'T': [400, T_eq+200], 
-                             'Delta_T': [0, 1000], 'T_mid': [400, 3000],
-                             'T_high': [400, 3000], 'a1': [0.02, 2.00], 
-                             'a2': [0.02, 2.00], 'log_P1': [-6, 2], 
-                             'log_P2': [-6, 2], 'log_P3': [-2, 2],
-                             'log_P_mid': [-5, 1], 'log_P_surf': [-4, 1],
-                             'log_X': [-12, -1], 'Delta_log_X': [-8, 8], 
+                             'log_g': [2.0, 5.0], 'T': [400, 3000], 
+                             'Delta_T': [0, 1000], 'Grad_T': [-200, 0],
+                             'T_mid': [400, 3000], 'T_high': [400, 3000], 
+                             'a1': [0.02, 2.00], 'a2': [0.02, 2.00], 
+                             'log_P1': [-6, 2], 'log_P2': [-6, 2], 
+                             'log_P3': [-2, 2], 'log_P_mid': [-5, 1], 
+                             'log_P_surf': [-4, 1], 'log_X': [-12, -1], 
+                             'Delta_log_X': [-10, 10], 'Grad_log_X': [-1, 1], 
                              'log_a': [-4, 8], 'gamma': [-20, 2], 
                              'log_P_cloud': [-6, 2], 'phi_cloud': [0, 1],
                              'log_kappa_cloud': [-10, -4], 'f_cloud': [0, 1],
@@ -1208,6 +1330,20 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                         prior_ranges[parameter] = prior_ranges['log_P_X_mid']
                     else:
                         prior_ranges[parameter] = prior_ranges_defaults['log_P_mid']
+
+                # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
+                elif ('Delta_log_' in parameter):
+                    if ('Delta_log_X' in prior_ranges):
+                        prior_ranges[parameter] = prior_ranges['Delta_log_X']
+                    else:
+                        prior_ranges[parameter] = prior_ranges_defaults['Delta_log_X']
+
+                # Set non-specified mixing ratio gradient prior to that for 'Grad_log_X'
+                elif ('Grad_' in parameter):
+                    if ('Grad_log_X' in prior_ranges):
+                        prior_ranges[parameter] = prior_ranges['Grad_log_X']
+                    else:
+                        prior_ranges[parameter] = prior_ranges_defaults['Grad_log_X']
                     
                 # Set non-specified mixing ratio prior to that for 'log_X'
                 elif ('log_' in parameter):
@@ -1216,13 +1352,20 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     else:
                         prior_ranges[parameter] = prior_ranges_defaults['log_X']
 
-                # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
-                elif ('Delta_log_' in parameter):
-                    if ('Delta_log_X' in prior_ranges):
-                        prior_ranges[parameter] = prior_ranges['Delta_log_X']
-                    else:
-                        prior_ranges[parameter] = prior_ranges_defaults['Delta_log_X']
-                
+            # Set non-specified temperature difference parameters to that for 'Delta_T'
+            elif ('Delta_T_' in parameter):
+                if ('Delta_T' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['Delta_T']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['Delta_T']
+
+            # Set non-specified temperature gradient parameters to that for 'Grad_T'
+            elif ('Grad_' in parameter):
+                if ('Grad_T' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['Grad_T']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['Grad_T']
+
             # Set non-specified temperature parameters to that for 'T'
             elif ('T_' in parameter):
                 if ('T' in prior_ranges):
@@ -1254,6 +1397,20 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     else:
                         prior_types[parameter] = 'uniform'
 
+                # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
+                elif ('Delta_log_' in parameter):
+                    if ('Delta_log_X' in prior_types):
+                        prior_types[parameter] = prior_types['Delta_log_X']
+                    else:
+                        prior_types[parameter] = 'uniform'
+
+                # Set non-specified mixing ratio gradient prior to that for 'Grad_log_X'
+                elif ('Grad_' in parameter):
+                    if ('Grad_log_X' in prior_types):
+                        prior_types[parameter] = prior_types['Grad_log_X']
+                    else:
+                        prior_types[parameter] = 'uniform'
+
                 # Set non-specified mixing ratio prior to that for 'log_X'
                 elif ('log_' in parameter):
                     if ('log_X' in prior_types):
@@ -1263,14 +1420,21 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                             prior_types[parameter] = 'CLR'
                         else:
                             prior_types[parameter] = 'uniform'
-
-                # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
-                elif ('Delta_log_' in parameter):
-                    if ('Delta_log_X' in prior_types):
-                        prior_types[parameter] = prior_types['Delta_log_X']
-                    else:
-                        prior_types[parameter] = 'uniform'
                 
+            # Set non-specified temperature difference parameters to that for 'Delta_T'
+            elif ('Delta_T_' in parameter):
+                if ('Delta_T' in prior_types):
+                    prior_types[parameter] = prior_types['Delta_T']
+                else:
+                    prior_types[parameter] = 'uniform'
+
+            # Set non-specified temperature gradient parameters to that for 'Grad_T'
+            elif ('Grad_' in parameter):
+                if ('Grad_T' in prior_types):
+                    prior_types[parameter] = prior_types['Grad_T']
+                else:
+                    prior_types[parameter] = 'uniform'
+
             # Set non-specified temperature parameters to that for 'T'
             elif ('T_' in parameter):
                 if ('T' in prior_types):
@@ -1296,8 +1460,14 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_ranges['log_X']
     if ('Delta_log_X' in prior_ranges):
         del prior_ranges['Delta_log_X']
+    if ('Grad_log_X' in prior_ranges):
+        del prior_ranges['Grad_log_X']
     if (('T' in prior_ranges) and (PT_profile != 'isotherm')):
         del prior_ranges['T']
+    if (('Delta_T' in prior_ranges) and (PT_profile != 'gradient')):
+        del prior_ranges['Delta_T']
+    if (('Grad_T' in prior_ranges) and (PT_profile != 'gradient')):
+        del prior_ranges['Grad_T']
 
     # Remove group prior types for mixing ratio and temperature parameters
     if ('log_P_X_mid' in prior_types):
@@ -1306,8 +1476,14 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_types['log_X']
     if ('Delta_log_X' in prior_types):
         del prior_types['Delta_log_X']
+    if ('Grad_log_X' in prior_types):
+        del prior_types['Grad_log_X']
     if (('T' in prior_types) and (PT_profile != 'isotherm')):
         del prior_types['T']
+    if (('Delta_T' in prior_types) and (PT_profile != 'gradient')):
+        del prior_types['Delta_T']
+    if (('Grad_T' in prior_types) and (PT_profile != 'gradient')):
+        del prior_types['Grad_T']
 
     CLR_limit_check = 0   # Tracking variable for CLR limit check below
 

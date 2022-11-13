@@ -7,7 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 import pymultinest
-from numba.core.decorators import jit
+from numba import jit, cuda
 from spectres import spectres
 from scipy.interpolate import interp1d as Interp
 
@@ -97,6 +97,70 @@ def prior_index(value, grid, start = 0):
     return index
 
 
+@cuda.jit(device=True)
+def prior_index_GPU(value, grid):
+    ''' 
+    GPU variant of the 'prior_index' function.
+
+    Search a grid to find the previous index closest to a specified value (i.e. 
+    the index of the grid where the grid value is last less than the value). 
+    This function assumes the input grid monotonically increases.
+
+    Args:
+        value (float):
+            Value for which the prior grid index is desired.
+        grid (np.array of float):
+            Input grid.
+
+    Returns:
+        index (int):
+            Prior index of the grid corresponding to the value.
+
+    '''
+        
+    if (value > grid[-1]):
+        return (len(grid) - 1)
+    
+    # Check if value out of bounds, if so set to edge value
+    if (value < grid[0]): value = grid[0]
+    if (value > grid[-2]): value = grid[-2]
+    
+    index = 0
+    
+    for i in range(len(grid)):
+        if (grid[i] > value): 
+            index = (i) - 1
+            break
+            
+    return index
+
+
+@cuda.jit(device=True)
+def interp_GPU(x_value, x, y):
+    '''
+    Linear interpolation using a GPU.
+
+    Args:
+        x_value (float):
+            x value for which y is desired.
+        x (np.array of float):
+            Input x grid.
+        y (np.array of float):
+            Input y grid.
+
+    Returns:
+        y_interp (float):
+            Linearly interpolated value of y evaluated at x_value.
+
+    '''
+
+    prior_index = prior_index_GPU(x_value, x)
+
+    y_interp = y[prior_index] + (((y[prior_index+1]-y[prior_index])/(x[prior_index+1]-x[prior_index])) *
+                                 (x_value-x[prior_index]))
+                                
+    return y_interp
+
 
 @jit(nopython=True)
 def prior_index_V2(value, grid_start, grid_end, N_grid):
@@ -174,6 +238,44 @@ def closest_index(value, grid_start, grid_end, N_grid):
         else:
             return int(i)+1   # Round up
         
+
+@cuda.jit(device=True)
+def closest_index_GPU(value, grid_start, grid_end, N_grid):
+    '''
+    GPU variant of the 'closest_index' function.
+
+    Same as 'prior_index_V2', but for the closest index (i.e. can also round up).
+
+    Args:
+        val (float): 
+            The value for which closest index is desired.
+        grid_start (float):
+            The value at the left edge of the uniform grid (array[0]).
+        grid_start (float):
+            The value at the right edge of the uniform grid (array[-1]).
+        N_grid (int):
+            The number of points on the uniform grid.
+    Returns:
+        (int):
+            The index of the uniform grid closest to 'value'.
+    '''
+
+    # Set to lower boundary
+    if (value < grid_start): 
+        return 0
+    
+    # Set to upper boundary
+    elif (value > grid_end):
+        return N_grid-1
+    
+    # Use the equation of a straight line, then round to nearest integer.
+    else:
+        i = (N_grid-1) * ((value - grid_start) / (grid_end - grid_start))
+        if ((i%1) <= 0.5):
+            return int(i)     # Round down
+        else:
+            return int(i)+1   # Round up
+
 
 def size_profile(arr):
     '''
@@ -478,7 +580,7 @@ def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_in_file,
     return X_interp
 
 
-def bin_spectrum_fast(wl_native, spectrum_native, R_bin):
+def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
     '''
     Bin a model spectrum down to a specific spectral resolution. 
     
@@ -492,12 +594,16 @@ def bin_spectrum_fast(wl_native, spectrum_native, R_bin):
             Input spectrum.
         R_bin (float or int):
             Spectral resolution (R = wl/dwl) to re-bin the spectrum onto.
+        err_data (np.array of float):
+            1σ errors on the spectral data.
 
     Returns:
         wl_binned (np.array of float): 
             New wavelength grid spaced at R = R_bin (μm).
         spectrum_binned (np.array of float):
             Re-binned spectrum at resolution R = R_bin.
+        err_binned (np.array of float):
+            Re-binned errors at resolution R = R_bin.
 
     '''
         
@@ -509,14 +615,29 @@ def bin_spectrum_fast(wl_native, spectrum_native, R_bin):
     wl_binned = np.exp(log_wl_binned)
     
     # Call Spectres routine
-    spectrum_binned = spectres(wl_binned, wl_native, spectrum_native,
-                               verbose = False)
+    if (err_data != []):
+        spectrum_binned, err_binned = spectres(wl_binned, wl_native, spectrum_native,
+                                               spec_errs = err_data, verbose = False)
 
-    # Cut out first and last values to avoid SpectRes boundary NaNs
-    wl_binned = wl_binned[1:-1]
-    spectrum_binned = spectrum_binned[1:-1]  
+        # Cut out first and last values to avoid SpectRes boundary NaNs
+        wl_binned = wl_binned[1:-1]
+        spectrum_binned = spectrum_binned[1:-1]
 
-    return wl_binned, spectrum_binned
+        # Replace Spectres boundary NaNs with second and penultimate values
+        err_binned[0] = err_binned[1]
+        err_binned[-1] = err_binned[-2]
+
+    # Call Spectres routine
+    else:
+        spectrum_binned = spectres(wl_binned, wl_native, spectrum_native,
+                                   verbose = False)
+
+        # Cut out first and last values to avoid SpectRes boundary NaNs
+        wl_binned = wl_binned[1:-1]
+        spectrum_binned = spectrum_binned[1:-1]
+        err_binned = None
+
+    return wl_binned, spectrum_binned, err_binned
                 
 
 def write_spectrum(planet_name, model_name, spectrum, wl):
@@ -1380,5 +1501,10 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
                        wl, R, instruments, datasets)
     
 
-
+def mock_missing(name):
+    def init(self, *args, **kwargs):
+        raise ImportError(
+            f'The module {name} you tried to call is not importable; '
+            f'this is likely due to it not being installed.')
+    return type(name, (), {'__init__': init})
 
