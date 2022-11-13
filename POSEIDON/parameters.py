@@ -14,7 +14,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        offsets_applied, error_inflation, PT_dim, X_dim, cloud_dim, 
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
-                       Atmosphere_dimension, opaque_Iceberg, surface, spectrum_type):
+                       Atmosphere_dimension, opaque_Iceberg, surface):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
