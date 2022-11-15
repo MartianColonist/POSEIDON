@@ -229,7 +229,7 @@ def define_model(model_name, bulk_species, param_species,
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-                 surface = False):
+                 surface = False, high_res = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -306,6 +306,8 @@ def define_model(model_name, bulk_species, param_species,
             List of chemical species with a vertical mixing ratio gradient.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
+        high_res (bool):
+            If True, define a model for high resolutional retrieval.
 
     Returns:
         model (dict):
@@ -360,7 +362,7 @@ def define_model(model_name, bulk_species, param_species,
     param_names, physical_param_names, \
     PT_param_names, X_param_names, \
     cloud_param_names, geometry_param_names, \
-    stellar_param_names, \
+    stellar_param_names, high_res_param_names, \
     N_params_cum = assign_free_params(param_species, object_type, PT_profile,
                                       X_profile, cloud_model, cloud_type, 
                                       gravity_setting, stellar_contam, 
@@ -368,7 +370,7 @@ def define_model(model_name, bulk_species, param_species,
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
-                                      opaque_Iceberg, surface)
+                                      opaque_Iceberg, surface, high_res)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -392,6 +394,7 @@ def define_model(model_name, bulk_species, param_species,
              'cloud_param_names': cloud_param_names,
              'geometry_param_names': geometry_param_names, 
              'stellar_param_names': stellar_param_names, 
+             'high_res_param_names': high_res_param_names,
              'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
              'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface
@@ -1275,7 +1278,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         err_T_s = 0.0
 
     # Unpack data error bars (not error inflation parameter prior)
-    err_data = data['err_data']    
+    try:
+        err_data = data['err_data']    
+    except:
+        err_data = 0 
 
     # Normalise retrieved planet radius parameter into Jupiter or Earth radii
     if (radius_unit == 'R_J'):
@@ -1312,7 +1318,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'T_phot': [T_s, err_T_s], 
                              'delta_rel': [-1.0e-3, 1.0e-3],
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
-                                       np.log10(100.0*np.max(err_data**2))]
+                                       np.log10(100.0*np.max(err_data**2))],
+                             'K_p': [-200, 200], 'V_sys': [-100, 100]
                             }    
 
     # Iterate through parameters, ensuring we have a full set of priors

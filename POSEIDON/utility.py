@@ -7,6 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 import pymultinest
+import pickle
 from numba import jit, cuda
 from spectres import spectres
 from scipy.interpolate import interp1d as Interp
@@ -378,6 +379,42 @@ def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half',
     
     return wl_data, half_bin, spectrum, err
 
+
+def read_high_res_data(data_dir): 
+    '''
+    Read an external dataset file. The expected file format is:
+
+    wavelength | bin half width | spectrum | error on spectrum
+
+    Args:
+        data_dir (str):
+            Path to the directory containing the data file.
+
+    Returns:
+        data (dict):
+            {   'wl_grid': grid,
+                'data_arr': data_arr,
+                'data_scale': data_scale,
+                'Phi': Phi,
+                'V_bary': V_bary    }
+
+    '''
+    
+    # Load data file
+    try:
+        wl_grid, data_arr = pickle.load(open(data_dir+'/PCA_matrix.pic', 'rb'))
+        wl_grid, data_scale = pickle.load(open(data_dir+'/data_to_scale_with.pic', 'rb'))
+        Phi = pickle.load(open(data_dir+'/ph.pic','rb'))                    # Time-resolved phases
+        V_bary = pickle.load(open(data_dir+'/rvel.pic','rb'))               # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
+    except:
+        print("Cannot locate data.")
+
+    data = {'wl_grid': wl_grid, 
+            'data_arr': data_arr,
+            'data_scale': data_scale,
+            'Phi': Phi,
+            'V_bary': V_bary }
+    return data
     
 def read_spectrum(planet_name, fname, wl_unit = 'micron'):
     '''

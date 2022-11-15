@@ -14,7 +14,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        offsets_applied, error_inflation, PT_dim, X_dim, cloud_dim, 
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
-                       Atmosphere_dimension, opaque_Iceberg, surface):
+                       Atmosphere_dimension, opaque_Iceberg, surface, high_res):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -85,6 +85,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             If using the Iceberg cloud model, True disables the kappa parameter.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
+        high_res (bool):
+            If True, define a model for high resolutional retrieval.
 
     Returns:
         params (np.array of str):
@@ -101,6 +103,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             Multidimensional atmospheric geometry parameters.
         stellar_params (np.array of str):
             Stellar heterogeneity parameters.
+        high_res_params (np.array of str):
+            Parameters used for h igh resolutional retrievals.
         N_params_cumulative (np.array of int):
             Cumulative sum of number of parameters (used for indexing).
 
@@ -114,7 +118,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     cloud_params = []     # Cloud parameters
     geometry_params = []  # Geometry parameters
     stellar_params = []   # Stellar parameters
-
+    high_res_params = []  # High resolutional retrieval parameters
     #***** Physical property parameters *****#
 
  #   if (spectrum_type == 'transmission'):
@@ -544,6 +548,15 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         N_error_params = 0
     else:
         raise Exception("Error: unsupported error adjustment prescription.")
+
+    #***** High resolutional retrieval parameters *****#
+    
+    if (high_res == True):
+        high_res_params += ['K_p', 'V_sys']
+        params += high_res_params
+        N_high_res_params = len(high_res_params)
+    else:
+        N_high_res_params = 0
     
     #***** Final recasting of parameter arrays *****#
 
@@ -555,15 +568,17 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     cloud_params = np.array(cloud_params)
     geometry_params = np.array(geometry_params)
     stellar_params = np.array(stellar_params)
-    
+    high_res_params = np.array(high_res_params)
+
     # The cumulative sum of the number of each type of parameter saves time indexing later 
     N_params_cumulative = np.cumsum([N_physical_params, N_PT_params, 
                                      N_species_params, N_cloud_params,
                                      N_geometry_params, N_stellar_params, 
-                                     N_offset_params, N_error_params])
+                                     N_offset_params, N_error_params, 
+                                     N_high_res_params])
     
     return params, physical_params, PT_params, X_params, cloud_params, \
-           geometry_params, stellar_params, N_params_cumulative
+           geometry_params, stellar_params, high_res_params, N_params_cumulative
     
     
 def split_params(params_drawn, N_params_cumulative):
@@ -594,6 +609,8 @@ def split_params(params_drawn, N_params_cumulative):
             Drawn values of the data offset parameters.
         err_inflation_drawn (list of float | np.array of float):
             Drawn values of the error inflation parameters.
+        high_res (list of float | np.array of float):
+            Drawn values of the parameters for high resolutional retrieval.
 
     '''
     
@@ -620,9 +637,11 @@ def split_params(params_drawn, N_params_cumulative):
     
     # Extract error adjustment parameters      
     err_inflation_drawn = params_drawn[N_params_cumulative[6]:N_params_cumulative[7]]
-        
+    
+    high_res_drawn = params_drawn[N_params_cumulative[7]:N_params_cumulative[8]]
+
     return physical_drawn, PT_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
-           stellar_drawn, offsets_drawn, err_inflation_drawn
+           stellar_drawn, offsets_drawn, err_inflation_drawn, high_res_drawn
  
     
 def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
