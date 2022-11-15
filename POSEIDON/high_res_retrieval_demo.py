@@ -66,7 +66,7 @@ param_species = ['H2O', 'CO']  # H2O, CO as in Brogi & Line
 
 # Create the model object
 model = define_model(model_name, bulk_species, param_species,
-                    PT_profile = 'Madhu')
+                    PT_profile = 'Madhu', high_res=True)
 
 # Check the free parameters defining this model
 print("Free parameters: " + str(model['param_names']))
@@ -230,7 +230,7 @@ P_ref = 10.0   # Reference pressure (bar)
 
 run_high_res_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
                         spectrum_type = 'direct_emission', sampling_algorithm = 'MultiNest', 
-                        N_live = 400, verbose = True, N_output_samples = 100)
+                        N_live = 100, verbose = True, N_output_samples = 100)
 
 
 # %% [markdown]

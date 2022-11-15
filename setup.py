@@ -26,6 +26,7 @@ setup(
                         'pymultinest',
                         'corner',
                         'spectres',
-                        'jupyter'],
+                        'jupyter',
+                        'scikit-learn'],
     zip_safe = False,
 )

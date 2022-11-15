@@ -138,7 +138,7 @@ def run_high_res_retrieval(planet, star, model, opac, data, priors,
     os.chdir('../../../../')
 
 
-from retrieval import CLR_Prior
+from .retrieval import CLR_Prior
 
 
 def high_res_retrieval(planet, star, model, opac, data, prior_types, 
