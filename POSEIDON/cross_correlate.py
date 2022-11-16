@@ -31,7 +31,47 @@ def get_rot_kernel(V_sin_i, wl_s):
 
 
 def log_likelihood_PCA(V_sys, K_p, scale, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi):
+    '''
+    Perform the loglikelihood calculation using singular value decompositions.
+    Ndet: number of spectral order.
+    Nphi: number of time-resolved phases.
+    Npix: number of wavelengths per spectral order.
+    Typical values for (Ndet, Nphi, Npix) is (44, 79, 1848).
 
+    Args:
+        V_sys (float):
+            The system velocity (km/s) at which we do the loglikelihood calculation.
+        K_p (float):
+            The Keplerian velocity (km/s) at which we do the loglikelihood calculation.
+        Scale (float):
+            TODO: not really know what this parameter means.    
+        cs_p (np.array of float):
+            Spline representation of the observed flux of planet.
+        cs_s (np.array of float): 
+            Spline representation of the observed flux of star.
+        wl_grid (2D np.array of float):
+            2D wavelength grid of the data (Ndet x Npix). Typical size ~(44, 1848).
+        data_arr (3D np.array of float):
+            3D Array representing the top principal components removed data.
+            Shape: (Ndet x Nphi x Npix)
+        data_scale (3D np.array of float):
+            3D Array representing the top principal components of data.
+            Shape: (Ndet x Nphi x Npix)
+        V_bary (np.array of float):
+            Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
+            Shape: (Nphi, )
+        Phi (np.array of float):
+            Array of time-resolved phases.
+            Shpae (Nphi, )
+    
+    Returns:
+        logL_Matteo (float):
+            Loglikelihood given by Log(L) = -N/2 Log(s_f^2 - 2R(s) + s_g^2). Equation 9 in Brogi & Line 2019 March.
+        logL_Zack (float):
+            Loglikelihood given by Log(L) = -N/2 Log(1.0 - CC^2)). Equation 2 in Brogi & Line 2019 March.
+        CCF (float):
+            cross correlation value.
+    '''
     K_s = 0.3229
 
     #Kstar=(Mp/Mstar*9.55E-4)*Kp  #this is mass planet/mass star
@@ -49,7 +89,7 @@ def log_likelihood_PCA(V_sys, K_p, scale, cs_p, cs_s, wl_grid, data_arr, data_sc
     logL_Matteo = 0
     logL_Zuck = 0
     CCF = 0
-    # Looping through each phase and computing total log-L by summing logLs for each obvservation/phase
+    # Looping through each order and computing total log-L by summing logLs for each obvservation/order
     for j in range(Ndet): # Ndet = 44 This takes 2.2 seconds to complete
         wl_slice = wl_grid[j, ].copy() # Cropped wavelengths    
         Fp_Fs = np.zeros((Nphi, Npix))  # "shifted" model spectra array at each phase
@@ -91,7 +131,48 @@ def log_likelihood_PCA(V_sys, K_p, scale, cs_p, cs_s, wl_grid, data_arr, data_sc
 
 
 def cross_correlate(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, data_arr, data_scale, V_bary, Phi):
+    '''
+    Cross correlate at an array of Keplerian velocities and an array of centered system velocities given the observed flux.
+    Use this function to create the cross correlation plot of detection level.
+    Ndet: number of spectral order.
+    Nphi: number of time-resolved phases.
+    Npix: number of wavelengths per spectral order.
+    Typical values for (Ndet, Nphi, Npix) is (44, 79, 1848).
 
+    Args:
+        F_s_obs (np.array of float):
+            Flux of the star observed at distance d = 1 pc.
+        F_p_obs (np.array of float): 
+            Flux of the planet observed at distance d = 1 pc.
+        wl (np.array of float):
+            Wavelength grid of the forward model. Typical size ~10^5 in a high-res retrieval.
+        K_p_arr (np.array of float):
+            Array of Keplerian velocities (km/s).
+        V_sys_arr (np.array of float):
+            Array of centered system velocity (km/s).
+        wl_grid (2D np.array of float):
+            2D wavelength grid of the data (Ndet x Npix). Typical size ~(44, 1848).
+        data_arr (3D np.array of float):
+            3D Array representing the top principal components removed data.
+            Shape: (Ndet x Nphi x Npix)
+        data_scale (3D np.array of float):
+            3D Array representing the top principal components of data.
+            Shape: (Ndet x Nphi x Npix)
+        V_bary (np.array of float):
+            Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
+            Shape: (Nphi, )
+        Phi (np.array of float):
+            Array of time-resolved phases.
+            Shpae (Nphi, )
+    
+    Returns:
+        logL_M_arr (np.array of float):
+            Array of loglikelihood given by Log(L) = -N/2 Log(s_f^2 - 2R(s) + s_g^2). Equation 9 in Brogi & Line 2019 March.
+        logL_Z_arr (np.array of float):
+            Array of loglikelihood given by Log(L) = -N/2 Log(1.0 - CC^2)). Equation 2 in Brogi & Line 2019 March.
+        CCF_arr (float):
+            Array of cross correlation value.
+    '''
     scale = 1.0
 
     #loading data (read_data in utility.py)
@@ -124,10 +205,10 @@ def cross_correlate(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, data_arr,
     
     for i in range(len(K_p_arr)):
         for j in range(len(V_sys_arr)):
-            log_L_M, log_L_Z, CCF1 = log_likelihood_PCA(V_sys_arr[j], K_p_arr[i], scale, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
+            log_L_M, log_L_Z, CCF = log_likelihood_PCA(V_sys_arr[j], K_p_arr[i], scale, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
             log_L_M_arr[i, j] = log_L_M
             log_L_Z_arr[i, j] = log_L_Z
-            CCF_arr[i, j] = CCF1
+            CCF_arr[i, j] = CCF
 
     return log_L_M_arr, log_L_Z_arr, CCF_arr
 
@@ -135,7 +216,48 @@ def cross_correlate(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, data_arr,
 
 
 def log_likelihood(F_s_obs, F_p_obs, wl, K_p, V_sys, wl_grid, data_arr, data_scale, V_bary, Phi):
+    '''
+    Return the loglikelihood given the observed flux, Keplerian velocity, and centered system velocity.
+    Use this function in a high resolutional rerieval.
+    Ndet: number of spectral order.
+    Nphi: number of time-resolved phases.
+    Npix: number of wavelengths per spectral order.
+    Typical values for (Ndet, Nphi, Npix) is (44, 79, 1848).
 
+    Args:
+        F_s_obs (np.array of float):
+            Flux of the star observed at distance d = 1 pc.
+        F_p_obs (np.array of float): 
+            Flux of the planet observed at distance d = 1 pc.
+        wl (np.array of float):
+            Wavelength grid of the forward model. Typical size ~10^5 in a high-res retrieval.
+        K_p (float):
+            The Keplerian velocity (km/s) at which we do the loglikelihood calculation.
+        V_sys (float):
+            The system velocity (km/s) at which we do the loglikelihood calculation.
+        wl_grid (2D np.array of float):
+            2D wavelength grid of the data (Ndet x Npix). Typical size ~(44, 1848).
+        data_arr (3D np.array of float):
+            3D Array representing the top principal components removed data.
+            Shape: (Ndet x Nphi x Npix)
+        data_scale (3D np.array of float):
+            3D Array representing the top principal components of data.
+            Shape: (Ndet x Nphi x Npix)
+        V_bary (np.array of float):
+            Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
+            Shape: (Nphi, )
+        Phi (np.array of float):
+            Array of time-resolved phases.
+            Shpae (Nphi, )
+    
+    Returns:
+        logL_Matteo (float):
+            Loglikelihood given by Log(L) = -N/2 Log(s_f^2 - 2R(s) + s_g^2). Equation 9 in Brogi & Line 2019 March.
+        logL_Zack (float):
+            Loglikelihood given by Log(L) = -N/2 Log(1.0 - CCF^2)). Equation 2 in Brogi & Line 2019 March.
+        CCF (float):
+            cross correlation value.
+    '''
     scale = 1.0
 
     # K_p = 192.06  # orbital velocity of planet; this is used to center trial values of K_p
@@ -157,6 +279,6 @@ def log_likelihood(F_s_obs, F_p_obs, wl, K_p, V_sys, wl_grid, data_arr, data_sca
     cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p, F_s are already observed value on Earth
     cs_s = interpolate.splrep(wl, F_s_conv, s=0.0)
 
-    logL_M, logL_Z, CCF1 = log_likelihood_PCA(V_sys, K_p, scale, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
+    logL_Matteo, logL_Zack, CCF = log_likelihood_PCA(V_sys, K_p, scale, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
     
-    return logL_M, logL_Z, CCF1
+    return logL_Matteo, logL_Zack, CCF
