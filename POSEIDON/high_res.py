@@ -381,7 +381,7 @@ def high_res_retrieval(planet, star, model, opac, data, prior_types,
             # Quit if given parameter combination is unphysical
             return loglikelihood
 
-        #***** Step 7: apply relative offset between datasets (optional) ****#
+        #***** Step 7: Get the data properties from data dictionary ****#
         wl_grid = data['wl_grid']
         data_arr = data['data_arr']
         data_scale = data['data_scale']

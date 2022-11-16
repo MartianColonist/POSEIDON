@@ -81,7 +81,7 @@ R = 250000          # Spectral resolution of grid
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 data_dir = './reference_data/observations/WASP77-Ab'         # Special directory for this tutorial
-print(data_dir)
+
 data = read_high_res_data(data_dir)
 # %% [markdown]
 # ### Setting Retrieval Priors
@@ -230,7 +230,7 @@ P_ref = 10.0   # Reference pressure (bar)
 
 run_high_res_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
                         spectrum_type = 'direct_emission', sampling_algorithm = 'MultiNest', 
-                        N_live = 100, verbose = True, N_output_samples = 100)
+                        N_live = 100, verbose = True, N_output_samples = 100, resume = 'True')
 
 
 # %% [markdown]
