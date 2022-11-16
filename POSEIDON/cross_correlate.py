@@ -14,8 +14,19 @@ from spectres import spectres
 from sklearn.decomposition import TruncatedSVD
 
 @jit
-def get_rot_kernel(V_sin_i, wl_s):
-    dRV = np.mean(2.0*(wl_s[1: ]-wl_s[0: -1])/(wl_s[1: ]+wl_s[0: -1]))*2.998E5
+def get_rot_kernel(V_sin_i, wl):
+    '''
+    Get rotational kernel given V sin(i) and wavelength grid of the forward model.
+
+    Args:
+        V_sin_i (float):
+            TODO: V sin_i
+        wl (np.array of float):
+            Wavelength grid of the forward model.
+
+    '''
+
+    dRV = np.mean(2.0*(wl[1: ]-wl[0: -1])/(wl[1: ]+wl[0: -1]))*2.998E5
     n_ker = 401
     half_n_ker = (n_ker - 1)//2
     rot_ker = np.zeros(n_ker)
@@ -72,6 +83,7 @@ def log_likelihood_PCA(V_sys, K_p, scale, cs_p, cs_s, wl_grid, data_arr, data_sc
         CCF (float):
             cross correlation value.
     '''
+
     K_s = 0.3229
 
     #Kstar=(Mp/Mstar*9.55E-4)*Kp  #this is mass planet/mass star
@@ -173,6 +185,7 @@ def cross_correlate(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, data_arr,
         CCF_arr (float):
             Array of cross correlation value.
     '''
+
     scale = 1.0
 
     #loading data (read_data in utility.py)
@@ -258,6 +271,7 @@ def log_likelihood(F_s_obs, F_p_obs, wl, K_p, V_sys, wl_grid, data_arr, data_sca
         CCF (float):
             cross correlation value.
     '''
+    
     scale = 1.0
 
     # K_p = 192.06  # orbital velocity of planet; this is used to center trial values of K_p
