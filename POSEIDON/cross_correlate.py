@@ -5,9 +5,7 @@ from scipy import constants
 from numba import jit
 from astropy.io import fits
 from scipy import interpolate
-from .core import create_star, create_planet, define_model, make_atmosphere, read_opacities, wl_grid_constant_R, wl_grid_line_by_line, compute_spectrum
 from .constants import R_Sun
-from .visuals import plot_stellar_flux
 from .constants import R_J, M_J
 import numpy as np
 from spectres import spectres

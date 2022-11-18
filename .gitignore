@@ -12,3 +12,5 @@ POSEIDON.egg-info/
 inputs/
 run/
 .vscode
+POSEIDON_output/
+CC_output/
