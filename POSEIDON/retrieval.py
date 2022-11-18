@@ -21,6 +21,7 @@ from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
                      write_retrieved_log_X, confidence_intervals
 from .core import make_atmosphere, compute_spectrum
 from .stellar import precompute_stellar_spectra, stellar_contamination_single_spot
+from .cross_correlate import log_likelihood
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -36,7 +37,7 @@ def run_retrieval(planet, star, model, opac, data, priors,
                   spectrum_type = 'transmission', N_live = 400, ev_tol = 0.5,
                   sampling_algorithm = 'MultiNest', resume = False, 
                   verbose = True, sampling_target = 'parameter',
-                  N_output_samples = 1000):
+                  N_output_samples = 1000, high_res = False):
     '''
     ADD DOCSTRING
     '''
@@ -101,7 +102,7 @@ def run_retrieval(planet, star, model, opac, data, priors,
                               prior_ranges, spectrum_type, wl, P, P_ref, 
                               He_fraction, N_slice_EM, N_slice_DN, N_params, 
                               T_phot_grid, T_het_grid, I_phot_grid,
-                              I_het_grid, resume = resume, verbose = verbose,
+                              I_het_grid, high_res, resume = resume, verbose = verbose,
                               outputfiles_basename = basename, 
                               n_live_points = N_live, multimodal = False,
                               evidence_tolerance = ev_tol, log_zero = -1e90,
@@ -212,7 +213,7 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
 def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
                           prior_ranges, spectrum_type, wl, P, P_ref, He_fraction, 
                           N_slice_EM, N_slice_DN, N_params, T_phot_grid,
-                          T_het_grid, I_phot_grid, I_het_grid, **kwargs):
+                          T_het_grid, I_phot_grid, I_het_grid, high_res, **kwargs):
     ''' 
     Main function for conducting atmospheric retrievals with PyMultiNest.
     
@@ -242,8 +243,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     n_dims = N_params
     
     # Pre-compute normalisation for log-likelihood 
-    err_data = data['err_data']
-    norm_log_default = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+    if not high_res:
+        err_data = data['err_data']
+        norm_log_default = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+    else:
+        err_data = None
+        norm_log_default = None
 
     # Create variable governing if a mixing ratio parameter combination lies in 
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
@@ -544,7 +549,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         physical_params, PT_params, \
         log_X_params, cloud_params, \
         geometry_params, stellar_params, \
-        offset_params, err_inflation_params = split_params(cube, N_params_cum)
+        offset_params, err_inflation_params, \
+        high_res_params = split_params(cube, N_params_cum)
 
         # Unpack reference radius parameter
         R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
@@ -596,7 +602,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                         spectrum_type = ('direct_' + spectrum_type))   # Always Fp (even for secondary eclipse)
 
-        # For transmission spectra
+        # For transmission spectra and direct emission spectra
         else:
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                         spectrum_type)
@@ -610,8 +616,21 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             # Quit if given parameter combination is unphysical
             return loglikelihood
 
-        #***** Step 4: stellar contamination *****#
+        if high_res:
+            #***** Get the data properties from data dictionary ****#
+            wl_grid = data['wl_grid']
+            data_arr = data['data_arr']
+            data_scale = data['data_scale']
+            V_bary = data['V_bary']
+            Phi = data['Phi']
+            K_p = high_res_params[0]
+            V_sys = high_res_params[1]
+
+            loglikelihood = log_likelihood(F_s_obs, spectrum, wl, K_p, V_sys, wl_grid, data_arr, data_scale, V_bary, Phi)
+            
+            return loglikelihood[0]
         
+        #***** Step 4: stellar contamination *****#
         # Stellar contamination is only relevant for transmission spectra
         if (spectrum_type == 'transmission'):
 
@@ -648,7 +667,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         #***** Step 6: inflate error bars (optional) ****#
         
         # Compute effective error, if unknown systematics included
-        err_data = data['err_data']
         
         if (error_inflation == 'Line_2015'):
             err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
@@ -734,8 +752,8 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
         physical_params, PT_params, \
         log_X_params, cloud_params, \
         geometry_params, stellar_params, \
-        offset_params, err_inflation_params = split_params(samples[sample[i],:], 
-                                                           N_params_cum)
+        offset_params, err_inflation_params, \
+        high_res_params = split_params(samples[sample[i],:], N_params_cum)
 
         # Unpack reference radius parameter
         R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]

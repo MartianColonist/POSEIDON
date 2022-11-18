@@ -211,7 +211,7 @@ opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 # </div>
 
 # %%
-from POSEIDON.high_res import run_high_res_retrieval
+from POSEIDON.retrieval import run_retrieval
 
 #***** Specify fixed atmospheric settings for retrieval *****#
 
@@ -228,9 +228,9 @@ P_ref = 10.0   # Reference pressure (bar)
 
 #***** Run atmospheric retrieval *****#
 
-run_high_res_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
-                        spectrum_type = 'direct_emission', sampling_algorithm = 'MultiNest', 
-                        N_live = 100, verbose = True, N_output_samples = 100, resume = 'True')
+run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
+                spectrum_type = 'direct_emission', sampling_algorithm = 'MultiNest', 
+                N_live = 500, verbose = True, N_output_samples = 400, resume = 'True', high_res = True)
 
 
 # %% [markdown]
@@ -271,6 +271,4 @@ log_Xs_high2 = [(log_X_high2, P)]
 plot_chem_retrieved(planet_name, chemical_species, log_Xs_median, log_Xs_low2, log_Xs_low1, log_Xs_high1, log_Xs_high2)
 #***** Make corner plot *****#
 
-# fig_corner = generate_cornerplot(planet, model)
-
-# %%
+fig_corner = generate_cornerplot(planet, model)
