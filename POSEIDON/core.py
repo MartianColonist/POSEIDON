@@ -13,6 +13,7 @@ os.environ['OPENBLAS_NUM_THREADS'] = '1'
 os.environ['MKL_NUM_THREADS'] = '1'
 os.environ['CBLAS_NUM_THREADS'] = '1'
 
+# These settings only used for GPU models (experimental)
 os.environ['block'] = '128'
 os.environ['thread'] = '128'
 
@@ -344,7 +345,7 @@ def define_model(model_name, bulk_species, param_species,
         ff_pairs.append('H-ff')       # H- free-free    
     ff_pairs = np.array(ff_pairs)
 
-    # Create list of bound-free absorption pairs
+    # Create list of bound-free absorption species
     bf_species = []
     if ('H-' in chemical_species):  
         bf_species.append('H-bf')      # H- bound-free    
@@ -559,7 +560,8 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
 def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_X_params = [], cloud_params = [], geometry_params = [],
                     log_g = None, T_input = [], X_input = [], P_surf = None,
-                    He_fraction = 0.17, N_slice_EM = 2, N_slice_DN = 4):
+                    P_param_set = 1.0e-2, He_fraction = 0.17, 
+                    N_slice_EM = 2, N_slice_DN = 4):
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
     full generality, this function generates 3D pressure-temperature and mixing 
@@ -593,6 +595,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             Mixing ratio profiles (only if provided directly by the user).
         P_surf (float):
             Surface pressure of the planet.
+        P_param_set (float):
+            Only used for the Madhusudhan & Seager (2009) P-T profile.
+            Sets the pressure where the reference temperature parameter is 
+            defined (P_param_set = 1.0e-6 corresponds to that paper's choice).
         He_fraction (float):
             Assumed H2/He ratio (0.17 default corresponds to the solar ratio).
         N_slice_EM (even int):
@@ -692,15 +698,15 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
 
     #***** Compute P-T, radial, mixing ratio, and other atmospheric profiles *****#
 
-    P, T, n, r, r_up, r_low, \
-    dr, X, X_active, X_CIA, \
-    X_ff, X_bf, mu, \
+    T, n, r, r_up, r_low, \
+    dr, mu, X, X_active, \
+    X_CIA, X_ff, X_bf, \
     is_physical = profiles(P, R_p, g_p, PT_profile, X_profile, PT_state, P_ref, 
                            R_p_ref, log_X_state, chemical_species, bulk_species, 
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
-                           T_input, X_input)
+                           T_input, X_input, P_param_set)
 
     #***** Store cloud / haze / aerosol properties *****#
 
