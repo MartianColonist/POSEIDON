@@ -12,21 +12,34 @@ from .utility import prior_index
 
 
 @jit(nopython = True)
-def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 1.0e-2):
-    
-    ''' Computes the temperature profile for an atmosphere using a re-arranged
-        form of the P-T profile in Madhusudhan & Seager (2009).
-       
-        Inputs:
-        
-        P => pressure of each layer (bar)
-        PT_state => P-T profile parameters defined in Madhu & Seager (2009)
-                    in each atmospheric region
+def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_set, P_set):
+    '''
+    Computes the temperature profile for an atmosphere using a re-arranged
+    form of the P-T profile parametrisation in Madhusudhan & Seager (2009).
 
-        Outputs:
-           
-        T => temperature of each layer (K)
-       
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        a1 (float):
+            Alpha_1 parameter (encodes slope in layer 1).
+        a2 (float):
+            Alpha_2 parameter encodes slope in layer 2).
+        log_P1 (float):
+            Pressure of layer 1-2 boundary.
+        log_P2 (float):
+            Pressure of inversion.
+        log_P3 (float):
+            Pressure of layer 2-3 boundary.
+        T_set (float):
+            Atmosphere temperature reference value at P = P_set (K).
+        P_set (float):
+            Pressure whether the temperature parameter T_set is defined (bar).
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K). 
+            Only the first axis is used for this 1D profile.
+    
     '''
 
     # Store number of layers for convenience
@@ -47,7 +60,7 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 1.0e-2):
     # By default (P_set = 10 bar), so T(P_set) should be in layer 3
     if (log_P_set_i >= log_P3):
         
-        T3 = T_deep  # T_deep is the isothermal deep temperature T3 here
+        T3 = T_set  # T_deep is the isothermal deep temperature T3 here
         
         # Use the temperature parameter to compute boundary temperatures
         T2 = T3 - ((1.0/a2)*(log_P3 - log_P2))**2    
@@ -58,7 +71,7 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 1.0e-2):
     elif (log_P_set_i >= log_P1):   # Temperature parameter in layer 2
         
         # Use the temperature parameter to compute the boundary temperatures
-        T2 = T_deep - ((1.0/a2)*(log_P_set_i - log_P2))**2  
+        T2 = T_set - ((1.0/a2)*(log_P_set_i - log_P2))**2  
         T1 = T2 + ((1.0/a2)*(log_P1 - log_P2))**2   
         T3 = T2 + ((1.0/a2)*(log_P3 - log_P2))**2
         T0 = T1 - ((1.0/a1)*(log_P1 - log_P_min))**2   
@@ -67,7 +80,7 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 1.0e-2):
     elif (log_P_set_i < log_P1):  # Temperature parameter in layer 1
     
         # Use the temperature parameter to compute the boundary temperatures
-        T0 = T_deep - ((1.0/a1)*(log_P_set_i - log_P_min))**2
+        T0 = T_set - ((1.0/a1)*(log_P_set_i - log_P_min))**2
         T1 = T0 + ((1.0/a1)*(log_P1 - log_P_min))**2   
         T2 = T1 - ((1.0/a2)*(log_P1 - log_P2))**2  
         T3 = T2 + ((1.0/a2)*(log_P3 - log_P2))**2
@@ -84,11 +97,36 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep, P_set = 1.0e-2):
 
     return T
 
-#@jit(nopython = True)
+
 def compute_T_slope(P, T_phot, Delta_T_arr, log_P_phot = 0.5, 
                     log_P_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0]):
     '''
-    ADD DOCSTRING
+    Computes the temperature profile for an atmosphere using the 'slope' P-T 
+    profile parametrisation defined in Piette & Madhusudhan (2021).
+
+    Note: the number of temperature difference parameters is the same as the
+          number of pressure points (including the photosphere). For the default
+          values, we have: [Delta_T (10-1mb), Delta_T (100-10mb), Delta_T (1-0.1b),
+                            Delta_T (3.2-1b), Delta_T (10-3.2b), Delta_T (32-10b), 
+                            Delta_T (100-32b)], where 'b' = bar.
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T_phot (float):
+            Temperature at the photosphere (located at log_P_phot) (K).
+        Delta_T_arr (np.array of float):
+            Temperature differences between each pressure point (K).
+        log_P_phot (float):
+            Photosphere pressure (default: 3.16 bar).
+        log_P_arr (list):
+            Pressures where the temperature difference parameters are defined (log bar).
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K).
+            Only the first axis is used for this 1D profile.
+    
     '''
 
     # Store number of layers for convenience
@@ -134,22 +172,46 @@ def compute_T_slope(P, T_phot, Delta_T_arr, log_P_phot = 0.5,
 def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
                              N_sectors, N_zones, alpha, beta, phi, theta,
                              P_deep = 10.0, P_high = 1.0e-5):
+    ''' 
+    Creates the 3D temperature profile defined in MacDonald & Lewis (2022).
     
-    ''' Creates 3D temperature profile array storing T(P, phi, theta).
+    Note: This profile assumes a linear in log-pressure temperature gradient 
+          between P_deep and P_high (these anchor points are fixed such that 
+          the photosphere generally lies within them). For pressures above and 
+          below the considered range, the temperature is isothermal.
+        
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T_bar_term (float):
+            Average terminator plane temperature at P_high.
+        Delta_T_term (float):
+            Temperature difference between the evening and morning terminators at P_high(K).
+        Delta_T_DN (float):
+            Temperature difference between the dayside and nightside at P_high (K).
+        T_deep (float):
+            Global deep temperature at P_deep.
+        N_sectors (int):
+            Number of azimuthal sectors.
+        N_zones (int):
+            Number of zenith zones.
+        alpha (float):
+            Terminator opening angle (degrees).
+        beta (float):
+            Day-night opening angle (degrees).
+        phi (np.array of float):
+            Mid-sector angles (radians).
+        theta (np.array of float):
+            Mid-zone angles (radians).
+        P_deep (float):
+            Anchor point in deep atmosphere below which the atmosphere is homogenous.
+        P_high (float):
+            Anchor point high in the atmosphere above which all columns are isothermal.
     
-        For each atmospheric column, the temperature profile has a constant
-        vertical gradient across the observable atmosphere. For pressures
-        above and below the considered range (by default, 10^-5 -> 10 bar),
-        the temperature is isothermal.
-           
-        Inputs:
-            
-        TBD
-
-        Outputs:
-           
-        T => Array of temperature profiles for each sector and zone
-       
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure, sector, and zone (K).
+    
     '''
 
     # Store number of layers for convenience
@@ -213,23 +275,50 @@ def compute_T_field_two_gradients(P, T_bar_term_high, T_bar_term_mid,
                                   Delta_T_DN_high, Delta_T_DN_mid, log_P_mid,
                                   T_deep, N_sectors, N_zones, alpha, beta,
                                   phi, theta, P_deep = 10.0, P_high = 1.0e-5):
+    ''' 
+    Extension of 'compute_T_field_gradient' with a second gradient in the
+    photosphere region. The two gradients connect at a new parameter: P_mid.
+        
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T_bar_term_high (float):
+            Average terminator plane temperature at P_high.
+        T_bar_term_mid (float):
+            Average terminator plane temperature at P_mid.
+        Delta_T_term_high (float):
+            Temperature difference between the evening and morning terminators at P_high (K).
+        Delta_T_term_mid (float):
+            Temperature difference between the evening and morning terminators at P_mid (K).
+        Delta_T_DN_high (float):
+            Temperature difference between the dayside and nightside at P_high (K).
+        Delta_T_DN_mid (float):
+            Temperature difference between the dayside and nightside at P_mid (K).
+        log_P_mid (float):
+            log10 of pressure where the two gradients switch (bar). 
+        T_deep (float):
+            Global deep temperature at P_deep.
+        N_sectors (int):
+            Number of azimuthal sectors.
+        N_zones (int):
+            Number of zenith zones.
+        alpha (float):
+            Terminator opening angle (degrees).
+        beta (float):
+            Day-night opening angle (degrees).
+        phi (np.array of float):
+            Mid-sector angles (radians).
+        theta (np.array of float):
+            Mid-zone angles (radians).
+        P_deep (float):
+            Anchor point in deep atmosphere below which the atmosphere is homogenous.
+        P_high (float):
+            Anchor point high in the atmosphere above which all columns are isothermal.
     
-    ''' Creates 3D temperature profile array storing T(P, phi, theta).
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure, sector, and zone (K).
     
-        For each atmospheric column, the temperature profile has two constant
-        vertical gradients across the observable atmosphere. The transition 
-        point between the two gradients is at log_P_mid. For pressures
-        above and below the considered range (by default, 10^-5 -> 10 bar)
-        the temperature is isothermal.
-           
-        Inputs:
-            
-        TBD
-
-        Outputs:
-           
-        T => Array of temperature profiles for each sector and zone
-       
     '''
 
     # Store number of layers for convenience
@@ -306,23 +395,46 @@ def compute_T_field_two_gradients(P, T_bar_term_high, T_bar_term_mid,
 def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species, 
                              species_has_profile, alpha, beta, phi, theta, 
                              P_deep = 10.0, P_high = 1.0e-5):
-    
-    ''' Creates 4D abundance profile array storing X(species, P, phi, theta).
-    
-        For each atmospheric column, the abundance profile has either a constant 
-        vertical gradient across the observable atmosphere or a uniform (isochem) 
-        profile. The species with a gradient profile are specified by the user. 
-        For gradient profiles, pressures above and below the considered range 
-        (10^-5 -> 10 bar) have isochemical mixing ratios.
-           
-        Inputs:
-            
-        TBD
+    ''' 
+    Creates the 4D abundance profile array storing X(species, layer, sector, zone).
 
-        Outputs:
-           
-        X => Array of abundance profiles for each species in each sector and zone
-       
+    The functional dependence is the same as defined above in the function 
+    'compute_T_field_gradient' (see also MacDonald & Lewis (2022)), with the 
+    exception that not all chemical species have a vertical profile. Any 
+    chemical species not in the array 'species_has_profile' have constant
+    mixing ratios with altitude.
+        
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        log_X_state (2D np.array of float):
+            Mixing ratio state array.
+        N_sectors (int):
+            Number of azimuthal sectors.
+        N_zones (int):
+            Number of zenith zones.
+        param_species (np.array of str):
+            Chemical species with parametrised mixing ratios.
+        species_has_profile (np.array of int):
+            Array with an integer '1' if a species in 'param_species' has a 
+            gradient profile, or '0' for an constant mixing ratio with altitude.
+        alpha (float):
+            Terminator opening angle (degrees).
+        beta (float):
+            Day-night opening angle (degrees).
+        phi (np.array of float):
+            Mid-sector angles (radians).
+        theta (np.array of float):
+            Mid-zone angles (radians).
+        P_deep (float):
+            Anchor point in deep atmosphere below which all columns are isochemical.
+        P_high (float):
+            Anchor point high in the atmosphere above which all columns are isochemical.
+    
+    Returns:
+        X_profiles (4D np.array of float):
+            Mixing ratios in each layer as a function of pressure, sector, and zone.
+    
     '''
 
     # Store number of layers for convenience
@@ -406,25 +518,41 @@ def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species,
 def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_species, 
                                   species_has_profile, alpha, beta, phi, theta, 
                                   P_deep = 10.0, P_high = 1.0e-5):
+    ''' 
+    Extension of 'compute_X_field_gradient' with a second gradient in the
+    photosphere region. The two gradients connect at P_mid.
+        
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        log_X_state (2D np.array of float):
+            Mixing ratio state array.
+        N_sectors (int):
+            Number of azimuthal sectors.
+        N_zones (int):
+            Number of zenith zones.
+        param_species (np.array of str):
+            Chemical species with parametrised mixing ratios.
+        species_has_profile (np.array of int):
+            Array with an integer '1' if a species in 'param_species' has a 
+            gradient profile, or '0' for an constant mixing ratio with altitude.
+        alpha (float):
+            Terminator opening angle (degrees).
+        beta (float):
+            Day-night opening angle (degrees).
+        phi (np.array of float):
+            Mid-sector angles (radians).
+        theta (np.array of float):
+            Mid-zone angles (radians).
+        P_deep (float):
+            Anchor point in deep atmosphere below which all columns are isochemical.
+        P_high (float):
+            Anchor point high in the atmosphere above which all columns are isochemical.
     
-    ''' Creates 4D abundance profile array storing X(species, P, phi, theta).
+    Returns:
+        X_profiles (4D np.array of float):
+            Mixing ratios in each layer as a function of pressure, sector, and zone.
     
-        For each atmospheric column, the abundance profile has either two 
-        constant vertical gradients across the observable atmosphere or a 
-        uniform (isochem) profile. The transition point between the two 
-        gradients is at log_P_X_mid (species dependent). The species with 
-        gradient profiles are specified by the user. For gradient profiles, 
-        pressures above and below the considered range (10^-5 -> 10 bar) have 
-        isochemical mixing ratios.
-           
-        Inputs:
-            
-        TBD
-
-        Outputs:
-           
-        X => Array of abundance profiles for each species in each sector and zone
-       
     '''
 
     # Store number of layers for convenience
@@ -521,12 +649,34 @@ def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_spec
     return X_profiles
 
 
-#@jit(nopython = True)
 def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
                        He_fraction):
+    ''' 
+    Concatenates mixing ratios of the bulk species to the parametrised mixing
+    ratios, forming the full mixing ratio array (i.e. sums to 1).
+
+    Note: for H2 and He as bulk species, the output array has the mixing ratio
+          profile of H2 as the first element and He second. For other bulk
+          species (e.g. N2), that species occupies the first element.
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        X_param (4D np.array of float):
+            Mixing ratios of the parametrised chemical species in each layer 
+            as a function of pressure, sector, and zone.
+        N_sectors (int):
+            Number of azimuthal sectors.
+        N_zones (int):
+            Number of zenith zones.
+        bulk_species (np.array of str):
+            Bulk species dominating atmosphere (e.g. ['H2', 'He']).
+        He_fraction (float):
+            Assumed H2/He ratio (0.17 default corresponds to the solar ratio).
     
-    ''' Add abundances of one or more bulk species to the parametrised mixing
-        ratios to form full mixing ratio array.
+    Returns:
+        X (4D np.array of float):
+            Same as X_param, but with the bulk species appended.
     
     '''
 
@@ -571,30 +721,45 @@ def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
 
 @jit(nopython = True)
 def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
-    
-    ''' Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
-        to compute the radius in each atmospheric layer.
+    ''' 
+    Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
+    to compute the radius in each atmospheric layer.
         
-        Note: g is taken as an inverse square law with radius, by assuming the
-              enclosed planet mass at a given radius is approx. M_p. This is
-              valid as most mass is in the interior (atmosphere mass negligible).
-       
-        Inputs:
-        
-        P => pressure of each layer (bar)
-        T => temperature of each layer (K)
-        R_p_ref => radius at reference pressure
-        mu => mean molecular mass of atmosphere (kg)
-        N_sectors => 
+    Note: g is taken as an inverse square law with radius by assuming the
+          enclosed planet mass at a given radius is M_p. This assumes
+          most mass is in the interior (negligible atmosphere mass).
 
-        Outputs:
-           
-        n => number density of each layer (m^-3)
-        r => radius at centre of each layer (m)
-        r_up => radius of top edge of each layer (m)
-        r_low => radius of top edge of each layer (m)
-        dr => radial thickness of each layer (m)
-       
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T (3D np.array of float):
+            Temperature profile (K).
+        g_0 (float):
+            Gravitational field strength at white light radius (m/s^2).
+        R_p (float):
+            Observed white light planet radius (m).
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        mu (3D np.array of float):
+            Mean molecular mass (kg).
+        N_sectors (int):
+            Number of azimuthal sectors comprising the background atmosphere.
+        N_zones (int):
+            Number of zenith zones comprising the background atmosphere.
+
+    Returns:
+        n (3D np.array of float):
+            Number density profile (m^-3).
+        r (3D np.array of float):
+            Radial distant profile (m).
+        r_up (3D np.array of float):
+            Upper layer boundaries (m).
+        r_low (3D np.array of float):
+            Lower layer boundaries (m).    
+        dr (3D np.array of float):
+            Layer thicknesses (m). 
     '''
 
     # Store number of layers for convenience
@@ -666,13 +831,41 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
     return n, r, r_up, r_low, dr
 
 
-#@jit(nopython = True)
 def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species, 
-                            active_species, cia_pairs, ff_pairs, bf_species):
-    
-    ''' Sort mixing ratios into those of active species, collision-induced
-        absorption (CIA), free-free opacity, and bound-free opacity.
-        
+                            active_species, CIA_pairs, ff_pairs, bf_species):
+    ''' 
+    Sort mixing ratios into those of active species, collision-induced
+    absorption (CIA), free-free opacity, and bound-free opacity.
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        X (4D np.array of float):
+            Mixing ratio profile
+        N_sectors (int):
+            Number of azimuthal sectors comprising the background atmosphere.
+        N_zones (int):
+            Number of zenith zones comprising the background atmosphere.
+        included_species (np.array of str):
+            List of chemical species included in the model (including bulk species).
+        active_species (np.array of str):
+            Spectroscopically active chemical species (see supported_opac.py).
+        CIA_pairs (np.array of str):
+            Collisionally-induced absorption (CIA) pairs.
+        ff_pairs (np.array of str):
+            Free-free absorption pairs.
+        bf_species (np.array of str):
+            Bound-free absorption species.
+
+    Returns:
+        X_active (4D np.array of float):
+            Mixing ratios of active species.
+        X_CIA (5D np.array of float):
+            Mixing ratios of CIA pairs 
+        X_ff (5D np.array of float):
+            Mixing ratios of free-free pairs.
+        X_bf (4D np.array of float):
+            Mixing ratios of bound-free species.
     '''
 
     # Store number of layers for convenience
@@ -680,13 +873,13 @@ def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species,
     
     # Store number of species in different mixing ratio categories
     N_species_active = len(active_species)
-    N_cia_pairs = len(cia_pairs)
+    N_CIA_pairs = len(CIA_pairs)
     N_ff_pairs = len(ff_pairs)
     N_bf_species = len(bf_species)
     
     # Initialise mixing ratio category arrays
     X_active = np.zeros(shape=(N_species_active, N_layers, N_sectors, N_zones))
-    X_cia = np.zeros(shape=(2, N_cia_pairs, N_layers, N_sectors, N_zones))
+    X_CIA = np.zeros(shape=(2, N_CIA_pairs, N_layers, N_sectors, N_zones))
     X_ff = np.zeros(shape=(2, N_ff_pairs, N_layers, N_sectors, N_zones))
     X_bf = np.zeros(shape=(N_bf_species, N_layers, N_sectors, N_zones))
     
@@ -697,17 +890,17 @@ def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species,
     X_active = X[~active_idx,:,:,:]
                
     # Find mixing ratios contributing to CIA             
-    for q in range(N_cia_pairs):
+    for q in range(N_CIA_pairs):
                 
-        pair = cia_pairs[q]
+        pair = CIA_pairs[q]
         
         # Find index of each species in the CIA pair
         pair_idx_1 = (included_species == pair.split('-')[0])
         pair_idx_2 = (included_species == pair.split('-')[1])
         
         # Store mixing ratios of the two CIA components
-        X_cia[0,q,:,:,:] = X[pair_idx_1,:,:,:]  # E.g. 'H2' for 'H2-He'
-        X_cia[1,q,:,:,:] = X[pair_idx_2,:,:,:]  # E.g. 'He' for 'H2-He'
+        X_CIA[0,q,:,:,:] = X[pair_idx_1,:,:,:]  # E.g. 'H2' for 'H2-He'
+        X_CIA[1,q,:,:,:] = X[pair_idx_2,:,:,:]  # E.g. 'He' for 'H2-He'
                 
     # Find mixing ratios contributing to free-free absorption
     for q in range(N_ff_pairs):
@@ -728,23 +921,31 @@ def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species,
         if (species == 'H-bf'): 
             X_bf[q,:,:,:] = X[included_species == 'H-',:,:,:]
                 
-    return X_active, X_cia, X_ff, X_bf
+    return X_active, X_CIA, X_ff, X_bf
 
 
 @jit(nopython = True)
 def compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all):
-    
-    ''' Computes the mean molecular mass of the atmosphere.
-    
-        Inputs:
-            
-        X => volume mixing ratio array for model atmosphere
-        N_species => 
-        
-        Outputs:
-            
-        mu => mean molecular mass of atmosphere (kg)
-    
+    ''' 
+    Computes the mean molecular mass in each atmospheric column.
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        X (4D np.array of float):
+            Mixing ratio profile.
+        N_species (int):
+            Number of chemical species.
+        N_sectors (int):
+            Number of azimuthal sectors comprising the background atmosphere.
+        N_zones (int):
+            Number of zenith zones comprising the background atmosphere.
+        masses_all (np.array of float):
+            Masses of each chemical species (atomic mass units, u)
+
+    Returns:
+        mu (3D np.array of float):
+            Mean molecular mass (kg).
     '''
     
     # Store number of layers for convenience
@@ -793,7 +994,7 @@ def locate_X(X, species, included_species):
         
     return X_species
 
-#@jit(nopython = True)
+
 def compute_metallicity(X, all_species):
     
     ''' Computes the metallicity [ (O/H)/(O/H)_solar ] of the atmosphere.
@@ -835,7 +1036,7 @@ def compute_metallicity(X, all_species):
     
     return M
 
-#@jit(nopython = True)
+
 def compute_C_to_O(X, all_species):
     
     ''' Computes the carbon-to-oxygen ratio of the atmosphere.
@@ -867,6 +1068,7 @@ def compute_C_to_O(X, all_species):
               (X_H2O + X_CO + 2*X_CO2 + X_PO + X_TiO + X_VO + X_AlO + X_CaO))
     
     return C_to_O
+
 
 def compute_O_to_H(X, all_species):
     
@@ -906,6 +1108,7 @@ def compute_O_to_H(X, all_species):
     
     return O_to_H
 
+
 def compute_C_to_H(X, all_species):
     
     ''' Computes the carbon-to-hydrogen ratio of the atmosphere.
@@ -941,6 +1144,7 @@ def compute_C_to_H(X, all_species):
                3*X_PH3 + X_TiH + X_CrH + X_FeH + X_ScH))
     
     return C_to_H
+
 
 def compute_N_to_H(X, all_species):
     
@@ -981,51 +1185,108 @@ def compute_N_to_H(X, all_species):
 
 def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref, 
              log_X_state, included_species, bulk_species, param_species, 
-             active_species, cia_pairs, ff_pairs, bf_species, N_sectors, 
+             active_species, CIA_pairs, ff_pairs, bf_species, N_sectors, 
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
-             He_fraction, T_input, X_input):
+             He_fraction, T_input, X_input, P_param_set):
+    '''
+    Main function to calculate the vertical profiles in each atmospheric 
+    column. The profiles cover the temperature, number density, mean molecular 
+    mass, layer radial extents, and mixing ratio arrays.
+
+    Notes: Most profiles are 3D arrays with format (N_layers, N_sectors, N_zones).
+           The mixing ratio profiles are 4D (separate profiles for each species)
+           or 5D (CIA or free-free pairs).
+           The layer index starts from the base of the atmosphere.
+           The sector index starts from the evening terminator.
+           The zone index starts from the dayside.
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        R_p (float):
+            Observed white light planet radius (m).
+        g_0 (float):
+            Gravitational field strength at white light radius (m/s^2).
+        PT_profile (str):
+            Chosen P-T profile parametrisation 
+            (Options: isotherm / gradient / two-gradients / Madhu / slope / file_read).
+        X_profile (str):
+            Chosen mixing ratio profile parametrisation
+            (Options: isochem / gradient / two-gradients / file_read).
+        PT_state (np.array of float):
+            P-T profile state array.
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        log_X_state (2D np.array of float):
+            Mixing ratio state array.
+        included_species (np.array of str):
+            List of chemical species included in the model (including bulk species).
+        bulk_species (np.array of str):
+            Bulk species dominating atmosphere (e.g. ['H2', 'He']).
+        param_species (np.array of str):
+            Chemical species with parametrised mixing ratios.
+        active_species (np.array of str):
+            Spectroscopically active chemical species (see supported_opac.py).
+        CIA_pairs (np.array of str):
+            Collisionally-induced absorption (CIA) pairs.
+        ff_pairs (np.array of str):
+            Free-free absorption pairs.
+        bf_species (np.array of str):
+            Bound-free absorption species.
+        N_sectors (int):
+            Number of azimuthal sectors comprising the background atmosphere.
+        N_zones (int):
+            Number of zenith zones comprising the background atmosphere.
+        alpha (float):
+            Terminator opening angle (degrees).
+        beta (float):
+            Day-night opening angle (degrees).
+        phi (np.array of float):
+            Mid-sector angles (radians).
+        theta (np.array of float):
+            Mid-zone angles (radians).
+        species_vert_gradient (np.array of str):
+            Chemical species with a vertical mixing ratio gradient.
+        He_fraction (float):
+            Assumed H2/He ratio (0.17 default corresponds to the solar ratio).
+        T_input (np.array of float):
+            Temperature profile (only if provided directly by the user).
+        X_input (2D np.array of float):
+            Mixing ratio profiles (only if provided directly by the user).
+        P_param_set (float):
+            Only used for the Madhusudhan & Seager (2009) P-T profile.
+            Sets the pressure where the reference temperature parameter is 
+            defined (P_param_set = 1.0e-6 corresponds to that paper's choice). 
     
-    ''' Main function to evaluate radial profiles of various quantities.
-    
-        Notes: all profiles are indexed to start from the base of the atmosphere.
-               Profiles indexed first by layer, and second by atmospheric region.
-       
-        Inputs:
-            
-        PT_state => state vector containing P-T profile parameters
-        R_p_ref => radius at reference pressure (in Jupiter radii)
-        log_X_state => volume mixing ratios of atmosphere
-        wl => model wavelength grid (m)
-        eta_stored => refractive indices on model wl grid at standard conditions
-        included_species =>
-        bulk_species -> 
-        param_species => array of strings with parametrised chemical species
-        active_species =>
-        ignore_species =>
-        N_sectors => number of azimuthal sectors
-        N_zones => number of zones along day-night path
-        alpha => Morning-Evening terminator opening angle 
-        beta => Day-Night terminator opening angle
-        phi =>
-        theta =>
-        species_vert_gradient =>
-       
-        Outputs:
-           
-        P => pressure of each layer (bar)
-        T => temperature of each layer (K)
-        n => number density of each layer (m^-3)
-        r => radius at centre of each layer (m)
-        r_up => radius of top edge of each layer (m)
-        r_low => radius of top edge of each layer (m)
-        dr => radial thickness of each layer (m)
-        mu => mean molecular mass of atmosphere (kg)
-        eta => refractive index in each layer
-        wl_eta => wavelengths for which eta is calculated (m)
-        dlneta_dr => derivative of natural log of refractive index w.r.t height
-                     for each wavelength in wl_eta (m^-1)
-        is_physical => boolean specifying if P-T profile within allowed T range
-       
+    Returns:
+        T (3D np.array of float):
+            Temperature profile (K).
+        n (3D np.array of float):
+            Number density profile (m^-3).
+        r (3D np.array of float):
+            Radial distant profile (m).
+        r_up (3D np.array of float):
+            Upper layer boundaries (m).
+        r_low (3D np.array of float):
+            Lower layer boundaries (m).    
+        dr (3D np.array of float):
+            Layer thicknesses (m).
+        mu (3D np.array of float):
+            Mean molecular mass (kg).
+        X (4D np.array of float):
+            Mixing ratio profile 
+        X_active (4D np.array of float):
+            Mixing ratios of active species.
+        X_CIA (5D np.array of float):
+            Mixing ratios of CIA pairs 
+        X_ff (5D np.array of float):
+            Mixing ratios of free-free pairs.
+        X_bf (4D np.array of float):
+            Mixing ratios of bound-free species.
+        Bool:
+            True if atmosphere physical, otherwise False.    
     '''
 
     # For an isothermal profile
@@ -1035,10 +1296,10 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         T_iso = PT_state[0]
     
         # Initialise temperature array
-        T = T_iso * np.ones(shape=(len(P), 1, 1)) # 1D profile => N_sectors = N_zones = 1
+        T_rough = T_iso * np.ones(shape=(len(P), 1, 1)) # 1D profile => N_sectors = N_zones = 1
         
         # Gaussian smooth P-T profile
-        T_smooth = T   # No need to Gaussian smooth an isothermal profile
+        T = T_rough   # No need to Gaussian smooth an isothermal profile
 
     # For the gradient profiles (1D, 2D, or 3D)
     elif (PT_profile == 'gradient'):
@@ -1050,7 +1311,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         if ((Delta_T_term < 0.0) or (Delta_T_DN < 0.0)): 
             
             # Quit computations if model rejected
-            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
         
         # If P-T parameters valid
         else:
@@ -1061,7 +1322,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                                                N_zones, alpha, beta, phi, theta)
 
         # Gaussian smooth P-T profile
-        T_smooth = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
+        T = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
 
     # For the two-gradients profiles (1D, 2D, or 3D)
     elif (PT_profile == 'two-gradients'):
@@ -1076,7 +1337,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             ((Delta_T_term_mid < 0.0) or (Delta_T_DN_mid < 0.0))): 
             
             # Quit computations if model rejected
-            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
         
         # If P-T parameters valid
         else:
@@ -1089,28 +1350,29 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                                                     N_zones, alpha, beta, phi, theta)
 
         # Gaussian smooth P-T profile
-        T_smooth = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
+        T = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
         
     # For the Madhusudhan & Seager (2009) profile (1D only)
     elif (PT_profile == 'Madhu'):
         
         # Unpack P-T profile parameters
-        a1, a2, log_P1, log_P2, log_P3, T_deep = PT_state
+        a1, a2, log_P1, log_P2, log_P3, T_set = PT_state
         
         # Profile requires P3 > P2 and P3 > P1, reject otherwise
         if ((log_P3 < log_P2) or (log_P3 < log_P1)):
             
             # Quit computations if model rejected
-            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
         
         # If P-T parameters valid
         else:
             
             # Compute unsmoothed temperature profile
-            T_rough = compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_deep)
+            T_rough = compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, 
+                                      T_set, P_param_set)
 
         # Gaussian smooth P-T profile
-        T_smooth = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
+        T = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
 
     # For the Piette & Madhusudhan (2020) profile (1D only)
     elif (PT_profile == 'slope'):
@@ -1126,16 +1388,16 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         smooth_width = round(0.3/(((np.log10(P[0]) - np.log10(P[-1]))/len(P))))
 
         # Gaussian smooth P-T profile
-        T_smooth = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
+        T = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
 
     # Read user provided P-T profile
     elif (PT_profile == 'file_read'):
 
         # Initialise temperature array
-        T = T_input.reshape((len(P), 1, 1))   # 1D profile => N_sectors = N_zones = 1
+        T_rough = T_input.reshape((len(P), 1, 1))   # 1D profile => N_sectors = N_zones = 1
         
         # Gaussian smooth P-T profile
-        T_smooth = T   # No need to Gaussian smooth a user profile
+        T = T_rough   # No need to Gaussian smooth a user profile
 
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
@@ -1155,8 +1417,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # For isochemical or gradient profiles
         if (X_profile in ['isochem', 'gradient']):
             X_param = compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, 
-                                            param_species, species_has_profile, 
-                                            alpha, beta, phi, theta)
+                                               param_species, species_has_profile, 
+                                               alpha, beta, phi, theta)
 
         # For two-gradient profiles                            
         elif (X_profile == 'two-gradients'):
@@ -1172,19 +1434,19 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         
         # Add bulk mixing ratios to form full mixing ratio array
         X = add_bulk_component(P, X_param, N_species, N_sectors, N_zones, 
-                            bulk_species, He_fraction)
+                               bulk_species, He_fraction)
     
     # Check if any mixing ratios are negative (i.e. trace species sum to > 1, so bulk < 0)
     if (np.any(X[0,:,:,:] < 0.0)): 
         
         # Quit computations if model rejected
-        return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+        return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
 
     # Create mixing ratio category arrays for extinction calculations
-    X_active, X_cia, \
+    X_active, X_CIA, \
     X_ff, X_bf = mixing_ratio_categories(P, X, N_sectors, N_zones, 
                                          included_species, active_species, 
-                                         cia_pairs, ff_pairs, bf_species)
+                                         CIA_pairs, ff_pairs, bf_species)
         
     # Store masses in an array to speed up mu calculation
     masses_all = np.zeros(N_species)
@@ -1198,8 +1460,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
     mu = compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all)
         
     # Calculate number density and radial profiles
-    n, r, r_up, r_low, dr = radial_profiles(P, T_smooth, g_0, R_p, P_ref, 
+    n, r, r_up, r_low, dr = radial_profiles(P, T, g_0, R_p, P_ref, 
                                             R_p_ref, mu, N_sectors, N_zones)
     
-    return P, T_smooth, n, r, r_up, r_low, dr, X, X_active, X_cia, \
-           X_ff, X_bf, mu, True
+    return T, n, r, r_up, r_low, dr, mu, X, X_active, X_CIA, \
+           X_ff, X_bf, True
