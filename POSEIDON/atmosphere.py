@@ -969,219 +969,159 @@ def compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all):
 
 #***** TBD: replace functions below with a general function for any elemental ratio *****#
 
-
-def locate_X(X, species, included_species):
-    
-    ''' Finds the mixing ratio for a specified species. Returns zero if
-        specified species is not included in this model.
-    
-        Inputs:
-            
-        X => volume mixing ratios of atmosphere
-        species => string giving desired chemical species
-        included_species => array of strings listing chemical species included in model
-        
-        Outputs:
-            
-        X_species => mixing ratio for this species
-    
-    '''   
-    
-    if (species in included_species):
-        X_species = X[included_species == species]
-    else:
-        X_species = 0.0
-        
-    return X_species
-
-
-def compute_metallicity(X, all_species):
-    
-    ''' Computes the metallicity [ (O/H)/(O/H)_solar ] of the atmosphere.
-    
-        Inputs:
-            
-        X => volume mixing ratios of atmosphere
-        all_species => array of strings listing chemical species included in model
-        
-        Outputs:
-            
-        M => metallicity of atmosphere
-    
+def count_atoms(molecule):
     '''
-    
-    O_to_H_solar = np.power(10.0, (8.69-12.0))  # Asplund (2009) ~ 4.9e-4  (Present day photosphere value)
-    
-    X_H2 = locate_X(X, 'H2', all_species)
-    X_H2O = locate_X(X, 'H2O', all_species)
-    X_CH4 = locate_X(X, 'CH4', all_species)
-    X_NH3 = locate_X(X, 'NH3', all_species)
-    X_HCN = locate_X(X, 'HCN', all_species)
-    X_CO = locate_X(X, 'CO', all_species)
-    X_CO2 = locate_X(X, 'CO2', all_species)
-    X_C2H2 = locate_X(X, 'C2H2', all_species)
-    X_TiO = locate_X(X, 'TiO', all_species)
-    X_VO = locate_X(X, 'VO', all_species)
-    X_AlO = locate_X(X, 'AlO', all_species)
-    X_CaO = locate_X(X, 'CaO', all_species)
-    X_TiH = locate_X(X, 'TiH', all_species)
-    X_CrH = locate_X(X, 'CrH', all_species)
-    X_FeH = locate_X(X, 'FeH', all_species)
-    X_ScH = locate_X(X, 'ScH', all_species)
-    
-    O_to_H = ((X_H2O + X_CO + 2*X_CO2 + X_TiO + X_VO + X_AlO + X_CaO)/
-              (2*X_H2 + 2*X_H2O + 4*X_CH4 + 3*X_NH3 + X_HCN + +2*X_C2H2 + X_TiH + X_CrH + X_FeH + X_ScH))
-        
-    M = O_to_H / O_to_H_solar
-    
-    return M
+    Count how many atoms of each element are contained in a molecule.
 
+    Args:
+        molecule (str):
+            Name of the molecule (e.g. 'H2O', 'CaOH', 'HC(CH3)3').
 
-def compute_C_to_O(X, all_species):
-    
-    ''' Computes the carbon-to-oxygen ratio of the atmosphere.
-    
-        Inputs:
-            
-        X => volume mixing ratios of atmosphere
-        all_species => array of strings listing chemical species included in model
-        
-        Outputs:
-            
-        C_to_O => C/O ratio of atmosphere
-    
+    Returns:
+        counts (dict):
+            Dictionary containing element counts (e.g. for H2O: {'H': 2, 'O': 1}).
     '''
-    
-    X_H2O = locate_X(X, 'H2O', all_species)
-    X_CH4 = locate_X(X, 'CH4', all_species)
-    X_HCN = locate_X(X, 'HCN', all_species)
-    X_CO = locate_X(X, 'CO', all_species)
-    X_CO2 = locate_X(X, 'CO2', all_species)
-    X_PO = locate_X(X, 'PO', all_species)
-    X_C2H2 = locate_X(X, 'C2H2', all_species)
-    X_TiO = locate_X(X, 'TiO', all_species)
-    X_VO = locate_X(X, 'VO', all_species)
-    X_AlO = locate_X(X, 'AlO', all_species)
-    X_CaO = locate_X(X, 'CaO', all_species)
-    
-    C_to_O = ((X_CH4 + X_HCN + X_CO + X_CO2 + 2*X_C2H2)/
-              (X_H2O + X_CO + 2*X_CO2 + X_PO + X_TiO + X_VO + X_AlO + X_CaO))
-    
-    return C_to_O
+
+    counts = {}   # Output dictionary
+    i = 0         # Counter for character in molecule string
+
+    while i < len(molecule):
+
+        char = molecule[i]
+        next_char = molecule[i+1] if i+1 < len(molecule) else None
+
+        # If the current character is an uppercase letter or a lowercase letter, it represents the start of an element
+        if char.isupper() or char.islower():
+            element = char
+
+            # If the next character is a lowercase letter, it represents the second letter of the element
+            if next_char and next_char.islower():
+                element += next_char
+                i += 1
+
+            counts[element] = 1   # Initialise count for this element to 1
+
+            # If the next character is a number, it is the count for this element
+            next_char = molecule[i+1] if i+1 < len(molecule) else None
+
+            if next_char and next_char.isdigit():
+                count = ''
+
+                # Keep looping until we reach a character that is not a number
+                while next_char and next_char.isdigit():
+                    count += next_char
+                    i += 1
+                    next_char = molecule[i+1] if i+1 < len(molecule) else None
+
+                # Update the count for this element in the dictionary
+                counts[element] = int(count)
+
+        # If the current character is an opening bracket, it represents the start of a submolecule
+        elif char == '(':
+
+            bracket_counter = 1  # Counter for the number of open and closed brackets
+            submolecule = ''     # String to store the submolecule
+
+            # Keep looping until we find the matching closing bracket
+            while bracket_counter > 0:
+                i += 1
+                sub_char = molecule[i]
+
+                # If we find an opening bracket, increment the counter
+                if sub_char == '(':
+                    bracket_counter += 1
+
+                # If we find a closing bracket, decrement the counter
+                elif sub_char == ')':
+                    bracket_counter -= 1
+
+                # Add the character to the submolecule string
+                submolecule += sub_char
+
+            sub_count = ''   # Count for submolecule
+
+            # Keep looping until we reach a character that is not a number
+            next_char = molecule[i + 1] if i + 1 < len(molecule) else None
+
+            while next_char and next_char.isdigit():
+                sub_count += next_char
+                i += 1
+                next_char = molecule[i + 1] if i + 1 < len(molecule) else None
+            
+            # If no count was specified, default to 1
+            if not sub_count:
+                sub_count = '1'
+            
+            # Recursively count the atoms in the submolecule and add them to the counts dictionary
+            sub_counts = count_atoms(submolecule)
+
+            for element, count in sub_counts.items():
+                counts[element] = counts.get(element, 0) + int(sub_count) * count
+
+        # Move to next character
+        i += 1
+
+    return counts
 
 
-def compute_O_to_H(X, all_species):
-    
-    ''' Computes the metallicity [ (O/H)/(O/H)_solar ] of the atmosphere.
-    
-        Inputs:
-            
-        X => volume mixing ratios of atmosphere
-        all_species => array of strings listing chemical species included in model
-        
-        Outputs:
-            
-        M => metallicity of atmosphere
-    
+def elemental_ratio(included_species, X, element_1, element_2):
     '''
-    
-    X_H2O = locate_X(X, 'H2O', all_species)
-    X_CH4 = locate_X(X, 'CH4', all_species)
-    X_NH3 = locate_X(X, 'NH3', all_species)
-    X_HCN = locate_X(X, 'HCN', all_species)
-    X_CO = locate_X(X, 'CO', all_species)
-    X_CO2 = locate_X(X, 'CO2', all_species)
-    X_C2H2 = locate_X(X, 'C2H2', all_species)
-    X_TiO = locate_X(X, 'TiO', all_species)
-    X_VO = locate_X(X, 'VO', all_species)
-    X_AlO = locate_X(X, 'AlO', all_species)
-    X_CaO = locate_X(X, 'CaO', all_species)
-    X_TiH = locate_X(X, 'TiH', all_species)
-    X_CrH = locate_X(X, 'CrH', all_species)
-    X_FeH = locate_X(X, 'FeH', all_species)
-    X_ScH = locate_X(X, 'ScH', all_species)
+    Calculate the abundance ratio between any two elements in the atmosphere.
 
-    X_H2 = (1.0 - X_H2O)/(1.0 + 0.17) #locate_X(X, 'H2', all_species)
-    
-    O_to_H = ((X_H2O + X_CO + 2*X_CO2 + X_TiO + X_VO + X_AlO + X_CaO)/
-              (2*X_H2 + 2*X_H2O + 4*X_CH4 + 3*X_NH3 + X_HCN + 2*X_C2H2 + X_TiH + X_CrH + X_FeH + X_ScH))
-    
-    return O_to_H
+    Example: to compute the C/O ratio, use element_1 = 'C' and element_2 = 'O'.
 
+    Args:
+        included_species (np.array of str):
+            List of all chemical species included in the model.
+        X (4D np.array of float):
+            Mixing ratio profiles.
+        element_1 (str):
+            First element in ratio.
+        element_2 (str):
+            First element in ratio.
 
-def compute_C_to_H(X, all_species):
-    
-    ''' Computes the carbon-to-hydrogen ratio of the atmosphere.
-    
-        Inputs:
-            
-        X => volume mixing ratios of atmosphere
-        all_species => array of strings listing chemical species included in model
-        
-        Outputs:
-            
-        C_to_H => C/H ratio of atmosphere
-    
+    Returns:
+        element_ratio (3D np.array of float):
+            Abundance ratio in each layer, sector, and zone.
     '''
-    
-    X_H2 = locate_X(X, 'H2', all_species)
-    X_H2O = locate_X(X, 'H2O', all_species)
-    X_CH4 = locate_X(X, 'CH4', all_species)
-    X_NH3 = locate_X(X, 'NH3', all_species)
-    X_HCN = locate_X(X, 'HCN', all_species)
-    X_CO = locate_X(X, 'CO', all_species)
-    X_CO2 = locate_X(X, 'CO2', all_species)
-    X_C2H2 = locate_X(X, 'C2H2', all_species)
-    X_H2S = locate_X(X, 'H2S', all_species)
-    X_PH3 = locate_X(X, 'PH3', all_species)
-    X_TiH = locate_X(X, 'TiH', all_species)
-    X_CrH = locate_X(X, 'CrH', all_species)
-    X_FeH = locate_X(X, 'FeH', all_species)
-    X_ScH = locate_X(X, 'ScH', all_species)
-    
-    C_to_H = ((X_CH4 + X_HCN + X_CO + X_CO2 + 2*X_C2H2)/
-              (2*X_H2 + 2*X_H2O + 4*X_CH4 + 3*X_NH3 + X_HCN + 2*X_C2H2 + 2*X_H2S + 
-               3*X_PH3 + X_TiH + X_CrH + X_FeH + X_ScH))
-    
-    return C_to_H
 
+    # Store shape of mixing ratio array
+    N_species, N_layers, N_sectors, N_zones = np.shape(X)
 
-def compute_N_to_H(X, all_species):
-    
-    ''' Computes the carbon-to-hydrogen ratio of the atmosphere.
-    
-        Inputs:
-            
-        X => volume mixing ratios of atmosphere
-        all_species => array of strings listing chemical species included in model
-        
-        Outputs:
-            
-        C_to_H => C/H ratio of atmosphere
-    
-    '''
-    
-    X_H2 = locate_X(X, 'H2', all_species)
-    X_H2O = locate_X(X, 'H2O', all_species)
-    X_CH4 = locate_X(X, 'CH4', all_species)
-    X_NH3 = locate_X(X, 'NH3', all_species)
-    X_HCN = locate_X(X, 'HCN', all_species)
-    X_C2H2 = locate_X(X, 'C2H2', all_species)
-    X_H2S = locate_X(X, 'H2S', all_species)
-    X_PH3 = locate_X(X, 'PH3', all_species)
-    X_PN = locate_X(X, 'PN', all_species)
-    X_TiH = locate_X(X, 'TiH', all_species)
-    X_CrH = locate_X(X, 'CrH', all_species)
-    X_FeH = locate_X(X, 'FeH', all_species)
-    X_ScH = locate_X(X, 'ScH', all_species)
-    
-    N_to_H = ((X_NH3 + X_HCN + X_PN)/
-              (2*X_H2 + 2*X_H2O + 4*X_CH4 + 3*X_NH3 + X_HCN + 2*X_C2H2 + 2*X_H2S + 
-               3*X_PH3 + X_TiH + X_CrH + X_FeH + X_ScH))
-    
-    return N_to_H
-    
-#*****************************************************************************************
+    # Initialise element ratio array for each layer, sector, and zone
+    element_ratio = np.zeros(shape=(N_layers, N_sectors, N_zones))
+
+    # Loop through atmosphere
+    for i in range(N_layers):
+        for j in range(N_sectors):
+            for k in range(N_zones):
+
+                element_1_abundance = 0.0   # First element in ratio
+                element_2_abundance = 0.0   # Second element in ratio
+
+                for q in range(N_species): 
+                    
+                    # Extract name and mixing ratio of molecule 'q'
+                    molecule_q = included_species[q] 
+                    X_q = X[q,i,j,k]
+
+                    # Count how many atoms of each element are in this molecule
+                    counts = count_atoms(molecule_q)
+
+                    # Loop over elements
+                    for element, count in counts.items():
+
+                        # Add abundances of element 1 and 2 to the total
+                        if (element == element_1):
+                            element_1_abundance += count * X_q
+                        elif (element == element_2):
+                            element_2_abundance += count * X_q
+
+                # Compute the element ratio in this layer, sector, and zone
+                element_ratio[i,j,k] = element_1_abundance / element_2_abundance
+
+    return element_ratio
+
 
 def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref, 
              log_X_state, included_species, bulk_species, param_species, 
@@ -1276,11 +1216,11 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         mu (3D np.array of float):
             Mean molecular mass (kg).
         X (4D np.array of float):
-            Mixing ratio profile 
+            Mixing ratio profile.
         X_active (4D np.array of float):
             Mixing ratios of active species.
         X_CIA (5D np.array of float):
-            Mixing ratios of CIA pairs 
+            Mixing ratios of CIA pairs. 
         X_ff (5D np.array of float):
             Mixing ratios of free-free pairs.
         X_bf (4D np.array of float):
