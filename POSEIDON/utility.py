@@ -1284,8 +1284,8 @@ def return_quantiles(stats, param, i, quantile = '1 sigma'):
     
 def write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
-                       stats, ln_Z, ln_Z_err, reduced_chi_square, best_fit_params,
-                       wl, R, instruments, datasets):
+                       stats, ln_Z, ln_Z_err, reduced_chi_square, chi_square,
+                       dof, best_fit_params, wl, R, instruments, datasets):
     ''' 
     Write a file summarising the main results from a POSEIDON retrieval.
         
@@ -1353,13 +1353,31 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
               '\n',
               '-> ln Z = ' + stats_formatter.format(ln_Z) + ' +/- ' + stats_formatter.format(ln_Z_err) + '\n',
               '\n',
-              '#################################\n',
-              '\n',
-              'Best reduced chi-square:\n',
-              '\n',
-              '-> chi^2_min = ' + stats_formatter.format(reduced_chi_square) + '\n',
-              '\n',
               '#################################\n']
+
+    # Add chi^2 statistics
+    if (np.isnan(reduced_chi_square) == False):
+        lines += ['\n',
+                'Best reduced chi-square:\n',
+                '\n',
+                '-> chi^2_red = ' + stats_formatter.format(reduced_chi_square) + '\n',
+                '\n',
+                '-> degrees of freedom = ' + str(dof) + '\n',
+                '\n',
+                '-> chi^2 = ' + stats_formatter.format(chi_square) + '\n',
+                '\n',
+                '#################################\n']
+    else:
+        lines += ['\n',
+                'Reduced chi-square undefined because N_params >= N_data!\n',
+                '\n',
+                '-> chi^2_red = Undefined\n',
+                '\n',
+                '-> degrees of freedom = Undefined\n',
+                '\n',
+                '-> chi^2 = ' + stats_formatter.format(chi_square) + '\n',
+                '\n',
+                '#################################\n']
     
     # Add retrieved parameter constraints
     lines += ['\n',
@@ -1485,7 +1503,14 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     best_fit_params = best_fit['parameters']
     norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
     best_chi_square = -2.0 * (max_likelihood - norm_log)
-    reduced_chi_square = best_chi_square/(len(ydata) - n_params)  
+
+    # Check for N_params >= N_data, for which chi^2_r is undefined
+    if ((len(ydata) - n_params) > 0):
+        dof = (len(ydata) - n_params)  
+        reduced_chi_square = best_chi_square/dof
+    else:
+        dof = np.nan
+        reduced_chi_square = np.nan
 
     # Load relevant results directories
     samples_prefix = '../samples/' + retrieval_name
@@ -1497,8 +1522,8 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     # Write POSEIDON retrieval summary file
     write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
-                       stats, ln_Z, ln_Z_err, reduced_chi_square, best_fit_params,
-                       wl, R, instruments, datasets)
+                       stats, ln_Z, ln_Z_err, reduced_chi_square, best_chi_square,
+                       dof, best_fit_params, wl, R, instruments, datasets)
     
 
 def mock_missing(name):
