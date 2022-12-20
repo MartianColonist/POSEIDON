@@ -1,4 +1,8 @@
-# ***** Handles P-T and mixing ratio profiles *****
+''' 
+Functions for calculating atmospheric temperature, mixing ratio, and other profiles.
+
+'''
+
 
 import numpy as np
 import scipy.constants as sc
@@ -965,9 +969,6 @@ def compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all):
             
     return mu
 
-
-
-#***** TBD: replace functions below with a general function for any elemental ratio *****#
 
 def count_atoms(molecule):
     '''
