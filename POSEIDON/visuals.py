@@ -1,4 +1,7 @@
-# Plotting routines to visualise POSEIDON output*****
+'''
+Plotting routines to visualise POSEIDON output.
+
+'''
 
 from enum import unique
 import os
@@ -38,7 +41,6 @@ warnings.filterwarnings("ignore", message="This figure includes Axes that are " 
 from .utility import bin_spectrum, generate_latex_param_names, round_sig_figs, \
                      confidence_intervals
 from .instrument import bin_spectrum_to_data
-from .atmosphere import compute_O_to_H, compute_C_to_O
 from .parameters import split_params
               
 # Define some more flexible linestyles for convenience
@@ -2639,7 +2641,7 @@ def plot_chem_histogram(nbins, X_i_vals, colour, oldax, shrink_factor):
     
     return low1, median, high1
 
-
+'''
 def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_species,
                                   abundance_fmt = '.2f'):
 
@@ -2784,3 +2786,4 @@ def plot_composition(planet, model):
     # Plot elemental ratios
     plot_retrieved_element_ratios(np.power(10.0, log_X_stored), planet_name, 
                                   model_name, param_species)
+'''
