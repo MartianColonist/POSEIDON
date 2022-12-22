@@ -1485,6 +1485,7 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
 
             # For each collisionally-induced absorption (CIA) pair
             for q in range(N_cia_pairs): 
+<<<<<<< HEAD
                     
                 n_cia_1 = n[i,j,k]*X_cia[0,q,i,j,k]   # Number density of first CIA species in pair
                 n_cia_2 = n[i,j,k]*X_cia[1,q,i,j,k]   # Number density of second CIA species in pair
@@ -1501,6 +1502,24 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                     
                 n_q = n[i,j,k]*X[q,i,j,k]       # Number density of given species
                     
+=======
+                    
+                n_cia_1 = n[i,j,k]*X_cia[0,q,i,j,k]   # Number density of first CIA species in pair
+                n_cia_2 = n[i,j,k]*X_cia[1,q,i,j,k]   # Number density of second CIA species in pair
+                n_n_cia = n_cia_1*n_cia_2             # Product of number densities of CIA pair
+                    
+                # For each wavelength
+                for l in range(N_wl):
+                        
+                    # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
+                    kappa_clear[i,j,k,l] += n_n_cia * cia_interp[q,i,l]
+
+            # For each molecular / atomic species
+            for q in range(N_species):  
+                    
+                n_q = n[i,j,k]*X[q,i,j,k]       # Number density of given species
+                    
+>>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
                 # For each wavelength
                 for l in range(N_wl):
                                 
