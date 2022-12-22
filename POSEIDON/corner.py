@@ -139,7 +139,7 @@ def resample_equal(samples, weights, rstate=None):
 
 
 def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
-            ax=None, colour='purple', plot_datapoints=False, plot_density=True,
+            ax=None, colour='gray', plot_datapoints=False, plot_density=True,
             plot_contours=True, no_fill_contours=False, fill_contours=True,
             contour_kwargs=None, contourf_kwargs=None, data_kwargs=None,
             **kwargs):
@@ -169,7 +169,7 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
             If not provided, a figure will be generated.
         colour (str):
             The matplotlib-style colour used to draw lines, colour cells,
-            and contours. Default is 'purple'.
+            and contours. Default is 'gray'.
         plot_datapoints (bool):
             Whether to plot the individual data points. Default is False.
         plot_density (bool):
@@ -690,7 +690,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
                                                                plot_contours)
             _hist2d(y, x, ax=ax, span=[span[j], span[i]],
-                    weights=weights, color=colour_plt, smooth=[sy_corr, sx_corr],
+                    weights=weights, colour=colour_plt, smooth=[sy_corr, sx_corr],
                     **hist2d_kwargs)
             
             # Add truth values
