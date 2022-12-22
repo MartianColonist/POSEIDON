@@ -6,11 +6,7 @@ import os
 import pymultinest
 from mpi4py import MPI
 from scipy.special import ndtri
-<<<<<<< HEAD
 from spectres import spectres   
-=======
-from spectres import spectres
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
 from numba.core.decorators import jit
 from scipy.special import erfcinv
 from scipy.special import lambertw as W
@@ -25,11 +21,7 @@ from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
                      write_retrieved_log_X, confidence_intervals
 from .core import make_atmosphere, compute_spectrum
 from .stellar import precompute_stellar_spectra, stellar_contamination_single_spot
-<<<<<<< HEAD
 from .high_res import log_likelihood, sysrem, log_likelihood_Gibson, fast_filter
-=======
-from .cross_correlate import log_likelihood
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -45,11 +37,7 @@ def run_retrieval(planet, star, model, opac, data, priors,
                   spectrum_type = 'transmission', N_live = 400, ev_tol = 0.5,
                   sampling_algorithm = 'MultiNest', resume = False, 
                   verbose = True, sampling_target = 'parameter',
-<<<<<<< HEAD
                   N_output_samples = 1000):
-=======
-                  N_output_samples = 1000, high_res = False):
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
     '''
     ADD DOCSTRING
     '''
@@ -247,10 +235,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     radius_unit = model['radius_unit']
     distance_unit = model['distance_unit']
     surface = model['surface']
-<<<<<<< HEAD
     high_res = model['high_res']
-=======
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
     R_p = planet['planet_radius']
     d = planet['system_distance']
 
@@ -265,7 +250,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         err_data = data['err_data']
         norm_log_default = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
     else:
-<<<<<<< HEAD
         wl_grid = data['wl_grid']
         V_bary = data['V_bary']
         Phi = data['Phi']
@@ -276,10 +260,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             data_scale = data['data_scale']
             data_arr = data['data_arr']
             V_sin_i = planet['V_sin_i']
-=======
-        err_data = None
-        norm_log_default = None
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
 
     # Create variable governing if a mixing ratio parameter combination lies in 
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
@@ -583,7 +563,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         high_res_params = split_params(cube, N_params_cum)
 
         # Unpack reference radius parameter
-<<<<<<< HEAD
         if ('R_p_ref' in physical_param_names):
             R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
 
@@ -594,15 +573,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 R_p_ref *= R_E
         else:
             R_p_ref = R_p
-=======
-        R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
-
-        # Convert normalised radius drawn by MultiNest back into SI
-        if (radius_unit == 'R_J'):
-            R_p_ref *= R_J
-        elif (radius_unit == 'R_E'):
-            R_p_ref *= R_E
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
 
         # Unpack log(gravity) if set as a free parameter
         if ('log_g' in physical_param_names):
@@ -673,24 +643,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                                                 log_a, dPhi, wl_grid, data_arr, 
                                                 data_scale, V_bary, Phi, V_sin_i)[0]
 
-<<<<<<< HEAD
             return loglikelihood
             
-=======
-        if high_res:
-            #***** Get the data properties from data dictionary ****#
-            wl_grid = data['wl_grid']
-            data_arr = data['data_arr']
-            data_scale = data['data_scale']
-            V_bary = data['V_bary']
-            Phi = data['Phi']
-            K_p = high_res_params[0]
-            V_sys = high_res_params[1]
-
-            loglikelihood = log_likelihood(F_s_obs, spectrum, wl, K_p, V_sys, wl_grid, data_arr, data_scale, V_bary, Phi)
-            
-            return loglikelihood[0]
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
         
         #***** Step 4: stellar contamination *****#
         # Stellar contamination is only relevant for transmission spectra
@@ -818,7 +772,6 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
         high_res_params = split_params(samples[sample[i],:], N_params_cum)
 
         # Unpack reference radius parameter
-<<<<<<< HEAD
         if ('R_p_ref' in physical_param_names):
             R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
 
@@ -830,15 +783,6 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
         else:
             R_p_ref = R_p
 
-=======
-        R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
-
-        # Convert normalised radius drawn by MultiNest back into SI
-        if (radius_unit == 'R_J'):
-            R_p_ref *= R_J
-        elif (radius_unit == 'R_E'):
-            R_p_ref *= R_E
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
 
         # Unpack log(gravity) if set as a free parameter
         if ('log_g' in physical_param_names):
