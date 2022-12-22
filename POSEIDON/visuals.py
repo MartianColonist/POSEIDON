@@ -1033,7 +1033,7 @@ def set_spectrum_wl_ticks(wl_min, wl_max, wl_axis = 'log'):
         elif (wl_spacing == 3*np.power(10, major_exponent)):
             wl_spacing = 2*np.power(10, major_exponent)
 
-        wl_ticks = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, wl_spacing)
+        wl_ticks = np.arange(round_sig_figs(wl_min, 3), round_sig_figs(wl_max, 3)+0.0001, wl_spacing)
 
     return wl_ticks
 
@@ -1219,8 +1219,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Loop over each model, finding the most extreme min / max range 
         for i in range(N_spectra):
             
-            transit_depth_min_i = np.min(spectra[i][0])
-            y_min_plt = min(y_min_plt, transit_depth_min_i)
+            y_min_i = np.min(spectra[i][0])
+            y_min_plt = min(y_min_plt, y_min_i)
             
         # Check if the lowest data point falls below the current y-limit
         if (show_data == True):
@@ -1240,8 +1240,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Loop over each model, finding the most extreme min / max range 
         for i in range(N_spectra):
             
-            transit_depth_max_i = np.max(spectra[i][0])
-            y_max_plt = max(y_max_plt, transit_depth_max_i)
+            y_max_i = np.max(spectra[i][0])
+            y_max_plt = max(y_max_plt, y_max_i)
             
         # Check if the highest data point falls above the current y-limit
         if (show_data == True):
@@ -1712,8 +1712,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            spectra_high1, spectra_high2, planet_name, 
                            data_properties, R_to_bin = 100, plt_label = None,
                            show_ymodel = True, wl_min = None, wl_max = None, 
-                           transit_depth_min = None, transit_depth_max = None,
-                           FpFs_min = None, FpFs_max = None, y_unit = 'transit_depth', 
+                           y_min = None, y_max = None, y_unit = 'transit_depth', 
                            colour_list = [], spectra_labels = [],
                            data_colour_list = [], data_labels = [],
                            data_marker_list = [], data_marker_size_list = [],
@@ -1724,6 +1723,16 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     
     '''
 
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+        plot_type = 'transmission'
+    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
+        plot_type = 'emission'
+    elif (y_unit in ['Fp']):
+        plot_type = 'direct_emission'
+    else:
+        raise Exception("Unexpected y unit. Did you mean 'transit_depth' " +
+                       "or 'eclipse_depth'?")
+    
     # Find number of spectra to plot
     N_spectra = len(spectra_median)
 
@@ -1813,99 +1822,50 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             wl_max_i = np.max(spectra_median[i][1])
             wl_max = max(wl_max, wl_max_i)
 
-    # If the user did not specify a transit depth range, find min and max from input models
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
-    
-        if (transit_depth_min == None):
-            
-            y_min_plt = 1e10   # Dummy value
-            
-            # Loop over each model, finding the most extreme min / max range 
-            for i in range(N_spectra):
+    # If the user did not specify a y range, find min and max from input models
+    if (y_min == None):
+        
+        y_min_plt = 1e10   # Dummy value
+        
+        # Loop over each model, finding the most extreme min / max range 
+        for i in range(N_spectra):
 
-                (spec_low2, wl) = spectra_low2[i]
-                _, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
+            (spec_low2, wl) = spectra_low2[i]
+            _, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
 
-                transit_depth_min_i = np.min(spec_low2_binned)
-                y_min_plt = min(y_min_plt, transit_depth_min_i)
-                
-            # Check if the lowest data point falls below the current y-limit
-            if (y_min_plt > min(ydata - err_data)):
-                y_min_plt = min(ydata - err_data)
-                
-            y_min_plt = 0.995*y_min_plt  # Extend slightly below
+            y_min_i = np.min(spec_low2_binned)
+            y_min_plt = min(y_min_plt, y_min_i)
             
-        else:
-            y_min_plt = transit_depth_min
-
-        if (transit_depth_max == None):
+        # Check if the lowest data point falls below the current y-limit
+        if (y_min_plt > min(ydata - err_data)):
+            y_min_plt = min(ydata - err_data)
             
-            y_max_plt = 1e-10  # Dummy value
+        y_min_plt = 0.995*y_min_plt  # Extend slightly below
+        
+    else:
+        y_min_plt = y_min
+
+    if (y_max == None):
+        
+        y_max_plt = 1e-10  # Dummy value
+        
+        # Loop over each model, finding the most extreme min / max range 
+        for i in range(N_spectra):
+
+            (spec_high2, wl) = spectra_high2[i]
+            _, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
+
+            y_max_i = np.max(spec_high2_binned)
+            y_max_plt = max(y_max_plt, y_max_i)
             
-            # Loop over each model, finding the most extreme min / max range 
-            for i in range(N_spectra):
-
-                (spec_high2, wl) = spectra_high2[i]
-                _, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
-
-                transit_depth_max_i = np.max(spec_high2_binned)
-                y_max_plt = max(y_max_plt, transit_depth_max_i)
-                
-            # Check if the highest data point falls above the current y-limit
-            if (y_max_plt < max(ydata + err_data)):
-                y_max_plt = max(ydata + err_data)
-                
-            y_max_plt = 1.040*y_max_plt  # Extend slightly above
+        # Check if the highest data point falls above the current y-limit
+        if (y_max_plt < max(ydata + err_data)):
+            y_max_plt = max(ydata + err_data)
             
-        else:
-            y_max_plt = transit_depth_max
-
-    # If the user did not specify an Fp/Fs range, find min and max from input models
-    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'Fp']):
-
-        if (FpFs_min == None):
-            
-            y_min_plt = 1e10   # Dummy value
-            
-            # Loop over each model, finding the most extreme min / max range 
-            for i in range(N_spectra):
-
-                (spec_low2, wl) = spectra_low2[i]
-                _, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
-
-                FpFs_min_i = np.min(spec_low2_binned)
-                y_min_plt = min(y_min_plt, FpFs_min_i)
-                
-            # Check if the lowest data point falls below the current y-limit
-            if (y_min_plt > min(ydata - err_data)):
-                y_min_plt = min(ydata - err_data)
-                
-            y_min_plt = 0.995*y_min_plt  # Extend slightly below
-            
-        else:
-            y_min_plt = FpFs_min
-
-        if (FpFs_max == None):
-            
-            y_max_plt = 1e-10  # Dummy value
-            
-            # Loop over each model, finding the most extreme min / max range 
-            for i in range(N_spectra):
-
-                (spec_high2, wl) = spectra_high2[i]
-                _, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
-
-                FpFs_max_i = np.max(spec_high2_binned)
-                y_max_plt = max(y_max_plt, FpFs_max_i)
-                
-            # Check if the highest data point falls above the current y-limit
-            if (y_max_plt < max(ydata + err_data)):
-                y_max_plt = max(ydata + err_data)
-                
-            y_max_plt = 1.040*y_max_plt  # Extend slightly above
-            
-        else:
-            y_max_plt = FpFs_max
+        y_max_plt = 1.040*y_max_plt  # Extend slightly above
+        
+    else:
+        y_max_plt = y_max
 
     #***** Format x and y ticks *****#
 
@@ -1939,9 +1899,9 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         yminor_spacing = 2*np.power(10, minor_exponent)
 
     # Refine y range to be a multiple of the tick spacing (only if range not specified by user)
-    if ((transit_depth_min == None) and (FpFs_min == None)):
+    if (y_min == None):
         y_min_plt = np.floor(y_min_plt/ymajor_spacing)*ymajor_spacing
-    if ((transit_depth_max == None) and (FpFs_max == None)):
+    if (y_max == None):
         y_max_plt = np.ceil(y_max_plt/ymajor_spacing)*ymajor_spacing
  
     # Set y range
@@ -1952,10 +1912,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ymajorFormatter = ScalarFormatter(useMathText=True)
     ymajorFormatter.set_powerlimits((0,0))
     yminorLocator = MultipleLocator(yminor_spacing)
-
-#    ymajorLocator_H   = MultipleLocator(1)
-#    ymajorFormatter_H = FormatStrFormatter('%.0f')
-#    yminorLocator_H   = MultipleLocator(0.2)
 
     # Generate figure and axes
     fig = plt.figure()
@@ -2075,16 +2031,16 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Set axis labels
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (plot_type == 'transmission'):
         ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
-    elif (y_unit in ['Fp']):
+    elif (plot_type == 'direct_emission'):
         ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
-    ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
-             verticalalignment='top', transform=ax1.transAxes, fontsize = 16)
+    ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
+             verticalalignment = 'top', transform = ax1.transAxes, fontsize = 16)
 
     # Decide at which wavelengths to place major tick labels
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
@@ -2092,11 +2048,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
 
-    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, 
-                        ncol=1, frameon=False)    #legend settings
-  #  legend.set_bbox_to_anchor([0.75, 0.98], transform=None)
-  #  frame = legend.get_frame()
-  #  frame.set_facecolor('0.90') 
+    legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
+                        ncol = 1, frameon=False)    #legend settings
             
     plt.tight_layout()
 
