@@ -380,19 +380,11 @@ def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half',
     return wl_data, half_bin, spectrum, err
 
 
-<<<<<<< HEAD
 def read_high_res_data(data_dir, high_res = 'pca'): 
     '''
     Read an external dataset file. The expected file format is:
 
     TODO
-=======
-def read_high_res_data(data_dir): 
-    '''
-    Read an external dataset file. The expected file format is:
-
-    wavelength | bin half width | spectrum | error on spectrum
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
 
     Args:
         data_dir (str):
@@ -409,16 +401,11 @@ def read_high_res_data(data_dir):
     '''
     
     # Load data file
-<<<<<<< HEAD
     if high_res == 'pca':
-=======
-    try:
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
         wl_grid, data_arr = pickle.load(open(data_dir+'/PCA_matrix.pic', 'rb'))
         wl_grid, data_scale = pickle.load(open(data_dir+'/data_to_scale_with.pic', 'rb'))
         Phi = pickle.load(open(data_dir+'/ph.pic','rb'))                    # Time-resolved phases
         V_bary = pickle.load(open(data_dir+'/rvel.pic','rb'))               # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
-<<<<<<< HEAD
         data = {
             'wl_grid': wl_grid, 
             'data_arr': data_arr,
@@ -513,92 +500,6 @@ def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_unit = 'bar',
             Temperature profile from external file interpolated onto the
             POSEIDON model's pressure grid (K).
 
-=======
-    except:
-        print("Cannot locate data.")
-
-    data = {'wl_grid': wl_grid, 
-            'data_arr': data_arr,
-            'data_scale': data_scale,
-            'Phi': Phi,
-            'V_bary': V_bary }
-    return data
-    
-def read_spectrum(planet_name, fname, wl_unit = 'micron'):
-    '''
-    Read a previously computed spectrum from the POSEIDON output folder
-    (POSEIDON_output/planet_name/spectra).
-
-    Args:
-        planet_name (str):
-            Identifier for planet object (e.g. HD209458b).
-        fname (str):
-            Name of spectrum file.
-        wl_unit (str):
-            Unit of wavelength column (first column in file)
-            (Options: micron (or equivalent) / nm / A / m)
-
-    Returns:
-        wavelength (np.array of float): 
-            Model wavelength grid (μm).
-        spectrum (np.array of float):
-            Transmission or emission spectrum.
-
-    '''
-
-    # Load POSEIDON directory location where the spectrum is stored
-    input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
-    
-    # Open file
-    data = pd.read_csv(input_dir + fname, sep = '[\s]{1,20}', 
-                       engine = 'python', header=None)
-
-    # Load wavelength then convert to μm
-    if (wl_unit in ['micron', 'um', 'μm']):
-        wavelength = np.array(data[0])
-    elif (wl_unit == 'nm'):
-        wavelength = np.array(data[0]) * 1e-3
-    elif (wl_unit == 'A'):
-        wavelength = np.array(data[0]) * 1e-4
-    elif (wl_unit == 'm'):
-        wavelength = np.array(data[0]) * 1e6
-    else:
-        raise Exception("Error: unrecognised wavelength unit when reading file.")
-
-    # Load spectrum (transit or eclipse depth)
-    spectrum = np.array(data[1])
-    
-    return wavelength, spectrum
-
-
-def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_unit = 'bar',
-                 P_column = None, T_column = None, skiprows = None):
-    '''
-    Read an external file containing the temperature as a function of pressure.
-
-    Args:
-        PT_file_dir (str):
-            Directory containing the pressure-temperature file.
-        PT_file_name (str):
-            Name of pressure-temperature profile file.
-        P_grid (np.array of float):
-            POSEIDON model pressure grid (to interpolate external profile onto).
-        P_unit (str):
-            Pressure unit in external file
-            (Options: bar / Pa / atm).
-        P_column (int):
-            File column containing the pressure.
-        T_column (int):
-            File column containing the temperature.
-        skiprows (int):
-            The number of rows to skip (e.g. use 1 if file has a header line).
-
-    Returns:
-        T_interp (np.array of float): 
-            Temperature profile from external file interpolated onto the
-            POSEIDON model's pressure grid (K).
-
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
     '''
 
     # If the user is running the tutorial, point to the reference data folder
@@ -631,7 +532,6 @@ def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_unit = 'bar',
         T_raw = np.array(PT_file[int(T_column)-1])
     else:
         T_raw = np.array(PT_file[1])
-<<<<<<< HEAD
     
     # Flip arrays if necessary so that arrays begin at bottom of the atmosphere
     if (P_raw[0] < P_raw[-1]):
@@ -643,53 +543,11 @@ def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_unit = 'bar',
                        fill_value=(T_raw[-1], T_raw[0]))
     T_interp = PT_interp(np.log10(P_grid))                  
     
-=======
-    
-    # Flip arrays if necessary so that arrays begin at bottom of the atmosphere
-    if (P_raw[0] < P_raw[-1]):
-        P_raw = P_raw[::-1]
-        T_raw = T_raw[::-1]
-
-    # Interpolate the file temperature profile onto the POSEIDON model P grid
-    PT_interp = Interp(np.log10(P_raw), T_raw, kind='linear', bounds_error=False, 
-                       fill_value=(T_raw[-1], T_raw[0]))
-    T_interp = PT_interp(np.log10(P_grid))                  
-    
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
     return T_interp
 
 
 def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_in_file, 
                    chem_species_in_model, P_unit = 'bar', skiprows = None):
-<<<<<<< HEAD
-=======
-    '''
-    Read an external file containing mixing ratios as a function of pressure.
-
-    Args:
-        chem_file_dir (str):
-            Directory containing the mixing ratio file.
-        chem_file_name (str):
-            Name of mixing ratio file.
-        P_grid (np.array of float):
-            POSEIDON model pressure grid (to interpolate mixing ratios onto).
-        chem_species_in_file (list of str):
-            The chemical species included in the external file.
-        chem_species_in_model (list of str):
-            The chemical species included in the POSEIDON model.
-        P_unit (str):
-            Pressure unit in external file
-            (Options: bar / Pa / atm).
-        skiprows (int):
-            The number of rows to skip (e.g. use 1 if file has a header line).
-
-    Returns:
-        X_interp (2D np.array of float): 
-            Mixing ratio profiles from external file interpolated onto the
-            POSEIDON model's pressure grid. Only includes the chemical species
-            specified in the POSEIDON model (i.e. chem_species_in_model).
-
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
     '''
     Read an external file containing mixing ratios as a function of pressure.
 
@@ -751,57 +609,6 @@ def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_in_file,
     # Loop over chemical species, interpolating each onto the POSEIDON model P grid        
     for q in range(len(chem_species_in_model)):
     
-<<<<<<< HEAD
-        species = chem_species_in_model[q]
-
-        # Chemicals not included in the external file will have zero mixing ratio
-        if (species in chem_species_in_file):
-
-            # Find column index in file containing the model chemical species
-            idx = chem_species_in_file.index(species)
-
-            # Interpolate from chemistry pressure grid onto model pressure grid
-            chem_interp = Interp(np.log10(P_raw), X_raw[:,idx],
-                                 kind = 'linear', bounds_error = False, 
-                                 fill_value = (X_raw[-1,idx], 
-                                               X_raw[0,idx]))
-            X_interp[q,:] = chem_interp(np.log10(P_grid))                  
-    
-    return X_interp
-=======
-    # If the user is running the tutorial, point to the reference data folder
-    if (chem_file_dir == 'Tutorial/TRAPPIST-1e'):
-        chem_file_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
-                                        '.', 'reference_data/models/TRAPPIST-1e/'))
-
-    chem_file_input = pd.read_csv(chem_file_dir + '/' + chem_file_name, sep = '[\s]{1,20}', 
-                                  header = None, skiprows = skiprows, engine = 'python')
-    
-    # Read pressure and mixing ratios
-    P_raw = np.array(chem_file_input)[:,0]
-    X_raw = np.array(chem_file_input)[:,1:]
-
-    # Flip arrays if necessary so that arrays begin at bottom of the atmosphere
-    if (P_raw[0] < P_raw[-1]):
-        P_raw = P_raw[::-1]
-        X_raw = X_raw[::-1,:]
-    
-    # Convert pressure grid from file into bar
-    if (P_unit == 'bar'):
-        P_raw = P_raw
-    elif (P_unit == 'Pa'):
-        P_raw = P_raw / 1e5
-    elif (P_unit == 'atm'):
-        P_raw = P_raw * 1.01325
-    else:
-        raise Exception("Error: unrecognised pressure unit when reading file.")
-
-    # Initialise interpolated mixing ratio array
-    X_interp = np.zeros(shape=(len(chem_species_in_model), len(P_grid)))  
-
-    # Loop over chemical species, interpolating each onto the POSEIDON model P grid        
-    for q in range(len(chem_species_in_model)):
-    
         species = chem_species_in_model[q]
 
         # Chemicals not included in the external file will have zero mixing ratio
@@ -819,26 +626,6 @@ def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_in_file,
     
     return X_interp
 
-
-def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
-    '''
-    Bin a model spectrum down to a specific spectral resolution. 
-    
-    This is a wrapper around the Python package SpectRes (for details on the 
-    resampling algorithm, see https://arxiv.org/abs/1705.05165).
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
-
-    Args:
-        wl_native (np.array of float): 
-            Input wavelength grid (μm).
-        spectrum_native (np.array of float): 
-            Input spectrum.
-        R_bin (float or int):
-            Spectral resolution (R = wl/dwl) to re-bin the spectrum onto.
-        err_data (np.array of float):
-            1σ errors on the spectral data.
-
-<<<<<<< HEAD
 def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
     '''
     Bin a model spectrum down to a specific spectral resolution. 
@@ -856,8 +643,6 @@ def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
         err_data (np.array of float):
             1σ errors on the spectral data.
 
-=======
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
     Returns:
         wl_binned (np.array of float): 
             New wavelength grid spaced at R = R_bin (μm).
