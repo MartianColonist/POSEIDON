@@ -132,11 +132,11 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0,
             spec_median, spec_high1, \
             spec_high2 = retrieved_samples(planet, star, model, opac,
                                            retrieval_name, wl, P, P_ref, 
-                                           He_fraction, N_slice_EM, N_slice_DN, 
-                                           spectrum_type, T_phot_grid, 
+                                           P_param_set, He_fraction, N_slice_EM, 
+                                           N_slice_DN, spectrum_type, T_phot_grid, 
                                            T_het_grid, I_phot_grid, I_het_grid, 
                                            N_output_samples)
-                                            
+               
             # Save sampled P-T profile
             write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
                                T_median, T_high1, T_high2)
@@ -680,8 +680,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
 	
 
-def retrieved_samples(planet, star, model, opac, retrieval_name,
-                      wl, P, P_ref, He_fraction, N_slice_EM, N_slice_DN, 
+def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P, P_ref,
+                      P_param_set, He_fraction, N_slice_EM, N_slice_DN, 
                       spectrum_type, T_phot_grid, T_het_grid, I_phot_grid,
                       I_het_grid, N_output_samples):
     '''
@@ -775,7 +775,7 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
         # Generate atmosphere corresponding to parameter draw
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
-                                     log_g, T_input, log_X_input, P_surf,
+                                     log_g, T_input, log_X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN)
 
         # Generate spectrum of atmosphere
