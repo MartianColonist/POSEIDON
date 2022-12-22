@@ -380,11 +380,11 @@ def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half',
     return wl_data, half_bin, spectrum, err
 
 
-def read_high_res_data(data_dir): 
+def read_high_res_data(data_dir, high_res = 'pca'): 
     '''
     Read an external dataset file. The expected file format is:
 
-    wavelength | bin half width | spectrum | error on spectrum
+    TODO
 
     Args:
         data_dir (str):
@@ -401,19 +401,29 @@ def read_high_res_data(data_dir):
     '''
     
     # Load data file
-    try:
+    if high_res == 'pca':
         wl_grid, data_arr = pickle.load(open(data_dir+'/PCA_matrix.pic', 'rb'))
         wl_grid, data_scale = pickle.load(open(data_dir+'/data_to_scale_with.pic', 'rb'))
         Phi = pickle.load(open(data_dir+'/ph.pic','rb'))                    # Time-resolved phases
         V_bary = pickle.load(open(data_dir+'/rvel.pic','rb'))               # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
-    except:
-        print("Cannot locate data.")
-
-    data = {'wl_grid': wl_grid, 
+        data = {
+            'wl_grid': wl_grid, 
             'data_arr': data_arr,
             'data_scale': data_scale,
             'Phi': Phi,
-            'V_bary': V_bary }
+            'V_bary': V_bary
+        }
+    elif high_res == 'sysrem':
+        wl_grid, data_raw = pickle.load(open(data_dir+'/data_RAW.pic', 'rb'))
+        data = {
+            'wl_grid': wl_grid, 
+            'data_raw': data_raw,
+            'Phi': Phi,
+            'V_bary': V_bary
+        }
+    else:
+        raise Exception("Error: High res data format not supported. Available options are 'pca' and 'sysrem'.")
+
     return data
     
 def read_spectrum(planet_name, fname, wl_unit = 'micron'):

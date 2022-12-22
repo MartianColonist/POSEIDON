@@ -888,7 +888,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             sigma_stored[q,:,:,:] = T_interpolate_sigma(N_P_fine, N_T_fine, N_T_q, 
                                                         N_wl, sigma_pre_inp_q, T_grid_q, 
                                                         T_fine, y_q, w_T_q)
-                    
+
             del sigma_pre_inp_q, nu_q, w_T_q, y_q  
             
             if (rank == 0):

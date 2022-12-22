@@ -229,7 +229,7 @@ def define_model(model_name, bulk_species, param_species,
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-                 surface = False, high_res = False):
+                 surface = False, high_res = None, R_p_ref_enabled = True):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -306,8 +306,9 @@ def define_model(model_name, bulk_species, param_species,
             List of chemical species with a vertical mixing ratio gradient.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
-        high_res (bool):
-            If True, define a model for high resolutional retrieval.
+        high_res (str):
+            Define a model for high resolutional retrieval.
+            (Options: 'pca', 'sysrem')
 
     Returns:
         model (dict):
@@ -370,7 +371,7 @@ def define_model(model_name, bulk_species, param_species,
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
-                                      opaque_Iceberg, surface, high_res)
+                                      opaque_Iceberg, surface, high_res, R_p_ref_enabled)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -397,7 +398,8 @@ def define_model(model_name, bulk_species, param_species,
              'high_res_param_names': high_res_param_names,
              'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
-             'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface
+             'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
+             'high_res': high_res
             }
 
     return model
@@ -529,7 +531,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
                                               active_species, CIA_pairs, 
                                               ff_pairs, bf_species, T_fine,
                                               log_P_fine, opacity_database)
-                    
+                                                 
     elif (opacity_treatment == 'line_by_line'):   
         
         # For line-by-line case, we still compute Rayleigh scattering in advance
@@ -1319,7 +1321,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'delta_rel': [-1.0e-3, 1.0e-3],
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
                                        np.log10(100.0*np.max(err_data**2))],
-                             'K_p': [-200, 200], 'V_sys': [-100, 100]
+                             'K_p': [-200, 200], 'V_sys': [-100, 100],
+                             'log_a': [-1, 1], 'dPhi': [-0.05, 0.05]
                             }    
 
     # Iterate through parameters, ensuring we have a full set of priors

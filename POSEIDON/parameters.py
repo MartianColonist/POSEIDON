@@ -14,7 +14,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        offsets_applied, error_inflation, PT_dim, X_dim, cloud_dim, 
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
-                       Atmosphere_dimension, opaque_Iceberg, surface, high_res):
+                       Atmosphere_dimension, opaque_Iceberg, surface, high_res, R_p_ref_enabled=True):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -122,7 +122,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     #***** Physical property parameters *****#
 
  #   if (spectrum_type == 'transmission'):
-    physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
+    if R_p_ref_enabled:
+        physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
 
     if (gravity_setting == 'free'):
         physical_params += ['log_g']         # log_10 surface gravity (cm / s^2)
@@ -551,8 +552,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
     #***** High resolutional retrieval parameters *****#
     
-    if (high_res == True):
-        high_res_params += ['K_p', 'V_sys']
+    if high_res:
+        high_res_params += ['K_p', 'V_sys', 'log_a', 'dPhi']
         params += high_res_params
         N_high_res_params = len(high_res_params)
     else:
