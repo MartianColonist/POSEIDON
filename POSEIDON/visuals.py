@@ -23,20 +23,20 @@ from matplotlib import gridspec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 plt.style.use('classic')
-plt.rc('font', family='serif')
+plt.rc('font', family = 'serif')
 matplotlib.rcParams['svg.fonttype'] = 'none'
-matplotlib.rcParams['figure.facecolor']='white'
+matplotlib.rcParams['figure.facecolor'] = 'white'
 
 import warnings
 
 # Suppress invalid warning about x limits which sometimes occur for spectra plots
-warnings.filterwarnings("ignore", message="Attempted to set non-positive left " + 
-                                          "xlim on a log-scaled axis.\n" + 
-                                          "Invalid limit will be ignored.")
+warnings.filterwarnings("ignore", message = "Attempted to set non-positive left " + 
+                                            "xlim on a log-scaled axis.\n" + 
+                                            "Invalid limit will be ignored.")
 
-warnings.filterwarnings("ignore", message="This figure includes Axes that are " +
-                                           "not compatible with tight_layout, " +
-                                           "so results might be incorrect.")
+warnings.filterwarnings("ignore", message = "This figure includes Axes that are " +
+                                            "not compatible with tight_layout, " +
+                                            "so results might be incorrect.")
 
 from .utility import bin_spectrum, generate_latex_param_names, round_sig_figs, \
                      confidence_intervals
@@ -60,6 +60,20 @@ linestyles = {
               }
 
 def scale_lightness(colour_name, scale):
+    ''' 
+    Scale the lightness of a colour by the given factor.
+    
+    Args:
+        colour_name (str): 
+            The name of the colour to be scaled, in matplotlib colour format.
+        scale (float): 
+            The factor by which to scale the lightness of the colour (< 1 makes
+            the colour darker).
+    
+    Returns:
+        tuple: 
+            A tuple containing the RGB values of the scaled colour.
+    '''
     
     # Convert colour name to RBG value
     rgb = matplotlib.colors.ColorConverter.to_rgb(colour_name)
@@ -68,7 +82,6 @@ def scale_lightness(colour_name, scale):
     h, l, s = colorsys.rgb_to_hls(*rgb)
     
     # Manipulate h, l, s values and return as RGB
-    
     return colorsys.hls_to_rgb(h, min(1, l * scale), s = s)
 
 
@@ -877,10 +890,25 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
 def set_spectrum_wl_ticks(wl_min, wl_max, wl_axis = 'log'):
     '''
     Calculates default x axis tick spacing for spectra plots in POSEIDON.
+    
+    Args:
+        wl_min (float):
+            The minimum wavelength to plot.
+        wl_max (float):
+            The maximum wavelength to plot.
+        wl_axis (str, optional):
+            The type of x-axis to use ('log' or 'linear').
+            
+    Returns:
+        np.array:
+            The x axis tick values for the given wavelength range.
 
     '''
 
     wl_range = wl_max - wl_min
+
+    if (wl_max < wl_min):
+        raise Exception("Error: max wavelength must be greater than min wavelength.")
 
     # For plots over a wide wavelength range
     if (wl_range > 0.2):
@@ -892,42 +920,29 @@ def set_spectrum_wl_ticks(wl_min, wl_max, wl_axis = 'log'):
         elif (wl_max <= 2.0):
             if (wl_min < 1.0):
                 wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
             else:
                 wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
+                wl_ticks_2 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min*5)/5.0, round_sig_figs(wl_max, 2)+0.01, 0.2)))
             wl_ticks_3 = np.array([])
             wl_ticks_4 = np.array([])
         elif (wl_max <= 3.0):
             if (wl_min < 1.0):
                 wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
+                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 2)+0.01, 0.5)
             else:
                 wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 3)+0.01, 0.5)
+                wl_ticks_2 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min*5)/5.0, round_sig_figs(wl_max, 2)+0.01, 0.2)))
             wl_ticks_3 = np.array([])
             wl_ticks_4 = np.array([])
         elif (wl_max <= 5.0):
             if (wl_min < 1.0):
                 wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            elif (wl_min < 3.0):
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
-                wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.2)
-            else:
-                wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 0.2)
-            wl_ticks_4 = np.array([])
-        elif (wl_max <= 10.0):
-            if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
-                wl_ticks_2 = np.arange(1.0, round_sig_figs(wl_max, 3)+0.01, 0.5)
+                wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
                 wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
             elif (wl_min < 3.0):
                 wl_ticks_1 = np.array([])
-                wl_ticks_2 = np.arange(round_sig_figs(wl_min, 2), 3, 0.2)
+                wl_ticks_2 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min*5)/5.0, 3.0, 0.2)))
                 if (wl_axis == 'log'):
                     wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.5)
                 elif (wl_axis == 'linear'):
@@ -935,16 +950,72 @@ def set_spectrum_wl_ticks(wl_min, wl_max, wl_axis = 'log'):
             else:
                 wl_ticks_1 = np.array([])
                 wl_ticks_2 = np.array([])
-                wl_ticks_3 = np.arange(round_sig_figs(wl_min, 2), round_sig_figs(wl_max, 2)+0.01, 1.0)
+                wl_ticks_3 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min*5)/5.0, round_sig_figs(wl_max, 2)+0.01, 0.2)))
+            wl_ticks_4 = np.array([])
+        elif (wl_max <= 10.0):
+            if (wl_min < 1.0):
+                if (wl_axis == 'log'):
+                    wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                    wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+                    wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
+                elif (wl_axis == 'linear'):
+                    wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 1.0)
+                    wl_ticks_2 = np.arange(1.0, 3.0, 1.0)            
+                    wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
+            elif (wl_min < 3.0):
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min*2)/2.0, 3.0, 0.5)))
+                if (wl_axis == 'log'):
+                    wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 1.0)
+                elif (wl_axis == 'linear'):
+                    wl_ticks_3 = np.arange(3.0, round_sig_figs(wl_max, 2)+0.01, 0.5)
+            else:
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.array([])
+                if (wl_axis == 'log'):
+                    wl_ticks_3 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min*2)/2.0, round_sig_figs(wl_max, 2)+0.01, 0.5)))
+                elif (wl_axis == 'linear'):
+                    wl_ticks_3 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min*2)/2.0, round_sig_figs(wl_max, 2)+0.01, 0.5)))
             wl_ticks_4 = np.array([])
         else:
             if (wl_min < 1.0):
-                wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                if (wl_axis == 'log'):
+                    wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 0.2)
+                    wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
+                    wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+                    wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
+                elif (wl_axis == 'linear'):
+                    wl_ticks_1 = np.arange(round_sig_figs(wl_min, 1), 1.0, 1.0)
+                    wl_ticks_2 = np.arange(1.0, 3.0, 1.0)            
+                    wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+                    wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 3)+0.01, 1.0)
+            elif (wl_min < 3.0):
+                wl_ticks_1 = np.array([])
+                if (wl_axis == 'log'): 
+                    wl_ticks_2 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min*2)/2.0, 3.0, 0.5)))
+                    wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+                    wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
+                elif (wl_axis == 'linear'):
+                    wl_ticks_2 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min), 3.0, 1.0)))
+                    wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
+                    wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 3)+0.01, 1.0)
+            elif (wl_min < 10.0):
+                wl_ticks_1 = np.array([])
+                wl_ticks_2 = np.array([])
+                if (wl_axis == 'log'):
+                    wl_ticks_3 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min), 10.0, 1.0)))
+                    wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 3)+0.01, 2.0)
+                elif (wl_axis == 'linear'):
+                    wl_ticks_3 = np.concatenate(([round_sig_figs(wl_min, 2)], np.arange(np.ceil(wl_min), 10.0, 1.0)))
+                    wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 3)+0.01, 1.0)
             else:
                 wl_ticks_1 = np.array([])
-            wl_ticks_2 = np.arange(1.0, 3.0, 0.5)
-            wl_ticks_3 = np.arange(3.0, 10.0, 1.0)
-            wl_ticks_4 = np.arange(10.0, round_sig_figs(wl_max, 2)+0.01, 2.0)
+                wl_ticks_2 = np.array([])
+                wl_ticks_3 = np.array([])
+                if (wl_axis == 'log'):
+                    wl_ticks_4 = np.concatenate(([round_sig_figs(wl_min, 3)], np.arange(np.ceil(wl_min), round_sig_figs(wl_max, 3)+0.01, 1.0)))
+                elif (wl_axis == 'linear'):
+                    wl_ticks_4 = np.concatenate(([round_sig_figs(wl_min, 3)], np.arange(np.ceil(wl_min*2)/2.0, round_sig_figs(wl_max, 3)+0.01, 0.5)))
 
         wl_ticks = np.concatenate((wl_ticks_1, wl_ticks_2, wl_ticks_3, wl_ticks_4))
 
@@ -967,26 +1038,84 @@ def set_spectrum_wl_ticks(wl_min, wl_max, wl_axis = 'log'):
     return wl_ticks
 
     
-def plot_spectra(spectra, planet, data_properties = None,
+def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  plot_full_res = True, bin_spectra = True, R_to_bin = 100, 
-                 wl_min = None, wl_max = None, transit_depth_min = None,
-                 transit_depth_max = None, show_data = False, plt_label = None,
-                 FpFs_min = None, FpFs_max = None, y_unit = 'transit_depth', 
+                 wl_min = None, wl_max = None, y_min = None, y_max = None,
+                 y_unit = 'transit_depth', plt_label = None, 
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
                  data_marker_size_list = [], wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right'):
     ''' 
-    Plot a collection of individual model transmission spectra.
+    Plot a collection of individual model spectra. This function can plot
+    transmission or emission spectra, according to the user's choice of 'y_unit'.
+    
+    Args:
+        spectra (list): 
+            A list of model spectra to be plotted, each with the form 
+            (wavelength, spectrum).
+        planet (dict):
+            POSEIDON planet property dictionary.
+        data_properties (dict, optional):
+            POSEIDON observational data property dictionary.
+        show_data (bool, optional):
+            Flag indicating whether to plot the observational data.
+        plot_full_res (bool, optional):
+            Flag indicating whether to plot full resolution model spectra.
+        bin_spectra (bool, optional):
+            Flag indicating whether to bin model spectra to the resolution
+            specified by 'R_to_bin'.
+        R_to_bin (int, optional):
+            Spectral resolution (R = wl/dwl) to bin the model spectra to. 
+        wl_min (float, optional):
+            The minimum wavelength to plot.
+        wl_max (float, optional):
+            The maximum wavelength to plot.
+        y_min (float, optional):
+            The minimum value for the y-axis.
+        y_max (float, optional):
+            The maximum value for the y-axis.
+        y_unit (str, optional):
+            The unit of the y-axis
+            (Options: 'transit_depth', 'eclipse_depth', '(Rp/Rs)^2', 
+            '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp').
+        plt_label (str, optional):
+            The label for the plot.
+        colour_list (list, optional):
+            A list of colours for the model spectra.
+        spectra_labels (list, optional):
+            A list of labels for the model spectra.
+        data_colour_list (list, optional):
+            A list of colours for the observational data points.
+        data_labels (list, optional):
+            A list of labels for the observational data.
+        data_marker_list (list, optional):
+            A list of marker styles for the observational data.
+        data_marker_size_list (list, optional):
+            A list of marker sizes for the observational data.
+        wl_axis (str, optional):
+            The type of x-axis to use ('log' or 'linear').
+        figure_shape (str, optional):
+            The shape of the figure ('default' or 'wide' - the latter is 16:9).
+        legend_location (str, optional):
+            The location of the legend ('upper left', 'upper right', 
+            'lower left', 'lower right').
+
+    Returns:
+        fig (matplotlib figure object):
+            The spectra plot.
     
     '''
 
     if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
         plot_type = 'transmission'
-    elif (y_unit in ['Fp/Fs', 'Fp/F*']):
+    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
         plot_type = 'direct_emission'
+    else:
+        raise Exception("Unexpected y unit. Did you mean 'transit_depth' " +
+                       "or 'eclipse_depth'?")
     
     # Find number of spectra to plot
     N_spectra = len(spectra)
@@ -1082,95 +1211,48 @@ def plot_spectra(spectra, planet, data_properties = None,
 
     wl_range = wl_max - wl_min
    
-    # If the user did not specify a transit depth range, find min and max from input models
-    if (plot_type == 'transmission'):
+    # If the user did not specify a y range, find min and max from input models
+    if (y_min == None):
+        
+        y_min_plt = 1e10   # Dummy value
+        
+        # Loop over each model, finding the most extreme min / max range 
+        for i in range(N_spectra):
+            
+            transit_depth_min_i = np.min(spectra[i][0])
+            y_min_plt = min(y_min_plt, transit_depth_min_i)
+            
+        # Check if the lowest data point falls below the current y-limit
+        if (show_data == True):
+            if (y_min_plt > min(ydata - err_data)):
+                
+                y_min_plt = min(ydata - err_data)
+            
+        y_min_plt = 0.995*y_min_plt  # Extend slightly below
+        
+    else:
+        y_min_plt = y_min
 
-        if (transit_depth_min == None):
+    if (y_max == None):
+        
+        y_max_plt = 1e-10  # Dummy value
+        
+        # Loop over each model, finding the most extreme min / max range 
+        for i in range(N_spectra):
             
-            y_min_plt = 1e10   # Dummy value
+            transit_depth_max_i = np.max(spectra[i][0])
+            y_max_plt = max(y_max_plt, transit_depth_max_i)
             
-            # Loop over each model, finding the most extreme min / max range 
-            for i in range(N_spectra):
+        # Check if the highest data point falls above the current y-limit
+        if (show_data == True):
+            if (y_max_plt < max(ydata + err_data)):
                 
-                transit_depth_min_i = np.min(spectra[i][0])
-                y_min_plt = min(y_min_plt, transit_depth_min_i)
-                
-            # Check if the lowest data point falls below the current y-limit
-            if (show_data == True):
-                if (y_min_plt > min(ydata - err_data)):
-                    
-                    y_min_plt = min(ydata - err_data)
-                
-            y_min_plt = 0.995*y_min_plt  # Extend slightly below
+                y_max_plt = max(ydata + err_data)
             
-        else:
-            y_min_plt = transit_depth_min
-
-        if (transit_depth_max == None):
-            
-            y_max_plt = 1e-10  # Dummy value
-            
-            # Loop over each model, finding the most extreme min / max range 
-            for i in range(N_spectra):
-                
-                transit_depth_max_i = np.max(spectra[i][0])
-                y_max_plt = max(y_max_plt, transit_depth_max_i)
-                
-            # Check if the highest data point falls above the current y-limit
-            if (show_data == True):
-                if (y_max_plt < max(ydata + err_data)):
-                    
-                    y_max_plt = max(ydata + err_data)
-                
-            y_max_plt = 1.005*y_max_plt  # Extend slightly above
-            
-        else:
-            y_max_plt = transit_depth_max
-
-    # If the user did not specify an Fp/Fs range, find min and max from input models
-    elif (plot_type == 'emission'):
-
-        if (FpFs_min == None):
-            
-            y_min_plt = 1e10   # Dummy value
-            
-            # Loop over each model, finding the most extreme min / max range 
-            for i in range(N_spectra):
-                
-                FpFs_min_i = np.min(spectra[i][0])
-                y_min_plt = min(y_min_plt, FpFs_min_i)
-                
-            # Check if the lowest data point falls below the current y-limit
-            if (show_data == True):
-                if (y_min_plt > min(ydata - err_data)):
-                    
-                    y_min_plt = min(ydata - err_data)
-                
-            y_min_plt = 0.995*y_min_plt  # Extend slightly below
-            
-        else:
-            y_min_plt = FpFs_min
-
-        if (FpFs_max == None):
-            
-            y_max_plt = 1e-10  # Dummy value
-            
-            # Loop over each model, finding the most extreme min / max range 
-            for i in range(N_spectra):
-                
-                FpFs_max_i = np.max(spectra[i][0])
-                y_max_plt = max(y_max_plt, FpFs_max_i)
-                
-            # Check if the highest data point falls above the current y-limit
-            if (show_data == True):
-                if (y_max_plt < max(ydata + err_data)):
-                    
-                    y_max_plt = max(ydata + err_data)
-                
-            y_max_plt = 1.005*y_max_plt  # Extend slightly above
-            
-        else:
-            y_max_plt = FpFs_max
+        y_max_plt = 1.005*y_max_plt  # Extend slightly above
+        
+    else:
+        y_max_plt = y_max
         
     #***** Format x and y ticks *****#
 
@@ -1210,9 +1292,9 @@ def plot_spectra(spectra, planet, data_properties = None,
         yminor_spacing = 2*np.power(10, minor_exponent)
     
     # Refine y range to be a multiple of the tick spacing (only if range not specified by user)
-    if ((transit_depth_min == None) and (FpFs_min == None)):
+    if (y_min == None):
         y_min_plt = np.floor(y_min_plt/ymajor_spacing)*ymajor_spacing
-    if ((transit_depth_max == None) and (FpFs_max == None)):
+    if (y_max == None):
         y_max_plt = np.ceil(y_max_plt/ymajor_spacing)*ymajor_spacing
  
     # Set y range
@@ -1231,7 +1313,9 @@ def plot_spectra(spectra, planet, data_properties = None,
     if (figure_shape == 'default'):
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
-        fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
+        fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures)
+    else:
+        raise Exception("Unsupported Figure shape - please use 'default' or 'wide'")
     
     ax1 = plt.gca()
     
@@ -1263,8 +1347,8 @@ def plot_spectra(spectra, planet, data_properties = None,
         
         # Plot spectrum at full model resolution
         if (plot_full_res == True):
-            ax1.plot(wl, spec, lw=0.5, alpha=0.4, zorder=i,
-                     color=colours[i], label=label_i)
+            ax1.plot(wl, spec, lw = 0.5, alpha = 0.4, zorder = i,
+                     color = colours[i], label = label_i)
 
         # Plot smoothed (binned) version of the model
         if (bin_spectra == True):
@@ -1283,10 +1367,10 @@ def plot_spectra(spectra, planet, data_properties = None,
                 lw_binned = 2.0
 
             # Plot binned spectrum
-            ax1.plot(wl_binned, spec_binned, lw=lw_binned, alpha=0.8, 
-                     color=colour_binned, 
-                     zorder=N_spectra+N_plotted_binned, 
-                     label=label_i)
+            ax1.plot(wl_binned, spec_binned, lw = lw_binned, alpha = 0.8, 
+                     color = colour_binned, 
+                     zorder = N_spectra+N_plotted_binned, 
+                     label = label_i)
             
             N_plotted_binned += 1
 
@@ -1312,12 +1396,12 @@ def plot_spectra(spectra, planet, data_properties = None,
             bin_size_i = bin_size[idx_start:idx_end]
 
             # Plot dataset
-            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                               xerr=bin_size_i, marker=data_markers[i], 
-                                               markersize=data_markers_size[i], 
-                                               capsize=2, ls='none', elinewidth=0.8, 
-                                               color=data_colours[i], alpha = 0.8,
-                                               ecolor = 'black', label=label_i,
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                               xerr = bin_size_i, marker = data_markers[i], 
+                                               markersize = data_markers_size[i], 
+                                               capsize = 2, ls = 'none', elinewidth = 0.8, 
+                                               color = data_colours[i], alpha = 0.8,
+                                               ecolor = 'black', label = label_i,
                                                zorder = 100)
 
             [markers.set_alpha(1.0)]
@@ -1337,12 +1421,13 @@ def plot_spectra(spectra, planet, data_properties = None,
         ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
-    ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
-             verticalalignment='top', transform=ax1.transAxes, fontsize = 16)
+    ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
+             verticalalignment = 'top', transform = ax1.transAxes, fontsize = 16)
   
+    # Add plot label
     if (plt_label != None):
-        ax1.text(0.03, 0.90, plt_label, horizontalalignment='left', 
-                 verticalalignment='top', transform=ax1.transAxes, fontsize = 14)
+        ax1.text(0.03, 0.90, plt_label, horizontalalignment = 'left', 
+                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
@@ -1350,9 +1435,9 @@ def plot_spectra(spectra, planet, data_properties = None,
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
     
-    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, 
-                        ncol=1, frameon=True)    #legend settings
-  #  legend.set_bbox_to_anchor([0.75, 0.98], transform=None)
+    legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
+                        ncol = 1, frameon = True)    #legend settings
+
     frame = legend.get_frame()
     frame.set_facecolor('0.90') 
         
@@ -1371,7 +1456,7 @@ def plot_spectra(spectra, planet, data_properties = None,
         file_name = (output_dir + planet_name + '_' + plt_label + '_' +
                      plot_type + '_spectra.pdf')
 
-    plt.savefig(file_name, bbox_inches='tight')
+    plt.savefig(file_name, bbox_inches = 'tight')
 
     return fig
 
