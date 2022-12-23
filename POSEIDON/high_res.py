@@ -451,7 +451,7 @@ def cross_correlate_sysrem(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, re
 
     dPhi = 0.0
     scale = 1.0
-
+    K_s = 0.3229
     #loading data (read_data in utility.py)
 
     # K_p = 192.06  # orbital velocity of planet; this is used to center trial values of K_p
@@ -476,22 +476,23 @@ def cross_correlate_sysrem(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, re
     log_L_arr = np.zeros((len(K_p_arr), len(V_sys_arr)))
     CCF_arr = np.zeros((len(K_p_arr), len(V_sys_arr)))
     
-    for i in range(len(K_p_arr)):
-        K_p = K_p_arr[i]
-        for j in range(len(V_sys_arr)):
+    for l in range(len(K_p_arr)):
+        K_p = K_p_arr[l]
+        for k in range(len(V_sys_arr)):
             Ndet, Nphi, Npix = residuals.shape
             I = np.ones(Npix)
             N = Npix # np.array([Npix])
-            V_sys = V_sys_arr[j]
+            V_sys = V_sys_arr[k]
             
             # Time-resolved total radial velocity
             RV_p = V_sys + V_bary + K_p * np.sin(2 * np.pi * (Phi + dPhi))  # V_sys is an additive term around zero   
             dl_p = RV_p * 1e3 / constants.c # delta lambda, for shifting
-            RV_s = 0
+            RV_s = (V_sys + V_bary - K_s * np.sin(2 * np.pi * Phi)) * 0  # Velocity of the star is very small compared to planet's velocity and it's already be corrected
             dl_s = RV_s * 1e3 / constants.c # delta lambda, for shifting
             
             # Initializing log-likelihoods and CCFs
             loglikelihood = 0
+            CCF = 0
 
             # Looping through each order and computing total log-L by summing logLs for each obvservation/order
             for j in range(Ndet):
@@ -519,10 +520,11 @@ def cross_correlate_sysrem(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, re
                     CC = R / np.sqrt(sf2 * sg2) # cross-correlation. Normalized, must be <= 1. Could view as dot product between to unit vector
                     
                     loglikelihood += (-0.5 * N * np.log(sf2 + sg2 - 2.0*R)) # Equation 9 in paper
-
+                    CCF += CC
             
-            log_L_arr[i, j] = loglikelihood
-            CCF_arr[i, j] = CC
+            log_L_arr[l, k] = loglikelihood
+            CCF_arr[l, k] = CCF
+            
     return log_L_arr, CCF_arr
 
 def generate_matrix(data_raw):
@@ -598,18 +600,16 @@ def sysrem(data_array, iter=15):
 
 def fast_filter(data, iter=15):
 
-    data_cube = data['data_raw']
-    Ndet, Nphi, Npix = data_cube.shape
-    residuals = np.zeros(Ndet, Nphi, Npix)
-    Us = np.zeros(Ndet, iter, Nphi)
-    Ws = np.zeros(Ndet, iter, Npix)
-    data_cube = data['data_raw']
+    Ndet, Nphi, Npix = data.shape
+    residuals = np.zeros((Ndet, Nphi, Npix))
+    Us = np.zeros((Ndet, Nphi, iter))
+    Ws = np.zeros((Ndet, Npix, iter))
     
-    for order in data_cube:
+    for i, order in enumerate(data):
         residual, U, W = sysrem(order, iter)
-        residuals[order] = residual
-        Us[order] = U
-        Ws[order] = W
+        residuals[i] = residual
+        Us[i] = U
+        Ws[i] = W
     
     return residuals, Us, Ws
 

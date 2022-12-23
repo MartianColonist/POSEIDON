@@ -229,11 +229,7 @@ def define_model(model_name, bulk_species, param_species,
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-<<<<<<< HEAD
                  surface = False, high_res = None, R_p_ref_enabled = True):
-=======
-                 surface = False, high_res = False):
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -310,14 +306,9 @@ def define_model(model_name, bulk_species, param_species,
             List of chemical species with a vertical mixing ratio gradient.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
-<<<<<<< HEAD
         high_res (str):
             Define a model for high resolutional retrieval.
             (Options: 'pca', 'sysrem')
-=======
-        high_res (bool):
-            If True, define a model for high resolutional retrieval.
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
 
     Returns:
         model (dict):
@@ -380,11 +371,7 @@ def define_model(model_name, bulk_species, param_species,
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
-<<<<<<< HEAD
                                       opaque_Iceberg, surface, high_res, R_p_ref_enabled)
-=======
-                                      opaque_Iceberg, surface, high_res)
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -411,12 +398,8 @@ def define_model(model_name, bulk_species, param_species,
              'high_res_param_names': high_res_param_names,
              'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
-<<<<<<< HEAD
              'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
              'high_res': high_res
-=======
-             'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
             }
 
     return model
@@ -963,7 +946,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
-<<<<<<< HEAD
         
             # Calculate extinction coefficients in standard mode
             kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
@@ -1000,44 +982,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             N_bf_species = len(bf_species)           # Number of bound-free species included
         
             # Calculate extinction coefficients in standard mode
-=======
-        
-            # Calculate extinction coefficients in standard mode
-            kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
-                                                  CIA_pairs, ff_pairs, bf_species,
-                                                  n, T, P, wl, X, X_active, X_CIA, 
-                                                  X_ff, X_bf, a, gamma, P_cloud, 
-                                                  kappa_cloud_0, sigma_stored, 
-                                                  CIA_stored, Rayleigh_stored, 
-                                                  ff_stored, bf_stored, enable_haze, 
-                                                  enable_deck, enable_surface,
-                                                  N_sectors, N_zones, T_fine, 
-                                                  log_P_fine, P_surf)
-
-        # Running POSEIDON on the GPU
-        elif (device == 'gpu'):
-
-            N_wl = len(wl)     # Number of wavelengths on model grid
-            N_layers = len(P)  # Number of layers
-
-            # Define extinction coefficient arrays explicitly on GPU
-            kappa_clear = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
-            kappa_cloud = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
-
-            # Find index of deep pressure below which atmosphere is opaque
-            P_deep = 1000       # Default value of P_deep (needs to be high for brown dwarfs)
-            i_bot = np.argmin(np.abs(P - P_deep))
-
-            # Store length variables for mixing ratio arrays 
-            N_species = len(chemical_species)        # Number of chemical species
-            N_species_active = len(active_species)   # Number of spectrally active species
-            
-            N_cia_pairs = len(CIA_pairs)             # Number of cia pairs included
-            N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
-            N_bf_species = len(bf_species)           # Number of bound-free species included
-        
-            # Calculate extinction coefficients in standard mode
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
             extinction_GPU[block, thread](kappa_clear, kappa_cloud, i_bot, N_species, 
                                           N_species_active, N_cia_pairs, N_ff_pairs, 
                                           N_bf_species, n, T, P, wl, X, X_active, 
@@ -1377,12 +1321,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'delta_rel': [-1.0e-3, 1.0e-3],
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
                                        np.log10(100.0*np.max(err_data**2))],
-<<<<<<< HEAD
                              'K_p': [-200, 200], 'V_sys': [-100, 100],
                              'log_a': [-1, 1], 'dPhi': [-0.05, 0.05]
-=======
-                             'K_p': [-200, 200], 'V_sys': [-100, 100]
->>>>>>> 1e479b83e054c570b5ef6c53ccfdf72f4df0a2da
                             }    
 
     # Iterate through parameters, ensuring we have a full set of priors
