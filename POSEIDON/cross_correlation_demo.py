@@ -8,14 +8,12 @@ from scipy import constants
 from numba import jit
 from astropy.io import fits
 from scipy import interpolate
-import jax
 from POSEIDON.core import create_star, create_planet, define_model, make_atmosphere, read_opacities, wl_grid_constant_R, wl_grid_line_by_line, compute_spectrum
 from POSEIDON.constants import R_Sun
 from POSEIDON.visuals import plot_stellar_flux
 from POSEIDON.constants import R_J, M_J
 import numpy as np
 from spectres import spectres
-from tqdm import tqdm
 from multiprocessing import Pool
 
 K_p = 192.06
@@ -29,7 +27,7 @@ N_V_sys = 200
 d_V_sys = 1
 V_sys_arr = (np.arange(N_V_sys) - (N_V_sys-1)//2) * d_V_sys + V_sys # making V_sys_arr (centered on published or predicted V_sys (here 0 because we already added V_sys in V_bary))
 
-N_cores = 9 # Change how many cores to use here.
+N_cores = 2 # Change how many cores to use here.
 core_indices = np.arange(N_cores)
 V_sys_arr_split = np.array_split(V_sys_arr, N_cores)
 

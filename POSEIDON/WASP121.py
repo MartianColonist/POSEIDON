@@ -55,7 +55,7 @@ print("Free parameters: " + str(model['param_names']))
 #***** Wavelength grid *****#
 
 wl_min = 3.7      # Minimum wavelength (um)
-wl_max = 5.0      # Maximum wavelength (um)
+wl_max = 5.1      # Maximum wavelength (um)
 R = 250000        # Spectral resolution of grid
 
 # wl = wl_grid_line_by_line(wl_min, wl_max)
@@ -105,7 +105,7 @@ prior_ranges['log_P2'] = [-5.5, 2.5]
 prior_ranges['log_P3'] = [-2, 2]
 prior_ranges['K_p'] = [170, 230]
 prior_ranges['V_sys'] = [-20, 20]
-prior_ranges['log_a'] = [-1, 1]
+prior_ranges['log_a'] = [-5, 5]
 prior_ranges['dPhi'] = [-0.01, 0.01]
 
 # Create prior object for retrieval
@@ -158,7 +158,7 @@ P_ref = 1e-5   # Reference pressure (bar)
 
 run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
                 spectrum_type = 'direct_emission', sampling_algorithm = 'MultiNest', 
-                N_live = 400, verbose = True, N_output_samples = 100, resume = False, ev_tol=0.05)
+                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.5)
 
 
 # %% [markdown]

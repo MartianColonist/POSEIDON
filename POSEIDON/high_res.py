@@ -109,7 +109,7 @@ def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_sca
             Fp = interpolate.splev(wl_shifted_p, cs_p, der=0)
             wl_shifted_s = wl_slice * (1.0 - dl_s[i])
             Fs = interpolate.splev(wl_shifted_s, cs_s, der=0)
-            Fp_Fs[i, :] = Fp/Fs
+            Fp_Fs[i, :] = Fp / Fs
 
         model_injected = (1 + Fp_Fs) * data_scale[j, :]  # 1??+fp/fstar is same as (fstar+fp)/fstar..tell "stretches" by transmittance
         
@@ -297,7 +297,7 @@ def log_likelihood(F_s_obs, F_p_obs, wl, K_p, V_sys, log_a, dPhi, wl_grid, data_
     return logL_Matteo, logL_Zack, CCF
 
 
-def log_likelihood_Gibson(F_s_obs, spectrum, wl, K_p, V_sys, log_a, dPhi, wl_grid, residuals, Us, V_bary, Phi):
+def log_likelihood_Gibson(F_s_obs, spectrum, wl, K_p, V_sys, log_a, dPhi, wl_grid, residuals, Us, V_bary, Phi, V_sin_i):
     '''
     Return the loglikelihood given the observed flux, Keplerian velocity, and centered system velocity.
     Use this function in a high resolutional rerieval.
@@ -345,7 +345,6 @@ def log_likelihood_Gibson(F_s_obs, spectrum, wl, K_p, V_sys, log_a, dPhi, wl_gri
     scale = 10**log_a
 
     # rotational coavolution
-    V_sin_i = 4.5
     rot_kernel = get_rot_kernel(V_sin_i, wl)
     F_p_rot = np.convolve(spectrum, rot_kernel, mode='same') # calibrate for planetary rotation
 
@@ -524,6 +523,7 @@ def cross_correlate_sysrem(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, re
             
             log_L_arr[l, k] = loglikelihood
             CCF_arr[l, k] = CCF
+            print(l, k)
             
     return log_L_arr, CCF_arr
 

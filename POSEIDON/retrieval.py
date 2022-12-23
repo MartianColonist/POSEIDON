@@ -253,13 +253,14 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         wl_grid = data['wl_grid']
         V_bary = data['V_bary']
         Phi = data['Phi']
+        V_sin_i = planet['V_sin_i']
 
         if high_res == 'sysrem':
             residuals, Us, Ws = fast_filter(data, iter=15)
         elif high_res == 'pca':
             data_scale = data['data_scale']
             data_arr = data['data_arr']
-            V_sin_i = planet['V_sin_i']
+
 
     # Create variable governing if a mixing ratio parameter combination lies in 
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
@@ -636,7 +637,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             if high_res == 'sysrem':
                 loglikelihood = log_likelihood_Gibson(F_s_obs, spectrum, wl, K_p, V_sys,
                                                     log_a, dPhi, wl_grid, residuals, 
-                                                    Us, V_bary, Phi)
+                                                    Us, V_bary, Phi, V_sin_i)
                 
             elif high_res == 'pca':
                 loglikelihood = log_likelihood(F_s_obs, spectrum, wl, K_p, V_sys,
