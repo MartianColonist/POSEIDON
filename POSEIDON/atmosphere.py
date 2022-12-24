@@ -775,6 +775,8 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
     r_low = np.zeros(shape=(N_layers, N_sectors, N_zones))
     dr = np.zeros(shape=(N_layers, N_sectors, N_zones))
     n = np.zeros(shape=(N_layers, N_sectors, N_zones))
+
+    log_P = np.log(P)
     
     # Compute radial extent in each sector and zone from the corresponding T(P)
     for j in range(N_sectors):
@@ -795,7 +797,7 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
             r[i_ref,j,k] = r_0
         
             # Compute integrand for hydrostatic calculation
-            integrand = (sc.k * T[:,j,k])/(R_p**2 * g_0 * mu[:,j,k] * P*1.0e5)
+            integrand = (sc.k * T[:,j,k])/(R_p**2 * g_0 * mu[:,j,k])
         
             # Initialise stored values of integral for outwards and inwards sums
             integral_out = 0.0
@@ -804,14 +806,14 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
             # Working outwards from reference pressure
             for i in range(i_ref+1, N_layers, 1):
             
-                integral_out += 0.5 * (integrand[i] + integrand[i-1]) * (P[i] - P[i-1])*1.0e5  # Trapezium rule integration
+                integral_out += 0.5 * (integrand[i] + integrand[i-1]) * (log_P[i] - log_P[i-1])  # Trapezium rule integration
             
                 r[i,j,k] = 1.0/((1.0/r_0) + integral_out)
             
             # Working inwards from reference pressure
             for i in range((i_ref-1), -1, -1):   
             
-                integral_in += 0.5 * (integrand[i] + integrand[i+1]) * (P[i] - P[i+1])*1.0e5   # Trapezium rule integration
+                integral_in += 0.5 * (integrand[i] + integrand[i+1]) * (log_P[i] - log_P[i+1])   # Trapezium rule integration
             
                 r[i,j,k] = 1.0/((1.0/r_0) + integral_in)
     
@@ -885,6 +887,8 @@ def radial_profiles_constant_g(P, T, g_0, P_ref, R_p_ref, mu, N_sectors, N_zones
     r_low = np.zeros(shape=(N_layers, N_sectors, N_zones))
     dr = np.zeros(shape=(N_layers, N_sectors, N_zones))
     n = np.zeros(shape=(N_layers, N_sectors, N_zones))
+
+    log_P = np.log(P)
     
     # Compute radial extent in each sector and zone from the corresponding T(P)
     for j in range(N_sectors):
@@ -914,14 +918,14 @@ def radial_profiles_constant_g(P, T, g_0, P_ref, R_p_ref, mu, N_sectors, N_zones
             # Working outwards from reference pressure
             for i in range(i_ref+1, N_layers, 1):
             
-                integral_out += 0.5 * (integrand[i] + integrand[i-1]) * np.log(P[i]/P[i-1])  # Trapezium rule integration
+                integral_out += 0.5 * (integrand[i] + integrand[i-1]) * (log_P[i] - log_P[i-1])  # Trapezium rule integration
             
                 r[i,j,k] = r_0 - integral_out
             
             # Working inwards from reference pressure
             for i in range((i_ref-1), -1, -1):   
             
-                integral_in += 0.5 * (integrand[i] + integrand[i+1]) * np.log(P[i]/P[i+1])   # Trapezium rule integration
+                integral_in += 0.5 * (integrand[i] + integrand[i+1]) * (log_P[i] - log_P[i+1])   # Trapezium rule integration
             
                 r[i,j,k] = r_0 - integral_in
 
