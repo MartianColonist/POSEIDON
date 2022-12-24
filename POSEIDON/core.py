@@ -561,7 +561,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_X_params = [], cloud_params = [], geometry_params = [],
                     log_g = None, T_input = [], X_input = [], P_surf = None,
                     P_param_set = 1.0e-2, He_fraction = 0.17, 
-                    N_slice_EM = 2, N_slice_DN = 4):
+                    N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False):
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
     full generality, this function generates 3D pressure-temperature and mixing 
@@ -605,6 +605,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             Number of azimuthal slices in the evening-morning transition region.
         N_slice_DN (even int):
             Number of zenith slices in the day-night transition region.
+        constant_gravity (bool):
+            If True, disable inverse square law gravity (only for testing).
     
     Returns:
         atmosphere (dict):
@@ -706,7 +708,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
-                           T_input, X_input, P_param_set)
+                           T_input, X_input, P_param_set, constant_gravity)
 
     #***** Store cloud / haze / aerosol properties *****#
 

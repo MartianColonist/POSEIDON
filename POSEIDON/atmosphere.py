@@ -835,6 +835,116 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
     return n, r, r_up, r_low, dr
 
 
+@jit(nopython = True)
+def radial_profiles_constant_g(P, T, g_0, P_ref, R_p_ref, mu, N_sectors, N_zones):
+    ''' 
+    Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
+    to compute the radius in each atmospheric layer.
+        
+    Note: this version of the solver assumes the gravitational field strength
+          is constant with altitude (for testing purposes). The standard
+          'radial_profiles' function should be used for any real calculation.
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T (3D np.array of float):
+            Temperature profile (K).
+        g_0 (float):
+            Gravitational field strength at white light radius (m/s^2).
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        mu (3D np.array of float):
+            Mean molecular mass (kg).
+        N_sectors (int):
+            Number of azimuthal sectors comprising the background atmosphere.
+        N_zones (int):
+            Number of zenith zones comprising the background atmosphere.
+
+    Returns:
+        n (3D np.array of float):
+            Number density profile (m^-3).
+        r (3D np.array of float):
+            Radial distant profile (m).
+        r_up (3D np.array of float):
+            Upper layer boundaries (m).
+        r_low (3D np.array of float):
+            Lower layer boundaries (m).    
+        dr (3D np.array of float):
+            Layer thicknesses (m). 
+    '''
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Initialise 3D radial profile arrays    
+    r = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    r_up = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    r_low = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    dr = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    n = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    
+    # Compute radial extent in each sector and zone from the corresponding T(P)
+    for j in range(N_sectors):
+        
+        for k in range(N_zones):
+    
+            # Compute number density in each atmospheric layer (ideal gas law)
+            n[:,j,k] = (P*1.0e5)/((sc.k)*T[:,j,k])   # 1.0e5 to convert bar to Pa
+        
+            # Set reference pressure and reference radius (r(P_ref) = R_p_ref)
+            P_0 = P_ref      # 10 bar default value
+            r_0 = R_p_ref    # Radius at reference pressure
+        
+            # Find index of pressure closest to reference pressure (10 bar)
+            i_ref = np.argmin(np.abs(P - P_0))
+        
+            # Set reference radius
+            r[i_ref,j,k] = r_0
+
+            # Initialise stored values of integral for outwards and inwards sums
+            integral_out = 0.0
+            integral_in = 0.0
+
+            # Compute integrand for hydrostatic calculation
+            integrand = (sc.k * T[:,j,k])/(g_0 * mu[:,j,k])
+        
+            # Working outwards from reference pressure
+            for i in range(i_ref+1, N_layers, 1):
+            
+                integral_out += 0.5 * (integrand[i] + integrand[i-1]) * np.log(P[i]/P[i-1])  # Trapezium rule integration
+            
+                r[i,j,k] = r_0 - integral_out
+            
+            # Working inwards from reference pressure
+            for i in range((i_ref-1), -1, -1):   
+            
+                integral_in += 0.5 * (integrand[i] + integrand[i+1]) * np.log(P[i]/P[i+1])   # Trapezium rule integration
+            
+                r[i,j,k] = r_0 - integral_in
+
+            # Use radial profile to compute thickness and boundaries of each layer
+            for i in range(1, N_layers-1): 
+            
+                r_up[i,j,k] = 0.5*(r[(i+1),j,k] + r[i,j,k])
+                r_low[i,j,k] = 0.5*(r[i,j,k] + r[(i-1),j,k])
+                dr[i,j,k] = 0.5 * (r[(i+1),j,k] - r[(i-1),j,k])
+            
+            # Edge cases for bottom layer and top layer    
+            r_up[0,j,k] = 0.5*(r[1,j,k] + r[0,j,k])
+            r_up[(N_layers-1),j,k] = r[(N_layers-1),j,k] + 0.5*(r[(N_layers-1),j,k] - r[(N_layers-2),j,k])
+        
+            r_low[0,j,k] = r[0,j,k] - 0.5*(r[1,j,k] - r[0,j,k])
+            r_low[(N_layers-1),j,k] = 0.5*(r[(N_layers-1),j,k] + r[(N_layers-2),j,k])
+        
+            dr[0,j,k] = (r[1,j,k] - r[0,j,k])
+            dr[(N_layers-1),j,k] = (r[(N_layers-1),j,k] - r[(N_layers-2),j,k])
+            
+    return n, r, r_up, r_low, dr
+
+
 def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species, 
                             active_species, CIA_pairs, ff_pairs, bf_species):
     ''' 
@@ -1128,7 +1238,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              log_X_state, included_species, bulk_species, param_species, 
              active_species, CIA_pairs, ff_pairs, bf_species, N_sectors, 
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
-             He_fraction, T_input, X_input, P_param_set):
+             He_fraction, T_input, X_input, P_param_set, 
+             constant_gravity = False):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1199,7 +1310,9 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         P_param_set (float):
             Only used for the Madhusudhan & Seager (2009) P-T profile.
             Sets the pressure where the reference temperature parameter is 
-            defined (P_param_set = 1.0e-6 corresponds to that paper's choice). 
+            defined (P_param_set = 1.0e-6 corresponds to that paper's choice).
+        constant_gravity (bool):
+            If True, disable inverse square law gravity (only for testing).
     
     Returns:
         T (3D np.array of float):
@@ -1401,8 +1514,14 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
     mu = compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all)
         
     # Calculate number density and radial profiles
-    n, r, r_up, r_low, dr = radial_profiles(P, T, g_0, R_p, P_ref, 
-                                            R_p_ref, mu, N_sectors, N_zones)
+    if (constant_gravity == True):
+        n, r, r_up, r_low, dr = radial_profiles_constant_g(P, T, g_0, P_ref, 
+                                                           R_p_ref, mu, 
+                                                           N_sectors, N_zones)
+    else:
+        n, r, r_up, r_low, dr = radial_profiles(P, T, g_0, R_p, P_ref, 
+                                                R_p_ref, mu, N_sectors, N_zones)
+        
     
     return T, n, r, r_up, r_low, dr, mu, X, X_active, X_CIA, \
            X_ff, X_bf, True
