@@ -24,7 +24,6 @@ setup(
                         'mpi4py',
                         'pysynphot',
                         'pymultinest',
-                        'corner',
                         'spectres',
                         'jupyter'],
     zip_safe = False,
