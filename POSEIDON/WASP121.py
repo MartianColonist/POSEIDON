@@ -47,7 +47,7 @@ param_species = ['Mg', 'Fe', 'Ti']  # H2O, CO as in Brogi & Line
 
 # Create the model object
 model = define_model(model_name, bulk_species, param_species,
-                    PT_profile = 'Madhu', high_res = 'pca', R_p_ref_enabled=False)
+                    PT_profile = 'Madhu', high_res = 'sysrem', R_p_ref_enabled=False)
 
 # Check the free parameters defining this model
 print("Free parameters: " + str(model['param_names']))
@@ -63,7 +63,7 @@ wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 data_dir = './reference_data/observations/WASP-121b'
 
-data = read_high_res_data(data_dir, high_res='pca')
+data = read_high_res_data(data_dir, high_res='sysrem')
 
 # %%
 from POSEIDON.core import set_priors
@@ -86,26 +86,26 @@ prior_types['log_P2'] = 'uniform'
 prior_types['log_P3'] = 'uniform'
 prior_types['K_p'] = 'uniform'
 prior_types['V_sys'] = 'uniform'
-prior_types['log_a'] = 'gaussian'
-prior_types['dPhi'] = 'gaussian'
+prior_types['log_a'] = 'uniform'
+prior_types['dPhi'] = 'uniform'
 
 # Initialise prior range dictionary
 prior_ranges = {}
 
 # Specify prior ranges for each free parameter
-prior_ranges['T_ref'] = [1500, 3000]
+prior_ranges['T_ref'] = [2000, 4500]
 prior_ranges['R_p_ref'] = [0.5*R_p, 2*R_p]
-prior_ranges['log_Ti'] = [-12, -2.3]
-prior_ranges['log_Fe'] = [-12, -2.3]
-prior_ranges['log_Mg'] = [-12, -2.3]
+prior_ranges['log_Ti'] = [-12, 0]
+prior_ranges['log_Fe'] = [-12, 0]
+prior_ranges['log_Mg'] = [-12, 0]
 prior_ranges['a1'] = [0.02, 1]
 prior_ranges['a2'] = [0.02, 1]
 prior_ranges['log_P1'] = [-5.5, 2.5]
 prior_ranges['log_P2'] = [-5.5, 2.5]
 prior_ranges['log_P3'] = [-2, 2]
 prior_ranges['K_p'] = [170, 230]
-prior_ranges['V_sys'] = [-20, 20]
-prior_ranges['log_a'] = [-5, 5]
+prior_ranges['V_sys'] = [-10, 10]
+prior_ranges['log_a'] = [-2, 2]
 prior_ranges['dPhi'] = [-0.01, 0.01]
 
 # Create prior object for retrieval
@@ -120,8 +120,8 @@ import numpy as np
 opacity_treatment = 'opacity_sampling'
 
 # Define fine temperature grid (K)
-T_fine_min = 1500     # 400 K lower limit suffices for a typical hot Jupiter
-T_fine_max = 3000    # 2000 K upper limit suffices for a typical hot Jupiter
+T_fine_min = 2000     # 400 K lower limit suffices for a typical hot Jupiter
+T_fine_max = 4500    # 2000 K upper limit suffices for a typical hot Jupiter
 T_fine_step = 20     # 20 K steps are a good tradeoff between accuracy and RAM
 
 T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
@@ -158,7 +158,7 @@ P_ref = 1e-5   # Reference pressure (bar)
 
 run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
                 spectrum_type = 'direct_emission', sampling_algorithm = 'MultiNest', 
-                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.5)
+                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.05)
 
 
 # %% [markdown]
