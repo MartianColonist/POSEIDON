@@ -523,7 +523,6 @@ def cross_correlate_sysrem(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, re
             
             log_L_arr[l, k] = loglikelihood
             CCF_arr[l, k] = CCF
-            print(l, k)
             
     return log_L_arr, CCF_arr
 
