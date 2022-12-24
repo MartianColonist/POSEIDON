@@ -13,6 +13,7 @@ inputs/
 run/
 .vscode
 POSEIDON_output/
+POSEIDON/reference_data/observations/WASP-121b/aligned_C_arrays.npz
 <<<<<<< HEAD
 CC_output/
 =======
