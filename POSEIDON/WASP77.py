@@ -33,6 +33,8 @@ if (planet['system_distance'] is None):
     planet['system_distance'] = 1    # This value only used for flux ratios, so it cancels
 d = planet['system_distance']
 
+planet['V_sin_i'] = 4.5
+
 # %%
 from POSEIDON.core import define_model, wl_grid_constant_R
 from POSEIDON.utility import read_high_res_data
@@ -41,7 +43,7 @@ from POSEIDON.utility import read_high_res_data
 model_name = 'High-res retrieval'  # Model name used for plots, output files etc.
 
 bulk_species = ['H2', 'He']     # H2 + He comprises the bulk atmosphere
-param_species = ['H2O', 'CO']  # H2O, CO as in Brogi & Line
+param_species = []  # H2O, CO as in Brogi & Line
 
 # Create the model object
 model = define_model(model_name, bulk_species, param_species,
@@ -61,7 +63,7 @@ wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 data_dir = './reference_data/observations/WASP-77Ab'         # Special directory for this tutorial
 
-data = read_high_res_data(data_dir)
+data = read_high_res_data(data_dir, high_res='sysrem')
 
 # %%
 from POSEIDON.core import set_priors
@@ -162,7 +164,7 @@ P_ref = 1e-5   # Reference pressure (bar)
 
 run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
                 spectrum_type = 'direct_emission', sampling_algorithm = 'MultiNest', 
-                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=2)
+                N_live = 2000, verbose = True, N_output_samples = 10000, resume = False, ev_tol=0.5)
 
 
 # %% [markdown]

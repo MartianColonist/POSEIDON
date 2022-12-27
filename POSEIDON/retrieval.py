@@ -256,7 +256,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         V_sin_i = planet['V_sin_i']
 
         if high_res == 'sysrem':
-            residuals, Us, Ws = fast_filter(data, iter=15)
+            residuals, Us, Ws = fast_filter(data['data_raw'], iter=15)
         elif high_res == 'pca':
             data_scale = data['data_scale']
             data_arr = data['data_arr']

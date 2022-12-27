@@ -389,38 +389,38 @@ def read_high_res_data(data_dir, high_res = 'pca'):
     Args:
         data_dir (str):
             Path to the directory containing the data file.
-
+        high_res (str):
+            Detrending method. Options: 'pca', 'sysrem'.
     Returns:
-        data (dict):
-            {   'wl_grid': grid,
-                'data_arr': data_arr,
-                'data_scale': data_scale,
-                'Phi': Phi,
-                'V_bary': V_bary    }
+        data (dict): {
+            'wl_grid': wavelength grid of the data,
+            'data_arr': extracted signal,
+            'data_scale': removed principle components,
+            'data_raw': data cube in original form,
+            'Phi': time-resolved phases,
+            'V_bary': time-resolved barycentric velocity   }
 
     '''
     
     # Load data file
+    Phi = pickle.load(open(data_dir+'/ph.pic','rb'))                    
+    V_bary = pickle.load(open(data_dir+'/rvel.pic','rb'))   # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
+    data = {    'wl_grid': None, 
+                'data_arr': None,
+                'data_scale': None,
+                'data_raw': None,
+                'Phi': Phi,
+                'V_bary': V_bary    }
     if high_res == 'pca':
         wl_grid, data_arr = pickle.load(open(data_dir+'/PCA_matrix.pic', 'rb'))
         wl_grid, data_scale = pickle.load(open(data_dir+'/data_to_scale_with.pic', 'rb'))
-        Phi = pickle.load(open(data_dir+'/ph.pic','rb'))                    # Time-resolved phases
-        V_bary = pickle.load(open(data_dir+'/rvel.pic','rb'))               # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
-        data = {
-            'wl_grid': wl_grid, 
-            'data_arr': data_arr,
-            'data_scale': data_scale,
-            'Phi': Phi,
-            'V_bary': V_bary
-        }
+        data['wl_grid'] = wl_grid
+        data['data_arr'] = data_arr
+        data['data_scale'] = data_scale
     elif high_res == 'sysrem':
         wl_grid, data_raw = pickle.load(open(data_dir+'/data_RAW.pic', 'rb'))
-        data = {
-            'wl_grid': wl_grid, 
-            'data_raw': data_raw,
-            'Phi': Phi,
-            'V_bary': V_bary
-        }
+        data['wl_grid'] = wl_grid
+        data['data_raw']= data_raw
     else:
         raise Exception("Error: High res data format not supported. Available options are 'pca' and 'sysrem'.")
 
