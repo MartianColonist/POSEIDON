@@ -42,12 +42,16 @@ from POSEIDON.utility import read_high_res_data
 
 model_name = 'High-res retrieval'  # Model name used for plots, output files etc.
 
-bulk_species = ['H2', 'He']     # H2 + He comprises the bulk atmosphere
+bulk_species = ['H2', 'He']         # H2 + He comprises the bulk atmosphere
 param_species = ['Mg', 'Fe', 'Ti']  # H2O, CO as in Brogi & Line
 
+high_res = 'sysrem'
+high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
+
 # Create the model object
-model = define_model(model_name, bulk_species, param_species,
-                    PT_profile = 'Madhu', high_res = 'sysrem', R_p_ref_enabled=False)
+model = define_model(model_name, bulk_species, param_species, 
+                    PT_profile = 'Madhu', high_res = high_res,
+                    high_res_params = high_res_params, R_p_ref_enabled=False)
 
 # Check the free parameters defining this model
 print("Free parameters: " + str(model['param_names']))
@@ -86,8 +90,10 @@ prior_types['log_P2'] = 'uniform'
 prior_types['log_P3'] = 'uniform'
 prior_types['K_p'] = 'uniform'
 prior_types['V_sys'] = 'uniform'
-prior_types['log_a'] = 'uniform'
+prior_types['a'] = 'uniform'
+prior_types['b'] = 'uniform'
 prior_types['dPhi'] = 'uniform'
+prior_types['W_conv'] = 'uniform'
 
 # Initialise prior range dictionary
 prior_ranges = {}
@@ -105,8 +111,10 @@ prior_ranges['log_P2'] = [-5.5, 2.5]
 prior_ranges['log_P3'] = [-2, 2]
 prior_ranges['K_p'] = [170, 230]
 prior_ranges['V_sys'] = [-10, 10]
-prior_ranges['log_a'] = [-2, 2]
+prior_ranges['a'] = [0.1, 6]
+prior_ranges['b'] = [0.1, 2]
 prior_ranges['dPhi'] = [-0.01, 0.01]
+prior_ranges['W_conv'] = [1, 50]
 
 # Create prior object for retrieval
 priors = set_priors(planet, star, model, data, prior_types, prior_ranges)
@@ -151,7 +159,6 @@ N_layers = 100    # 100 layers
 P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
 # Specify the reference pressure and radius
-# P_ref = 10.0   # Reference pressure (bar)
 P_ref = 1e-5   # Reference pressure (bar)
 
 #***** Run atmospheric retrieval *****#

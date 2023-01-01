@@ -229,7 +229,7 @@ def define_model(model_name, bulk_species, param_species,
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-                 surface = False, high_res = None, R_p_ref_enabled = True):
+                 surface = False, high_res = None, high_res_params = [], R_p_ref_enabled = True):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -306,7 +306,7 @@ def define_model(model_name, bulk_species, param_species,
             List of chemical species with a vertical mixing ratio gradient.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
-        high_res (str):
+        high_res (list of str):
             Define a model for high resolutional retrieval.
             (Options: 'pca', 'sysrem')
 
@@ -371,7 +371,7 @@ def define_model(model_name, bulk_species, param_species,
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
-                                      opaque_Iceberg, surface, high_res, R_p_ref_enabled)
+                                      opaque_Iceberg, surface, high_res_params, R_p_ref_enabled)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,

@@ -43,7 +43,7 @@ from POSEIDON.utility import read_high_res_data
 model_name = 'High-res retrieval'  # Model name used for plots, output files etc.
 
 bulk_species = ['H2', 'He']     # H2 + He comprises the bulk atmosphere
-param_species = []  # H2O, CO as in Brogi & Line
+param_species = ['H2O', 'CO']  # H2O, CO as in Brogi & Line
 
 # Create the model object
 model = define_model(model_name, bulk_species, param_species,

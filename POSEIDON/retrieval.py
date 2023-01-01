@@ -21,7 +21,7 @@ from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
                      write_retrieved_log_X, confidence_intervals
 from .core import make_atmosphere, compute_spectrum
 from .stellar import precompute_stellar_spectra, stellar_contamination_single_spot
-from .high_res import log_likelihood, sysrem, log_likelihood_Gibson, fast_filter
+from .high_res import log_likelihood, sysrem, log_likelihood_Gibson, fast_filter, fit_uncertainties
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -236,6 +236,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     distance_unit = model['distance_unit']
     surface = model['surface']
     high_res = model['high_res']
+    high_res_param_names = model['high_res_param_names']
     R_p = planet['planet_radius']
     d = planet['system_distance']
 
@@ -256,11 +257,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         V_sin_i = planet['V_sin_i']
 
         if high_res == 'sysrem':
-            residuals, Us, Ws = fast_filter(data['data_raw'], iter=15)
+            data_raw = data['data_raw']
+            residuals, Us, Ws = fast_filter(data_raw, iter=15)
+            uncertainties = fit_uncertainties(data_raw, NPC=5)
         elif high_res == 'pca':
             data_scale = data['data_scale']
             data_arr = data['data_arr']
-
 
     # Create variable governing if a mixing ratio parameter combination lies in 
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
@@ -629,20 +631,14 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             
             # Quit if given parameter combination is unphysical
             return loglikelihood
+
         if high_res:
-            K_p = high_res_params[0]
-            V_sys = high_res_params[1]
-            log_a = high_res_params[2]
-            dPhi = high_res_params[3]
             if high_res == 'sysrem':
-                loglikelihood = log_likelihood_Gibson(F_s_obs, spectrum, wl, K_p, V_sys,
-                                                    log_a, dPhi, wl_grid, residuals, 
-                                                    Us, V_bary, Phi, V_sin_i)
-                
+                loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, high_res_params, 
+                                                model, high_res_param_names, residuals=residuals, uncertainties=uncertainties, Us=Us)
             elif high_res == 'pca':
-                loglikelihood = log_likelihood(F_s_obs, spectrum, wl, K_p, V_sys,
-                                                log_a, dPhi, wl_grid, data_arr, 
-                                                data_scale, V_bary, Phi, V_sin_i)[0]
+                loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, high_res_params, 
+                                                model, high_res_param_names, data_arr=data_arr, data_scale=data_scale)
 
             return loglikelihood
             

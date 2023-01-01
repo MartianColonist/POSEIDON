@@ -85,8 +85,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             If using the Iceberg cloud model, True disables the kappa parameter.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
-        high_res (bool):
-            If True, define a model for high resolutional retrieval.
+        high_res (list of str):
+            If not None, define a model for high resolutional retrieval.
 
     Returns:
         params (np.array of str):
@@ -553,7 +553,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     #***** High resolutional retrieval parameters *****#
     
     if high_res:
-        high_res_params += ['K_p', 'V_sys', 'log_a', 'dPhi']
+        high_res_params += high_res
         params += high_res_params
         N_high_res_params = len(high_res_params)
     else:
