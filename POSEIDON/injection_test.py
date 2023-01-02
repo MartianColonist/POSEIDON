@@ -109,7 +109,7 @@ prior_ranges['a2'] = [0.02, 1]
 prior_ranges['log_P1'] = [-5.5, 2.5]
 prior_ranges['log_P2'] = [-5.5, 2.5]
 prior_ranges['log_P3'] = [-2, 2]
-prior_ranges['K_p'] = [180, 220]
+prior_ranges['K_p'] = [170, 230]
 prior_ranges['V_sys'] = [-20, 20]
 prior_ranges['log_a'] = [-1, 1]
 prior_ranges['dPhi'] = [-0.01, 0.01]
@@ -146,6 +146,31 @@ log_P_fine = np.arange(log_P_fine_min, (log_P_fine_max + log_P_fine_step),
 # Now we can pre-interpolate the sampled opacities (may take up to a minute)
 opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
+# from POSEIDON.core import make_atmosphere
+# import numpy as np
+
+# # Specify the pressure grid of the atmosphere
+# P_min = 1.0e-5    # 0.1 ubar
+# P_max = 100       # 100 bar
+# N_layers = 100    # 100 layers
+
+# # We'll space the layers uniformly in log-pressure
+# P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
+
+# # Specify the reference pressure and radius
+# P_ref = 1e-5   # Reference pressure (bar)
+# R_p_ref = R_p  # Radius at reference pressure
+
+# # Provide a specific set of model parameters for the atmosphere 
+# PT_params = np.array([0.38, 0.56, 0.17, -1.39, 0.36, 931])   # ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_ref']
+# log_X_params = np.array([-3.93, -3.77])   # log(H2O), log(CH4)
+
+# # Generate the atmosphere
+# atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, 
+#                              PT_params, log_X_params)
+
+
+
 # # %%
 # from POSEIDON.core import compute_spectrum
 
@@ -156,8 +181,8 @@ opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
 # from scipy import interpolate, constants
 
-# V_sys = 0
-# K_p = 100
+# V_sys = -10
+# K_p = 190
 # V_bary = data['V_bary']
 # K_s = 0
 # Phi = data['Phi']
@@ -208,7 +233,6 @@ N_layers = 100    # 100 layers
 P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
 # Specify the reference pressure and radius
-# P_ref = 10.0   # Reference pressure (bar)
 P_ref = 1e-5   # Reference pressure (bar)
 
 #***** Run atmospheric retrieval *****#

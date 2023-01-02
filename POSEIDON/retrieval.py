@@ -21,7 +21,7 @@ from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
                      write_retrieved_log_X, confidence_intervals
 from .core import make_atmosphere, compute_spectrum
 from .stellar import precompute_stellar_spectra, stellar_contamination_single_spot
-from .high_res import log_likelihood, sysrem, log_likelihood_Gibson, fast_filter, fit_uncertainties
+from .high_res import log_likelihood, sysrem, fast_filter, fit_uncertainties
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -258,7 +258,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         if high_res == 'sysrem':
             data_raw = data['data_raw']
-            residuals, Us, Ws = fast_filter(data_raw, iter=15)
+            data_norm = np.zeros(data_raw.shape)
+            for i in range(len(data_raw)):
+                order = data_raw[i]
+                order_norm = (order.T / np.median(order, axis=1)).T
+                data_norm[i] = order_norm
+            residuals, Us, Ws = fast_filter(data_norm, iter=15)
             uncertainties = fit_uncertainties(data_raw, NPC=5)
         elif high_res == 'pca':
             data_scale = data['data_scale']

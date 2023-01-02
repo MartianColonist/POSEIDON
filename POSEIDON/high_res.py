@@ -90,7 +90,8 @@ def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_sca
     # Time-resolved total radial velocity
     RV_p = V_sys + V_bary + K_p * np.sin(2 * np.pi * (Phi + dPhi))  # V_sys is an additive term around zero   
     dl_p = RV_p * 1e3 / constants.c # delta lambda, for shifting
-    RV_s = V_sys + V_bary + 0 # Velocity of the star is very small compared to planet's velocity and it's already be corrected
+    RV_s = 0 # Velocity of the star is very small compared to planet's velocity and it's already be corrected
+    # RV_s = (V_sys + V_bary - K_s * np.sin(2 * np.pi * Phi)) * 0
     dl_s = RV_s * 1e3 / constants.c # delta lambda, for shifting
     
     loglikelihood = 0
@@ -171,7 +172,7 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Us, V_bary
                 f2 = f.dot(f / uncertainties[j, i])
                 CCF = f.dot(m / uncertainties[j, i])
 
-                loglikelihood -= 0.5 * N * np.log(sf2 + sg2 - 2.0*CCF) / (b ** 2)
+                loglikelihood -= 0.5 * N * np.log(m2 + f2 - 2.0*CCF) / (b ** 2)
                 
     return loglikelihood
 
@@ -263,15 +264,14 @@ def log_likelihood(F_s_obs, F_p_obs, wl, wl_grid, V_bary, Phi, V_sin_i, model, h
     yker = np.exp(-0.5 * (xker / sigma) ** 2.0)   # instrumental broadening kernel; not understand
     yker /= yker.sum()
     F_p_conv = np.convolve(F_p_rot, yker, mode='same') * a
-    F_s_conv = np.convolve(F_s_obs, yker, mode='same')
-
     cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p, F_s are already observed value on Earth
-    cs_s = interpolate.splrep(wl, F_s_conv, s=0.0)
 
     if data_arr and data_scale:
+        F_s_conv = np.convolve(F_s_obs, yker, mode='same')
+        cs_s = interpolate.splrep(wl, F_s_conv, s=0.0)
         return log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
-    elif residuals and Us:
-        return log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, residuals, Us, V_bary, Phi, uncertainties, b)
+    elif residuals and uncertainties and Us:
+        return log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Us, V_bary, Phi, uncertainties, b)
     else:
         raise Exception('Problem in high res retreival data.')
 
@@ -398,9 +398,6 @@ def make_data_cube(data, wl_grid):
     return data_scale, data_arr
 
 
-
-
-
 def cross_correlate(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, data_arr, data_scale, V_bary, Phi):
     '''
     Cross correlate at an array of Keplerian velocities and an array of centered system velocities given the observed flux.
@@ -492,7 +489,7 @@ def fit_uncertainties(data_raw, NPC=5):
         loglikelihood = -0.5 * np.sum((data_raw / sigma) ** 2) - np.sum(np.log(sigma))
         return -loglikelihood
 
-    a, b = minimize(fun).x
+    a, b = minimize(fun, (1, 0)).x
 
     best_fit = np.sqrt(a * data_raw + b)
 
