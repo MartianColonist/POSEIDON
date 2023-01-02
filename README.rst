@@ -30,7 +30,7 @@ If you use POSEIDON in your work, please cite `MacDonald & Madhusudhan (2017)
 License
 -------
 
-Copyright 2022 Ryan J. MacDonald
+Copyright 2023 Ryan J. MacDonald
 
 POSEIDON is available under the BSD 3-Clause License.
 Please see the LICENSE file for more information.
@@ -39,7 +39,7 @@ Support
 -------
 
 POSEIDON is currently in the open beta stage of testing, so any feedback, bug reports,
-or questions are certainly welcome! Please reach out to rmacdonald@astro.cornell.edu 
+or questions are certainly welcome! Please reach out to ryanjmac@umich.edu
 
 
 .. image:: https://readthedocs.org/projects/poseidon-retrievals/badge/?version=latest
@@ -50,6 +50,13 @@ or questions are certainly welcome! Please reach out to rmacdonald@astro.cornell
    :target: https://github.com/MartianColonist/POSEIDON/blob/main/LICENSE
    :alt: GitHub License
 
+.. image:: https://img.shields.io/github/workflow/status/MartianColonist/POSEIDON/pytest_testing/documentation?
+   :target: https://github.com/MartianColonist/POSEIDON/actions
+   :alt: Test Status
+
 .. image:: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5/status.svg
    :target: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5
    :alt: Journal of Open Source Software Paper Status
+
+
+
