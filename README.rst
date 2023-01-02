@@ -50,7 +50,7 @@ or questions are certainly welcome! Please reach out to ryanjmac@umich.edu
    :target: https://github.com/MartianColonist/POSEIDON/blob/main/LICENSE
    :alt: GitHub License
 
-.. image:: https://img.shields.io/github/workflow/status/MartianColonist/POSEIDON/pytest_testing/documentation?
+.. image:: https://img.shields.io/github/workflow/status/MartianColonist/POSEIDON/pytest_testing/documentation_update?
    :target: https://github.com/MartianColonist/POSEIDON/actions
    :alt: Test Status
 
