@@ -747,7 +747,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
         N_P = len(log_P_grid)                            # No. of pressures in opacity files
         
         # Initialise array of indices on pre-calculated pressure opacity grid prior to defined atmosphere layer pressures
-        x = np.zeros(N_P_fine, dtype=np.int)
+        x = np.zeros(N_P_fine, dtype=np.int64)
         
         # Weights
         w_P = np.zeros(N_P_fine)
@@ -799,7 +799,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             nu_cia_q = np.array(cia_file[cia_pair_q + '/nu'])
         
             # Evaluate temperature interpolation weighting factor
-            y_cia_q = np.zeros(N_T_fine, dtype=np.int)   # Index of T in CIA arrays prior to fine temperature value
+            y_cia_q = np.zeros(N_T_fine, dtype=np.int64)   # Index of T in CIA arrays prior to fine temperature value
             w_T_cia_q = T_interpolation_init(N_T_fine, T_grid_cia_q, T_fine, y_cia_q)   # Weighting factor
             
             # Read in log10(binary cross section) for specified CIA pair
