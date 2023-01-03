@@ -3,7 +3,7 @@ import os
 
 setup(
     name = 'POSEIDON',
-    version = '0.9.2',
+    version = '0.9.3',
     description = 'Exoplanet atmospheric retrieval package',
     long_description = open(os.path.join(
                             os.path.dirname(__file__), 'README.rst')).read(),
@@ -25,6 +25,7 @@ setup(
                         'pysynphot',
                         'pymultinest',
                         'spectres',
-                        'jupyter'],
+                        'jupyter',
+                        'pytest'],
     zip_safe = False,
 )
