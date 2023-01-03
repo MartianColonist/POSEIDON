@@ -37,7 +37,9 @@ jobs:
         wget https://drive.google.com/file/d/1hYLTzIy7cVicqGU8LHmLnq-3WQuyKISX/view?usp=share_link -O input/opacity/Opacity_database_0.01cm-1_Temperate.hdf5
         wget https://drive.google.com/file/d/1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_/view?usp=share_link -O input/opacity/Opacity_database_cia.hdf5
         wget https://drive.google.com/file/d/1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C/view?usp=share_link -O input/stellar_grids.zip
-        unzip input/stellar_grids.zip -d input
+    - name: Extract input files
+      run: |
+        tar -xf input/stellar_grids.zip -C input
     - name: Set environment variables
       run: |
         echo 'export POSEIDON_input_data=input/opacity' >> $GITHUB_ENV
