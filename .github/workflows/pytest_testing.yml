@@ -65,6 +65,7 @@ jobs:
         sudo apt-get autoclean -y >/dev/null 2>&1
         sudo rm -rf /usr/local/lib/android >/dev/null 2>&1
         docker rmi $(docker image ls -aq) >/dev/null 2>&1
+        df -h
 
     - name: Set up Anaconda
       uses: conda-incubator/setup-miniconda@v2
@@ -97,10 +98,11 @@ jobs:
         mkdir -p inputs/opacity
         conda activate test_install || true
         pip install zenodo_get
-        zenodo_get --file stellar_grids.zip 7500292 -O inputs/stellar_grids.zip
-        zenodo_get --file Opacity_database_0.01cm-1_Temperate.hdf5 7500292 -O inputs/opacity/Opacity_database_0.01cm-1_Temperate.hdf5
-        zenodo_get --file Opacity_database_cia.hdf5 7500292 -O inputs/opacity/Opacity_database_cia.hdf5
-        zenodo_get --file Opacity_database_0.01cm-1.hdf5 7500292 -O inputs/opacity/Opacity_database_0.01cm-1.hdf5
+        zenodo_get 7500292 
+        mv stellar_grids.zip inputs/
+        mv Opacity_database_0.01cm-1_Temperate.hdf5 inputs/opacity/
+        mv Opacity_database_cia.hdf5 inputs/opacity/
+        mv Opacity_database_0.01cm-1.hdf5 inputs/opacity/
 
     - name: Extract input files
       run: |
