@@ -30,7 +30,7 @@ jobs:
     - name: Initialize conda
       run: conda init bash
     - name: Reopen shell
-      shell: bash
+      run: bash
     - name: Create Anaconda environment
       run: |
         conda create -n env python=${{ matrix.python-version }} -y
