@@ -1,7 +1,6 @@
 import pytest
 
 
-
 def test_Rayleigh():
     '''
     Test POSEIDON's forward model, TRIDENT, against an analytic expression
@@ -14,7 +13,6 @@ def test_Rayleigh():
                               make_atmosphere, read_opacities, compute_spectrum, \
                               wl_grid_constant_R
     from POSEIDON.absorption import Rayleigh_cross_section
-    from POSEIDON.utility import round_sig_figs
     import scipy.constants as sc
     from scipy.special import expn
     import numpy as np
@@ -157,4 +155,3 @@ def test_Rayleigh():
 
 
 test_Rayleigh()
-#test_retrieval()
