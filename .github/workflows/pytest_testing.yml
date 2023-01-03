@@ -32,6 +32,7 @@ jobs:
         conda install -c conda-forge pymultinest -y
     - name: Download input files
       run: |
+        mkdir -p input/opacity
         wget https://drive.google.com/file/d/1Rk_6sbIYC8c9La0fWHWpMPve6Jik7a3h/view?usp=share_link -O input/opacity/Opacity_database_0.01cm-1.hdf5
         wget https://drive.google.com/file/d/1hYLTzIy7cVicqGU8LHmLnq-3WQuyKISX/view?usp=share_link -O input/opacity/Opacity_database_0.01cm-1_Temperate.hdf5
         wget https://drive.google.com/file/d/1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_/view?usp=share_link -O input/opacity/Opacity_database_cia.hdf5
