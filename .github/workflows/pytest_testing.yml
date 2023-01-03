@@ -42,14 +42,10 @@ jobs:
       run: |
         echo "begin: PATH=$PATH;"
         conda create --name test_install python=${{ matrix.python-version }} -y
-        conda activate test_install || true
-    - name: Install mpi4py
+    - name: Install mpi4py and pymultinest
       run: |
         conda activate test_install || true
         conda install -c conda-forge mpi4py -y
-    - name: Install pymultinest
-      run: |
-        conda activate test_install || true
         conda install -c conda-forge pymultinest -y
     - name: Install POSEIDON
       run: |
@@ -59,10 +55,12 @@ jobs:
     - name: Download input files
       run: |
         mkdir -p inputs/opacity
-        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C" -O inputs/stellar_grids.zip && rm -rf /tmp/cookies.txt
-        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1Rk_6sbIYC8c9La0fWHWpMPve6Jik7a3h' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1Rk_6sbIYC8c9La0fWHWpMPve6Jik7a3h" -O inputs/opacity/Opacity_database_0.01cm-1.hdf5 && rm -rf /tmp/cookies.txt
-        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
-        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1hYLTzIy7cVicqGU8LHmLnq-3WQuyKISX' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1hYLTzIy7cVicqGU8LHmLnq-3WQuyKISX" -O inputs/opacity/Opacity_database_0.01cm-1_Temperate.hdf5 && rm -rf /tmp/cookies.txt
+        conda activate test_install || true
+        pip install zenodo_get
+        zenodo_get --file stellar_grids.zip 7500292 -O inputs/stellar_grids.zip
+        zenodo_get --file Opacity_database_0.01cm-1_Temperate.hdf5 7500292 -O inputs/opacity/Opacity_database_0.01cm-1_Temperate.hdf5
+        zenodo_get --file Opacity_database_cia.hdf5 7500292 -O inputs/opacity/Opacity_database_cia.hdf5
+        zenodo_get --file Opacity_database_0.01cm-1.hdf5 7500292 -O inputs/opacity/Opacity_database_0.01cm-1.hdf5
     - name: Extract input files
       run: |
         unzip inputs/stellar_grids.zip -d inputs
