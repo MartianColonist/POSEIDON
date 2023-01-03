@@ -23,7 +23,8 @@ jobs:
         python-version: [3.9] 
     steps:
     - uses: actions/checkout@v3
-    - name: free disk space
+
+    - name: Free disk space
       run: |
         sudo apt-get remove aria2 ansible azure-cli shellcheck rpm xorriso zsync \
           clang-6.0 lldb-6.0 lld-6.0 clang-format-6.0 clang-8 lldb-8 lld-8 clang-format-8 \
@@ -93,16 +94,33 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
 
+    - name: Restore cached input files (if already downloaded)
+      if: steps.cache.outputs.cache-hit == 'true'
+      uses: actions/cache@v2
+      with:
+        path: |
+          inputs/opacity
+          inputs/stellar_grids
+        key: ${{ runner.os }}-${{ hashFiles('inputs/opacity/*') }}-${{ hashFiles('inputs/stellar_grids/*') }}
+
     - name: Download input files
+      if: steps.restore_cache.outputs.cache-hit != 'true'
       run: |
         mkdir -p inputs/opacity
-        conda activate test_install || true
-        pip install zenodo_get
-        zenodo_get 7500292 
-        mv stellar_grids.zip inputs/
-        mv Opacity_database_0.01cm-1_Temperate.hdf5 inputs/opacity/
-        mv Opacity_database_cia.hdf5 inputs/opacity/
-        mv Opacity_database_0.01cm-1.hdf5 inputs/opacity/
+        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1JPWlorWm48WKqI_XPs7OKZ3_0_8VyoXc' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1JPWlorWm48WKqI_XPs7OKZ3_0_8VyoXc" -O inputs/stellar_grids.zip && rm -rf /tmp/cookies.txt
+        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1_jGwMyfhutVZxC0OSklcVnsvPck_sCtj' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1_jGwMyfhutVZxC0OSklcVnsvPck_sCtj" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
+        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1ajoOsCRN8DaUNHVd3KrC2rtA7BkNtUrc' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1ajoOsCRN8DaUNHVd3KrC2rtA7BkNtUrc" -O inputs/opacity/Opacity_database_0.01cm-1_Temperate.hdf5 && rm -rf /tmp/cookies.txt
+
+    - name: Cache downloaded files
+      if: steps.restore_cache.outputs.cache-hit != 'true'
+      uses: actions/cache@v2
+      with:
+        path: |
+          inputs/opacity
+          inputs/stellar_grids
+        key: ${{ runner.os }}-${{ hashFiles('inputs/opacity/*') }}-${{ hashFiles('inputs/stellar_grids/*') }}
+        restore-keys: |
+          ${{ runner.os }}-
 
     - name: Extract input files
       run: |
