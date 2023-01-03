@@ -38,12 +38,15 @@ jobs:
         conda activate test_install || true
     - name: Install mpi4py
       run: |
+        conda activate test_install || true
         conda install -c conda-forge mpi4py -y
     - name: Install pymultinest
       run: |
+        conda activate test_install || true
         conda install -c conda-forge pymultinest -y
-    - name: Install package
+    - name: Install POSEIDON
       run: |
+        conda activate test_install || true
         python -m pip install --upgrade pip
         pip install -e .
     - name: Run tests
