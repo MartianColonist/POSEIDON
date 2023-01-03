@@ -39,7 +39,7 @@ jobs:
         wget https://drive.google.com/file/d/1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C/view?usp=share_link -O input/stellar_grids.zip
     - name: Extract input files
       run: |
-        tar -xf input/stellar_grids.zip -C input
+        tar -xf input/stellar_grids.zip -C input -I unzip
     - name: Set environment variables
       run: |
         echo 'export POSEIDON_input_data=input/opacity' >> $GITHUB_ENV
