@@ -14,6 +14,9 @@ jobs:
   test:
     name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
     strategy:
       matrix:
         os: [ubuntu-latest]
@@ -21,15 +24,18 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Set up Anaconda
-      uses: actions/setup-python@v3
+      uses: conda-incubator/setup-miniconda@v2
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Add conda to PATH
+        miniconda-version: "latest"
+        channels: conda-forge, defaults
+        use-only-tar-bz2: true
+        auto-update-conda: true
+        auto-activate-base: true
+    - name: Create conda environment
       run: |
-        echo 'export PATH=${{ steps.setup-python.outputs.home }}/bin:$PATH' >> $GITHUB_ENV
-    - name: Install Python
-      run: |
-        conda install python=${{ matrix.python-version }} -y
+        echo "begin: PATH=$PATH;"
+        conda create --name test_install python=3.9 -y
+        conda activate test_install || true
     - name: Install mpi4py
       run: |
         conda install -c conda-forge mpi4py -y
