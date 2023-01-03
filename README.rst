@@ -50,10 +50,6 @@ or questions are certainly welcome! Please reach out to ryanjmac@umich.edu
    :target: https://github.com/MartianColonist/POSEIDON/blob/main/LICENSE
    :alt: GitHub License
 
-.. image:: https://img.shields.io/github/workflow/status/MartianColonist/POSEIDON/pytest_testing/documentation_update?
-   :target: https://github.com/MartianColonist/POSEIDON/actions
-   :alt: Test Status
-
 .. image:: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5/status.svg
    :target: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5
    :alt: Journal of Open Source Software Paper Status
