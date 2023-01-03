@@ -65,4 +65,5 @@ jobs:
         echo 'export PYSYN_CDBS=inputs/stellar_grids' >> $GITHUB_ENV
     - name: Run tests
       run: |
+        conda activate test_install || true
         pytest
