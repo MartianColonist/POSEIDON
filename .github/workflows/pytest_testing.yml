@@ -29,6 +29,8 @@ jobs:
         echo 'export PATH=${{ steps.setup-python.outputs.home }}/bin:$PATH' >> $GITHUB_ENV
     - name: Initialize conda
       run: conda init bash
+    - name: Reopen shell
+      shell: bash
     - name: Create Anaconda environment
       run: |
         conda create -n env python=${{ matrix.python-version }} -y
