@@ -24,6 +24,9 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Add conda to PATH
+      run: |
+        echo 'export PATH=${{ steps.setup-python.outputs.home }}/bin:$PATH' >> $GITHUB_ENV
     - name: Create Anaconda environment
       run: |
         ${{ steps.setup-python.outputs.home }}/bin/conda create -n env python=${{ matrix.python-version }} -y
