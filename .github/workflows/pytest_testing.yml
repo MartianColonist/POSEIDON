@@ -27,6 +27,9 @@ jobs:
     - name: Add conda to PATH
       run: |
         echo 'export PATH=${{ steps.setup-python.outputs.home }}/bin:$PATH' >> $GITHUB_ENV
+    - name: Install Python
+      run: |
+        conda install python=${{ matrix.python-version }} -y
     - name: Install mpi4py
       run: |
         conda install -c conda-forge mpi4py -y
