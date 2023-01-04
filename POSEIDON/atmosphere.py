@@ -757,7 +757,7 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
         n (3D np.array of float):
             Number density profile (m^-3).
         r (3D np.array of float):
-            Radial distant profile (m).
+            Radial distance profile (m).
         r_up (3D np.array of float):
             Upper layer boundaries (m).
         r_low (3D np.array of float):
