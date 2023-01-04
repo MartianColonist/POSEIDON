@@ -1172,7 +1172,7 @@ def generate_latex_param_names(param_names):
         if ('bar' in components_sort):
             
             # Begin LaTeX string with open overline bracket
-            latex_name += '\overline{'
+            latex_name += '\\overline{'
             
             bar_bracket_open = 1
             

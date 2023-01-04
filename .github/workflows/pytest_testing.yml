@@ -58,34 +58,17 @@ jobs:
         python -m pip install --upgrade pip
         pip install -e .
 
-    - name: Restore cached input files (if already downloaded)
-      if: steps.cache.outputs.cache-hit == 'true'
-      uses: actions/cache@v2
-      with:
-        path: |
-          inputs/opacity
-          inputs/stellar_grids
-        key: ${{ runner.os }}-${{ hashFiles('inputs/opacity/*') }}-${{ hashFiles('inputs/stellar_grids/*') }}
-
     - name: Download input files (only CIA opacity for CI tests)
       if: steps.restore_cache.outputs.cache-hit != 'true'
       run: |
         mkdir -p inputs/opacity
-        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
-
-    - name: Cache downloaded files
-      if: steps.restore_cache.outputs.cache-hit != 'true'
-      uses: actions/cache@v2
-      with:
-        path: |
-          inputs/opacity
-        key: ${{ runner.os }}-${{ hashFiles('inputs/opacity/*') }}-${{ hashFiles('inputs/stellar_grids/*') }}
-        restore-keys: |
-          ${{ runner.os }}-
+        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
+        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C" -O inputs/stellar_grids.zip && rm -rf /tmp/cookies.txt
 
     - name: Set environment variables
       run: |
         echo "POSEIDON_input_data=$GITHUB_WORKSPACE/inputs/opacity/" >> $GITHUB_ENV
+        echo "PYSYN_CDBS=$GITHUB_WORKSPACE/inputs/stellar_grids/" >> $GITHUB_ENV
 
     - name: Run tests
       run: |
