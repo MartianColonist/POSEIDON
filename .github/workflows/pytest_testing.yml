@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.9', '3.10'] 
+        python-version: ['3.9'] 
     steps:
     - uses: actions/checkout@v3
 
@@ -71,8 +71,8 @@ jobs:
       if: steps.restore_cache.outputs.cache-hit != 'true'
       run: |
         mkdir -p inputs/opacity
-        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1JPWlorWm48WKqI_XPs7OKZ3_0_8VyoXc' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1JPWlorWm48WKqI_XPs7OKZ3_0_8VyoXc" -O inputs/stellar_grids.zip && rm -rf /tmp/cookies.txt
-        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1_jGwMyfhutVZxC0OSklcVnsvPck_sCtj' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1_jGwMyfhutVZxC0OSklcVnsvPck_sCtj" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
+        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C" -O inputs/stellar_grids.zip && rm -rf /tmp/cookies.txt
+        wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
 
     - name: Extract input files
       run: |
