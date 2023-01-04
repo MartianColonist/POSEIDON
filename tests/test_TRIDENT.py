@@ -97,7 +97,8 @@ def test_Rayleigh():
     log_P_fine = np.arange(log_P_fine_min, (log_P_fine_max + log_P_fine_step), 
                         log_P_fine_step)
 
-    opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
+    opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine,
+                          testing = True)
 
     # Remove H2-H2 CIA for this test
     opac['CIA_stored'] *= 0.0
