@@ -142,14 +142,14 @@ def T_interpolation_init(N_T_fine, T_grid, T_fine, y):
     
     w_T = np.zeros(N_T_fine)
     
-    # Find T index in cross secion arrays prior to fine temperature value
+    # Find T index in cross section arrays prior to fine temperature value
     for j in range(N_T_fine):
         
-        if (T_fine[j] < T_grid[0]):   # If fine temperature point falls off LHS of temperaure grid
+        if (T_fine[j] < T_grid[0]):   # If fine temperature point falls off LHS of temperature grid
             y[j] = -1                 # Special value (-1) stored, interpreted in interpellator
             w_T[j] = 0.0              # Weight not used in this case
             
-        elif (T_fine[j] >= T_grid[-1]):   # If fine temperature point falls off RHS of temperaure grid
+        elif (T_fine[j] >= T_grid[-1]):   # If fine temperature point falls off RHS of temperature grid
             y[j] = -2                     # Special value (-2) stored, interpreted in interpellator
             w_T[j] = 0.0                  # Weight not used in this case
         
@@ -660,7 +660,7 @@ def shared_memory_array(rank, comm, shape):
 
 def opacity_tables(rank, comm, wl_model, chemical_species, active_species, 
                    cia_pairs, ff_pairs, bf_species, T_fine, log_P_fine,
-                   opacity_database = 'High-T'):
+                   opacity_database = 'High-T', testing = False):
     ''' 
     Initialisation function to read in and pre-interpolate all opacities.
         
@@ -733,18 +733,27 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
                             "your .bashrc or .bash_profile to point to the " +
                             "directory containing the POSEIDON opacity database.")
         
-        # Open HDF5 files containing molecular + atomic opacities
-        if (opacity_database == 'High-T'):        # High T database
-            opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1.hdf5', 'r')  
-        elif (opacity_database == 'Temperate'):   # Low T database
-            opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
+        # If running the automated GitHub tests, don't read the opacity database
+        if (testing == True):
+            opac_file = ''
+            log_P_grid = np.array([-6, -5, -4, -3, -2, -1, 0, 1, 2])
+            N_P = len(log_P_grid)
+
+        # For all other applications
+        else:
+
+            # Open HDF5 files containing molecular + atomic opacities
+            if (opacity_database == 'High-T'):        # High T database
+                opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1.hdf5', 'r')  
+            elif (opacity_database == 'Temperate'):   # Low T database
+                opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
+
+            # Read P grid used in opacity files
+            log_P_grid = np.array(opac_file['H2O/log(P)'])   # Units: log10(P/bar) - H2O choice arbitrary, all P grids are the same
+            N_P = len(log_P_grid)                            # No. of pressures in opacity files
         
         # Open HDF5 files containing collision-induced absorption (CIA)
         cia_file = h5py.File(opacity_path + 'Opacity_database_cia.hdf5', 'r')
-        
-        #***** Read in P grid used in opacity files*****#
-        log_P_grid = np.array(opac_file['H2O/log(P)'])   # Units: log10(P/bar) - H2O choice arbitrary, all P grids are the same
-        N_P = len(log_P_grid)                            # No. of pressures in opacity files
         
         # Initialise array of indices on pre-calculated pressure opacity grid prior to defined atmosphere layer pressures
         x = np.zeros(N_P_fine, dtype=np.int64)
@@ -855,44 +864,46 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             
         #***** Process molecular and atomic opacities *****#
 
-        # Load molecular and atomic absorption cross sections
-        for q in range(N_species_active):
-                    
-            species_q = active_species[q]     # Chemical species name
-                
-            #***** Read in grids used in this opacity file*****#
-            T_grid_q = np.array(opac_file[species_q + '/T'])   
-            log_P_grid_q = np.array(opac_file[species_q + '/log(P)'])   # Units: log10(P/bar)
-            N_T_q = len(T_grid_q)      # Number of temperatures in this grid
-            N_P_q = len(log_P_grid_q)  # Number of pressures in this grid
-                
-            # Read in wavenumber array used in this opacity file
-            nu_q = np.array(opac_file[species_q + '/nu'])
-                
-            # Evaluate temperature interpolation weighting factor
-            y_q = np.zeros(N_T_fine, dtype=np.int)  # Index of T in cross section arrays prior to fine temperature value
-            w_T_q = T_interpolation_init(N_T_fine, T_grid_q, T_fine, y_q)   # Weighting factor
-    
-            # Read in log10(cross section) of specified molecule (only need float 32 accuracy for exponents)
-            log_sigma_q = np.array(opac_file[species_q + '/log(sigma)']).astype(np.float32)
-                
-            # Pre-interpolate cross section to model (P, wl) grid 
-            sigma_pre_inp_q = P_interpolate_wl_initialise_sigma(N_P_fine, N_T_q, N_P_q, 
-                                                                N_wl, log_sigma_q, x, nu_l,
-                                                                nu_model, nu_r, b1, b2, nu_q, 
-                                                                N_nu)
+        if (testing == False):  # The automated tests don't download the full cross sections
 
-            del log_sigma_q   # Clear raw cross section to free memory
-            
-            # Interpolate cross section to fine temperature grid
-            sigma_stored[q,:,:,:] = T_interpolate_sigma(N_P_fine, N_T_fine, N_T_q, 
-                                                        N_wl, sigma_pre_inp_q, T_grid_q, 
-                                                        T_fine, y_q, w_T_q)
+            # Load molecular and atomic absorption cross sections
+            for q in range(N_species_active):
+                        
+                species_q = active_species[q]     # Chemical species name
                     
-            del sigma_pre_inp_q, nu_q, w_T_q, y_q  
-            
-            if (rank == 0):
-                print(species_q + " done")
+                #***** Read in grids used in this opacity file*****#
+                T_grid_q = np.array(opac_file[species_q + '/T'])   
+                log_P_grid_q = np.array(opac_file[species_q + '/log(P)'])   # Units: log10(P/bar)
+                N_T_q = len(T_grid_q)      # Number of temperatures in this grid
+                N_P_q = len(log_P_grid_q)  # Number of pressures in this grid
+                    
+                # Read in wavenumber array used in this opacity file
+                nu_q = np.array(opac_file[species_q + '/nu'])
+                    
+                # Evaluate temperature interpolation weighting factor
+                y_q = np.zeros(N_T_fine, dtype=np.int)  # Index of T in cross section arrays prior to fine temperature value
+                w_T_q = T_interpolation_init(N_T_fine, T_grid_q, T_fine, y_q)   # Weighting factor
+        
+                # Read in log10(cross section) of specified molecule (only need float 32 accuracy for exponents)
+                log_sigma_q = np.array(opac_file[species_q + '/log(sigma)']).astype(np.float32)
+                    
+                # Pre-interpolate cross section to model (P, wl) grid 
+                sigma_pre_inp_q = P_interpolate_wl_initialise_sigma(N_P_fine, N_T_q, N_P_q, 
+                                                                    N_wl, log_sigma_q, x, nu_l,
+                                                                    nu_model, nu_r, b1, b2, nu_q, 
+                                                                    N_nu)
+
+                del log_sigma_q   # Clear raw cross section to free memory
+                
+                # Interpolate cross section to fine temperature grid
+                sigma_stored[q,:,:,:] = T_interpolate_sigma(N_P_fine, N_T_fine, N_T_q, 
+                                                            N_wl, sigma_pre_inp_q, T_grid_q, 
+                                                            T_fine, y_q, w_T_q)
+                        
+                del sigma_pre_inp_q, nu_q, w_T_q, y_q  
+                
+                if (rank == 0):
+                    print(species_q + " done")
             
         #***** Process Rayleigh scattering cross sections *****#
         
@@ -906,8 +917,10 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
         # Clear up storage
         del nu_l, nu_r, nu_model
         
-        opac_file.close()
         cia_file.close()
+
+        if (testing == False):
+            opac_file.close()
         
     # Force secondary processors to wait for the primary to finish interpolating cross sections
     node_comm.Barrier()
@@ -1292,7 +1305,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
    
     sigma_inp = np.zeros(shape=(N_layers, N_wl))   # Initialise output cross section
     
-    #***** Firstly, find the (exact) indicies in opacity wavenumber grid corresponding to edges of model wavenumber grid *****#
+    #***** Firstly, find the (exact) indices in opacity wavenumber grid corresponding to edges of model wavenumber grid *****#
 
     nu_opac_min = nu_opac[0]
     nu_opac_max = nu_opac[-1]
@@ -1310,7 +1323,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
     #***** Secondly, find pressure interpolation weighting factors *****#
     log_P = np.log10(P)  # Log of model pressure grid
     
-    # Array of indicies on opacity pressure opacity grid prior to model atmosphere layer pressures
+    # Array of indices on opacity pressure opacity grid prior to model atmosphere layer pressures
     x = np.zeros(N_layers).astype(np.int64) 
     
     w_P = np.zeros(N_layers)  # Pressure weights
@@ -1319,17 +1332,17 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
     b1 = np.zeros(shape=(N_layers))
     b2 = np.zeros(shape=(N_layers))
             
-    # Find closest P indicies in opacity grid corresponding to model layer pressures
+    # Find closest P indices in opacity grid corresponding to model layer pressures
     for i in range(N_layers):
         
         # If pressure below minimum, do not interpolate
         if (log_P[i] < log_P_grid[0]):
-            x[i] = -1      # Special value (1) used in opacity inialiser
+            x[i] = -1      # Special value (1) used in opacity initialiser
             w_P[i] = 0.0
         
         # If pressure above maximum, do not interpolate
         elif (log_P[i] >= log_P_grid[-1]):
-            x[i] = -2      # Special value (2) used in opacity inialiser
+            x[i] = -2      # Special value (2) used in opacity initialiser
             w_P[i] = 0.0
         
         else:
@@ -1342,14 +1355,14 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
         b1[i] = (1.0-w_P[i])
         b2[i] = w_P[i] 
         
-    # Note: temperaure interpolation indicies and weights passed through function arguments
+    # Note: temperature interpolation indices and weights passed through function arguments
 
     # Begin interpolation procedure
     for i in range(N_layers):   # Loop over model layers
         
         T_i = T[i]           # Layer temperature to interpolate to
-        T1 = T_grid[y[i]]    # Closest lower temperaure on opacity grid 
-        T2 = T_grid[y[i]+1]  # Closest higher temperaure on opacity grid 
+        T1 = T_grid[y[i]]    # Closest lower temperature on opacity grid 
+        T2 = T_grid[y[i]+1]  # Closest higher temperature on opacity grid 
         
         for k in range(N_nu):   # Loop over model wavenumbers
             
@@ -1365,7 +1378,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
                 # Find rectangle of stored opacity points located at [log_P1, log_P2, T1, T2, ]
                 log_sigma_PT_rectangle = reduced_log_sigma[x[i]:x[i]+2, y[i]:y[i]+2, k]
 
-                # Pressure interpolation is handled first, followed by temperaure interpolation
+                # Pressure interpolation is handled first, followed by temperature interpolation
                 # First, check for off-grid special cases
                 
                 # If layer P below minimum on opacity grid (1.0e-6 bar), set value to edge case
@@ -1379,12 +1392,12 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
                     elif (y[i] == -2):
                         sigma_inp[i, ((N_wl-1)-k)] = 10 ** (reduced_log_sigma[0, (N_T-1), k])  # No interpolation needed
                         
-                    # If desired temperaure is on opacity grid, set T1 and T2 values to those at min P on grid
+                    # If desired temperature is on opacity grid, set T1 and T2 values to those at min P on grid
                     else:
                         sig_T1 = 10 ** (reduced_log_sigma[0, y[i], k])     
                         sig_T2 = 10 ** (reduced_log_sigma[0, y[i]+1, k])
                         
-                        # Only need to interpolate over temperaure interpolate cross section to layer temperature                    
+                        # Only need to interpolate over temperature interpolate cross section to layer temperature                    
                         sigma_inp[i, ((N_wl-1)-k)] =  (np.power(sig_T1, (w_T[i]*((1.0/T2) - (1.0/T_i)))) *
                                                        np.power(sig_T2, (w_T[i]*((1.0/T_i) - (1.0/T1)))))
                     
@@ -1399,7 +1412,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
                     elif (y[i] == -2):
                         sigma_inp[i, ((N_wl-1)-k)] = 10 ** (reduced_log_sigma[(N_P-1), (N_T-1), k])  # No interpolation needed
                         
-                    # If desired temperaure is on opacity grid, set T1 and T2 values to those at maximum P on grid             
+                    # If desired temperature is on opacity grid, set T1 and T2 values to those at maximum P on grid             
                     else:
                         sig_T1 = 10 ** (reduced_log_sigma[(N_P-1), y[i], k])
                         sig_T2 = 10 ** (reduced_log_sigma[(N_P-1), y[i]+1, k])
@@ -1429,7 +1442,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
 def store_Rayleigh_eta_LBL(wl_model, chemical_species):
     
     ''' In line-by-line case, output refractive index array (eta) and
-        Rayleigh scattering seperately from main extinction calculation.
+        Rayleigh scattering separately from main extinction calculation.
         
         This is simply to pass eta to profiles.py, where it is needed.
     

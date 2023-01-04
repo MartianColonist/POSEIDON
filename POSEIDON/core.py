@@ -470,7 +470,7 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
 
 def read_opacities(model, wl, opacity_treatment = 'opacity_sampling', 
                    T_fine = None, log_P_fine = None, opacity_database = 'High-T',
-                   device = 'cpu'):
+                   device = 'cpu', testing = False):
     '''
     Load the various cross sections required by a given model. When using 
     opacity sampling, the native high-resolution are pre-interpolated onto 
@@ -495,6 +495,10 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         opacity_database (str):
             Choice between high-temperature or low-temperature opacity databases
             (Options: High-T / Temperate).
+        testing (bool):
+            For GitHub Actions automated tests. If True, disables reading the 
+            full opacity database (since GitHub Actions can't handle downloading 
+            the full database - alas, 30+ GB is a little too large!).
     
     Returns:
         opac (dict):
@@ -526,7 +530,8 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         ff_stored, bf_stored = opacity_tables(rank, comm, wl, chemical_species, 
                                               active_species, CIA_pairs, 
                                               ff_pairs, bf_species, T_fine,
-                                              log_P_fine, opacity_database)
+                                              log_P_fine, opacity_database, 
+                                              testing)
                     
     elif (opacity_treatment == 'line_by_line'):   
         
