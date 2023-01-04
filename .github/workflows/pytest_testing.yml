@@ -20,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: [3.9] 
+        python-version: ['3.9', '3.10'] 
     steps:
     - uses: actions/checkout@v3
 
@@ -97,4 +97,4 @@ jobs:
     - name: Run tests
       run: |
         conda activate test_install || true
-        pytest test_TRIDENT.py
+        pytest /tests/test_TRIDENT.py
