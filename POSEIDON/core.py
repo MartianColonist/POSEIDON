@@ -474,7 +474,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
     '''
     Load the various cross sections required by a given model. When using 
     opacity sampling, the native high-resolution are pre-interpolated onto 
-    'fine' temperature and pressure grids, then sampled onto the desired 
+    'fine' temperature and pressure grids, then sampled onto the desired
     wavelength grid, and stored in memory. This removes the need to interpolate 
     opacities during a retrieval. For line-by-line models, this function only
     stores Rayleigh scattering cross sections in memory (cross section 
