@@ -39,7 +39,7 @@ Copyright 2023 Ryan J. MacDonald
 POSEIDON is available under the BSD 3-Clause License.
 Please see the LICENSE file for more information.
 
-Support
+Contributing to POSEIDON
 -------
 
 POSEIDON is currently in the open beta stage of testing, so any feedback, bug reports,
@@ -53,6 +53,10 @@ or questions are certainly welcome! Please reach out to ryanjmac@umich.edu
 .. image:: https://img.shields.io/badge/License-BSD_3--Clause-blue.svg
    :target: https://github.com/MartianColonist/POSEIDON/blob/main/LICENSE
    :alt: GitHub License
+
+.. image:: https://github.com/MartianColonist/POSEIDON/actions/workflows/pytest_testing.yml/badge.svg
+   :target: https://github.com/MartianColonist/POSEIDON/actions/workflows/pytest_testing.yml
+   :alt: Pytest Test Suite Status
 
 .. image:: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5/status.svg
    :target: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5

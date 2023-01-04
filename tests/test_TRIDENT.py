@@ -155,4 +155,4 @@ def test_Rayleigh():
     print("Forward model test passed - TRIDENT is ready for action!")
 
 
-test_Rayleigh()
+#test_Rayleigh()
