@@ -91,9 +91,8 @@ jobs:
 
     - name: Set environment variables
       run: |
-        echo 'export POSEIDON_input_data=inputs/opacity' >> $GITHUB_ENV
-        echo 'export PYSYN_CDBS=inputs/stellar_grids' >> $GITHUB_ENV
-        source ~/.bashrc
+        export POSEIDON_input_data=inputs/opacity
+        export PYSYN_CDBS=inputs/stellar_grids
 
     - name: Run tests
       run: |
