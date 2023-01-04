@@ -11,13 +11,15 @@ tags:
 authors:
   - name: Ryan J. MacDonald
     orcid: 0000-0003-4816-3469
-    affiliation: "1, 2"
+    affiliation: "1, 2, 3"
 affiliations:
   - name: Department of Astronomy, University of Michigan, 1085 S. University Ave., Ann Arbor, MI 48109, USA
     index: 1
-  - name: Department of Astronomy and Carl Sagan Institute, Cornell University, 122 Sciences Drive, Ithaca, NY 14853, USA
+  - name: NHFP Sagan Fellow
     index: 2
-date: 04 November 2022
+  - name: Department of Astronomy and Carl Sagan Institute, Cornell University, 122 Sciences Drive, Ithaca, NY 14853, USA
+    index: 3
+date: 04 January 2023
 bibliography: paper.bib
 
 aas-doi: 10.3847/1538-4357/ac47fe
@@ -33,7 +35,7 @@ Exoplanet atmospheres are a dynamic and fast-changing field at the frontier of m
 
 # Exoplanet Modelling and Atmospheric Retrieval with `POSEIDON`
 
-The first major use case for `POSEIDON` is 'forward modelling' --- illustrated on the left of \autoref{fig:POSEIDON_architecture}. A user can generate a model planet spectrum, for a given star-planet system, by providing a specific set of atmospheric properties (e.g. the chemical composition and temperature). The forward model mode allows users to explore how atmospheric properties alter an exoplanet spectrum and to produce predicted model spectra for observing proposals. The required input files (pre-computed stellar grids and an opacity database) are available to download from a Zenodo repository (linked in the documentation).
+The first major use case for `POSEIDON` is 'forward modelling' --- illustrated on the left of \autoref{fig:POSEIDON_architecture}. A user can generate a model planet spectrum, for a given star-planet system, by providing a specific set of atmospheric properties (e.g. the chemical composition and temperature). The forward model mode allows users to explore how atmospheric properties alter an exoplanet spectrum and to produce predicted model spectra for observing proposals. The required input files (pre-computed stellar grids and an opacity database) are available to download from an online repository (linked in the documentation).
 
 The second major use case for `POSEIDON` is atmospheric retrieval --- illustrated on the right of \autoref{fig:POSEIDON_architecture}. To initialise a retrieval, a user provides an observed exoplanet spectrum and the range of atmospheric properties to be explored (i.e. the prior ranges for a set of free parameters defining a model). A Bayesian statistical sampling algorithm --- nominally [`PyMultiNest`](https://github.com/JohannesBuchner/PyMultiNest) [@Buchner:2014] --- then repeatedly calls the forward model, comparing the generated spectrum to the observations, until the parameter space is fully explored and a convergence criteria reached. The main outputs of an atmospheric retrieval are the posterior probability distributions of the model parameters and the model's Bayesian evidence. The Bayesian evidences from multiple retrievals, in turn, can be subsequently compared to compute detection significances for each model component (e.g. the statistical confidence for a molecule being present in the planetary atmosphere).
 
@@ -45,9 +47,13 @@ The second major use case for `POSEIDON` is atmospheric retrieval --- illustrate
 
 Recent years have seen a substantial improvement in the number of high-quality exoplanet spectra. In particular, the newly operational JWST and a profusion of high-resolution ground-based spectrographs offer an abundance of exoplanet data. The accurate interpretation of such data requires a retrieval code that can rapidly explore complex parameter spaces describing a rich variety of atmospheric phenomena.
 
-`POSEIDON` provides the capability to model and retrieve planets with inhomogeneous temperatures, compositions, and cloud properties (i.e. 2D or 3D models). Several studies have highlighted that not including these multidimensional effects can bias retrieval inferences [e.g., @Line:2016;  @Caldas:2019; @MacDonald:2020; @Pluriel:2022]. However, existing open-source exoplanet retrieval codes assume 1D atmospheres for computational efficiency. `POSEIDON` therefore offers an open-source implementation of state-of-the-art multidimensional retrieval methods [see @MacDonald:2022 and MacDonald & Lewis (in prep.)] to aid the interpretation of high-quality exoplanet spectra.
+`POSEIDON` provides the capability to model and retrieve transmission spectra of planets with inhomogeneous temperatures, compositions, and cloud properties (i.e. 2D or 3D models). Several studies have highlighted that not including these multidimensional effects can bias retrieval inferences [e.g., @Line:2016;  @Caldas:2019; @MacDonald:2020; @Pluriel:2022]. However, existing open-source exoplanet retrieval codes assume 1D atmospheres for computational efficiency. `POSEIDON` therefore offers an open-source implementation of state-of-the-art multidimensional retrieval methods [see @MacDonald:2022 and MacDonald & Lewis (in prep.)] to aid the interpretation of high-quality exoplanet spectra.
 
 In a 1D configuration, `POSEIDON` compares well with other retrieval codes. When applied to Hubble Space Telescope observations, `POSEIDON` produces consistent retrieval results with the ATMO and NEMESIS retrieval codes [@Lewis:2020; @Rathcke:2021]. Recently, [@Barstow:2022] presented a comparison of five exoplanet retrieval codes, including `POSEIDON`, which demonstrated good agreement on simulated Ariel [@Tinetti:2020] transmission spectra. `POSEIDON` also offers exceptional computational performance: a single 1D forward model over a wavelength range sufficient for JWST analyses takes 70 ms [see @MacDonald:2022, Appendix D], while publication-quality 1D retrievals typically take an hour or less. `POSEIDON` also supports multi-core retrievals via `PyMultiNest`'s MPI implementation, which achieves a roughly linear speed-up in the number of cores. Therefore, `POSEIDON` allows users to readily explore 1D retrievals on personal laptops while scaling up to multidimensional retrievals on modest clusters.
+
+# Future Developments
+
+`POSEIDON` v1.0 officially supports the modelling and retrieval of exoplanet transmission spectra in 1D, 2D, and 3D. The initial release also includes a beta version of thermal emission spectra modelling and retrieval (for cloud-free, 1D atmospheres, with no scattering), which will be developed further in future releases. Suggestions for additional features are more than welcome.
 
 # Documentation
 
@@ -61,6 +67,6 @@ The following exoplanet retrieval codes are open source: [`PLATON`](https://gith
 
 RJM expresses gratitude to the developers of many open source Python packages used by `POSEIDON`, in particular `Numba` [@Lam:2015], `numpy` [@Harris:2020], `Matplotlib` [@Hunter:2007], `SciPy` [@Virtanen:2020], and `Spectres` [@Carnall:2017].
 
-RJM acknowledges financial support from the UK's Science and Technology Facilities Council (STFC) during the early development of `POSEIDON` and support from NASA Grant 80NSSC20K0586 issued through the James Webb Space Telescope Guaranteed Time Observer Program. RJM thanks Nikole Lewis, Ishan Mishra, Jonathan Gomez Barrientos, John Kappelmeier, Antonia Peters, Kath Landgren, and Ruizhe Wang for helpful discussions.
+RJM acknowledges financial support from the UK's Science and Technology Facilities Council (STFC) during the early development of `POSEIDON` and support from NASA Grant 80NSSC20K0586 issued through the James Webb Space Telescope Guaranteed Time Observer Program. Most recently, RJM acknowledges support from NASA through the NASA Hubble Fellowship grant HST-HF2-51513.001 awarded by the Space Telescope Science Institute, which is operated by the Association of Universities for Research in Astronomy, Inc., for NASA, under contract NAS5-26555. RJM thanks Nikole Lewis, Ishan Mishra, Jonathan Gomez Barrientos, John Kappelmeier, Antonia Peters, Kath Landgren, and Ruizhe Wang for helpful discussions.
 
 # References
