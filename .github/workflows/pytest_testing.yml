@@ -85,7 +85,7 @@ jobs:
 
     - name: Set environment variables
       run: |
-        echo "POSEIDON_input_data='$HOME/inputs/opacity/'" >> $GITHUB_ENV
+        echo "POSEIDON_input_data=$HOME/inputs/opacity/" >> $GITHUB_ENV
         echo "::debug::$GITHUB_ENV"
 
     - name: Run tests
