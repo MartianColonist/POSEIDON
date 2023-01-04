@@ -97,4 +97,4 @@ jobs:
     - name: Run tests
       run: |
         conda activate test_install || true
-        pytest /tests/test_TRIDENT.py
+        pytest

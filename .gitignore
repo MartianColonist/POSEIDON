@@ -4,6 +4,7 @@ docs/content/future
 docs/content/notebooks/POSEIDON_output
 tests/POSEIDON_output
 tests/testing_tests.ipynb
+tests/test_retrieval.py
 __pycache__
 .DS_Store
 *~
