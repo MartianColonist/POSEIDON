@@ -7,8 +7,6 @@
    </div>
    <br/><br/>
 
-|
-
 .. image:: https://readthedocs.org/projects/poseidon-retrievals/badge/?version=latest
    :target: https://poseidon-retrievals.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
@@ -25,6 +23,7 @@
    :target: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5
    :alt: Journal of Open Source Software Paper Status
 
+|
 
 **A Python Package for Multidimensional Atmospheric Retrievals of Exoplanet Spectra**
 

@@ -5,12 +5,10 @@ on:
     branches:    
       - 'main'
       - 'dev'
-      - 'documentation_update'
   pull_request:
-    branches:    
+    branches:
       - 'main'
       - 'dev'
-      - 'documentation_update'
 
 jobs:
   test:
@@ -21,7 +19,7 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: ['3.9'] 
     steps:
     - uses: actions/checkout@v3
