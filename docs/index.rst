@@ -53,5 +53,6 @@ paper: `MacDonald & Lewis (2022)
    :maxdepth: 2
    :caption: Code Documentation:
 
+   content/contributing
    autoapi/index
 
