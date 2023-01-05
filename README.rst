@@ -7,6 +7,8 @@
    </div>
    <br/><br/>
 
+|
+
 .. image:: https://readthedocs.org/projects/poseidon-retrievals/badge/?version=latest
    :target: https://poseidon-retrievals.readthedocs.io/en/latest/?badge=latest
    :alt: Documentation Status
