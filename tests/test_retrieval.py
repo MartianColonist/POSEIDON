@@ -113,6 +113,9 @@ def test_continuum_retrieval():
 
     #***** Generate synthetic data *****#
 
+    os.mkdir('./data')
+    os.mkdir('./data/WASP-121b')
+    
     data_dir = './data/WASP-121b'
 
     generate_syn_data_from_user(planet, wl, spectrum, data_dir, instrument = 'dummy',
