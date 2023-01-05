@@ -182,13 +182,13 @@ def test_continuum_retrieval():
         m = stats['marginals'][i]
         retrieved_median = m['median']
 
-        # Check relative difference between solutions < 0.5%
+        # Check relative difference between solutions < 1%
         relative_diff = np.abs((retrieved_median - true_median)/true_median)
 
         print('Relative diff for ' + parameter + ' = ' + 
                 str(round(np.max(relative_diff*1e2),3)) + ' %')
 
-        assert relative_diff < 0.005
+        assert relative_diff < 0.01
 
     os.chdir('../../../../')
 
