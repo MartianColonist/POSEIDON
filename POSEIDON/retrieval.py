@@ -30,8 +30,8 @@ allowed_simplex = 1
 
 
 
-def run_retrieval(planet, star, model, opac, data, priors, 
-                  wl, P, P_ref = 10.0, R = None, retrieval_name = None,
+def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0, 
+                  P_param_set = 1.0e-2, R = None, retrieval_name = None,
                   He_fraction = 0.17, N_slice_EM = 2, N_slice_DN = 4, 
                   spectrum_type = 'transmission', N_live = 400, ev_tol = 0.5,
                   sampling_algorithm = 'MultiNest', resume = False, 
@@ -99,8 +99,8 @@ def run_retrieval(planet, star, model, opac, data, priors,
         # Run MultiNest
         PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
                               prior_ranges, spectrum_type, wl, P, P_ref, 
-                              He_fraction, N_slice_EM, N_slice_DN, N_params, 
-                              T_phot_grid, T_het_grid, I_phot_grid,
+                              P_param_set, He_fraction, N_slice_EM, N_slice_DN, 
+                              N_params, T_phot_grid, T_het_grid, I_phot_grid,
                               I_het_grid, resume = resume, verbose = verbose,
                               outputfiles_basename = basename, 
                               n_live_points = N_live, multimodal = False,
@@ -132,11 +132,11 @@ def run_retrieval(planet, star, model, opac, data, priors,
             spec_median, spec_high1, \
             spec_high2 = retrieved_samples(planet, star, model, opac,
                                            retrieval_name, wl, P, P_ref, 
-                                           He_fraction, N_slice_EM, N_slice_DN, 
-                                           spectrum_type, T_phot_grid, 
+                                           P_param_set, He_fraction, N_slice_EM, 
+                                           N_slice_DN, spectrum_type, T_phot_grid, 
                                            T_het_grid, I_phot_grid, I_het_grid, 
                                            N_output_samples)
-                                            
+               
             # Save sampled P-T profile
             write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
                                T_median, T_high1, T_high2)
@@ -210,8 +210,8 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
 
 
 def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
-                          prior_ranges, spectrum_type, wl, P, P_ref, He_fraction, 
-                          N_slice_EM, N_slice_DN, N_params, T_phot_grid,
+                          prior_ranges, spectrum_type, wl, P, P_ref, P_param_set, 
+                          He_fraction, N_slice_EM, N_slice_DN, N_params, T_phot_grid,
                           T_het_grid, I_phot_grid, I_het_grid, **kwargs):
     ''' 
     Main function for conducting atmospheric retrievals with PyMultiNest.
@@ -585,7 +585,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
-                                     log_g, T_input, log_X_input, P_surf,
+                                     log_g, T_input, log_X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN)
 
         #***** Step 3: generate spectrum of atmosphere ****#
@@ -680,8 +680,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
 	
 
-def retrieved_samples(planet, star, model, opac, retrieval_name,
-                      wl, P, P_ref, He_fraction, N_slice_EM, N_slice_DN, 
+def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P, P_ref,
+                      P_param_set, He_fraction, N_slice_EM, N_slice_DN, 
                       spectrum_type, T_phot_grid, T_het_grid, I_phot_grid,
                       I_het_grid, N_output_samples):
     '''
@@ -775,7 +775,7 @@ def retrieved_samples(planet, star, model, opac, retrieval_name,
         # Generate atmosphere corresponding to parameter draw
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
-                                     log_g, T_input, log_X_input, P_surf,
+                                     log_g, T_input, log_X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN)
 
         # Generate spectrum of atmosphere

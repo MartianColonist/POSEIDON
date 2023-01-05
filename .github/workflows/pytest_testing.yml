@@ -1,0 +1,82 @@
+name: Pytest testing
+
+on:
+  push:
+    branches:    
+      - 'main'
+      - 'dev'
+      - 'documentation_update'
+  pull_request:
+    branches:    
+      - 'main'
+      - 'dev'
+      - 'documentation_update'
+
+jobs:
+  test:
+    name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash -l {0}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.9'] 
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Free disk space
+      run: |
+        sudo swapoff -a
+        sudo rm -f /swapfile
+        sudo apt clean
+        docker rmi $(docker image ls -aq)
+        df -h
+
+    - name: Set up Anaconda
+      uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: "latest"
+        channels: conda-forge, defaults
+        use-only-tar-bz2: true
+        auto-update-conda: true
+        auto-activate-base: true
+
+    - name: Create conda environment
+      run: |
+        echo "begin: PATH=$PATH;"
+        conda create --name test_install python=${{ matrix.python-version }} -y
+
+    - name: Install mpi4py and pymultinest
+      run: |
+        conda activate test_install || true
+        conda install -c conda-forge mpi4py -y
+        conda install -c conda-forge pymultinest -y
+
+    - name: Install POSEIDON
+      run: |
+        conda activate test_install || true
+        python -m pip install --upgrade pip
+        pip install -e .
+
+    - name: Download input files (only CIA opacity for CI tests)
+      if: steps.restore_cache.outputs.cache-hit != 'true'
+      run: |
+        mkdir -p inputs/opacity
+        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
+        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C" -O inputs/stellar_grids.zip && rm -rf /tmp/cookies.txt
+
+    - name: Extract input files
+      run: |
+        unzip inputs/stellar_grids.zip -d inputs
+
+    - name: Set environment variables
+      run: |
+        echo "POSEIDON_input_data=$GITHUB_WORKSPACE/inputs/opacity/" >> $GITHUB_ENV
+        echo "PYSYN_CDBS=$GITHUB_WORKSPACE/inputs/stellar_grids/" >> $GITHUB_ENV
+
+    - name: Run tests
+      run: |
+        conda activate test_install || true
+        pytest -rA

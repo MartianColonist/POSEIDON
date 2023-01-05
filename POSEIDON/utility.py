@@ -331,7 +331,7 @@ def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half',
     '''
     
     # Load data file
-    data = pd.read_csv(data_dir + '/' + fname, sep = '[\s]{1,20}', 
+    data = pd.read_csv(data_dir + '/' + fname, sep = '[\\s]{1,20}', 
                        header = None, skiprows = skiprows, engine = 'python')
 
     # Load wavelength and half bin width, then convert both to μm
@@ -405,7 +405,7 @@ def read_spectrum(planet_name, fname, wl_unit = 'micron'):
     input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
     
     # Open file
-    data = pd.read_csv(input_dir + fname, sep = '[\s]{1,20}', 
+    data = pd.read_csv(input_dir + fname, sep = '[\\s]{1,20}', 
                        engine = 'python', header=None)
 
     # Load wavelength then convert to μm
@@ -460,7 +460,7 @@ def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_unit = 'bar',
         PT_file_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
                                       '.', 'reference_data/models/TRAPPIST-1e/'))
     
-    PT_file = pd.read_csv(PT_file_dir + '/' + PT_file_name, sep = '[\s]{1,20}', 
+    PT_file = pd.read_csv(PT_file_dir + '/' + PT_file_name, sep = '[\\s]{1,20}', 
                           header = None, skiprows = skiprows, engine = 'python')
     
     # Read pressure
@@ -534,7 +534,7 @@ def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_in_file,
         chem_file_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
                                         '.', 'reference_data/models/TRAPPIST-1e/'))
 
-    chem_file_input = pd.read_csv(chem_file_dir + '/' + chem_file_name, sep = '[\s]{1,20}', 
+    chem_file_input = pd.read_csv(chem_file_dir + '/' + chem_file_name, sep = '[\\s]{1,20}', 
                                   header = None, skiprows = skiprows, engine = 'python')
     
     # Read pressure and mixing ratios
@@ -761,7 +761,7 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_spectrum_retrieved.txt'
 
     # Read retrieved spectrum confidence intervals
-    spec_file = pd.read_csv(fname, sep = '[\s]{1,20}', engine = 'python', 
+    spec_file = pd.read_csv(fname, sep = '[\\s]{1,20}', engine = 'python', 
                             header = None, skiprows = 1)
 
     wl = np.array(spec_file[0])           # Wavelengths (um)
@@ -791,7 +791,7 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_PT_retrieved.txt'
 
     # Read retrieved temperature confidence intervals
-    PT_file = pd.read_csv(fname, sep = '[\s]{1,20}', engine = 'python', 
+    PT_file = pd.read_csv(fname, sep = '[\\s]{1,20}', engine = 'python', 
                           header = None, skiprows = 1)
 
     P = np.array(PT_file[0])         # Pressure (bar)
@@ -856,7 +856,7 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
     for q in range(N_species):
 
         # Read retrieved mixing ratio confidence intervals
-        X_file = pd.read_csv(fname, sep = '[\s]{1,20}', header = None, 
+        X_file = pd.read_csv(fname, sep = '[\\s]{1,20}', header = None, 
                              skiprows = block_line_numbers[q], nrows = N_D,
                              engine = 'python')
 
@@ -1172,7 +1172,7 @@ def generate_latex_param_names(param_names):
         if ('bar' in components_sort):
             
             # Begin LaTeX string with open overline bracket
-            latex_name += '\overline{'
+            latex_name += '\\overline{'
             
             bar_bracket_open = 1
             
@@ -1193,12 +1193,12 @@ def generate_latex_param_names(param_names):
         for i in range(len(components_sort)):
             
             if (components_sort[i] == 'log'):
-                latex_name += ('\\' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ' \, ')
+                latex_name += ('\\' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ' \\, ')
             elif (components_sort[i] in ['greek_low', 'greek_up']):
                 latex_name += ('\\' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]])
             elif (components_sort[i] in ['digit', 'letter', 'charge']):
                 if (letter_digit_bracket_open == 0):
-                    latex_name += '\mathrm{'
+                    latex_name += '\\mathrm{'
                     letter_digit_bracket_open = 1
                 if (letter_digit_bracket_open == 1):
                     if (N_letter_digit >= 2):
@@ -1222,11 +1222,11 @@ def generate_latex_param_names(param_names):
                     latex_name += '}'
                     bar_bracket_open = 0
                 if (phrase_bracket_open == 0):
-                    latex_name += '_{\mathrm{'
+                    latex_name += '_{\\mathrm{'
                     phrase_bracket_open = 1
                 if (phrase_bracket_open == 1):
                     if (N_phrase >= 2):
-                        latex_name += (param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ', \, ')
+                        latex_name += (param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ', \\, ')
                     elif (N_phrase == 1):
                         latex_name += (param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + '}}')
                         phrase_bracket_open = 0
@@ -1284,8 +1284,8 @@ def return_quantiles(stats, param, i, quantile = '1 sigma'):
     
 def write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
-                       stats, ln_Z, ln_Z_err, reduced_chi_square, best_fit_params,
-                       wl, R, instruments, datasets):
+                       stats, ln_Z, ln_Z_err, reduced_chi_square, chi_square,
+                       dof, best_fit_params, wl, R, instruments, datasets):
     ''' 
     Write a file summarising the main results from a POSEIDON retrieval.
         
@@ -1353,13 +1353,27 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
               '\n',
               '-> ln Z = ' + stats_formatter.format(ln_Z) + ' +/- ' + stats_formatter.format(ln_Z_err) + '\n',
               '\n',
-              '#################################\n',
-              '\n',
-              'Best reduced chi-square:\n',
-              '\n',
-              '-> chi^2_min = ' + stats_formatter.format(reduced_chi_square) + '\n',
-              '\n',
               '#################################\n']
+
+    # Add chi^2 statistics
+    if (np.isnan(reduced_chi_square) == False):
+        lines += ['\n',
+                'Best reduced chi-square:\n',
+                '\n',
+                '-> chi^2_red = ' + stats_formatter.format(reduced_chi_square) + '\n',
+                '-> degrees of freedom = ' + str(dof) + '\n',
+                '-> chi^2 = ' + stats_formatter.format(chi_square) + '\n',
+                '\n',
+                '#################################\n']
+    else:
+        lines += ['\n',
+                'Reduced chi-square undefined because N_params >= N_data!\n',
+                '\n',
+                '-> chi^2_red = Undefined\n',
+                '-> degrees of freedom = Undefined\n',
+                '-> chi^2 = ' + stats_formatter.format(chi_square) + '\n',
+                '\n',
+                '#################################\n']
     
     # Add retrieved parameter constraints
     lines += ['\n',
@@ -1485,7 +1499,14 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     best_fit_params = best_fit['parameters']
     norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
     best_chi_square = -2.0 * (max_likelihood - norm_log)
-    reduced_chi_square = best_chi_square/(len(ydata) - n_params)  
+
+    # Check for N_params >= N_data, for which chi^2_r is undefined
+    if ((len(ydata) - n_params) > 0):
+        dof = (len(ydata) - n_params)  
+        reduced_chi_square = best_chi_square/dof
+    else:
+        dof = np.nan
+        reduced_chi_square = np.nan
 
     # Load relevant results directories
     samples_prefix = '../samples/' + retrieval_name
@@ -1497,8 +1518,8 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     # Write POSEIDON retrieval summary file
     write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
-                       stats, ln_Z, ln_Z_err, reduced_chi_square, best_fit_params,
-                       wl, R, instruments, datasets)
+                       stats, ln_Z, ln_Z_err, reduced_chi_square, best_chi_square,
+                       dof, best_fit_params, wl, R, instruments, datasets)
     
 
 def mock_missing(name):
