@@ -23,6 +23,7 @@
    :target: https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5
    :alt: Journal of Open Source Software Paper Status
 
+
 **A Python Package for Multidimensional Atmospheric Retrievals of Exoplanet Spectra**
 
 POSEIDON is a spectral modelling and atmospheric retrieval code for exoplanets.
