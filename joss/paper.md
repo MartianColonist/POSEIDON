@@ -61,7 +61,7 @@ Documentation for `POSEIDON`, with step-by-step tutorials illustrating research 
 
 # Similar Tools
 
-The following exoplanet retrieval codes are open source: [`PLATON`](https://github.com/ideasrule/platon) [@Zhang:2019], [`petitRADTRANS`](https://gitlab.com/mauricemolli/petitRADTRANS) [@Molliere:2019], [`CHIMERA`](https://github.com/mrline/CHIMERA) [@Line:2013], [`TauRex`](https://github.com/ucl-exoplanets/TauREx3_public) [@Waldmann:2015; @Al-Refaie:2021], [`NEMESIS`](https://github.com/nemesiscode/radtrancode) [@Irwin:2008] [`Pyrat Bay`](https://github.com/pcubillos/pyratbay) [@Cubillos:2021], [`BART`](https://github.com/exosports/BART) [@Harrington:2022]
+The following exoplanet retrieval codes are open source: [`PLATON`](https://github.com/ideasrule/platon) [@Zhang:2019; @Zhang:2020], [`petitRADTRANS`](https://gitlab.com/mauricemolli/petitRADTRANS) [@Molliere:2019], [`CHIMERA`](https://github.com/mrline/CHIMERA) [@Line:2013], [`TauRex`](https://github.com/ucl-exoplanets/TauREx3_public) [@Waldmann:2015; @Al-Refaie:2021], [`NEMESIS`](https://github.com/nemesiscode/radtrancode) [@Irwin:2008] [`Pyrat Bay`](https://github.com/pcubillos/pyratbay) [@Cubillos:2021], and [`BART`](https://github.com/exosports/BART) [@Harrington:2022]
 
 # Acknowledgements
 
