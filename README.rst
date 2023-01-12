@@ -31,9 +31,9 @@ POSEIDON is a spectral modelling and atmospheric retrieval code for exoplanets.
 Given a set of observed exoplanet spectra from space-based or ground-based telescopes, 
 POSEIDON uses Bayesian techniques to infer the atmospheric properties of the planet.
 
-POSEIDON currently supports the modelling and retrieval of transmission spectra. 
-Basic functionality for thermal emission spectra is also present and will be
-expanded in future releases.
+POSEIDON currently supports the modelling and retrieval of 1D, 2D, and 3D 
+transmission spectra. Basic functionality for thermal emission spectra is also
+present and will be expanded in future releases.
 
 Documentation
 -------------
