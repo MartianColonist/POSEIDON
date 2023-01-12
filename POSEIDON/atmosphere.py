@@ -108,7 +108,7 @@ def compute_T_slope(P, T_phot, Delta_T_arr, log_P_phot = 0.5,
     Computes the temperature profile for an atmosphere using the 'slope' P-T 
     profile parametrisation defined in Piette & Madhusudhan (2021).
 
-    Note: the number of temperature difference parameters is the same as the
+    Note: The number of temperature difference parameters is the same as the
           number of pressure points (including the photosphere). For the default
           values, we have: [Delta_T (10-1mb), Delta_T (100-10mb), Delta_T (1-0.1b),
                             Delta_T (3.2-1b), Delta_T (10-3.2b), Delta_T (32-10b), 
@@ -659,7 +659,7 @@ def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
     Concatenates mixing ratios of the bulk species to the parametrised mixing
     ratios, forming the full mixing ratio array (i.e. sums to 1).
 
-    Note: for H2 and He as bulk species, the output array has the mixing ratio
+    Note: For H2 and He as bulk species, the output array has the mixing ratio
           profile of H2 as the first element and He second. For other bulk
           species (e.g. N2), that species occupies the first element.
 
@@ -763,7 +763,8 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
         r_low (3D np.array of float):
             Lower layer boundaries (m).    
         dr (3D np.array of float):
-            Layer thicknesses (m). 
+            Layer thicknesses (m).
+    
     '''
 
     # Store number of layers for convenience
@@ -843,7 +844,7 @@ def radial_profiles_constant_g(P, T, g_0, P_ref, R_p_ref, mu, N_sectors, N_zones
     Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
     to compute the radius in each atmospheric layer.
         
-    Note: this version of the solver assumes the gravitational field strength
+    Note: This version of the solver assumes the gravitational field strength
           is constant with altitude (for testing purposes). The standard
           'radial_profiles' function should be used for any real calculation.
 
@@ -875,7 +876,8 @@ def radial_profiles_constant_g(P, T, g_0, P_ref, R_p_ref, mu, N_sectors, N_zones
         r_low (3D np.array of float):
             Lower layer boundaries (m).    
         dr (3D np.array of float):
-            Layer thicknesses (m). 
+            Layer thicknesses (m).
+    
     '''
 
     # Store number of layers for convenience
@@ -984,6 +986,7 @@ def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species,
             Mixing ratios of free-free pairs.
         X_bf (4D np.array of float):
             Mixing ratios of bound-free species.
+    
     '''
 
     # Store number of layers for convenience
@@ -1064,6 +1067,7 @@ def compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all):
     Returns:
         mu (3D np.array of float):
             Mean molecular mass (kg).
+    
     '''
     
     # Store number of layers for convenience
@@ -1095,6 +1099,7 @@ def count_atoms(molecule):
     Returns:
         counts (dict):
             Dictionary containing element counts (e.g. for H2O: {'H': 2, 'O': 1}).
+    
     '''
 
     counts = {}   # Output dictionary
@@ -1198,6 +1203,7 @@ def elemental_ratio(included_species, X, element_1, element_2):
     Returns:
         element_ratio (3D np.array of float):
             Abundance ratio in each layer, sector, and zone.
+    
     '''
 
     # Store shape of mixing ratio array
@@ -1344,7 +1350,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         X_bf (4D np.array of float):
             Mixing ratios of bound-free species.
         Bool:
-            True if atmosphere physical, otherwise False.    
+            True if atmosphere physical, otherwise False.
+    
     '''
 
     # For an isothermal profile

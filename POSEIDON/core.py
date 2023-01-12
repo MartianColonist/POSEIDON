@@ -1,7 +1,7 @@
 ''' 
 POSEIDON CORE ROUTINE.
 
-Copyright 2022, Ryan J. MacDonald.
+Copyright 2023, Ryan J. MacDonald.
 
 '''
 
@@ -182,7 +182,7 @@ def create_planet(planet_name, R_p, mass = None, gravity = None,
             Distance to system (m).
         d_err (float):
             Measured error on system distance (m).
-        b_p (float),
+        b_p (float):
             Impact parameter of planetary orbit (m) -- NOT in stellar radii!
     
     Returns:
