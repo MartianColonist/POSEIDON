@@ -285,7 +285,7 @@ def refractive_index(wl, n_ref, species):
             w_perp_sq = 0.29486069 
             
         elif (species == 'O2'):
-                
+            
             f_par = 2.74876
             w_par_sq = 0.18095751 
             f_perp = 4.86007 

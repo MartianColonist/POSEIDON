@@ -639,11 +639,11 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         if high_res:
             if high_res == 'sysrem':
-                loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, high_res_params, 
-                                                model, high_res_param_names, residuals=residuals, uncertainties=uncertainties, Us=Us)
+                loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
+                                                high_res_param_names, residuals=residuals, uncertainties=uncertainties, Us=Us)
             elif high_res == 'pca':
-                loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, high_res_params, 
-                                                model, high_res_param_names, data_arr=data_arr, data_scale=data_scale)
+                loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
+                                                high_res_param_names, data_arr=data_arr, data_scale=data_scale)
 
             return loglikelihood
             
@@ -990,4 +990,3 @@ def Bayesian_model_comparison(model_feature, base_name_1, base_name_2,
         print("Minimum reduced Chi-square no " + model_feature + " = " + str(reduced_chi_square_absent))
     
     return
-                                

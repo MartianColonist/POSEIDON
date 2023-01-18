@@ -25,7 +25,7 @@ def get_rot_kernel(V_sin_i, wl, W_conv):
     '''
 
     dRV = np.mean(2.0*(wl[1: ]-wl[0: -1])/(wl[1: ]+wl[0: -1]))*2.998E5
-    n_ker = W_conv
+    n_ker = int(W_conv)
     half_n_ker = (n_ker - 1)//2
     rot_ker = np.zeros(n_ker)
     for ii in range(n_ker):
@@ -152,7 +152,7 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Us, V_bary
             models_shifted[i] /= np.median(models_shifted[i])
 
         U = Us[j]
-        L = np.mean(uncertainties[j], axis=-1)
+        L = np.diag(1 / np.mean(uncertainties[j], axis=-1))
         model_filtered = models_shifted-(U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T) @ (L @ models_shifted) # 0.002 second
 
         if not b:
@@ -164,19 +164,19 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Us, V_bary
                 R = fVec.dot(gVec / uncertainties[i, i]) / Npix
                 loglikelihood += -0.5 * N * np.log(sf2 + sg2 - 2.0*R) # Equation 9 in paper
         else:
-            loglikelihood -= N * np.log(b)
             for i in range(Nphi):
-                m = model_filtered[i]
-                m2 = m.dot(m / uncertainties[j, i])
-                f = residuals[j][i]
-                f2 = f.dot(f / uncertainties[j, i])
-                CCF = f.dot(m / uncertainties[j, i])
-
-                loglikelihood -= 0.5 * N * np.log(m2 + f2 - 2.0*CCF) / (b ** 2)
-                
+                m = model_filtered[i] / uncertainties[j, i]
+                m2 = m.dot(m)
+                f = residuals[j][i] / uncertainties[j, i]
+                f2 = f.dot(f)
+                CCF = f.dot(m)
+                loglikelihood -= 0.5 * (m2 + f2 - 2.0*CCF) / (b ** 2)
+                # loglikelihood -= np.log(uncertainties[j, i])
+            loglikelihood -= N * np.log(b)
+            # loglikelihood -= N / 2 * np.log(2*np.pi)
     return loglikelihood
 
-def log_likelihood(F_s_obs, F_p_obs, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
+def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
                     high_res_param_names, data_arr=None, data_scale=None, residuals=None, uncertainties=None, Us=None):
     '''
     Return the loglikelihood given the observed flux, Keplerian velocity, and centered system velocity.
@@ -256,21 +256,24 @@ def log_likelihood(F_s_obs, F_p_obs, wl, wl_grid, V_bary, Phi, V_sin_i, model, h
 
     # rotational coavolution
     rot_kernel = get_rot_kernel(V_sin_i, wl, W_conv)
-    F_p_rot = np.convolve(F_p_obs, rot_kernel, mode='same') # calibrate for planetary rotation
+    
+    F_p_rot = np.convolve(spectrum, rot_kernel, mode='same') # calibrate for planetary rotation
 
     # instrument profile convolution
+    R_instrument = model['R_instrument']
+    R = model['R']
     xker = np.arange(-20, 21)
-    sigma = 5.5/(2.* np.sqrt(2.0 * np.log(2.0)))  # nominal
+    sigma = (R / R_instrument)/(2.* np.sqrt(2.0 * np.log(2.0)))  # model is right now at R=250K.  IGRINS is at R~45K. We make gaussian that is R_model/R_IGRINS ~ 5.5 
     yker = np.exp(-0.5 * (xker / sigma) ** 2.0)   # instrumental broadening kernel; not understand
     yker /= yker.sum()
     F_p_conv = np.convolve(F_p_rot, yker, mode='same') * a
     cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p, F_s are already observed value on Earth
 
-    if data_arr and data_scale:
+    if data_arr is not None and data_scale is not None:
         F_s_conv = np.convolve(F_s_obs, yker, mode='same')
         cs_s = interpolate.splrep(wl, F_s_conv, s=0.0)
         return log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
-    elif residuals and uncertainties and Us:
+    elif residuals is not None and uncertainties is not None and Us is not None:
         return log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Us, V_bary, Phi, uncertainties, b)
     else:
         raise Exception('Problem in high res retreival data.')
@@ -475,28 +478,26 @@ from scipy.optimize import minimize
 def fit_uncertainties(data_raw, NPC=5):
     uncertainties = np.zeros(data_raw.shape)
     residuals = np.zeros(data_raw.shape)
-
-
-    for i in range(len(data_raw)):
+    Nord = len(data_raw)
+    for i in range(Nord):
         order = data_raw[i]
         svd = TruncatedSVD(n_components=NPC, n_iter=4, random_state=42).fit(order)
 
         residual = order - (svd.transform(order) @ svd.components_)
         residuals[i] = residual
 
-    def fun(a, b):
-        sigma = np.sqrt(a * data_raw + b)
-        loglikelihood = -0.5 * np.sum((data_raw / sigma) ** 2) - np.sum(np.log(sigma))
-        return -loglikelihood
+    for i in range(Nord):
+        def fun(x):
+            a, b = x
+            sigma = np.sqrt(a * data_raw[i] + b)
+            loglikelihood = -0.5 * np.sum((residuals[i] / sigma) ** 2) - np.sum(np.log(sigma))
+            return -loglikelihood
+        a, b = minimize(fun, [1, 1], method='Nelder-Mead').x
 
-    a, b = minimize(fun, (1, 0)).x
+        best_fit = np.sqrt(a * data_raw[i] + b)
 
-    best_fit = np.sqrt(a * data_raw + b)
+        svd = TruncatedSVD(n_components=NPC, n_iter=4, random_state=42).fit(best_fit)
 
-    for i in range(len(best_fit)):
-        order = best_fit[i]
-        svd = TruncatedSVD(n_components=NPC, n_iter=4, random_state=42).fit(order)
-
-        uncertainty = svd.transform(order) @ svd.components_
+        uncertainty = svd.transform(best_fit) @ svd.components_
         uncertainties[i] = uncertainty
     return uncertainties

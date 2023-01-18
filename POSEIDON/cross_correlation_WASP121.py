@@ -1,5 +1,5 @@
 from __future__ import absolute_import, unicode_literals, print_function
-from POSEIDON.high_res import cross_correlate_sysrem, fast_filter
+from POSEIDON.high_res import fast_filter, log_likelihood_sysrem, get_rot_kernel
 import math, os
 import numpy as np
 import pickle
@@ -17,6 +17,35 @@ from spectres import spectres
 from tqdm import tqdm
 from multiprocessing import Pool
 
+
+def cross_correlate(spectrum, wl, K_p_arr, V_sys_arr, wl_grid, residuals, Bs, V_bary, Phi, uncertainties):
+    dPhi = 0.0
+    a = 1.0
+    b = 1
+    # rotational coonvolutiono
+    V_sin_i = 14.5
+    rot_kernel = get_rot_kernel(V_sin_i, wl)
+    F_p_rot = np.convolve(spectrum, rot_kernel, mode='same') # calibrate for planetary rotation
+# 
+
+    # instrument profile convolustion
+    xker = np.arange(-20, 21)
+    sigma = 5.5/(2.* np.sqrt(2.0 * np.log(2.0)))  # nominal
+    yker = np.exp(-0.5 * (xker / sigma) ** 2.0)   # instrumental broadening kernel; not understand yet
+    yker /= yker.sum()
+    F_p_conv = np.convolve(F_p_rot, yker, mode='same') * a
+
+    cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p_obs, F_s_obs are already observed value on Earth
+
+    loglikelihood_arr = np.zeros((len(K_p_arr), len(V_sys_arr)))
+    
+    for i in range(len(K_p_arr)):
+        for j in range(len(V_sys_arr)):
+            loglikelihood = log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, b)
+            loglikelihood_arr[i, j] = loglikelihood
+
+    return loglikelihood_arr
+
 K_p = 200
 N_K_p = 100
 d_K_p = 1
@@ -33,7 +62,7 @@ core_indices = np.arange(N_cores)
 V_sys_arr_split = np.array_split(V_sys_arr, N_cores)
 
 def batch_cross_correlate(core_index, args):
-    F_s_obs, F_p_obs, wl = args
+    spectrum, wl = args
     for i in range(core_index, len(V_sys_arr_split), N_cores):
         print("Core "+str(i)+" is running.")
         output_path = './CC_output/WASP-121b' # Could modify output path here.
@@ -44,8 +73,19 @@ def batch_cross_correlate(core_index, args):
         Phi = pickle.load(open(data_path+'/ph.pic','rb'))                    # Time-resolved phases
         V_bary = pickle.load(open(data_path+'/rvel.pic','rb'))               # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
         residuals, Us, Ws = fast_filter(data_raw, iter=15)
+        uncertainties = pickle.load(open(data_path+'/uncertainties.pic', 'rb'))
         # We could also just use V_bary instead, then V_sys is just V_sys (not around zero anymore)
-        log_L_arr, CCF_arr = cross_correlate_sysrem(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr_split[i], wl_grid, residuals, Us, V_bary, Phi)
+
+        Ndet, Nphi, Nphi = data_raw.shape
+        Bs = np.zeros((Ndet, Nphi, Nphi))
+
+        for j in range(Ndet):
+            U = Us[j]
+            L = np.diag(1 / np.mean(uncertainties[j], axis=-1))
+            B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
+            Bs[j] = B
+
+        log_L_arr, CCF_arr = cross_correlate(spectrum, wl, K_p_arr, V_sys_arr, wl_grid, residuals, Bs, V_bary, Phi, uncertainties)
         pickle.dump([V_sys_arr_split[i], K_p_arr, CCF_arr, log_L_arr], open(output_path+'/test_sysrem_'+str(i)+'.pic','wb')) # N_cores of these produced. Will be read in by plot_CCF.py
 
 # The code below will only be run on one core to get the model spectrum.

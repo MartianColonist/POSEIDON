@@ -45,9 +45,11 @@ model_name = 'High-res retrieval'  # Model name used for plots, output files etc
 bulk_species = ['H2', 'He']     # H2 + He comprises the bulk atmosphere
 param_species = ['H2O', 'CO']  # H2O, CO as in Brogi & Line
 
+high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
 # Create the model object
 model = define_model(model_name, bulk_species, param_species,
-                    PT_profile = 'Madhu', high_res = 'sysrem', R_p_ref_enabled=False)
+                    PT_profile = 'Madhu', high_res = 'sysrem',
+                    high_res_params = high_res_params, R_p_ref_enabled=False)
 
 # Check the free parameters defining this model
 print("Free parameters: " + str(model['param_names']))
@@ -60,6 +62,9 @@ R = 250000          # Spectral resolution of grid
 
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
+
+model['R'] = R
+model['R_instrument'] = 60000
 
 data_dir = './reference_data/observations/WASP-77Ab'         # Special directory for this tutorial
 
@@ -89,8 +94,10 @@ prior_types['log_P2'] = 'uniform'
 prior_types['log_P3'] = 'uniform'
 prior_types['K_p'] = 'uniform'
 prior_types['V_sys'] = 'uniform'
-prior_types['log_a'] = 'gaussian'
+prior_types['a'] = 'gaussian'
 prior_types['dPhi'] = 'gaussian'
+prior_types['b'] = 'uniform'
+prior_types['W_conv'] = 'uniform'
 
 # Initialise prior range dictionary
 prior_ranges = {}
@@ -111,8 +118,10 @@ prior_ranges['log_P2'] = [-5.5, 2.5]
 prior_ranges['log_P3'] = [-2, 2]
 prior_ranges['K_p'] = [180, 220]
 prior_ranges['V_sys'] = [-20, 20]
-prior_ranges['log_a'] = [-1, 1]
+prior_ranges['a'] = [-10, 10]
 prior_ranges['dPhi'] = [-0.01, 0.01]
+prior_ranges['b'] = [0.1, 2]
+prior_ranges['W_conv'] = [1, 50]
 
 # Create prior object for retrieval
 priors = set_priors(planet, star, model, data, prior_types, prior_ranges)
@@ -163,8 +172,8 @@ P_ref = 1e-5   # Reference pressure (bar)
 #***** Run atmospheric retrieval *****#
 
 run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
-                spectrum_type = 'direct_emission', sampling_algorithm = 'MultiNest', 
-                N_live = 2000, verbose = True, N_output_samples = 10000, resume = False, ev_tol=0.5)
+                spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
+                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.5)
 
 
 # %% [markdown]

@@ -44,7 +44,7 @@ model_name = 'High-res retrieval'  # Model name used for plots, output files etc
 
 bulk_species = ['H2', 'He']         # H2 + He comprises the bulk atmosphere
 # param_species = ['Mg', 'Fe', 'Ti']
-param_species = []
+param_species = ['Fe']
 
 high_res = 'sysrem'
 high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
@@ -62,13 +62,17 @@ print("Free parameters: " + str(model['param_names']))
 wl_min = 3.7      # Minimum wavelength (um)
 wl_max = 5.1      # Maximum wavelength (um)
 R = 250000        # Spectral resolution of grid
-
+model['R'] = R
+model['R_instrument'] = 80000
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 data_dir = './reference_data/observations/WASP-121b'
 
 data = read_high_res_data(data_dir, high_res='sysrem')
+data_raw = data['data_raw']
+data_raw[data_raw < 0] = 0
+data['data_raw'] = data_raw
 
 # %%
 from POSEIDON.core import set_priors
@@ -165,8 +169,8 @@ P_ref = 1e-5   # Reference pressure (bar)
 #***** Run atmospheric retrieval *****#
 
 run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
-                spectrum_type = 'direct_emission', sampling_algorithm = 'MultiNest', 
-                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.05)
+                spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
+                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=5)
 
 
 # %% [markdown]
