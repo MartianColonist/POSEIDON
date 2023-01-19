@@ -1537,7 +1537,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     return fig
 
 
-def plot_data(data, planet, wl_min = None, wl_max = None, 
+def plot_data(data, planet_name, wl_min = None, wl_max = None, 
               y_min = None, y_max = None, y_unit = 'transit_depth',
               plt_label = None, data_colour_list = [], data_labels = [], 
               data_marker_list = [], data_marker_size_list = [],
@@ -1550,8 +1550,8 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
     Args:
         data (dict):
             POSEIDON observational data properties dictionary.
-        planet (dict):
-            POSEIDON planet properties dictionary.
+        planet_name (str):
+            Name of the planet.
         wl_min (float, optional):
             The minimum wavelength to plot.
         wl_max (float, optional):
@@ -1597,9 +1597,6 @@ def plot_data(data, planet, wl_min = None, wl_max = None,
     else:
         raise Exception("Unexpected y unit. Did you mean 'transit_depth' " +
                        "or 'eclipse_depth'?")
-
-    # Unpack planet name
-    planet_name = planet['planet_name']
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/' + 'plots/'
