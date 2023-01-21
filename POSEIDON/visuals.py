@@ -1378,7 +1378,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
-    ymajorFormatter = ScalarFormatter(useMathText=True)
+    ymajorFormatter = ScalarFormatter(useMathText=True, useOffset=False)
     ymajorFormatter.set_powerlimits((0,0))
     yminorLocator = MultipleLocator(yminor_spacing)
 
@@ -2086,7 +2086,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
-    ymajorFormatter = ScalarFormatter(useMathText=True)
+    ymajorFormatter = ScalarFormatter(useMathText=True, useOffset=False)
     ymajorFormatter.set_powerlimits((0,0))
     yminorLocator = MultipleLocator(yminor_spacing)
 
