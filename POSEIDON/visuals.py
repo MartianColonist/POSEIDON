@@ -38,7 +38,7 @@ warnings.filterwarnings("ignore", message = "This figure includes Axes that are 
                                             "so results might be incorrect.")
 
 from .utility import bin_spectrum, generate_latex_param_names, round_sig_figs, \
-                     confidence_intervals
+                     confidence_intervals, create_directories
 from .instrument import bin_spectrum_to_data
 from .parameters import split_params
               
@@ -1588,6 +1588,11 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     
     '''
 
+    base_dir = './'
+
+    # Create output directories (if not already present)
+    create_directories(base_dir, planet_name)
+
     if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
         plot_type = 'transmission'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
@@ -2213,6 +2218,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
              verticalalignment = 'top', transform = ax1.transAxes, fontsize = 16)
+
+    # Add plot label
+    if (plt_label != None):
+        ax1.text(0.03, 0.90, plt_label, horizontalalignment = 'left', 
+                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = 14)
 
     # Decide at which wavelengths to place major tick labels
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
