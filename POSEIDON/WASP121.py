@@ -116,8 +116,8 @@ prior_ranges['log_P2'] = [-5.5, 2.5]
 prior_ranges['log_P3'] = [-2, 2]
 prior_ranges['K_p'] = [170, 230]
 prior_ranges['V_sys'] = [-10, 10]
-prior_ranges['a'] = [0.1, 6]
-prior_ranges['b'] = [0.1, 2]
+prior_ranges['a'] = [0.1, 10]
+prior_ranges['b'] = [0.1, 10]
 prior_ranges['dPhi'] = [-0.01, 0.01]
 prior_ranges['W_conv'] = [1, 50]
 
@@ -170,7 +170,7 @@ P_ref = 1e-5   # Reference pressure (bar)
 
 run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
                 spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
-                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=5)
+                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.05)
 
 
 # %% [markdown]
