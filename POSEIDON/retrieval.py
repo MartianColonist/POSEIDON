@@ -258,13 +258,28 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         if high_res == 'sysrem':
             data_raw = data['data_raw']
+            Ndet, Nphi, Npix = data_raw.shape
             data_norm = np.zeros(data_raw.shape)
+            uncertainties = fit_uncertainties(data_raw, NPC=5)            
             for i in range(len(data_raw)):
                 order = data_raw[i]
                 order_norm = (order.T / np.median(order, axis=1)).T
+
+                uncertainty = uncertainties[i]
+                uncertainty_norm = (uncertainty.T / np.median(order, axis=1)).T
+                
+                uncertainties[i] = uncertainty_norm
                 data_norm[i] = order_norm
             residuals, Us, Ws = fast_filter(data_norm, iter=15)
-            uncertainties = fit_uncertainties(data_raw, NPC=5)
+
+            Bs = np.zeros((Ndet, Nphi, Nphi))
+
+            for j in range(Ndet):
+                U = Us[j]
+                L = np.diag(1 / np.mean(uncertainties[j], axis=-1))
+                B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
+                Bs[j] = B
+
         elif high_res == 'pca':
             data_scale = data['data_scale']
             data_arr = data['data_arr']
@@ -640,7 +655,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         if high_res:
             if high_res == 'sysrem':
                 loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
-                                                high_res_param_names, residuals=residuals, uncertainties=uncertainties, Us=Us)
+                                                high_res_param_names, residuals=residuals, uncertainties=uncertainties, Bs=Bs)
             elif high_res == 'pca':
                 loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
                                                 high_res_param_names, data_arr=data_arr, data_scale=data_scale)
@@ -711,9 +726,9 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         loglikelihood += norm_log
                     
         return loglikelihood
-    
+        
     # Run PyMultiNest
-    pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
+    pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs, max_iter=20000)
 	
 
 def retrieved_samples(planet, star, model, opac, retrieval_name,
