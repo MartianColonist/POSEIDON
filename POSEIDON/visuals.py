@@ -1121,7 +1121,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
                  data_marker_size_list = [], wl_axis = 'log', 
-                 figure_shape = 'default', legend_location = 'upper right'):
+                 figure_shape = 'default', 
+                 legend_location = 'upper right', legend_box = True):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -1176,6 +1177,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
             'lower left', 'lower right').
+        legend_box (bool, optional):
+            Flag indicating whether to plot a box surrounding the figure legend.
 
     Returns:
         fig (matplotlib figure object):
@@ -1511,11 +1514,15 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
     
-    legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
-                        ncol = 1, frameon = True)    # Legend settings
-
-    frame = legend.get_frame()
-    frame.set_facecolor('0.90') 
+    # Add box around legend
+    if (legend_box == True):
+        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon = True)    # Legend settings
+        frame = legend.get_frame()
+        frame.set_facecolor('0.90') 
+    else:
+        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False)    # Legend settings
         
     for legline in legend.legendHandles:
         if ((plot_full_res == True) or (show_data == True)):
@@ -1830,7 +1837,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            data_colour_list = [], data_labels = [],
                            data_marker_list = [], data_marker_size_list = [],
                            wl_axis = 'log', figure_shape = 'default',
-                           legend_location = 'upper right'):
+                           legend_location = 'upper right', legend_box = False):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -1893,6 +1900,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
             'lower left', 'lower right').
+        legend_box (bool, optional):
+            Flag indicating whether to plot a box surrounding the figure legend.
 
     Returns:
         fig (matplotlib figure object):
@@ -2230,8 +2239,15 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
 
-    legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
-                        ncol = 1, frameon=False)    # Legend settings
+    # Add box around legend
+    if (legend_box == True):
+        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon = True)    # Legend settings
+        frame = legend.get_frame()
+        frame.set_facecolor('0.90') 
+    else:
+        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False)    # Legend settings
             
     plt.tight_layout()
 
