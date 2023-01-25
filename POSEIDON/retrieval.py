@@ -136,7 +136,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0,
                                            P_param_set, He_fraction, N_slice_EM, 
                                            N_slice_DN, spectrum_type, T_phot_grid, 
                                            T_het_grid, I_phot_grid, I_het_grid, 
-                                           N_output_samples)
+                                           y_p, N_output_samples)
                
             # Save sampled P-T profile
             write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
@@ -253,7 +253,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
 
     # Interpolate stellar spectrum onto planet wavelength grid (one-time operation)
-    if ((spectrum_type != 'transmission') and (star != None)):
+    if (('transmission' not in 'spectrum_type') and (star != None)):
 
         # Load stellar spectrum
         F_s = star['F_star']
@@ -614,7 +614,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         #***** Step 4: stellar contamination *****#
         
         # Stellar contamination is only relevant for transmission spectra
-        if (spectrum_type == 'transmission'):
+        if ('transmission' in spectrum_type):
 
             # Model with a single spot / facula population
             if (model['stellar_contam'] == 'one-spot'):
@@ -636,7 +636,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             
         #***** Step 5: convolve spectrum with instrument PSF and bin to data resolution ****#
 
-        if (spectrum_type == 'transmission'):
+        if ('transmission' in spectrum_type):
             ymodel = bin_spectrum_to_data(spectrum, wl, data)
         else:
             F_p_binned = bin_spectrum_to_data(spectrum, wl, data)
@@ -684,7 +684,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P, P_ref,
                       P_param_set, He_fraction, N_slice_EM, N_slice_DN, 
                       spectrum_type, T_phot_grid, T_het_grid, I_phot_grid,
-                      I_het_grid, N_output_samples):
+                      I_het_grid, y_p, N_output_samples):
     '''
     ADD DOCSTRING
     '''
@@ -781,10 +781,10 @@ def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P, P_ref,
 
         # Generate spectrum of atmosphere
         spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                    spectrum_type)
+                                    spectrum_type, y_p = y_p)
 
         # Stellar contamination is only relevant for transmission spectra
-        if (spectrum_type == 'transmission'):
+        if ('transmission' in spectrum_type):
 
             # Model with a single spot / facula population
             if (model['stellar_contam'] == 'one-spot'):
