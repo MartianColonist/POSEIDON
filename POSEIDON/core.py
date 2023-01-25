@@ -791,7 +791,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
                      disable_continuum = False, suppress_print = False,
                      Gauss_quad = 2, use_photosphere_radius = True,
-                     device = 'cpu'):
+                     device = 'cpu', y_p = np.array([0.0])):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -811,7 +811,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             Model wavelength grid (μm).
         spectrum_type (str):
             The type of spectrum for POSEIDON to compute
-            (Options: transmission / emission / direct_emission).
+            (Options: transmission / emission / direct_emission / 
+                      transmission_time_average).
         save_spectrum (bool):
             If True, writes the spectrum to './POSEIDON_output/PLANET/spectra/'.
         disable_continuum (bool):
@@ -824,6 +825,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             (Options: 2 / 3).
         use_photosphere_radius (bool):
             If True, use R_p at tau = 2/3 for emission spectra prefactor.
+        device (str):
+            Experimental: use CPU or GPU (only for emission spectra)
+            (Options: cpu / gpu)
+        y_p (np.array of float):
+            Coordinate of planet centre along orbit at the time the spectrum
+            is computed (y_p = 0, the default, corresponds to mid-transit).
+            For non-grazing transits of uniform stellar disks, the spectrum
+            is identical at all times due to translational symmetry, so y_p = 0
+            is good for all times post second contact and pre third contact.
+            Units are in m, not in stellar radii.
 
     Returns:
         spectrum (np.array of float):
@@ -844,7 +855,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
-                              'dayside_emission', 'nightside_emission']):
+                              'dayside_emission', 'nightside_emission',
+                              'transmission_time_average']):
         raise Exception("Only transmission spectra and emission " +
                         "spectra are currently supported.")
     elif (('emission' in spectrum_type) and 
@@ -854,6 +866,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
     R_p = planet['planet_radius']
+    b_p = planet['planet_impact_parameter']
     d = planet['system_distance']
 
     if (star is not None):
@@ -1007,13 +1020,43 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         if (device == 'gpu'):
             raise Exception("GPU transmission spectra not yet supported.")
 
-        # Place planet at mid-transit (spectrum identical due to translational symmetry)
-        y_p = 0   # Coordinate of planet centre along orbit (y=0 at mid-transit)
-
         # Call the core TRIDENT routine to compute the transmission spectrum
         spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
-                           enable_deck, enable_haze, b_p, y_p, R_s, f_cloud,
+                           enable_deck, enable_haze, b_p, y_p[0], R_s, f_cloud,
                            phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+
+    # Generate time-averaged transmission spectrum 
+    elif (spectrum_type == 'transmission_time_average'):
+
+        if (device == 'gpu'):
+            raise Exception("GPU transmission spectra not yet supported.")
+
+        N_y = len(y_p)   # Number of time steps
+
+        spectrum_stored = np.zeros(shape=(len(y_p),len(wl)))
+
+        # We only need to calculate spectrum once for inbound vs. outbound
+        for i in range(0, (N_y//2 + 1)):   
+
+            # Call TRIDENT at the given time step
+            spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
+                               enable_deck, enable_haze, b_p, y_p[i], R_s, f_cloud,
+                               phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+
+            # At mid-transit, only have one spectrum to store
+            if (i == N_y//2):
+                spectrum_stored[i,:] = spectrum
+
+            # At other time steps, store identical spectra for inbound and outbound planet
+            else:
+                spectrum_stored[i,:] = spectrum
+                spectrum_stored[(N_y-1-i),:] = spectrum
+
+        # Average all time steps (trapezium rule to increase accuracy)
+        spectrum_avg = 0.5*(np.mean(spectrum_stored[1:-1], axis=0) +
+                            np.mean(spectrum_stored, axis=0))
+
+        spectrum = spectrum_avg  # Output spectrum is the time-averaged spectrum
 
     # Generate emission spectrum
     elif ('emission' in spectrum_type):

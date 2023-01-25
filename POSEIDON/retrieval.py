@@ -33,7 +33,8 @@ allowed_simplex = 1
 def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0, 
                   P_param_set = 1.0e-2, R = None, retrieval_name = None,
                   He_fraction = 0.17, N_slice_EM = 2, N_slice_DN = 4, 
-                  spectrum_type = 'transmission', N_live = 400, ev_tol = 0.5,
+                  spectrum_type = 'transmission', y_p = np.array([0.0]),
+                  N_live = 400, ev_tol = 0.5,
                   sampling_algorithm = 'MultiNest', resume = False, 
                   verbose = True, sampling_target = 'parameter',
                   N_output_samples = 1000):
@@ -101,7 +102,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0,
                               prior_ranges, spectrum_type, wl, P, P_ref, 
                               P_param_set, He_fraction, N_slice_EM, N_slice_DN, 
                               N_params, T_phot_grid, T_het_grid, I_phot_grid,
-                              I_het_grid, resume = resume, verbose = verbose,
+                              I_het_grid, y_p, resume = resume, verbose = verbose,
                               outputfiles_basename = basename, 
                               n_live_points = N_live, multimodal = False,
                               evidence_tolerance = ev_tol, log_zero = -1e90,
@@ -212,7 +213,7 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
 def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
                           prior_ranges, spectrum_type, wl, P, P_ref, P_param_set, 
                           He_fraction, N_slice_EM, N_slice_DN, N_params, T_phot_grid,
-                          T_het_grid, I_phot_grid, I_het_grid, **kwargs):
+                          T_het_grid, I_phot_grid, I_het_grid, y_p, **kwargs):
     ''' 
     Main function for conducting atmospheric retrievals with PyMultiNest.
     
@@ -599,7 +600,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         # For transmission spectra
         else:
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                        spectrum_type)
+                                        spectrum_type, y_p = y_p)
 
         # Reject unphysical spectra (forced to be NaN by function above)
         if (np.any(np.isnan(spectrum))):
@@ -623,9 +624,9 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 
                 # Find photosphere and spot / faculae intensities at relevant effective temperatures
                 I_het = I_het_grid[closest_index(T_het, T_het_grid[0], 
-                                                T_het_grid[-1], len(T_het_grid)),:]
+                                                 T_het_grid[-1], len(T_het_grid)),:]
                 I_phot = I_phot_grid[closest_index(T_phot, T_phot_grid[0], 
-                                                T_phot_grid[-1], len(T_phot_grid)),:]
+                                                   T_phot_grid[-1], len(T_phot_grid)),:]
                 
                 # Compute wavelength-dependant stellar contamination factor
                 epsilon = stellar_contamination_single_spot(f, I_het, I_phot)
