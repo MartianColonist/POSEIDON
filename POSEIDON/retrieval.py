@@ -253,7 +253,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
 
     # Interpolate stellar spectrum onto planet wavelength grid (one-time operation)
-    if (('transmission' not in 'spectrum_type') and (star != None)):
+    if (('transmission' not in spectrum_type) and (star != None)):
 
         # Load stellar spectrum
         F_s = star['F_star']
