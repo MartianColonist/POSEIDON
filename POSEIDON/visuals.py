@@ -2906,165 +2906,498 @@ def plot_stellar_flux(flux, wl, wl_min = None, wl_max = None, flux_min = None,
     return fig
 
 
-#***** The below functions are deprecated for now, pending improvements *****#
+def plot_chem_histogram(nbins, vals, colour, ax, shrink_factor):
+    
+  #  weights = np.ones_like(vals)/float(len(vals))
+    
+    # Plot histogram
+    x,w,patches = ax.hist(vals, bins=nbins, color=colour, histtype='stepfilled', 
+                          alpha=0.4, edgecolor='None', density=True, stacked=True)
 
-'''
-def plot_chem_histogram(nbins, X_i_vals, colour, oldax, shrink_factor):
-    
-    weights = np.ones_like(X_i_vals)/float(len(X_i_vals))
-    
-    x,w,patches = oldax.hist(X_i_vals, bins=nbins, color=colour, histtype='stepfilled', alpha=0.4, edgecolor='None', weights=weights, density=True, stacked=True)
-    x,w,patches = oldax.hist(X_i_vals, bins=nbins, histtype='stepfilled', lw = 0.8, facecolor='None', weights=weights, density=True, stacked=True)
+    # Plot histogram border
+    x,w,patches = ax.hist(vals, bins=nbins, histtype='stepfilled', lw = 0.8, 
+                          facecolor='None', density=True, stacked=True)
         
-    oldax.set_ylim(0, (1.1+shrink_factor)*x.max())
+    ax.set_ylim(0, (1.1+shrink_factor)*x.max())
     
-    low3, low2, low1, median, high1, high2, high3 = confidence_intervals(len(X_i_vals), X_i_vals, 0)
+    low3, low2, low1, median, high1, high2, high3 = confidence_intervals(len(vals), vals, 0)
     
+    return low3, low2, low1, median, high1, high2, high3
+
+
+def plot_abundance_panel(ax, X_vals, N_bins, species, all_species, 
+                         log_X_min, log_X_max, colour):
+    
+    # Extract mixing ratios of the species we wish to plot
+    X_vals_plt = X_vals[:,np.where(all_species == species)[0][0]]
+
+    # Plot histogram
+    _, _, low1, median, high1, _, _ = plot_chem_histogram(N_bins, np.log10(X_vals_plt), colour, ax, 0.0)
+
+    # Adjust x-axis extent
+    ax.set_xlim(log_X_min, log_X_max)
+
+    ax.tick_params(axis='both', which='major', labelsize=8)
+
+    return low1, median, high1
+         
+
+def plot_ratio_panel(ax, ratio_vals, N_bins, x_min, x_max, colour):
+
+    # Plot histogram
+    _, _, low1, median, high1, _, _ = plot_chem_histogram(N_bins, ratio_vals, colour, ax, 0.0)
+
+    # Adjust x-axis extent
+    ax.set_xlim(x_min, x_max)
+
+    ax.tick_params(axis='both', which='major', labelsize=8)
+
     return low1, median, high1
 
 
-def plot_retrieved_element_ratios(X_vals, planet_name, model_name, chemical_species,
-                                  abundance_fmt = '.2f'):
+def plot_retrieved_abundances(X_vals, all_species, plot_species, colour_list, 
+                              retrieval_labels, span, truths, 
+                              N_rows, N_columns, N_bins):
 
-    # Identify output directory location where the plot will be saved
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+    if (plot_species == []):
+        plot_species = all_species
+
+    N_species = len(plot_species)
+    N_models = len(X_vals)
+
+    # If user doesn't specify number of rows or columns, place 3 histograms on each row
+    if ((N_rows == None) or (N_columns == None)):
+        N_columns = 3
+        N_rows =  1 + (N_species - 1)//N_columns
+
+    # Initialise multi-panel grid
+    fig = plt.figure()
+
+    gs = gridspec.GridSpec(N_rows, N_columns)
+
+    fig.set_size_inches(2.5*N_columns, 2.5*N_rows)
     
-    fig = plt.figure()  
-    fig.set_size_inches(5, 2.5)
-    #fig.set_size_inches(10.3, 7.5)
-       
-    # Initialise histogram grid (use subplot2grid for irregular spacings)
-    gs = gridspec.GridSpec(1, 2) 
-   
-    # Colours for histograms
-    colours = ['dodgerblue', 'orangered']
-   
-    # Names of the parameters to be plotted
-    parameters = []
-    parameters.append(r"$\rm{log}(\rm{O / H}) \, \, (\times \, \rm{solar})$")
-    parameters.append(r"$\rm{C / O}$")
+    # Latex code for species labels
+    species_labels = generate_latex_param_names(plot_species)
 
-    N_samples, _ = np.shape(X_vals)
-   
-    # Empty arrays for mu, O/H, and C/O
-    O_to_H_vals = np.zeros(shape=(N_samples))
-    C_to_O_vals = np.zeros(shape=(N_samples))
-   
-    O_to_H_solar = np.power(10.0, (8.69-12.0))  # Asplund (2009) ~ 4.9e-4  (Present day photosphere value)
-   
-    # Work out mean molecular mass and metallicity for each retrieved chemistry vector (functions defined in profile.py)
-    for i in range(N_samples):
-   
-        O_to_H_vals[i] = compute_O_to_H(X_vals[i,:], chemical_species) / O_to_H_solar
-        C_to_O_vals[i] = compute_C_to_O(X_vals[i,:], chemical_species)
-   
-    for i in range(len(parameters)):
-   
-        count = i+1
+    # Determine histogram bounds (defaults to +/- 5σ)
+    if (span == []):
+        span = [0.999999426697 for q in range(N_species)]
+    span = list(span)
+    
+    #***** Generate panels *****#
+    
+    # For each species
+    for q in range(len(plot_species)):
 
-        plt.subplot(gs[0,i])
-   
-        oldax = plt.gca()
-   
-        if (count == 1): low1, median, high1 = plot_chem_histogram(40, np.log10(O_to_H_vals), colours[i], oldax, 0.0)
-        if (count == 2): low1, median, high1 = plot_chem_histogram(40, C_to_O_vals, colours[i], oldax, 0.0)
-            
-        fmt = "{{0:{0}}}".format(abundance_fmt).format
-        overlay = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
-        overlay = overlay.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
-
-        newax = plt.gcf().add_axes(oldax.get_position(), sharex=oldax, frameon=False)
-        newax.set_ylim(0, 1)
-   	
-        ylim = newax.get_ylim()
-        y = ylim[0] + 0.06*(ylim[1] - ylim[0])
-   
-        newax.errorbar(x=median, y=y,
-                       xerr=np.transpose([[median - low1, high1 - median]]), 
-                       color='lightgreen', ecolor='green', markersize=3, 
-                       markeredgewidth = 0.6, linewidth=0.9, capthick=0.9, capsize=1.7, marker='s')
-                      
-        oldax.set_yticks([])
-       
-        oldax.tick_params(axis='both', which='major', labelsize=8)
-        newax.tick_params(axis='both', which='major', labelsize=8)
-
-        median = round_sig_figs(median, 2)
-        upper_sigma = round_sig_figs((high1-median), 2)
-        lower_sigma = round_sig_figs((median-low1), 2)
-
-        # Custom plotting options for each histogram          
-        if (count == 1):
-            oldax.set_xlim([-0.2, 2.6])
-            newax.text(0.06, 0.96, r'O/H', color='navy', fontsize = 10, 
-                       horizontalalignment='left', verticalalignment='top', transform=newax.transAxes)
-            newax.text(0.96, 0.96, overlay, color='navy', fontsize = 10,
-                       horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
-            newax.axvline(x=0.0, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
-            newax.set_yticklabels([])
-            
-        if (count == 2):
-            oldax.set_xlim([0.0, 1.0])
-            newax.text(0.06, 0.96, r'C/O', color='maroon', fontsize = 10, 
-                       horizontalalignment='left', verticalalignment='top', transform=newax.transAxes)
-            newax.text(0.96, 0.96, overlay, color='maroon', fontsize = 10,
-                       horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
-            newax.axvline(x=0.55, linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
-            newax.set_yticklabels([])
-
-        plt.xlabel(parameters[i], fontsize = 12, labelpad = 1)
+        species = plot_species[q]
+        species_label = species_labels[q]
         
-  #  plt.tight_layout(pad = 0.7, w_pad = 0.2, h_pad = 0.8)
+        row_idx = q // N_columns
+        column_idx = q - (row_idx * N_columns)
+
+        ax = plt.subplot(gs[row_idx, column_idx:column_idx+1])
+
+        # For each retrieval
+        for m in range(len(X_vals)):
+
+            X_vals_m = X_vals[m]
+            
+            if (N_models == 1):
+                colour = colour_list[q]   # Each species has a different colour
+            else:
+                colour = colour_list[m]   # Each retrieval has a different colour
+
+            # Set minimum and maximum mixing ratio plot limits
+            try:
+                log_X_min, log_X_max = span[q]
+            except:
+                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+                span[q] = _quantile(np.log10(X_vals_m[:,np.where(all_species == species)[0][0]]), quant)
+                log_X_min = span[q][0]
+                log_X_max = span[q][1]
         
-    # Write figure to file
-    file_name = output_dir + model_name + '_element_ratios.png'
+            # Plot histogram
+            low1, median, high1 = plot_abundance_panel(ax, X_vals_m, N_bins, species,
+                                                       all_species, log_X_min, log_X_max, colour)
 
-    plt.savefig(file_name, bbox_inches='tight', dpi=300)
+            # Add retrieval model labels to top left panel
+            if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
+                ax.text(0.10, (0.94 - m*0.10), retrieval_labels[m], color=colour, 
+                        fontsize = 12, horizontalalignment='left', 
+                        verticalalignment='top', transform=ax.transAxes)
 
+            # Create sub-axis for error bar
+            newax = plt.gcf().add_axes(ax.get_position(), sharex=ax, frameon=False)
+            newax.set_ylim(0, 1)
+        
+            ylim = newax.get_ylim()
+            y = ylim[0] + 0.06*(m+1)*(ylim[1] - ylim[0])
+   
+            newax.errorbar(x=median, y=y,
+                           xerr=np.transpose([[median - low1, high1 - median]]), 
+                           color='lightgreen', ecolor='green', markersize=3, 
+                           markeredgewidth = 0.6, linewidth=0.9, capthick=0.9,
+                           capsize=1.7, marker='s')
 
-def plot_composition(planet, model):
-
-    # Unpack model and atmospheric properties
-    planet_name = planet['planet_name']
-    model_name = model['model_name']
-    param_species = model['param_species']
-    N_params_cum = model['N_params_cum']
-
-    # Unpack number of free parameters
-    param_names = model['param_names']
-    n_params = len(param_names)
-
-    # Identify output directory location
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
-
-    # Load relevant output directory
-    output_prefix = model_name + '-'
-
-    # Change directory into MultiNest result file folder
-    os.chdir(output_dir + 'MultiNest_raw/')
+            ax.set_yticks([])
+            ax.tick_params(axis='both', which='major', labelsize=8)
+            newax.tick_params(axis='both', which='major', labelsize=8)
     
-    # Run PyMultiNest analyser to extract posterior samples
-    analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
-                                    verbose = False)
-    samples = analyzer.get_equal_weighted_posterior()[:,:-1]
+            # Hide y axis for all columns except the first one    
+            if (column_idx != 0):
+                newax.set_yticklabels([])     # Remove y-axis tick marks
 
-    # Change directory back to directory where user's python script is located
-    os.chdir('../../../../')
+        # Overplot true value
+        if (truths != []):
+            ax.axvline(x=truths[q], linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
 
-    # Find total number of available posterior samples from MultiNest 
-    N_samples = len(samples[:,0])
-    N_species = len(param_species)
+        # Add chemical species label
+        ax.text(0.06, 0.94, species_label, color=colour, 
+                fontsize = 10, horizontalalignment='left', 
+                verticalalignment='top', transform=ax.transAxes)
 
-    log_X_stored = np.zeros(shape=(N_samples, N_species))
+        # Add x-axis label
+        ax.set_xlabel(r'$\log $' + species_label, fontsize = 12)
+       
+        # For first column add y label
+        if (column_idx == 0):
+            ax.set_ylabel(r'Probability density (normalized)', fontsize = 9, labelpad = 20)
+
+    return fig
+        
+
+def elemental_ratio(all_species, X_vals, element_1, element_2):
+    '''
+    Helper function.
     
-    # Generate spectrum and PT profiles from selected samples
+    '''
+
+    # Store shape of mixing ratio array
+    N_samples, N_species = np.shape(X_vals)
+
+    # Initialise element ratio array
+    element_ratio = np.zeros(shape=(N_samples))
+
+    # Loop through atmosphere
     for i in range(N_samples):
 
-        # Convert MultiNest parameter samples into POSEIDON function inputs
-        _, _, log_X_stored[i,:], _, _, _, _, _ = split_params(samples[i], 
-                                                              N_params_cum)
+        element_1_abundance = 0.0   # First element in ratio
+        element_2_abundance = 0.0   # Second element in ratio
+
+        for q in range(N_species): 
+            
+            # Extract name and mixing ratio of molecule 'q'
+            molecule_q = all_species[q] 
+            X_q = X_vals[i,q]
+
+            # Count how many atoms of each element are in this molecule
+            counts = count_atoms(molecule_q)
+
+            # Loop over elements
+            for element, count in counts.items():
+
+                # Add abundances of element 1 and 2 to the total
+                if (element == element_1):
+                    element_1_abundance += count * X_q
+                elif (element == element_2):
+                    element_2_abundance += count * X_q
+
+        # Compute the element ratio
+        element_ratio[i] = element_1_abundance / element_2_abundance
+
+    return element_ratio
+
+
+def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
+                                  retrieval_labels, span, truths, N_rows, 
+                                  N_columns, N_bins, abundance_fmt = '.2f'):
+
+
+    if (plot_ratios == []):
+        plot_ratios = all_species
+
+    N_ratios = len(plot_ratios)
+    N_species = len(all_species)
+    N_models = len(X_vals)
+
+    # If user doesn't specify number of rows or columns, place 3 histograms on each row
+    if ((N_rows == None) or (N_columns == None)):
+        N_columns = 3
+        N_rows =  1 + (N_ratios - 1)//N_columns
+
+    # Initialise multi-panel grid
+    fig = plt.figure()
+
+    gs = gridspec.GridSpec(N_rows, N_columns)
+
+    fig.set_size_inches(2.5*N_columns, 2.5*N_rows)
+
+    # Determine histogram bounds (defaults to +/- 5σ)
+    if (span == []):
+        span = [0.999999426697 for q in range(N_ratios)]
+    span = list(span)
+
+    
+    # TBD: add these to species_data.py
+    solar_values = {'O/H': np.power(10.0, (8.69-12.0)), 
+                    'C/H': np.power(10.0, (8.43-12.0)),
+                    'N/H': np.power(10.0, (7.83-12.0))}
+
+   
+    #***** Generate panels *****#
+    
+    # For each elemental ratio
+    for q in range(len(plot_ratios)):
+
+        ratio = plot_ratios[q]
+        elements = ratio.split('/')   # Split ratio into constituent elements
+
+        row_idx = q // N_columns
+        column_idx = q - (row_idx * N_columns)
+
+        ax = plt.subplot(gs[row_idx, column_idx:column_idx+1])
+
+        # For each retrieval
+        for m in range(len(X_vals)):
+
+            X_vals_m = X_vals[m]
+
+            N_samples = np.shape(X_vals_m)[0]
+
+            ratio_vals = elemental_ratio(all_species, X_vals_m, elements[0], elements[1])
+
+            if (elements[1] == 'H'):
+                ratio_vals = ratio_vals / solar_values[ratio]
+            
+            if (N_models == 1):
+                colour = colour_list[q]   # Each ratio has a different colour
+            else:
+                colour = colour_list[m]   # Each retrieval has a different colour
+
+            # Set minimum and maximum mixing ratio plot limits
+            try:
+                x_min, x_max = span[q]
+            except:
+                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+
+                if (elements[1] == 'H'):
+                    span[q] = _quantile(np.log10(ratio_vals), quant)
+                else:
+                    span[q] = _quantile(ratio_vals, quant)
+                x_min = span[q][0]
+                x_max = span[q][1]
+        
+            # Plot histogram
+            if (elements[1] == 'H'):
+                low1, median, high1 = plot_ratio_panel(ax, np.log10(ratio_vals), 
+                                                       N_bins, x_min, x_max, colour)
+            else:
+                low1, median, high1 = plot_ratio_panel(ax, ratio_vals, N_bins, 
+                                                       x_min, x_max, colour)
+
+            print(0.5*((median-low1) + (high1 - median)))
+
+            # Add retrieval model labels to top left panel
+            if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
+                ax.text(0.10, (0.94 - m*0.10), retrieval_labels[m], color=colour, 
+                        fontsize = 12, horizontalalignment='left', 
+                        verticalalignment='top', transform=ax.transAxes)
+
+            # Create sub-axis for error bar
+            newax = plt.gcf().add_axes(ax.get_position(), sharex=ax, frameon=False)
+            newax.set_ylim(0, 1)
+        
+            ylim = newax.get_ylim()
+            y = ylim[0] + 0.06*(m+1)*(ylim[1] - ylim[0])
+   
+            newax.errorbar(x=median, y=y,
+                           xerr=np.transpose([[median - low1, high1 - median]]), 
+                           color='lightgreen', ecolor='green', markersize=3, 
+                           markeredgewidth = 0.6, linewidth=0.9, capthick=0.9,
+                           capsize=1.7, marker='s')
+
+            ax.set_yticks([])
+            ax.tick_params(axis='both', which='major', labelsize=8)
+            newax.tick_params(axis='both', which='major', labelsize=8)
+    
+            # Hide y axis for all columns except the first one    
+            if (column_idx != 0):
+                newax.set_yticklabels([])     # Remove y-axis tick marks
+
+        # Overplot true value
+        if (truths != []):
+            ax.axvline(x=truths[q], linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
+
+        # Add chemical species label
+        ax.text(0.06, 0.94, ratio, color=colour, 
+                fontsize = 10, horizontalalignment='left', 
+                verticalalignment='top', transform=ax.transAxes)
+
+        # Add x-axis label
+        if (elements[1] == 'H'):
+            ax.set_xlabel(r'$\log ($' + r'$\mathrm{' + ratio + r'}$' + r') ($\times \rm{solar})$', fontsize = 12)
+        else:
+            ax.set_xlabel(r'$\mathrm{' + ratio + r'}$', fontsize = 12)
+       
+        # For first column add y label
+        if (column_idx == 0):
+            ax.set_ylabel(r'Probability density (normalized)', fontsize = 9, labelpad = 20)
+
+    return fig
+            
+     #   fmt = "{{0:{0}}}".format(abundance_fmt).format
+     #   overlay = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
+     #   overlay = overlay.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
+
+      #      newax.text(0.96, 0.96, overlay, color='navy', fontsize = 10,
+      #                 horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
+
+
+def plot_composition(planet, models, plot_type = 'abundances', include_bulk = False,
+                     plot_species = [], plot_ratios = [], colour_list = [], 
+                     retrieval_labels = [], span = [], truths = [], N_bins = 40,
+                     He_fraction = 0.17, N_rows = None, N_columns = None, 
+                     plt_label = None):
+
+
+    if (len(models) > 3):
+        raise Exception("Max supported number of retrieval models is 3.")
+
+    if ((len(models) == 1) and (colour_list == [])):
+        colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
+                       'saddlebrown', 'grey', 'brown']
+    elif ((len(models) == 1) and (colour_list != [])):
+        if (plot_species != []):
+            if (len(colour_list) != len(plot_species)):
+                raise Exception("Number of colours does not match the requested " + 
+                                "number of species to plot.")
+        elif (plot_ratios != []):
+            if (len(colour_list) != len(plot_ratios)):
+                raise Exception("Number of colours does not match the requested " + 
+                                "number of elemental ratios to plot.")
+    elif ((len(models) >= 2) and (colour_list == [])):
+        colour_list = ['purple', 'dodgerblue', 'forestgreen']
+    elif ((len(models) >= 2) and (colour_list != [])):
+        if (len(colour_list) != len(models)):
+            raise Exception("Number of colours does not match the number of " + 
+                            "retrieval models.")
+
+    X_vals = []    # List to store mixing ratios for all models, samples, and species
+
+    # We must include bulk gases for elemental ratios (e.g. H2 for O/H ratio)
+    if (plot_type == 'elemental_ratios'):
+        include_bulk = True
+
+    # For each retrieval
+    for m in range(len(models)):
+
+        model = models[m]
+
+        # Unpack model and atmospheric properties
+        planet_name = planet['planet_name']
+        model_name = model['model_name']
+        param_species = model['param_species']
+        bulk_species = model['bulk_species']
+        N_params_cum = model['N_params_cum']
+
+        # Unpack number of free parameters
+        param_names = model['param_names']
+        n_params = len(param_names)
+
+        # Identify output directory location
+        output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+            
+        # Identify directory location where the plot will be saved
+        plot_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+        # Load relevant output directory
+        output_prefix = model_name + '-'
+
+        # Change directory into MultiNest result file folder
+        os.chdir(output_dir + 'MultiNest_raw/')
+        
+        # Run PyMultiNest analyser to extract posterior samples
+        analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
+                                        verbose = False)
+        samples = analyzer.get_equal_weighted_posterior()[:,:-1]
+
+        # Change directory back to directory where user's python script is located
+        os.chdir('../../../../')
+
+        # Find total number of available posterior samples from MultiNest 
+        N_samples = len(samples[:,0])
+        N_species_param = len(param_species)
+
+        # Add bulk species to beginning of array (first histogram) if desired
+        if (include_bulk == True):
+            
+            if ('H2' and 'He' in bulk_species):
+                all_species = np.append(np.array(['He']), param_species)
+                all_species = np.append(np.array(['H2']), all_species)
+                log_X_stored = np.zeros(shape=(N_samples, N_species_param+2))
+            else:
+                all_species = np.append(bulk_species, param_species)
+                log_X_stored = np.zeros(shape=(N_samples, N_species_param+1))
+
+        # Bulk species not plotted
+        else:
+            all_species = param_species
+            log_X_stored = np.zeros(shape=(N_samples, N_species_param))
+
+        # Generate spectrum and PT profiles from selected samples
+        for i in range(N_samples):
+
+            # Append bulk component abundance
+            if (include_bulk == True):
+
+                if ('H2' and 'He' in bulk_species):
+
+                    # Extract mixing ratios from MultiNest samples
+                    _, _, log_X_stored[i,2:], _, _, _, _, _ = split_params(samples[i], 
+                                                                           N_params_cum)
+
+                    X_H2 = (1.0 - np.sum(np.power(10.0, log_X_stored[i,2:])))/(1.0 + He_fraction)
+                    X_He = He_fraction*X_H2
+
+                    log_X_stored[i,0] = np.log10(X_H2)
+                    log_X_stored[i,1] = np.log10(X_He)                                   
+
+                else:
+
+                    # Extract mixing ratios from MultiNest samples
+                    _, _, log_X_stored[i,1:], _, _, _, _, _ = split_params(samples[i], 
+                                                                           N_params_cum)
+
+                    X_0 = 1.0 - np.sum(np.power(10.0, log_X_stored[i,1:]), axis=0)
+                    log_X_stored[i,0] = np.log10(X_0)
+
+            else:
+
+                # Extract mixing ratios from MultiNest samples
+                _, _, log_X_stored[i,:], _, _, _, _, _ = split_params(samples[i], 
+                                                                      N_params_cum)
+
+        X_vals_m = np.power(10.0, log_X_stored)
+
+        X_vals.append(X_vals_m)
+
+    # Plot abundances
+    if (plot_type == 'abundances'):
+        fig = plot_retrieved_abundances(X_vals, all_species, plot_species, 
+                                        colour_list, retrieval_labels, span,
+                                        truths, N_rows, N_columns, N_bins)
 
     # Plot elemental ratios
-    plot_retrieved_element_ratios(np.power(10.0, log_X_stored), planet_name, 
-                                  model_name, param_species)
-'''
+    elif (plot_type == 'elemental_ratios'):
+        fig = plot_retrieved_element_ratios(X_vals, all_species, plot_ratios,
+                                            colour_list, retrieval_labels, span,
+                                            truths, N_rows, N_columns, N_bins)
+  
+    # Save figure to file
+    if (plt_label == None):
+        file_name = (plot_dir + planet_name + '_' + plot_type + '.png')
+    else:
+        file_name = (plot_dir + planet_name + '_' + plt_label + '_' + plot_type + '.png')
+
+    fig.savefig(file_name, bbox_inches='tight', dpi=800)
