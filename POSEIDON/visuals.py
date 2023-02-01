@@ -21,6 +21,9 @@ from matplotlib.ticker import MultipleLocator, FormatStrFormatter, \
 from matplotlib import gridspec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
+from POSEIDON.corner import _quantile
+from POSEIDON.atmosphere import count_atoms
+
 plt.style.use('classic')
 plt.rc('font', family = 'serif')
 matplotlib.rcParams['svg.fonttype'] = 'none'
@@ -84,8 +87,9 @@ def scale_lightness(colour_name, scale):
     return colorsys.hls_to_rgb(h, min(1, l * scale), s = s)
 
 
-def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta, 
-                 perspective, plot_labels = True):
+def plot_transit(ax, R_p, R_s, b_p, r, T, phi, phi_edge, theta, theta_edge,
+                 perspective, y_p = 0.0, plot_labels = True, show_star = False,
+                 annotate_Rp = False, back_colour = 'white'):
     '''
     Subfunction used by the 'plot_geometry' function below. This function plots
     a 2D slice through an exoplanet and its atmosphere (to scale) from various 
@@ -115,8 +119,17 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
         perspective (str):
             Observer viewing perspective for 2D slice.
             (Options: terminator / day-night).
-        plot_labels (bool)
+        y_p (float):
+            Projected coordinate of planet centre from observer perspective
+        plot_labels (bool):
             If False, removes text labels from the plot.
+        show_star (bool):
+            If True, plots the star in the background from observer perspective
+        annotate_Rp (bool):
+            If True, adds an arrow to the terminator perspective plot showing
+            the radius of the planet (works best when show_star = True).
+        back_colour (str):
+            Background colour of figure.
 
     Returns:
         p (matplotlib PatchCollection):
@@ -124,6 +137,8 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
             colour bar. The figure itself is written to the provided axis.
 
     '''
+
+    ax.set_facecolor(back_colour)
 
     ax.axis('equal')
     
@@ -175,8 +190,10 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
             phi_prime_edge_all[0] = phi_prime_edge_all[-1]
             
         # Plot star
-   #     star = Circle((-y_p/R_p, -b_p/R_p), R_s/R_p, facecolor='gold', edgecolor='None', alpha=0.8)
-   #     ax.add_artist(star)
+        if (show_star == True):
+            star = Circle((-y_p/R_p, -b_p/R_p), R_s/R_p, facecolor='gold', 
+                           edgecolor='None', alpha=0.8)
+            ax.add_artist(star)
         
         patches = []
         T_colors = []
@@ -205,21 +222,24 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
                                    width = (r_term[i+11,j] - r_term[i,j])/R_p)
             
                 patches.append(planet_atm)
-                T_colors.append(np.mean(T_term[i:i+11,j]))
+                T_colors.append(np.mean(T_term[i:i+11,j])) 
             
             # Plot planet core (circular, below atmosphere)
-            planet_core = Circle((0.0, 0.0), r[0,0,0]/R_p, facecolor='black', edgecolor='None')
+            planet_core = Circle((0.0, 0.0), r[0,0,0]/R_p, facecolor='#1E202C', edgecolor='None')
             ax.add_artist(planet_core)
-        
-        ax.set_title("Terminator Plane", fontsize = 16, pad=10)
         
         ax.set_xlabel(r'y ($R_p$)', fontsize = 16)
         ax.set_ylabel(r'z ($R_p$)', fontsize = 16)
         
         # Plot atmosphere segment collection
-        p = PatchCollection(patches, cmap=matplotlib.cm.RdYlBu_r, alpha=1.0, 
-                            edgecolor=colorConverter.to_rgba('black', alpha=0.4), 
-                            lw=0.1, zorder = 10)
+        if (show_star == True):
+            p = PatchCollection(patches, cmap=matplotlib.cm.RdBu_r, alpha=1.0, 
+                                edgecolor=colorConverter.to_rgba('black', alpha=0.4), 
+                                lw=0.1, zorder = 10)
+        else:
+            p = PatchCollection(patches, cmap=matplotlib.cm.RdYlBu_r, alpha=1.0, 
+                                edgecolor=colorConverter.to_rgba('black', alpha=0.4), 
+                                lw=0.1, zorder = 10)
 
         # Colour each segment according to atmospheric temperature
         colors = np.array(T_colors)
@@ -235,6 +255,7 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
         
         # Add labels
         if (plot_labels == True):
+            ax.set_title("Terminator Plane", fontsize = 16, pad=10)
             ax.text(0.04, 0.90, 'Evening', horizontalalignment='left', 
                     verticalalignment='top', transform=ax.transAxes, fontsize = 14)
             ax.text(0.96, 0.90, 'Morning', horizontalalignment='right', 
@@ -242,6 +263,16 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
 
         ax.set_xlim([-1.4*r_max, 1.4*r_max])
         ax.set_ylim([-1.4*r_max, 1.4*r_max])
+
+        if (annotate_Rp == True):
+            ax.annotate(s='', xy=(0.0, 0.0), xytext=(-1.0/np.sqrt(2), -1.0/np.sqrt(2)), 
+                        arrowprops=dict(arrowstyle='<->', color='white', alpha=1.0), bbox=dict(fc='none', ec='none'))
+            ax.text(-0.50, -0.15, r'$R_{\rm{p}}$', horizontalalignment = 'left', 
+                    verticalalignment = 'top', fontsize = 14, color='white')
+
+        ax.text(0.04, 0.96, 'System Geometry', horizontalalignment='left', 
+                verticalalignment='top', transform=ax.transAxes, color = 'black', fontsize = 16)
+        
   
     # Slice through the north-south pole plane
     elif (perspective == 'day-night'):
@@ -305,7 +336,7 @@ def plot_transit(ax, R_p, r, T, phi, phi_edge, dphi, theta, theta_edge, dtheta,
         
         # Plot atmosphere segment collection
         p = PatchCollection(patches, cmap=matplotlib.cm.RdYlBu_r, alpha=1.0, 
-                            edgecolor=colorConverter.to_rgba('black', alpha=0.4), 
+                            edgecolor=colorConverter.to_rgba('black', alpha=0.1), 
                             lw=0.1, zorder = 10)
         
         # Colour each segment according to atmospheric temperature
@@ -375,7 +406,8 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     planet_name = planet['planet_name']
     model_name = model['model_name']
     R_p = planet['planet_radius']
-  #  R_s = star['stellar_radius']
+    b_p = planet['planet_impact_parameter']
+    R_s = star['stellar_radius']
     r = atmosphere['r']
     T = atmosphere['T']
     phi = atmosphere['phi']
@@ -396,12 +428,12 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     ax2 = plt.subplot(gs[1])
     
     # Plot terminator plane on LHS axis
-    p = plot_transit(ax1, R_p, r, T, phi, phi_edge, dphi, theta, 
-                     theta_edge, dtheta, 'terminator', plot_labels) 
+    p = plot_transit(ax1, R_p, R_s, b_p, r, T, phi, phi_edge, theta, 
+                     theta_edge, 'terminator', plot_labels) 
 
     # Plot side perspective on RHS axis
-    _ = plot_transit(ax2, R_p, r, T, phi, phi_edge, dphi, theta, 
-                     theta_edge, dtheta, 'day-night', plot_labels) 
+    _ = plot_transit(ax2, R_p, R_s, b_p, r, T, phi, phi_edge, theta, 
+                     theta_edge, 'day-night', plot_labels) 
     
     # Plot temperature colourbar
     cbaxes = fig.add_axes([1.01, 0.131, 0.015, 0.786]) 
@@ -420,6 +452,62 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     plt.savefig(file_name, bbox_inches='tight', dpi=800)
 
     return fig
+
+
+def plot_geometry_spectrum_mixed(planet, star, model, atmosphere, spectra,
+                                 y_p = 0.0, plot_labels = False, 
+                                 show_star = True, annotate_Rp = True, 
+                                 back_colour = 'black', data_properties = None,
+                                 show_data = False, plot_full_res = True,
+                                 bin_spectra = True, 
+                                 R_to_bin = 100, wl_min = None, wl_max = None,
+                                 y_min = None, y_max = None,
+                                 y_unit = 'transit_depth', plt_label = None, 
+                                 colour_list = [], spectra_labels = [], 
+                                 data_colour_list = [], data_labels = [],
+                                 data_marker_list = [], 
+                                 data_marker_size_list = [], wl_axis = 'log', 
+                                 figure_shape = 'default', 
+                                 legend_location = 'upper right', legend_box = True):
+
+    # Unpack model and atmospheric properties
+    planet_name = planet['planet_name']
+    R_p = planet['planet_radius']
+    b_p = planet['planet_impact_parameter']
+    R_s = star['stellar_radius']
+    r = atmosphere['r']
+    T = atmosphere['T']
+    phi = atmosphere['phi']
+    phi_edge = atmosphere['phi_edge']
+    theta = atmosphere['theta']
+    theta_edge = atmosphere['theta_edge']
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+    # Create figure
+    fig, (ax1, ax2) = plt.subplots(2, figsize=(15,6))
+    gs = gridspec.GridSpec(1, 2, width_ratios=[1,1.5]) 
+    
+    ax1 = plt.subplot(gs[0])
+    ax2 = plt.subplot(gs[1])
+
+    # Plot transit geometry on LHS axis
+    p = plot_transit(ax1, R_p, R_s, b_p, r, T, phi, phi_edge, theta, 
+                     theta_edge, 'terminator', y_p, plot_labels, show_star,
+                     annotate_Rp, back_colour) 
+
+    # Plot spectrum on RHS axis
+    plot_spectra(spectra, planet, data_properties, show_data, plot_full_res, 
+                 bin_spectra, R_to_bin, wl_min, wl_max, y_min, y_max, y_unit, 
+                 plt_label, colour_list, spectra_labels, data_colour_list,
+                 data_labels, data_marker_list, data_marker_size_list, wl_axis, 
+                 figure_shape, legend_location, legend_box, ax2, save_fig = False)
+
+    # Save Figure to file
+    file_name = (output_dir + planet_name + '_' + plt_label + '_geometry_spectra.png')
+
+    fig.savefig(file_name, bbox_inches = 'tight', dpi = 800)
 
 
 def plot_PT(planet, model, atmosphere, show_profiles = [],
@@ -1121,8 +1209,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
                  data_marker_size_list = [], wl_axis = 'log', 
-                 figure_shape = 'default', 
-                 legend_location = 'upper right', legend_box = True):
+                 figure_shape = 'default', legend_location = 'upper right',
+                 legend_box = True, ax = None, save_fig = True):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -1179,6 +1267,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             'lower left', 'lower right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
+        ax (matplotlib axis object, optional):
+            Matplotlib axis provided externally.
+        save_fig (bool, optional):
+            If True, saves a PDF in the POSEIDON output folder.
 
     Returns:
         fig (matplotlib figure object):
@@ -1188,6 +1280,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
     if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
         plot_type = 'transmission'
+    elif (y_unit in ['time_average_transit_depth']):
+        plot_type = 'time_average_transmission'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
@@ -1208,8 +1302,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Quick validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 6):
-        raise Exception("Max number of concurrent spectra to plot is 6.")
+    if (N_spectra > 8):
+        raise Exception("Max number of concurrent spectra to plot is 8.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
@@ -1217,7 +1311,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
-        colours = ['green', 'red', 'black', 'darkgrey', 'navy', 'brown']
+        colours = ['green', 'red', 'black', 'darkgrey', 'navy', 
+                   'brown', 'goldenrod', 'magenta']
     else:
         colours = colour_list
 
@@ -1396,7 +1491,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     else:
         raise Exception("Unsupported Figure shape - please use 'default' or 'wide'")
     
-    ax1 = plt.gca()
+    if (ax == None):
+        ax1 = plt.gca()
+    else:
+        ax1 = ax
     
     # Set x axis to be linear or logarithmic
     ax1.set_xscale(wl_axis)
@@ -1494,6 +1592,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
     if (plot_type == 'transmission'):
         ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+    elif (plot_type == 'time_average_transmission'):
+        ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
     elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
     elif (plot_type == 'direct_emission'):
@@ -1514,15 +1614,21 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
     
+    # Switch to two columns if many spectra are being plotted
+    if (N_spectra >= 6):
+        n_columns = 2
+    else:
+        n_columns = 1
+
     # Add box around legend
     if (legend_box == True):
         legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon = True)    # Legend settings
+                            ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon=False)    # Legend settings
+                            ncol = n_columns, frameon = False)    # Legend settings
         
     for legline in legend.legendHandles:
         if ((plot_full_res == True) or (show_data == True)):
@@ -1533,13 +1639,14 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     plt.tight_layout()
 
     # Write figure to file
-    if (plt_label == None):
-        file_name = (output_dir + planet_name + '_' + plot_type + '_spectra.pdf')
-    else:
-        file_name = (output_dir + planet_name + '_' + plt_label + '_' +
-                     plot_type + '_spectra.pdf')
+    if (save_fig == True):
+        if (plt_label == None):
+            file_name = (output_dir + planet_name + '_' + plot_type + '_spectra.pdf')
+        else:
+            file_name = (output_dir + planet_name + '_' + plt_label + '_' +
+                        plot_type + '_spectra.pdf')
 
-    plt.savefig(file_name, bbox_inches = 'tight')
+        plt.savefig(file_name, bbox_inches = 'tight')
 
     return fig
 
@@ -2802,7 +2909,6 @@ def plot_stellar_flux(flux, wl, wl_min = None, wl_max = None, flux_min = None,
 #***** The below functions are deprecated for now, pending improvements *****#
 
 '''
-
 def plot_chem_histogram(nbins, X_i_vals, colour, oldax, shrink_factor):
     
     weights = np.ones_like(X_i_vals)/float(len(X_i_vals))
