@@ -236,6 +236,11 @@ def plot_transit(ax, R_p, R_s, b_p, r, T, phi, phi_edge, theta, theta_edge,
             p = PatchCollection(patches, cmap=matplotlib.cm.RdBu_r, alpha=1.0, 
                                 edgecolor=colorConverter.to_rgba('black', alpha=0.4), 
                                 lw=0.1, zorder = 10)
+
+            # Add text label to indicate system geometry is shown
+            ax.text(0.04, 0.96, 'System Geometry', horizontalalignment='left', 
+                verticalalignment='top', transform=ax.transAxes, color = 'black', fontsize = 16)
+
         else:
             p = PatchCollection(patches, cmap=matplotlib.cm.RdYlBu_r, alpha=1.0, 
                                 edgecolor=colorConverter.to_rgba('black', alpha=0.4), 
@@ -270,8 +275,7 @@ def plot_transit(ax, R_p, R_s, b_p, r, T, phi, phi_edge, theta, theta_edge,
             ax.text(-0.50, -0.15, r'$R_{\rm{p}}$', horizontalalignment = 'left', 
                     verticalalignment = 'top', fontsize = 14, color='white')
 
-        ax.text(0.04, 0.96, 'System Geometry', horizontalalignment='left', 
-                verticalalignment='top', transform=ax.transAxes, color = 'black', fontsize = 16)
+
         
   
     # Slice through the north-south pole plane
