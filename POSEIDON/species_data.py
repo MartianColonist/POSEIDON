@@ -1,4 +1,8 @@
-# Contains various properties of atoms and molecules used by POSEIDON
+''' 
+Dictionaries with various properties of atoms and molecules used by POSEIDON.
+
+'''
+
 
 # List of masses in atomic mass units (multiply by 1u = 1.66053904e-27 to convert to kg)
 masses = {'H2O':   18.010565, 'CH4':   16.031300, 'NH3':   17.026549, 'HCN':   27.010899,

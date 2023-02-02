@@ -1,29 +1,51 @@
-# Radiative transfer calculations for generating transmission spectra
+''' 
+Functions for transmission spectra radiative transfer calculations.
+
+'''
 
 import numpy as np
 from numba.core.decorators import jit
-from .absorption import extinction, extinction_LBL
 
-from .utility import prior_index, closest_index
-
-#from utility import prior_index
-#from atmosphere import profiles
-#from instrument import make_model_data
-#from geometry import angular_grids
-#from stellar import stellar_contamination_single_spot
-#from parameters import unpack_cloud_params, unpack_geometry_params
-#from config import N_D, R_s, T_s, b_p, opacity_treatment, TwoD_type, \
-#                   N_slice_EM, N_slice_DN, term_transition, stellar_contam, \
-#                   rad_transfer, load_observations, P_deep
+from .utility import prior_index
                    
 
 @jit(nopython=True)
 def zone_boundaries(N_b, N_sectors, N_zones, b, r_up, k_zone_back,
                     theta_edge_min, theta_edge_max):
+    ''' 
+    Compute the maximum and minimal radial distance from the centre of the 
+    planet that a ray at impact parameter b experiences in each azimuthal 
+    sector and zenith zone.
     
-    ''' Compute maximum and minimal radial extent a ray at impact 
-        parameter b experiences in each sector and zone.
+    These quantities are 'r_min' and 'r_max' in MacDonald & Lewis (2022).
         
+    Args:
+        N_b (int):
+            Number of impact parameters (length of b).
+        N_sectors (int):
+            Number of azimuthal sectors.
+        N_zones (int):
+            Number of zenith zones.
+        b (np.array of float):
+            Stellar ray impact parameters.
+        r_up (3D np.array of float):
+            Upper layer boundaries in each atmospheric column (m).
+        k_zone_back (np.array of int):
+            Indices encoding which background atmosphere zone each zenith 
+            integration element corresponds to.
+        theta_edge_min (np.array of float):
+            Minimum zenith angle of each zone (radians).
+        theta_edge_max (np.array of float):
+            Maximum zenith angle of each zone (radians).
+                
+    Returns:
+        r_min (3D np.array of float):
+            Minimum radial extent encountered by a ray when traversing a given
+            layer in a column defined by its sector and zone (m).
+        r_max (3D np.array of float):
+            Maximum radial extent encountered by a ray when traversing a given
+            layer in a column defined by its sector and zone (m).
+    
     '''
     
     r_min = np.zeros(shape=(N_b, N_sectors, N_zones))
@@ -57,7 +79,7 @@ def zone_boundaries(N_b, N_sectors, N_zones, b, r_up, k_zone_back,
                     
                     # If geometric expressions go above the maximum altitude, set to top of atmosphere
                     r_max[i,j,k] = np.minimum(r_up[-1,j,k_in], r_max_geom)
-                
+         
     return r_min, r_max
 
 
@@ -65,9 +87,46 @@ def zone_boundaries(N_b, N_sectors, N_zones, b, r_up, k_zone_back,
 def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back, 
                                 N_layers, N_sectors_back, N_zones_back, 
                                 N_zones, N_phi, k_zone_back, theta_edge_all):
-    
-    ''' Compute the path distribution tensor analytically for the geometric
-        limit (rays travel in straight lines).
+    ''' 
+    Compute the path distribution tensor, in the geometric limit where rays 
+    travel in straight lines, using the equations in MacDonald & Lewis (2022).
+        
+    Args:
+        b (np.array of float):
+            Stellar ray impact parameters.
+        r_up (3D np.array of float):
+            Upper layer boundaries in each atmospheric column (m).
+        r_low (3D np.array of float):
+            Lower layer boundaries in each atmospheric column (m).
+        dr (3D np.array of float):
+            Layer thicknesses in each atmospheric column (m).
+        i_bot (int):
+            Layer index of bottom of atmosphere (rays with b[i < i_bot] are
+            ignored). By default, i_bot = 0 so all rays are included in the
+            radiative transfer calculation.
+        j_sector_back (np.array of int):
+            Indices encoding which background atmosphere sector each azimuthal
+            integration element falls in (accounts for north-south symmetry of
+            background atmosphere, since the path distribution need only be
+            calculated once for the northern hemisphere).
+        N_layers (int):
+            Number of layers.
+        N_sectors_back (int):
+            Number of azimuthal sectors in the background atmosphere.
+        N_zones_back (int):
+            Number of zenith zones in the background atmosphere.
+        N_phi (int):
+            Number of azimuthal integration elements (not generally the same as
+            N_sectors, especially when the planet partially overlaps the star).
+        k_zone_back (np.array of int):
+            Indices encoding which background atmosphere zone each zenith 
+            integration element corresponds to.
+        theta_edge_all (np.array of float):
+            Zenith angles at the edge of each zone (radians).
+                
+    Returns:
+        Path (4D np.array of float):
+            Path distribution tensor for 3D atmospheres. 
     
     '''
 
@@ -184,8 +243,8 @@ def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back,
                             
                             # Check for layers falling outside of region sampled by ray
                             if ((r_low[l,j_sector_back_in,k_in] >= r_max[i,j_sector_back_in,k]) or
-                                (r_up[l,j_sector_back_in,k_in] < r_min[i,j_sector_back_in,k]) or
-                                (b[i] > r_max[i,j_sector_back_in,k])):             
+                                (r_up[l,j_sector_back_in,k_in] <= r_min[i,j_sector_back_in,k]) or
+                                (b[i] >= r_max[i,j_sector_back_in,k])):             
                                 
                                 Path[i,j,k,l] = 0.0  # No path if layer outside region
                                 
@@ -202,12 +261,12 @@ def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back,
                                     s2 = np.sqrt(r_up_sq[l,j_sector_back_in,k_in] - b_sq[i])
                                     s1 = 0.0
                                     
-                                if (r_low[l,j_sector_back_in,k_in] >= r_min[i,j_sector_back_in,k]): 
+                                if (r_low[l,j_sector_back_in,k_in] > r_min[i,j_sector_back_in,k]): 
                                     
                                     s3 = np.sqrt(r_low_sq[l,j_sector_back_in,k_in] - b_sq[i])
                                     s4 = 0.0
                                     
-                                else:     #  elif (r_low[l,j,k_in] < r_min[i,j,k]): 
+                                else:     #  elif (r_low[l,j,k_in] <= r_min[i,j,k]): 
                                     
                                     s4 = np.sqrt(r_min_sq[i,j_sector_back_in,k] - b_sq[i])
                                     s3 = 0.0
@@ -222,8 +281,7 @@ def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back,
                                 
             # Update angular sector pre-computation completion index
             j_sector_last = j_sector_back_in
-            
-    
+
     return Path
 
 
@@ -231,25 +289,82 @@ def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back,
 def extend_rad_transfer_grids(phi_edge, theta_edge, R_s, d, R_max, f_cloud, 
                               phi_0, theta_0, N_sectors_back, N_zones_back, 
                               enable_deck, N_phi_max = 36):
+    ''' 
+    Extend the background atmosphere geometric grids (north hemisphere)
+    to produce the full geometric grids used for radiative transfer.
     
-    ''' Extend the background atmosphere geometric grids (north hemisphere)
-        to produce the full geometric grids used for radiative transfer.
+    This function first duplicates the north hemisphere to symmetrically
+    extend to the south hemisphere. Then, additional sectors and zones
+    are added for cloudy models at the angular locations where they
+    slice the existing background sectors / zones.
+    
+    In cases where the planet only partially transits the stellar disc
+    (e.g. grazing transits, ingress, or egress) the 'N_phi_max' parameter
+    specifies how many azimuthal sectors the atmosphere is spatially 
+    resolved into. In this case, the nearest background 2D / 3D atmosphere
+    sector is placed on the fine grid during radiative transfer.
         
-        This function first duplicates the north hemisphere to symmetrically
-        extend to the south hemisphere. Then, additional sectors and zones
-        are added for cloudy models at the angular locations where they
-        slice the existing background sectors / zones.
-        
-        In cases where the planet only partially transits the stellar disc
-        (e.g. grazing transits, ingress, or egress) the 'N_phi_max' parameter
-        specifies how many azimuthal sectors the atmosphere is spatially 
-        resolved into. In this case, the nearest background 2D / 3D atmosphere
-        sector is placed on the fine grid during radiative transfer.
-        
+    Args:
+        phi_edge (np.array of float):
+            Boundary angles for each sector (radians).
+        theta_edge (np.array of float):
+            Boundary angles for each zone (radians).
+        R_s (float): 
+            Stellar radius (m).
+        d (float):
+            Distance between planet and star centres.
+        R_max (float):
+            Maximum radial extent of entire 3D atmosphere (top of atmosphere).
+        f_cloud (float):
+            Terminator azimuthal cloud fraction for 2D/3D models.
+        phi_0 (float):
+            Azimuthal angle in terminator plane, measured clockwise from the 
+            North pole, where the patchy cloud begins for 2D/3D models (degrees).
+        theta_0 (float):
+            Zenith angle from the terminator plane, measured towards the 
+            nightside, where the patchy cloud begins for 2D/3D models (degrees).
+        N_sectors_back (int):
+            Number of azimuthal sectors in the background atmosphere.
+        N_zones_back (int):
+            Number of zenith zones in the background atmosphere.
+        enable_deck (int):
+            1 if the model contains a cloud deck, else 0.
+        N_phi_max (int, optional):
+            Maximum number of azimuthal integration elements to use for partial 
+            transits when discretising the atmosphere.
+                
+    Returns:
+        phi_grid (np.array of float):
+            Angles in the centre of each azimuthal integration element (radians).
+        dphi_grid (np.array of float):
+            Angular width each azimuthal integration element (radians).
+        theta_grid (np.array of float):
+            Angles in the centre of each zenith integration element (radians).
+        theta_edge_all (np.array of float):
+            Boundary angles at the edge of each zenith integration element (radians).
+        N_sectors (int):
+            Total number of azimuthal sectors (including addition of southern
+            hemisphere and any extra sectors needed to handle patchy clouds).
+        N_zones (int):
+            Total number of zenith zones (including any additional zones needed 
+            to handle patchy clouds).
+        N_phi (int):
+            Number of azimuthal integration elements.
+        j_sector (np.array of int):
+            Indices specifying which sector each azimuthal integration element
+            falls in (for the full list of sectors, including cloud sectors).
+        j_sector_back (np.array of int):
+            Indices specifying which sector of the background atmosphere each 
+            azimuthal integration element falls in (clear atmosphere only).
+        k_zone_back (np.array of int):
+            Indices encoding which background atmosphere zone each zenith 
+            integration element corresponds to.
+        cloudy_sectors (np.array of int):
+            0 if a given sector is clear, 1 if it contains a cloud.
+        cloudy_zones (np.array of int):
+            0 if a given zone is clear, 1 if it contains a cloud.
+    
     '''
-    
-    # Specify maximum number of angles used for azimuthal integration
-  #  N_phi_max = 36   # 10 degree slices
     
     #***** Background atmosphere geometry grids *****#
     
@@ -405,13 +520,48 @@ def extend_rad_transfer_grids(phi_edge, theta_edge, R_s, d, R_max, f_cloud,
            N_phi, j_sector, j_sector_back, k_zone_back, cloudy_sectors, cloudy_zones
         
 
-
 @jit(nopython=True)
 def compute_tau_vert(N_phi, N_layers, N_zones, N_wl, j_sector, j_sector_back,
                      k_zone_back, cloudy_zones, cloudy_sectors, kappa_clear, 
                      kappa_cloud, dr):
-    
-    ''' Compute the vertical optical depth array.
+    ''' 
+    Computes the vertical optical depth tensor across each layer within 
+    each column as a function of wavelength.
+        
+    Args:
+        N_phi (int):
+            Number of azimuthal integration elements.
+        N_layers (int):
+            Number of atmospheric layers.
+        N_zones (int):
+            Number of zenith zones.
+        N_wl (int):
+            Number of wavelengths.
+        j_sector (np.array of int):
+            Indices specifying which sector each azimuthal integration element
+            falls in (for the full list of sectors, including cloud sectors).
+        j_sector_back (np.array of int):
+            Indices specifying which sector of the background atmosphere each 
+            azimuthal integration element falls in (clear atmosphere only).
+        k_zone_back (np.array of int):
+            Indices encoding which background atmosphere zone each zenith 
+            integration element corresponds to.
+        cloudy_zones (np.array of int):
+            0 if a given zone is clear, 1 if it contains a cloud.
+        cloudy_sectors (np.array of int):
+            0 if a given sector is clear, 1 if it contains a cloud.
+        kappa_clear (4D np.array of float):
+            Extinction coefficient from the clear atmosphere (combination of
+            line absorption, CIA, bound-free and free-free absorption, and
+            Rayleigh scattering) (m^-1).
+        kappa_cloud (4D np.array of float):
+            Extinction coefficient from the cloudy / haze contribution (m^-1).
+        dr (3D np.array of float):
+            Layer thicknesses in each atmospheric column (m).
+
+    Returns:
+        tau_vert (4D np.array of float):
+            Vertical optical depth tensor.
     
     '''
     
@@ -473,8 +623,30 @@ def compute_tau_vert(N_phi, N_layers, N_zones, N_wl, j_sector, j_sector_back,
 
 @jit(nopython = True)
 def delta_ray_geom(N_phi, N_b, b, b_p, y_p, phi_grid, R_s_sq):
-    
-    ''' Compute the ray tracing factor in the geometric limit.
+    ''' 
+    Compute the ray tracing Kronecker delta factor in the geometric limit.
+        
+    Args:
+        N_phi (int):
+            Number of azimuthal integration elements (not generally the same as
+            N_sectors, especially when the planet partially overlaps the star).
+        N_b (int):
+            Number of impact parameters (length of b).
+        b (np.array of float):
+            Stellar ray impact parameters.
+        b_p (float):
+            Impact parameter of planetary orbit (m) -- NOT in stellar radii!
+        y_p (float):
+            Perpendicular distance from planet centre to the point where d = b_p
+            (y coord. of planet centre as seen by observer in stellar z-y plane).
+        phi_grid (np.array of float):
+            Angles in the centre of each azimuthal integration element (radians).
+        R_s_sq (float): 
+            Square of the stellar radius (m^2).
+                
+    Returns:
+        delta_ray (2D np.array of float):
+            1 if a given ray traces back to the star, 0 otherwise.
     
     '''
     
@@ -509,41 +681,64 @@ def delta_ray_geom(N_phi, N_b, b, b_p, y_p, phi_grid, R_s_sq):
 #@jit(nopython = True)
 def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck, 
             enable_haze, b_p, y_p, R_s, f_cloud, phi_0, theta_0, phi_edge, theta_edge):
+    ''' 
+    Main function used by the TRIDENT forward model to solve the equation
+    of radiative transfer for exoplanet transmission spectra.
 
-    ''' Compute the transit depth in the geometric limit by solving the
-        radiative transfer equation through the planetary atmosphere.
+    This function implements the tensor dot product method derived in
+    MacDonald & Lewis (2022).
+    
+    Note: This function is purely the atmospheric contribution to the spectrum.
+          The 'contamination factor' contributions (e.g. stellar heterogeneity)
+          are handled afterwards in 'core.py'.
         
-        V3.0: Tensor implementation from MacDonald & Lewis (2022)
-       
-        Inputs:
-           
-        b_p => impact parameter of planetary orbit
-        y_p => perpendicular distance from planet centre to point where d = b_p
-               (alternatively, y coordinate of planet centre in stellar z-y plane)
-        phi_0 => reduced angle where cloud deck begins relative to z axis (radians/(2*pi))
-        phi_c => reduced angular extent of cloud deck (radians/(2*pi))
-        P => pressure of each layer
-        r => radius at centre of each layer
-        r_up => radius of top edge of each layer
-        r_low => radius of top edge of each layer
-        dr => radial thickness of each layer
-        R_p =>
-        n => atmosphere number density grid
-        X => atmosphere volume mixing ratios
-        wl => model wavelength grid
-        kappa_chem => extinction coefficient due to chemistry
-        kappa_Rayleigh => extinction coefficient due to Rayleigh scattering
-        kappa_haze => extinction coefficient due to a scattering haze
-        kappa_cloud => extinction coefficient due to a grey cloud opacity
-        enable_deck => 1 if opaque cloud deck enabled
-        enable_haze => 1 if scattering haze enabled
-        offset => additive transit depth offset
-        N_sectors_back => 
-       
-        Outputs:
-           
-        trans_depth => transmission spectrum
-       
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        r (3D np.array of float):
+            Radial distance profile in each atmospheric column (m).
+        r_up (3D np.array of float):
+            Upper layer boundaries in each atmospheric column (m).
+        r_low (3D np.array of float):
+            Lower layer boundaries in each atmospheric column (m).
+        dr (3D np.array of float):
+            Layer thicknesses in each atmospheric column (m).
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        kappa_clear (4D np.array of float):
+            Extinction coefficient from the clear atmosphere (combination of
+            line absorption, CIA, bound-free and free-free absorption, and
+            Rayleigh scattering) (m^-1).
+        kappa_cloud (4D np.array of float):
+            Extinction coefficient from the cloudy / haze contribution (m^-1).
+        enable_deck (int):
+            1 if the model contains a cloud deck, else 0.
+        enable_haze (int):
+            1 if the model contains a haze, else 0.
+        b_p (float):
+            Impact parameter of planetary orbit (m) -- NOT in stellar radii!
+        y_p (float):
+            Perpendicular distance from planet centre to the point where d = b_p
+            (y coord. of planet centre as seen by observer in stellar z-y plane).
+        R_s (float): 
+            Stellar radius (m).
+        f_cloud (float):
+            Terminator azimuthal cloud fraction for 2D/3D models.
+        phi_0 (float):
+            Azimuthal angle in terminator plane, measured clockwise from the 
+            North pole, where the patchy cloud begins for 2D/3D models (degrees).
+        theta_0 (float):
+            Zenith angle from the terminator plane, measured towards the 
+            nightside, where the patchy cloud begins for 2D/3D models (degrees).
+        phi_edge (np.array of float):
+            Boundary angles for each sector (radians).
+        theta_edge (np.array of float):
+            Boundary angles for each zone (radians).
+                
+    Returns:
+        transit_depth (np.array of float):
+            Atmospheric transit depth as a function of wavelength.
+    
     '''
     
     #***** Step 1: Initialise key quantities *****#
@@ -687,7 +882,6 @@ def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck,
     # Compute the transmission spectrum
     transit_depth = (A_overlap - A_atm_overlap_eff)/(np.pi * R_s_sq)
                 
-    
     return transit_depth
 
 

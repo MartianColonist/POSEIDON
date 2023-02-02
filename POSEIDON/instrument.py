@@ -1,4 +1,7 @@
-# Computes instrument data points from model spectrum
+''' 
+Functions to computes various instrument properties and simulate data points.
+
+'''
 
 import os.path
 import numpy as np
@@ -8,17 +11,26 @@ from scipy.integrate import trapz
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 from spectres import spectres
 
-#from config import planet_name, Band, App_mag, T_s, log_g_s, Met_s
-
 
 def fwhm_instrument(wl_data, instrument):
-    ''' 
-    Evaluates full width at half maximum (FWHM) for the Point Spread 
-    Function (PSF) of a given instrument mode at each bin centre point.
-        
-    FWHM (micron) = R_native * wl (micron)
+    '''
+    Evaluate the full width at half maximum (FWHM) for the Point Spread 
+    Function (PSF) of a given instrument mode at each bin centre wavelength.
     
-    [Assumes Gaussian PSF with FWHM = instrument native spectral resolution]
+    FWHM (μm) = wl (μm) / R_native 
+    
+    This assumes a Gaussian PSF with FWHM = native instrument spectral resolution.
+
+    Args:
+        wl_data (np.array of float): 
+            Bin centre wavelengths of data points (μm).
+        instrument (str):
+            Instrument name corresponding to the dataset
+            (e.g. WFC3_G141, JWST_NIRSpec_PRISM, JWST_NIRISS_SOSS_Ord2). 
+    
+    Returns:
+        fwhm (np.array of float):
+            Full width at half maximum as a function of wavelength (μm).
 
     '''
         
@@ -67,7 +79,7 @@ def fwhm_instrument(wl_data, instrument):
 
     elif (instrument == 'IRTF_SpeX'):
 
-        #fwhm_IRTF_SpeX(wl_data)
+        #fwhm_IRTF_SpeX(wl_data)  # Using the external resolution file currently
 
         # Find precomputed instrument spectral resolution file
         res_file = inst_dir + '/IRTF/' + instrument + '_resolution.dat'
@@ -91,7 +103,7 @@ def fwhm_instrument(wl_data, instrument):
     
     # For any other instruments without a known PSF, convolve with a dummy sharp PSF
     else: 
-        fwhm = 0.0001 * np.ones(N_bins) 
+        fwhm = 0.00001 * np.ones(N_bins) 
     
     return fwhm
 
@@ -100,6 +112,15 @@ def fwhm_IRTF_SpeX(wl_data):
     '''
     Calculate the wavelength dependent FWHM for the SpeX prism on the NASA
     Infrared Telescope Facility.
+
+    Args:
+        wl_data (np.array of float): 
+            Bin centre wavelengths of data points (μm).
+    
+    Returns:
+        fwhm (np.array of float):
+            Full width at half maximum as a function of wavelength (μm).
+
     '''
 
     # Calculate average bin width
@@ -118,19 +139,48 @@ def fwhm_IRTF_SpeX(wl_data):
 
 
 def init_instrument(wl, wl_data, half_width, instrument):
-    ''' 
-    Initialises properties of a specified instrument. This function:
-        
-    1) Reads in instrument sensitivity functions.
-    2) Reads in FWHM of instrument PSF.
-    3) Finds indices on model wl grid closest to each data point (bin centre)
-        and corresponding left/right bin edges.
-    4) Pre-computes the integral of the sensitivity function over each bin
-        (normalisation factor)
-
-    These values are then stored for later usage and returned to the main
-    program.
+    '''
+    Initialise required properties for a specific instrument. 
     
+    This function conducts the following steps: 
+        
+    1) Read in the instrument sensitivity functions.
+    2) Read in FWHM of the instrument PSF.
+    3) Find the indices on the model wavelength grid closest to the bin centre 
+       of each data point and the corresponding left/right bin edges.
+    4) Pre-compute the integral of the sensitivity function over each bin
+       (i.e. a normalising factor).
+
+    These values are then stored for later usage, so this function need only be
+    run once at the beginning of a retrieval.
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        wl_data (np.array of float): 
+            Bin centre wavelengths of data points (μm).
+        half_width (np.array of float): 
+            Bin half widths of data points (μm).
+        instrument (str):
+            Instrument name corresponding to the dataset
+            (e.g. WFC3_G141, JWST_NIRSpec_PRISM, JWST_NIRISS_SOSS_Ord2). 
+    
+    Returns:
+        sigma (np.array of float):
+            Standard deviation of PSF for each data point (grid space unit).
+        fwhm (np.array of float):
+            Full width at half maximum as a function of wavelength (μm).
+        sensitivity (np.array of float):
+            Instrument transmission function interpolated to model wavelengths.
+        bin_left (np.array of int):
+            Closest index on model grid of the left bin edge for each data point.
+        bin_cent (np.array of int):
+            Closest index on model grid of the bin centre for each data point.
+        bin_right (np.array of int):
+            Closest index on model grid of the right bin edge for each data point.
+        norm (np.array of float):
+            Normalisation constant of the transmission function for each data bin.
+
     '''
 
     # Load reference data directory containing instrument properties
@@ -153,10 +203,27 @@ def init_instrument(wl, wl_data, half_width, instrument):
     elif (instrument == 'IRAC2'): 
         sens_file = inst_dir + '/Spitzer/IRAC2_sensitivity.dat'
     elif (instrument.startswith('JWST')): 
+        if (instrument == 'JWST_NIRSpec_Prism'): # Catch common misspelling of PRISM
+            instrument = 'JWST_NIRSpec_PRISM'
+        if ('NRS' in instrument):                # If G395H split into detectors, use common sensitivity function
+            if ('G395H' in instrument):
+                instrument = 'JWST_NIRSpec_G395H'
+            elif ('G395M' in instrument):
+                instrument = 'JWST_NIRSpec_G395M'
+            elif ('G235H' in instrument):
+                instrument = 'JWST_NIRSpec_G235H'
+            elif ('G235M' in instrument):
+                instrument = 'JWST_NIRSpec_G235M'
+            elif ('G140H' in instrument):
+                instrument = 'JWST_NIRSpec_G140H'
+            elif ('G140M' in instrument):
+                instrument = 'JWST_NIRSpec_G140M'
         sens_file = inst_dir + '/JWST/' + instrument + '_sensitivity.dat'
     
     # If instrument does not have a known sensitivity function, just use a top hat
-    else: 
+    else:
+        print("POSEIDON does not currently have an instrument transmission " +
+              "function for " + instrument + ", so a box function will be used.")
         sens_file = inst_dir + '/dummy_instrument_sensitivity.dat'
     
     # Verify that sensitivity file exists
@@ -174,7 +241,7 @@ def init_instrument(wl, wl_data, half_width, instrument):
     wl_trans = np.array(transmission[0])
     trans = np.array(transmission[1])
 
-    # Transmission function evaluated at model grid locations
+    # Transmission function evaluated at model wavelengths
     sensitivity = np.zeros(len(wl))   
     
     # Interpolate instrument transmission function to model grid
@@ -237,18 +304,46 @@ def init_instrument(wl, wl_data, half_width, instrument):
     
 
 def make_model_data(spectrum, wl, sigma, sensitivity, bin_left, bin_cent, 
-                    bin_right, norm, photometric = False):                    
-    ''' 
-    Produces binned model points at resolution of the data. This function:
+                    bin_right, norm, photometric = False):
+    '''
+    Produce binned model points at the same wavelengths and spectral resolution 
+    as the observed data for a single instrument.
+
+    This function conducts the following steps:
     
-    1) Convolves spectrum with instrument PSF at location of each data point.
-    2) Integrates convolved spectrum over instrument sensitivity function.
-    3) Normalises by integral over sensitivity function to produce binned model points.
+    1) Convolve the model with the instrument PSF for each data point.
+    2) Integrate the convolved spectrum over the instrument sensitivity function.
+    3) Produce binned model points via normalisation of the sensitivity function.
 
     For photometric bands, step (1) is not necessary.
+
+    Args:
+        spectrum (np.array of float):
+            Model spectrum.
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        sigma (np.array of float):
+            Standard deviation of PSF for each data point (grid space unit).
+        sensitivity (np.array of float):
+            Instrument transmission function interpolated to model wavelengths.
+        bin_left (np.array of int):
+            Closest index on model grid of the left bin edge for each data point.
+        bin_cent (np.array of int):
+            Closest index on model grid of the bin centre for each data point.
+        bin_right (np.array of int):
+            Closest index on model grid of the right bin edge for each data point.
+        norm (np.array of float):
+            Normalisation constant of the transmission function for each data bin.
+        photometric (bool):
+            If True, skip the PSF convolution (e.g. for Spitzer IRAC data).
     
+    Returns:
+        ymodel (np.array of float):
+            Model spectrum convolved and binned to the data resolution.
+
     '''
     
+    # For spectroscopic data
     if (photometric == False):
         
         N_bins = len(bin_cent)
@@ -258,19 +353,23 @@ def make_model_data(spectrum, wl, sigma, sensitivity, bin_left, bin_cent,
         for n in range(N_bins):
             
             # Extend convolution beyond bin edge by max(1, 2 PSF std) model grid spaces (std rounded to integer)
-            extention = max(1, int(2 * sigma[n]))   
+            extension = max(1, int(2 * sigma[n]))   
             
             # Convolve spectrum with PSF width appropriate for a given bin 
-            spectrum_conv = gauss_conv(spectrum[(bin_left[n]-extention):(bin_right[n]+extention)], 
+            spectrum_conv = gauss_conv(spectrum[(bin_left[n]-extension):(bin_right[n]+extension)], 
                                        sigma=sigma[n], mode='nearest')
-            integrand = spectrum_conv[extention:-extention] * sensitivity[bin_left[n]:bin_right[n]]
+
+            # Catch a (surprisingly common) error
+            if (len(spectrum_conv[extension:-extension]) != len(sensitivity[bin_left[n]:bin_right[n]])):
+                raise Exception("Error: Model wavelength range not wide enough to encompass all data.")
+
+            integrand = spectrum_conv[extension:-extension] * sensitivity[bin_left[n]:bin_right[n]]
         
             # Integrate convolved spectrum over instrument sensitivity function
             data[n] = trapz(integrand, wl[bin_left[n]:bin_right[n]])   
             ymodel[n] = data[n]/norm[n]
-        
-        return ymodel
-        
+            
+    # For photometric data
     elif (photometric == True):
         
         integrand = spectrum[bin_left[0]:bin_right[0]]*sensitivity[bin_left[0]:bin_right[0]]
@@ -279,12 +378,29 @@ def make_model_data(spectrum, wl, sigma, sensitivity, bin_left, bin_cent,
         data = trapz(integrand, wl[bin_left[0]:bin_right[0]])
         ymodel = data/norm
         
-        return ymodel 
+    return ymodel 
     
 
 def bin_spectrum_to_data(spectrum, wl, data_properties):
     '''
-    ADD DOCSTRING
+    Generate the equivalent model predicted spectrum at the spectral resolution
+    of the data. This function serves as a wrapper, unpacking the POSEIDON
+    data_properties dictionary and calling 'make_model_data' to handle the
+    binning for each instrument separately.
+
+    Args:
+        spectrum (np.array of float):
+            Model spectrum.
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        data_properties (dict):
+            Collection of data properties required for POSEIDON's instrument
+            simulator (i.e. to create simulated binned data during retrievals).
+
+    Returns:
+        ymodel (np.array of float):
+            Model spectrum convolved and binned to the data resolution.
+
     '''
 
     # Initialise combined array of binned model points (all instruments)
@@ -317,10 +433,24 @@ def bin_spectrum_to_data(spectrum, wl, data_properties):
 
 
 def R_to_wl(R_data, wl_data_min, wl_data_max):
-    ''' 
-    Convert a given spectral resolution to a set of wavelength data points 
+    '''
+    Convert a given spectral resolution to the equivalent set of wavelengths
     and bin half-widths.
-    
+
+    Args:
+        R_data (float):
+            Spectral resolution (wl/dwl) of the data.
+        wl_data_min (float):
+            Starting wavelength of new data grid (μm).
+        wl_data_max (float):
+            Ending wavelength of new data grid (μm).
+
+    Returns:
+        wl_data (np.array of float):
+            New wavelength grid spaced with the desired spectral resolution (μm).
+        half_width_data (np.array of float):
+            Half bin width for the new wavelength grid (μm).
+
     '''
     
     delta_log_wl = 1.0/R_data
@@ -347,7 +477,38 @@ def generate_syn_data_from_user(planet, wl_model, spectrum, data_dir,
                                 wl_start = 1.1, wl_end = 1.8, 
                                 label = None, Gauss_scatter = True):
     '''
-    ADD DOCSTRING
+    Generate and write to file a synthetic dataset with a user specified 
+    spectral resolution, precision, and wavelength range. Gaussian scatter can 
+    be optionally disabled, with the data lying on the binned model points.
+
+    Args:
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        wl_model (np.array of float):
+            Model wavelength grid (μm).
+        spectrum (np.array of float):
+            Model spectrum.
+        data_dir (str):
+            Directory where the synthetic datafile will be written.
+        instrument (str):
+            Instrument name corresponding to the dataset
+            (e.g. WFC3_G141, JWST_NIRSpec_PRISM, JWST_NIRISS_SOSS_Ord2). 
+        R_data (float):
+            Spectral resolution (wl/dwl) of the synthetic dataset.
+        err_data (float):
+            Precision of the synthetic dataset, assumed constant with wl (ppm).
+        wl_start (float):
+            Starting wavelength of the synthetic dataset (μm).
+        wl_end (float):
+            Ending wavelength of the synthetic dataset (μm).
+        label (str):
+            Optional descriptive label to add to file name.
+        Gauss_scatter (bool):
+            If True, applies Gaussian scatter with 1σ = err_data.
+
+    Returns:
+        None.
+
     '''
 
     print("Creating synthetic data")
@@ -413,7 +574,38 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
                                 data_properties, R_to_bin = [], 
                                 N_trans = [], label = None, Gauss_scatter = True):
     '''
-    ADD DOCSTRING.
+    Generate and write to file a synthetic dataset with the same precision as
+    an externally provided file. The synthetic dataset can optionally be
+    rebinned and/or scaled by 1/sqrt(N) for additional transits. Rebinning or
+    additional transits will adjust the data precision accordingly. If no 
+    rebinning is requested, the synthetic dataset will have the same wavelength 
+    grid as the external file. The user can also disable Gaussian scattering, 
+    in which case the data will coincide with the binned model points.
+
+    Args:
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        wl_model (np.array of float):
+            Model wavelength grid (μm).
+        spectrum (np.array of float):
+            Model spectrum.
+        data_dir (str):
+            Directory where the synthetic datafile will be written.
+        instrument (str):
+            Instrument name corresponding to the dataset
+            (e.g. WFC3_G141, JWST_NIRSpec_PRISM, JWST_NIRISS_SOSS_Ord2). 
+        R_to_bin (list of float):
+            Output spectral resolution for rebinning each instrument's data.
+        N_trans (list of float):
+            Number of transits observed by each instrument.
+        label (str):
+            Optional descriptive label to add to file name.
+        Gauss_scatter (bool):
+            If True, applies Gaussian scatter with 1σ = err_data.
+
+    Returns:
+        None.
+
     '''
            
     print("Creating synthetic data")

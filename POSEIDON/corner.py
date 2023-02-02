@@ -12,11 +12,6 @@ Ryan MacDonald [POSEIDON modifications] (2021-2022)
 from __future__ import absolute_import, unicode_literals, print_function, division
 
 import numpy
-
-# code from dynesty (MIT licensed)
-
-#from six.moves import range
-
 import logging
 import types
 import math
@@ -46,81 +41,78 @@ SQRTEPS = math.sqrt(float(np.finfo(np.float64).eps))
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
-def _quantile(x, q, weights=None):
-    """
-    Compute (weighted) quantiles from an input set of samples.
-    Parameters
-    ----------
-    x : `~numpy.ndarray` with shape (nsamps,)
-        Input samples.
-    q : `~numpy.ndarray` with shape (nquantiles,)
-       The list of quantiles to compute from `[0., 1.]`.
-    weights : `~numpy.ndarray` with shape (nsamps,), optional
-        The associated weight from each sample.
-    Returns
-    -------
-    quantiles : `~numpy.ndarray` with shape (nquantiles,)
-        The weighted sample quantiles computed at `q`.
-    """
 
-    # Initial check.
+def _quantile(x, q, weights=None):
+    '''
+    Compute (weighted) quantiles from an input set of samples.
+
+    Args:
+        x (np.array of float):
+            Input samples.
+        q (np.array of float): 
+            The list of quantiles to compute (ranging from 0 to 1).
+        weights (np.array of float):
+            The associated weight from each sample.
+    
+    Returns:
+        quantiles (np.array of float):
+            The weighted sample quantiles computed at 'q'.
+    
+    '''
+
+    # Initial check
     x = np.atleast_1d(x)
     q = np.atleast_1d(q)
 
-    # Quantile check.
+    # Quantile check
     if np.any(q < 0.0) or np.any(q > 1.0):
         raise ValueError("Quantiles must be between 0. and 1.")
 
+    # If no weights provided, this simply calls 'np.percentile'
     if weights is None:
-        # If no weights provided, this simply calls `np.percentile`.
+
         return np.percentile(x, list(100.0 * q))
+
+    # If weights are provided, compute the weighted quantiles
     else:
-        # If weights are provided, compute the weighted quantiles.
         weights = np.atleast_1d(weights)
         if len(x) != len(weights):
             raise ValueError("Dimension mismatch: len(weights) != len(x).")
-        idx = np.argsort(x)  # sort samples
-        sw = weights[idx]  # sort weights
-        cdf = np.cumsum(sw)[:-1]  # compute CDF
-        cdf /= cdf[-1]  # normalize CDF
-        cdf = np.append(0, cdf)  # ensure proper span
+        idx = np.argsort(x)              # Sort samples
+        sw = weights[idx]                # Sort weights
+        cdf = np.cumsum(sw)[:-1]         # Compute CDF
+        cdf /= cdf[-1]                   # Normalise CDF
+        cdf = np.append(0, cdf)          # Ensure proper span
         quantiles = np.interp(q, cdf, x[idx]).tolist()
+
         return quantiles
 
 
 def resample_equal(samples, weights, rstate=None):
-    """
-    Resample a new set of points from the weighted set of inputs
-    such that they all have equal weight.
+    '''
+    Resample a new set of points from the weighted set of inputs, such that 
+    they all have equal weight.
+
     Each input sample appears in the output array either
-    `floor(weights[i] * nsamples)` or `ceil(weights[i] * nsamples)` times,
-    with `floor` or `ceil` randomly selected (weighted by proximity).
-    Parameters
-    ----------
-    samples : `~numpy.ndarray` with shape (nsamples,)
-        Set of unequally weighted samples.
-    weights : `~numpy.ndarray` with shape (nsamples,)
-        Corresponding weight of each sample.
-    rstate : `~numpy.random.RandomState`, optional
-        `~numpy.random.RandomState` instance.
-    Returns
-    -------
-    equal_weight_samples : `~numpy.ndarray` with shape (nsamples,)
-        New set of samples with equal weights.
-    Examples
-    --------
-    >>> x = np.array([[1., 1.], [2., 2.], [3., 3.], [4., 4.]])
-    >>> w = np.array([0.6, 0.2, 0.15, 0.05])
-    >>> utils.resample_equal(x, w)
-    array([[ 1.,  1.],
-           [ 1.,  1.],
-           [ 1.,  1.],
-           [ 3.,  3.]])
-    Notes
-    -----
-    Implements the systematic resampling method described in `Hol, Schon, and
-    Gustafsson (2006) <doi:10.1109/NSSPW.2006.4378824>`_.
-    """
+    'floor(weights[i] * nsamples)' or 'ceil(weights[i] * nsamples)' times,
+    with 'floor' or 'ceil' randomly selected (weighted by proximity).
+
+    Note: implements the systematic resampling method described in Hol, Schon, 
+          and Gustafsson (2006): doi:10.1109/NSSPW.2006.4378824.
+
+    Args:
+        samples (np.array of float):
+            Set of unequally weighted samples.
+        weights (np.array of float):
+            Corresponding weight of each sample.
+        rstate (np.random.RandomState):
+            Numpy 'RandomState' instance.
+    
+    Returns:
+        equal_weight_samples (np.array of float):
+            New set of samples with equal weights.
+    
+    '''
 
     if rstate is None:
         rstate = np.random
@@ -147,80 +139,66 @@ def resample_equal(samples, weights, rstate=None):
 
 
 def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
-            ax=None, color='gray', plot_datapoints=False, plot_density=True,
+            ax=None, colour='gray', plot_datapoints=False, plot_density=True,
             plot_contours=True, no_fill_contours=False, fill_contours=True,
             contour_kwargs=None, contourf_kwargs=None, data_kwargs=None,
             **kwargs):
+    '''
+    Internal function called by the 'cornerplot' function to generate a 2D 
+    histogram / contour of samples.
+
+    Args:
+        x (np.array of float):
+            Sample positions in the first dimension.
+        y (np.array of float):
+            Sample positions in the second dimension.
+        smooth (float):
+            Gaussian smoothing factor for 2D contours.
+        span (list of tuples or float):
+            A list where each element is either a length-2 tuple containing
+            lower and upper bounds or a float from `(0., 1.]` giving the
+            fraction of (weighted) samples to include. If a fraction is provided,
+            the bounds are chosen to be equal-tailed. If not specified, defaults 
+            to +/- 5σ range. Example: span = [(0., 10.), 0.95, (5., 6.)].
+        weights (np.array of float):
+            Weights associated with the samples.
+        levels (np.array of float):
+            The contour levels to draw. Default are [1σ, 2σ, 3σ].
+        ax (matplotlib axis object):
+            A matplotlib axis instance on which to add the 2-D histogram.
+            If not provided, a figure will be generated.
+        colour (str):
+            The matplotlib-style colour used to draw lines, colour cells,
+            and contours. Default is 'gray'.
+        plot_datapoints (bool):
+            Whether to plot the individual data points. Default is False.
+        plot_density (bool):
+            Whether to draw the density colourmap. Default is True.
+        plot_contours (bool):
+            Whether to draw the contours. Default is True.
+        no_fill_contours (bool):
+            Whether to add absolutely no filling to the contours. This differs
+            from 'fill_contours = False', which still adds a white fill at the
+            densest points. Default is False.
+        fill_contours (bool):
+            Whether to fill the contours. Default is True.
+        contour_kwargs (dict):
+            Any additional keyword arguments to pass to the 'contour' method.
+        contourf_kwargs (dict):
+            Any additional keyword arguments to pass to the 'contourf' method.
+        data_kwargs (dict):
+            Any additional keyword arguments to pass to the 'plot' method when
+            adding the individual data points.
     
-    """
-    Internal function called by 'cornerplot' used to generate a
-    a 2-D histogram/contour of samples.
-
-    Parameters
-    ----------
-    x : interable with shape (nsamps,)
-       Sample positions in the first dimension.
-
-    y : iterable with shape (nsamps,)
-       Sample positions in the second dimension.
-
-    span : iterable with shape (ndim,), optional
-        A list where each element is either a length-2 tuple containing
-        lower and upper bounds or a float from `(0., 1.]` giving the
-        fraction of (weighted) samples to include. If a fraction is provided,
-        the bounds are chosen to be equal-tailed. An example would be::
-
-            span = [(0., 10.), 0.95, (5., 6.)]
-
-        Default is `0.999999426697` (5-sigma credible interval).
-
-    weights : iterable with shape (nsamps,)
-        Weights associated with the samples. Default is `None` (no weights).
-
-    levels : iterable, optional
-        The contour levels to draw. Default are `[0.5, 1, 1.5, 2]`-sigma.
-
-    ax : `~matplotlib.axes.Axes`, optional
-        An `~matplotlib.axes.axes` instance on which to add the 2-D histogram.
-        If not provided, a figure will be generated.
-
-    color : str, optional
-        The `~matplotlib`-style color used to draw lines and color cells
-        and contours. Default is `'gray'`.
-
-    plot_datapoints : bool, optional
-        Whether to plot the individual data points. Default is `False`.
-
-    plot_density : bool, optional
-        Whether to draw the density colormap. Default is `True`.
-
-    plot_contours : bool, optional
-        Whether to draw the contours. Default is `True`.
-
-    no_fill_contours : bool, optional
-        Whether to add absolutely no filling to the contours. This differs
-        from `fill_contours=False`, which still adds a white fill at the
-        densest points. Default is `False`.
-
-    fill_contours : bool, optional
-        Whether to fill the contours. Default is `True`.
-
-    contour_kwargs : dict
-        Any additional keyword arguments to pass to the `contour` method.
-
-    contourf_kwargs : dict
-        Any additional keyword arguments to pass to the `contourf` method.
-
-    data_kwargs : dict
-        Any additional keyword arguments to pass to the `plot` method when
-        adding the individual data points.
-
-    """
+    Returns:
+        None.
+    
+    '''
 
     if ax is None:
         ax = plt.gca()
 
-    # Determine plotting bounds.
+    # Determine plotting bounds
     data = [x, y]
     if span is None:
         span = [0.999999426697 for i in range(2)]
@@ -234,45 +212,45 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
             q = [0.5 - 0.5 * span[i], 0.5 + 0.5 * span[i]]
             span[i] = _quantile(data[i], q, weights=weights)
 
-    # The default "sigma" contour levels.
+    # The default "sigma" contour levels
     if levels is None:
         levels = 1.0 - np.exp(-0.5 * np.arange(0.5, 2.1, 0.5) ** 2)
 
     # Color map for the density plot, over-plotted to indicate the
-    # density of the points near the center.
+    # density of the points near the centre
     density_cmap = LinearSegmentedColormap.from_list(
-        "density_cmap", [color, (1, 1, 1, 0)])
+        "density_cmap", [colour, (1, 1, 1, 0)])
 
-    # Color map used to hide the points at the high density areas.
+    # Color map used to hide the points at the high density areas
     white_cmap = LinearSegmentedColormap.from_list(
         "white_cmap", [(1, 1, 1), (1, 1, 1)], N=2)
 
-    # This "color map" is the list of colors for the contour levels if the
-    # contours are filled.
-    rgba_color = colorConverter.to_rgba(color)
-    contour_cmap = [list(rgba_color) for l in levels] + [rgba_color]
+    # This 'colour map' is the list of colours for the contour levels if the
+    # contours are filled
+    rgba_colour = colorConverter.to_rgba(colour)
+    contour_cmap = [list(rgba_colour) for l in levels] + [rgba_colour]
     for i, l in enumerate(levels):
         contour_cmap[i][-1] *= float(i) / (len(levels)+1)
 
-    # Initialize smoothing.
+    # Initialize smoothing
     if (isinstance(smooth, int_type) or isinstance(smooth, float_type)):
         smooth = [smooth, smooth]
     bins = []
     svalues = []
     for s in smooth:
         if isinstance(s, int_type):
-            # If `s` is an integer, the weighted histogram has
-            # `s` bins within the provided bounds.
+            # If 's' is an integer, the weighted histogram has
+            # 's' bins within the provided bounds
             bins.append(s)
             svalues.append(0.)
         else:
-            # If `s` is a float, oversample the data relative to the
+            # If 's' is a float, oversample the data relative to the
             # smoothing filter by a factor of 2, then use a Gaussian
-            # filter to smooth the results.
+            # filter to smooth the results
             bins.append(int(round(2. / s)))
             svalues.append(2.)
 
-    # We'll make the 2D histogram to directly estimate the density.
+    # We'll make the 2D histogram to directly estimate the density
     try:
         H, X, Y = np.histogram2d(x.flatten(), y.flatten(), bins=bins,
                                  range=list(map(np.sort, span)),
@@ -281,11 +259,11 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
         raise ValueError("It looks like at least one of your sample columns "
                          "have no dynamic range.")
 
-    # Smooth the results.
+    # Smooth the results
     if not np.all(svalues == 0.):
         H = norm_kde(H, svalues)
 
-    # Compute the density levels.
+    # Compute the density levels
     Hflat = H.flatten()
     inds = np.argsort(Hflat)[::-1]
     Hflat = Hflat[inds]
@@ -306,10 +284,10 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
         m = (np.diff(V) == 0)
     V.sort()
 
-    # Compute the bin centers.
+    # Compute the bin centres
     X1, Y1 = 0.5 * (X[1:] + X[:-1]), 0.5 * (Y[1:] + Y[:-1])
 
-    # Extend the array for the sake of the contours at the plot edges.
+    # Extend the array for the sake of the contours at the plot edges
     H2 = H.min() + np.zeros((H.shape[0] + 4, H.shape[1] + 4))
     H2[2:-2, 2:-2] = H
     H2[2:-2, 1] = H[:, 0]
@@ -325,17 +303,17 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
     Y2 = np.concatenate([Y1[0] + np.array([-2, -1]) * np.diff(Y1[:2]), Y1,
                          Y1[-1] + np.array([1, 2]) * np.diff(Y1[-2:])])
 
-    # Plot the data points.
+    # Plot the data points
     if plot_datapoints:
         if data_kwargs is None:
             data_kwargs = dict()
-        data_kwargs["color"] = data_kwargs.get("color", color)
+        data_kwargs["color"] = data_kwargs.get("color", colour)
         data_kwargs["ms"] = data_kwargs.get("ms", 2.0)
         data_kwargs["mec"] = data_kwargs.get("mec", "none")
         data_kwargs["alpha"] = data_kwargs.get("alpha", 0.1)
         ax.plot(x, y, "o", zorder=-1, rasterized=True, **data_kwargs)
 
-    # Plot the base fill to hide the densest data points.
+    # Plot the base fill to hide the densest data points
     if (plot_contours or plot_density) and not no_fill_contours:
         ax.contourf(X2, Y2, H2.T, [V.min(), H.max()],
                     cmap=white_cmap, antialiased=False)
@@ -350,137 +328,107 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
                     **contourf_kwargs)
 
     # Plot the density map. This can't be plotted at the same time as the
-    # contour fills.
+    # contour fills
     elif plot_density:
         ax.pcolor(X, Y, H.max() - H.T, cmap=density_cmap)
 
-    # Plot the contour edge colors.
+    # Plot the contour edge colours
     if plot_contours:
         if contour_kwargs is None:
             contour_kwargs = dict()
-        contour_kwargs["colors"] = contour_kwargs.get("colors", color)
+        contour_kwargs["colors"] = contour_kwargs.get("colors", colour)
         ax.contour(X2, Y2, H2.T, V, **contour_kwargs)
 
     ax.set_xlim(span[0])
     ax.set_ylim(span[1])
 
 
-def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
-               color_plt='black', color_quantile='black', smooth_hist=0.02, 
-               smooth_corr=0.02, hist_kwargs=None,
-               hist2d_kwargs=None, labels=None, param_names=None, label_kwargs=None,
-               show_titles=False, title_kwargs=None,
-               truths=None, truth_color='red', truth_kwargs=None,
-               max_n_ticks=5, top_ticks=False, use_math_text=False,
-               verbose=False, fig=None):
+def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
+               colour_plt='purple', colour_quantile='blue', smooth_hist=30, 
+               smooth_corr=0.02, hist_kwargs=None, hist2d_kwargs=None, 
+               labels=None, param_names=None, label_kwargs=None,
+               show_titles=True, title_kwargs=None, truths=None, 
+               truth_colour='red', truth_kwargs=None, max_n_ticks=5, 
+               top_ticks=False, use_math_text=False, verbose=False, fig=None):
+    '''
+    Generate a corner plot of the 1D and 2D marginalised posteriors.
+
+    Args:
+        results (dict):
+            Results dictionary containing the samples and weights from a 
+            nested sampling retrieval.
+        span (list of tuples or float):
+            A list where each element is either a length-2 tuple containing
+            lower and upper bounds or a float from `(0., 1.]` giving the
+            fraction of (weighted) samples to include. If a fraction is provided,
+            the bounds are chosen to be equal-tailed. If not specified, defaults 
+            to +/- 5σ range. Example: span = [(0., 10.), 0.95, (5., 6.)].
+        quantiles (np.array of float):
+            A list of fractional quantiles to overplot on the 1D marginalised
+            posteriors as vertical dashed lines. Default is '[0.1587, 0.5, 0.8413]'
+            (spanning the 68% / 1σ confidence interval).
+        colour_plt (str):
+            Matplotlib-style colour for the histograms and probability contours.
+        colour_quantile (str):
+            Matplotlib-style  for the vertical dashed quantile lines.
+        smooth_hist (float or int):
+            The standard deviation for the Gaussian kernel used to smooth the 1D
+            histograms, expressed as a fraction of the span, if a float provided.
+            If an integer is provided instead, this will instead default to a 
+            simple (weighted) histogram with 'bins=smooth'. Default is 30 bins.
+        smooth_corr (float):
+            The standard deviation for the Gaussian kernel used to smooth the 2D
+            contours, expressed as a fraction of the span, if a float provided.
+            Default is 2% smoothing.
+        hist_kwargs (dict):
+            Extra keyword arguments to send to the 1D histograms.
+        hist2d_kwargs (dict):
+            Extra keyword arguments to send to the 2D contours.
+        labels (np.array of str):
+            A list of names for each parameter. If not provided, the default 
+            name used when plotting will follow the math module 'x_i' style.
+        param_names (np.array of str):
+            List of parameter names used by POSEIDON for this retrieval.
+        label_kwargs (dict):
+            Extra keyword arguments that will be sent to the matplotlib axes
+            'set_xlabel' and 'set_ylabel' methods.
+        show_titles (bool):
+            Whether to display a title above each 1D marginalised posterior
+            showing the median along with the upper/lower bounds associated
+            with the 1σ confidence interval. Default is True.
+        title_kwargs (dict):
+            Extra keyword arguments that will be sent to the matplotlib axes 
+            'set_title' command.
+        truths (list of float):
+            A list of reference values that will be overplotted on the traces 
+            and marginalised 1D histograms as solid horizontal/vertical lines.
+            Individual values can be exempt using 'None'. Default is 'None'.
+        truth_colour (str or list of str):
+            Matplotlib-style colour (either a single colour or a different
+            value for each subplot) used when plotting 'truths'. Default is 'red'.
+        truth_kwargs (dict):
+            Extra keyword arguments that will be used for plotting the vertical
+            and horizontal lines with 'truths'.
+        max_n_ticks (int):
+            Maximum number of ticks allowed. Default is '5'.
+        top_ticks (bool):
+            Whether to label the top (rather than bottom) ticks. Default is False.
+        use_math_text (bool):
+            Whether the axis tick labels for very large/small exponents should be
+            displayed as powers of 10 rather than using 'e'. Default is False.
+        verbose (bool):
+            Whether to print the values of the computed quantiles associated with
+            each parameter. Default is False.
+        fig (matplotlib figure object):
+            If provided, overplot the traces and marginalised 1D histograms
+            onto the provided figure. Otherwise, by default an internal figure 
+            is generated.
+
+    Returns:
+        cornerplot (matplotlib figure, matplotlib axes objects):
+            Output corner plot.
     
-    """
-    Generate a corner plot of the 1-D and 2-D marginalized posteriors.
-
-    Parameters
-    ----------
-    results : :class:`~dynesty.results.Results` instance
-        A :class:`~dynesty.results.Results` instance from a nested
-        sampling run. **Compatible with results derived from**
-        `nestle <http://kylebarbary.com/nestle/>`_.
-
-    span : iterable with shape (ndim,), optional
-        A list where each element is either a length-2 tuple containing
-        lower and upper bounds or a float from `(0., 1.]` giving the
-        fraction of (weighted) samples to include. If a fraction is provided,
-        the bounds are chosen to be equal-tailed. An example would be::
-
-            span = [(0., 10.), 0.95, (5., 6.)]
-
-        Default is `0.999999426697` (5-sigma credible interval).
-
-    quantiles : iterable, optional
-        A list of fractional quantiles to overplot on the 1-D marginalized
-        posteriors as vertical dashed lines. Default is `[0.025, 0.5, 0.975]`
-        (spanning the 95%/2-sigma credible interval).
-
-    color : str or iterable with shape (ndim,), optional
-        A `~matplotlib`-style color (either a single color or a different
-        value for each subplot) used when plotting the histograms.
-        Default is `'black'`.
-
-    smooth : float or iterable with shape (ndim,), optional
-        The standard deviation (either a single value or a different value for
-        each subplot) for the Gaussian kernel used to smooth the 1-D and 2-D
-        marginalized posteriors, expressed as a fraction of the span.
-        Default is `0.02` (2% smoothing). If an integer is provided instead,
-        this will instead default to a simple (weighted) histogram with
-        `bins=smooth`.
-
-    hist_kwargs : dict, optional
-        Extra keyword arguments to send to the 1-D (smoothed) histograms.
-
-    hist2d_kwargs : dict, optional
-        Extra keyword arguments to send to the 2-D (smoothed) histograms.
-
-    labels : iterable with shape (ndim,), optional
-        A list of names for each parameter. If not provided, the default name
-        used when plotting will follow :math:`x_i` style.
-
-    label_kwargs : dict, optional
-        Extra keyword arguments that will be sent to the
-        `~matplotlib.axes.Axes.set_xlabel` and
-        `~matplotlib.axes.Axes.set_ylabel` methods.
-
-    show_titles : bool, optional
-        Whether to display a title above each 1-D marginalized posterior
-        showing the 0.5 quantile along with the upper/lower bounds associated
-        with the 0.025 and 0.975 (95%/2-sigma credible interval) quantiles.
-        Default is `True`.
-
-    title_fmt : str, optional
-        The format string for the quantiles provided in the title. Default is
-        `'.2f'`.
-
-    title_kwargs : dict, optional
-        Extra keyword arguments that will be sent to the
-        `~matplotlib.axes.Axes.set_title` command.
-
-    truths : iterable with shape (ndim,), optional
-        A list of reference values that will be overplotted on the traces and
-        marginalized 1-D posteriors as solid horizontal/vertical lines.
-        Individual values can be exempt using `None`. Default is `None`.
-
-    truth_color : str or iterable with shape (ndim,), optional
-        A `~matplotlib`-style color (either a single color or a different
-        value for each subplot) used when plotting `truths`.
-        Default is `'red'`.
-
-    truth_kwargs : dict, optional
-        Extra keyword arguments that will be used for plotting the vertical
-        and horizontal lines with `truths`.
-
-    max_n_ticks : int, optional
-        Maximum number of ticks allowed. Default is `5`.
-
-    top_ticks : bool, optional
-        Whether to label the top (rather than bottom) ticks. Default is
-        `False`.
-
-    use_math_text : bool, optional
-        Whether the axis tick labels for very large/small exponents should be
-        displayed as powers of 10 rather than using `e`. Default is `False`.
-
-    verbose : bool, optional
-        Whether to print the values of the computed quantiles associated with
-        each parameter. Default is `False`.
-
-    fig : (`~matplotlib.figure.Figure`, `~matplotlib.axes.Axes`), optional
-        If provided, overplot the traces and marginalized 1-D posteriors
-        onto the provided figure. Otherwise, by default an
-        internal figure is generated.
-
-    Returns
-    -------
-    cornerplot : (`~matplotlib.figure.Figure`, `~matplotlib.axes.Axes`)
-        Output corner plot.
-
-    """
+    '''
 
     # Initialize values.
     if quantiles is None:
@@ -617,7 +565,7 @@ def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
         if isinstance(sx_hist, int_type):
             # If `sx` is an integer, plot a weighted histogram with
             # `sx` bins within the provided bounds.
-            n, b, _ = ax.hist(x, bins=sx_hist, weights=weights, color=color_plt,
+            n, b, _ = ax.hist(x, bins=sx_hist, weights=weights, color=colour_plt,
                               range=np.sort(span[i]), **hist_kwargs)
         else:
             # If `sx` is a float, oversample the data relative to the
@@ -629,7 +577,7 @@ def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
             n = norm_kde(n, 10.)
             b0 = 0.5 * (b[1:] + b[:-1])
             n, b, _ = ax.hist(b0, bins=b, weights=n,
-                              range=np.sort(span[i]), color=color_plt,
+                              range=np.sort(span[i]), color=colour_plt,
                               **hist_kwargs)
         ax.set_ylim([0., max(n) * 1.05])
         # Plot quantiles.
@@ -637,19 +585,19 @@ def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
             qs = _quantile(x, quantiles, weights=weights)
             for i_q, q in enumerate(qs):
                 if (quantiles[i_q] == 0.5):   # For median
-                    ax.axvline(q, lw=2, ls="-", alpha=0.7, color=color_quantile)
+                    ax.axvline(q, lw=2, ls="-", alpha=0.7, color=colour_quantile)
                 else:
-                    ax.axvline(q, lw=1, ls="dashed", color=color_quantile)
+                    ax.axvline(q, lw=1, ls="dashed", color=colour_quantile)
             if verbose:
                 print("Quantiles:")
                 print(labels[i], [blob for blob in zip(quantiles, qs)])
         # Add truth value(s).
         if truths is not None and truths[i] is not None:
             try:
-                [ax.axvline(t, color=truth_color, **truth_kwargs)
+                [ax.axvline(t, color=truth_colour, **truth_kwargs)
                  for t in truths[i]]
             except:
-                ax.axvline(truths[i], color=truth_color, **truth_kwargs)
+                ax.axvline(truths[i], color=truth_colour, **truth_kwargs)
         # Set titles.
         if show_titles:
             title = None
@@ -673,6 +621,8 @@ def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
                     title_fmt = '.4f'
                 else:
                     title_fmt = '.2f'
+            elif ('d' in param_name):
+                title_fmt = '.3f'
                     
             else:
                 title_fmt = title_fmt_default
@@ -740,24 +690,24 @@ def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
             hist2d_kwargs['plot_contours'] = hist2d_kwargs.get('plot_contours',
                                                                plot_contours)
             _hist2d(y, x, ax=ax, span=[span[j], span[i]],
-                    weights=weights, color=color_plt, smooth=[sy_corr, sx_corr],
+                    weights=weights, colour=colour_plt, smooth=[sy_corr, sx_corr],
                     **hist2d_kwargs)
             
             # Add truth values
             if truths is not None:
                 if truths[j] is not None:
                     try:
-                        [ax.axvline(t, color=truth_color, **truth_kwargs)
+                        [ax.axvline(t, color=truth_colour, **truth_kwargs)
                          for t in truths[j]]
                     except:
-                        ax.axvline(truths[j], color=truth_color,
+                        ax.axvline(truths[j], color=truth_colour,
                                    **truth_kwargs)
                 if truths[i] is not None:
                     try:
-                        [ax.axhline(t, color=truth_color, **truth_kwargs)
+                        [ax.axhline(t, color=truth_colour, **truth_kwargs)
                          for t in truths[i]]
                     except:
-                        ax.axhline(truths[i], color=truth_color,
+                        ax.axhline(truths[i], color=truth_colour,
                                    **truth_kwargs)
 
     return (fig, axes)
@@ -765,11 +715,29 @@ def cornerplot(results, span=None, quantiles=[0.025, 0.5, 0.975],
 
 
 def generate_cornerplot(planet, model, retrieval_name = None, true_vals = None,
-                        colour_scheme = '#984ea3'):
+                        colour_scheme = '#984ea3', span = None):
+    '''
+    Generate giant triangle plot of doom to visualise the results of a 
+    POSEIDON retrieval.
 
-    ''' Generate giant triangle plot of doom to visualise the results of a 
-        POSEIDON retrieval.
+    Args:
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        model (dict):
+            Dictionary containing the description of the POSEIDON model.
+        retrieval_name (str):
+            Optional retrieval name suffix after the model name.
+        true_vals (list of float):
+            True values of parameters to overplot.
+        colour_scheme (str with hex code):
+            Desired colour for the histograms and probability contours.
+        span (list of tuples of float):
+            Range to plot for each parameter (overrules default +/- 5σ range).
     
+    Returns:
+        fig (matplotlib figure object):
+            Your new triangle plot of doom. Use responsibly!
+
     '''
 
     # Only generate a cornerplot using the first core
@@ -815,7 +783,7 @@ def generate_cornerplot(planet, model, retrieval_name = None, true_vals = None,
         logvol = np.log(weights) + 0.5 * loglike + Z
         logvol = logvol - logvol.max()
         
-        # Package results in the dictionary format expected by Dynesty
+        # Package results dictionary expected by the cornerplot function
         results = dict(samples=samples, weights=weights, logvol=logvol)
         
         # Calculate 2D levels for 1, 2, 3 sigma contours    
@@ -826,10 +794,10 @@ def generate_cornerplot(planet, model, retrieval_name = None, true_vals = None,
         
         # Generate corner plot
         fig, axes = cornerplot(results, quantiles=[0.1587, 0.5, 0.8413],  
-                               smooth_hist=30, smooth_corr=0.02, color_plt=colour_scheme,
-                               color_quantile='royalblue', show_titles=True, labels=params_latex, 
-                               param_names=param_names, truths=true_vals, 
-                               truth_color='green', label_kwargs={'fontsize':18}, 
+                               smooth_hist=30, smooth_corr=0.02, colour_plt=colour_scheme,
+                               colour_quantile='royalblue', show_titles=True, labels=params_latex, 
+                               param_names=param_names, truths=true_vals, span=span,
+                               truth_colour='green', label_kwargs={'fontsize':18}, 
                                hist_kwargs={'histtype':'stepfilled','edgecolor':None},
                                hist2d_kwargs={'plot_contours':True,'fill_contours':True,
                                                 'levels':levels,'plot_datapoints':False})

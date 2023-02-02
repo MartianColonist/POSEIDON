@@ -3,17 +3,17 @@ import os
 
 setup(
     name = 'POSEIDON',
-    version = '0.8.5',
+    version = '1.0.0',
     description = 'Exoplanet atmospheric retrieval package',
     long_description = open(os.path.join(
                             os.path.dirname(__file__), 'README.rst')).read(),
     long_description_content_type = 'text/x-rst',
     author = 'Ryan J. MacDonald',
-    author_email = 'rmacdonald@astro.cornell.edu',
+    author_email = 'ryanjmac@umich.edu',
     license = 'BSD 3-Clause License',
     packages = ['POSEIDON'],
     include_package_data = True,
-    python_requires = '<3.10',
+    python_requires = '<3.11',
     install_requires = ['numpy',
                         'scipy',
                         'matplotlib<=3.5.1',
@@ -24,8 +24,8 @@ setup(
                         'mpi4py',
                         'pysynphot',
                         'pymultinest',
-                        'corner',
                         'spectres',
-                        'jupyter'],
+                        'jupyter',
+                        'pytest'],
     zip_safe = False,
 )
