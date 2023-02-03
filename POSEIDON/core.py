@@ -230,7 +230,7 @@ def define_model(model_name, bulk_species, param_species,
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-                 surface = False):
+                 surface = False, sharp_DN_transition = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -307,6 +307,8 @@ def define_model(model_name, bulk_species, param_species,
             List of chemical species with a vertical mixing ratio gradient.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
+        sharp_DN_transition (bool):
+            For 2D / 3D models, sets day-night transition width (beta) to 0.
 
     Returns:
         model (dict):
@@ -369,7 +371,7 @@ def define_model(model_name, bulk_species, param_species,
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
-                                      opaque_Iceberg, surface)
+                                      opaque_Iceberg, surface, sharp_DN_transition)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -395,7 +397,8 @@ def define_model(model_name, bulk_species, param_species,
              'stellar_param_names': stellar_param_names, 
              'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
-             'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface
+             'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
+             'sharp_DN_transition': sharp_DN_transition
             }
 
     return model
@@ -637,6 +640,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     cloud_model = model['cloud_model']
     cloud_dim = model['cloud_dim']
     gravity_setting = model['gravity_setting']
+    sharp_DN_transition = model['sharp_DN_transition']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -669,10 +673,15 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
         raise Exception("No user-provided composition profile. Did you read in a file?")
     if ((cloud_params == []) and (cloud_model != 'cloud-free')):
         raise Exception("Cloud parameters must be provided for cloudy models.")
-    if ((geometry_params == []) and (Atmosphere_dimension > 1)):
-        raise Exception("Geometry parameters must be provided for 2D or 3D models.")
+    if ((geometry_params == []) and (Atmosphere_dimension > 1) and
+        (sharp_DN_transition == False)):
+            raise Exception("Geometry parameters must be provided for 2D or 3D models.")
 
     #***** Establish model geometry *****# 
+
+    # If user specifies a sharp day-night transition, use no transition slices
+    if (sharp_DN_transition == True):
+        N_slice_DN = 0
 
     # Check that the number of azimuthal and zenith slices are even
     if ((N_slice_EM % 2 != 0) or (N_slice_DN % 2 != 0)):
@@ -684,14 +693,13 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                                             N_slice_EM, N_slice_DN)
 
     # Unpack terminator opening angles (for 2D or 3D models)
-    alpha, beta = unpack_geometry_params(param_names, geometry_params,
-                                         N_params_cum)
+    alpha, beta = unpack_geometry_params(param_names, geometry_params, N_params_cum)
 
     # Compute discretised angular grids for multidimensional atmospheres
     phi, theta, phi_edge, \
     theta_edge, dphi, dtheta = angular_grids(Atmosphere_dimension, TwoD_type, 
                                              N_slice_EM, N_slice_DN, 
-                                             alpha, beta)
+                                             alpha, beta, sharp_DN_transition)
 
     #***** Generate state arrays for the PT and mixing ratio profiles *****#
 
@@ -852,6 +860,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     PT_dim = model['PT_dim']
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
+    sharp_DN_transition = model['sharp_DN_transition']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',

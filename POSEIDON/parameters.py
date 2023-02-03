@@ -14,7 +14,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        offsets_applied, error_inflation, PT_dim, X_dim, cloud_dim, 
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
-                       Atmosphere_dimension, opaque_Iceberg, surface):
+                       Atmosphere_dimension, opaque_Iceberg, surface,
+                       sharp_DN_transition):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -85,6 +86,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             If using the Iceberg cloud model, True disables the kappa parameter.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
+        sharp_DN_transition (bool):
+            For 2D / 3D models, sets day-night transition width (beta) to 0.
 
     Returns:
         params (np.array of str):
@@ -503,11 +506,14 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     #***** Geometry parameters *****#
     
     if (Atmosphere_dimension == 3):
-        geometry_params += ['alpha', 'beta']
+        if (sharp_DN_transition == False):
+            geometry_params += ['alpha', 'beta']
+        else:
+            geometry_params += ['alpha']
     elif (Atmosphere_dimension == 2):
         if (TwoD_type == 'E-M'):
             geometry_params += ['alpha']
-        elif (TwoD_type == 'D-N'):
+        elif ((TwoD_type == 'D-N') and (sharp_DN_transition == False)):
             geometry_params += ['beta']
 
     N_geometry_params = len(geometry_params)   # Store number of geometry parameters

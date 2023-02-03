@@ -59,7 +59,7 @@ def atmosphere_regions(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN):
 
             N_sectors = 1
             
-            if (N_slice_DN <= 0 or N_slice_DN % 2 != 0):
+            if (N_slice_DN < 0 or N_slice_DN % 2 != 0):
                 raise Exception("Error: N_slice_DN must be an even integer.")
             else:
                 N_zones = 2 + N_slice_DN
@@ -71,7 +71,7 @@ def atmosphere_regions(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN):
     elif (Atmosphere_dimension == 3):
 
         if (N_slice_EM <= 0 or N_slice_EM % 2 != 0 or 
-            N_slice_DN <= 0 or N_slice_DN % 2 != 0):
+            N_slice_DN < 0 or N_slice_DN % 2 != 0):
                 raise Exception("Error: N_slice_EW and N_slice_DN must be even integers.")
         else:
             N_sectors = 2 + N_slice_EM
@@ -89,7 +89,7 @@ def atmosphere_regions(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN):
 
 @jit(nopython=True)
 def angular_grids(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN, 
-                  alpha, beta):
+                  alpha, beta, sharp_DN_transition):
     '''
     Compute the grids of angles (sector / zone centres, edges, and differential 
     extents) for a given discretised atmosphere. 
@@ -118,6 +118,8 @@ def angular_grids(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN,
             Terminator opening angle (degrees).
         beta (float):
             Day-night opening angle (degrees).
+        sharp_DN_transition (bool):
+            For 2D / 3D models, sets day-night transition width (beta) to 0.
     
     Returns:
         phi (np.array of float):
@@ -154,7 +156,7 @@ def angular_grids(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN,
             # Day-Night equatorial plane defines edge of northern hemisphere
             theta_edge = np.array([-np.pi/2.0, np.pi/2.0])   
             
-            # Start from West equatorial plane
+            
             phi_edge = np.array([-np.pi/2.0])
     
             # Add sector edges along terminator transition
@@ -170,36 +172,62 @@ def angular_grids(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN,
             # Evening-Morning equatorial plane defines edge of northern hemisphere
             phi_edge = np.array([-np.pi/2.0, np.pi/2.0])  
             
+            # For sharp transitions, edges are in day-night equatorial plane and the terminator
+            if (sharp_DN_transition == True):
+                theta_edge = np.array([-np.pi/2.0, 0.0, np.pi/2.0])
+
+            else:
+    
+                # Start from Day equatorial plane
+                theta_edge = np.array([-np.pi/2.0])
+
+                # Add zone edges along terminator transition
+                dtheta_term = beta_rad / N_slice_DN     # Angular width of each zone
+            
+                # Add edges from each zone in the transition region
+                theta_edge = np.append(theta_edge, ((-1.0/2.0) * beta_rad + 
+                                                    np.arange(N_slice_DN + 1) * dtheta_term))
+                
+                # End with Night equatorial plane
+                theta_edge = np.append(theta_edge, np.array([np.pi/2.0]))
+                
+    # 3D atmosphere
+    elif (Atmosphere_dimension == 3):
+
+        #***** Handle day-night edges first *****#
+
+        # For sharp transitions, edges are in day-night equatorial plane and the terminator
+        if (sharp_DN_transition == True):
+            theta_edge = np.array([-np.pi/2.0, 0.0, np.pi/2.0])
+
+        else:
+
             # Start from Day equatorial plane
             theta_edge = np.array([-np.pi/2.0])
-    
+
             # Add zone edges along terminator transition
             dtheta_term = beta_rad / N_slice_DN     # Angular width of each zone
+        
+            # Add edges from each zone in the transition region
             theta_edge = np.append(theta_edge, ((-1.0/2.0) * beta_rad + 
                                                 np.arange(N_slice_DN + 1) * dtheta_term))
             
             # End with Night equatorial plane
             theta_edge = np.append(theta_edge, np.array([np.pi/2.0]))
-                
-    # 3D atmosphere
-    elif (Atmosphere_dimension == 3):
+
+        #***** Evening-Morning edges next *****#
         
-        # Start from West / Day equatorial plane
+        # Start from West equatorial plane
         phi_edge = np.array([-np.pi/2.0])
-        theta_edge = np.array([-np.pi/2.0])
-        
+
         # Add sector and zone edges along terminator transition
         dphi_term = alpha_rad / N_slice_EM     # Angular width of each sector
-        dtheta_term = beta_rad / N_slice_DN    # Angular width of each zone
-        
         phi_edge = np.append(phi_edge, ((-1.0/2.0) * alpha_rad + 
                                             np.arange(N_slice_EM + 1) * dphi_term))
-        theta_edge = np.append(theta_edge, ((-1.0/2.0) * beta_rad + 
-                                            np.arange(N_slice_DN + 1) * dtheta_term))
-        
+
         # End with Morning / Night equatorial plane
-        phi_edge = np.append(phi_edge, np.array([np.pi/2.0])) 
-        theta_edge = np.append(theta_edge, np.array([np.pi/2.0]))
+        phi_edge = np.append(phi_edge, np.array([np.pi/2.0]))
+
             
     # Compute angular width of each sector and zone
     dphi = np.diff(phi_edge)
