@@ -394,7 +394,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                             prev_parameter = parameter
                         
                         # Terminator mixing ratio gradient parameter comes second
-                        elif (parameter is ('Delta_log_' + species + '_term')):
+                        elif (parameter == ('Delta_log_' + species + '_term')):
 
                             # Mixing ratio gradient parameters dynamically update allowed range
                             min_prior_abs = prior_ranges[prev_parameter][0]
@@ -423,7 +423,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                             prev_parameter = parameter
 
                         # Day-night mixing ratio gradient parameter comes third
-                        elif (parameter is ('Delta_log_' + species + '_DN')):
+                        elif (parameter == ('Delta_log_' + species + '_DN')):
 
                             # Mixing ratio gradient parameters dynamically update allowed range
                             min_prior_abs = prior_ranges[prev_prev_parameter][0]
