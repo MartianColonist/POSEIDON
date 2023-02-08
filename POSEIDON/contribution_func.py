@@ -1,104 +1,63 @@
+from POSEIDON.core import compute_spectrum, compute_spectrum_c, compute_spectrum_p 
+from POSEIDON.utility import bin_spectrum
 
-import numpy as np
 import matplotlib.pyplot as plt
-from POSEIDON.constants import R_Sun, R_J, M_J
-from POSEIDON.core import make_atmosphere
-from POSEIDON.core import compute_spectrum
+import cmasher as cmr
+import numpy as np
+
+def pressure_contribution_function(planet, star, model, atmosphere, opac, wl,P,
+                                   spectrum_type = 'transmission',
+                                   contribution_molecule_list = [],):
 
 
-# Current issues 
-# CIA not generalized 
-# Not sure how to make copy of atmosphere object without remaking every loop iteration 
-# When we turn off mixing ratio, it just fills everything back up to 1 (need to work with opacities)
-
-def pressure_contribution_function(planet,star,model,P,P_ref,best_fit_params,
-                                   opac,wl,spectrum_type='transmission'):
-    
-    
-        ''' Computes the pressure contribution function, total and per molecule
-       
-        Inputs:
-        
-        planet = from create_planet()
-        star = from create_star()
-        model = from define_model()
-        P = pressure grid used to create forward model 
-        P_ref = reference pressure 
-        best_fit_params = from a retreival, same order as model['param_names']
-        opac = opacity object 
-        wl = wavelength grid 
-        spectrum_type = 'transmission'
-
-        Outputs:
-           
-        Pressure Contribution Function for each molecule and total. 
-       
     '''
+    Computes the pressure contribution function 
+
+    Args:
+        planet
+        star
+        model
+        atmopshere
+        opac
+        wl 
+        spectrum_type = 'transmission'
+        
+        contribution_molecule_list (np.array) 
+            list of strings of molecules that user wants pressure contribution calculated for 
+
+        total (bool)
+            If true, the total pressure contribution function is also calculated
     
-        # Create atmosphere object 
-        # Note : I wasn't able to run this without having to recreate the atmosphere object each time 
-        # It seems like whenever I made a copy it would overwrite the original object no matter what 
-        
-        R_p_ref = best_fit_params[0] * R_J
-        
-        PT_params = np.array([best_fit_params[1]])
-        
-        log_X_params = np.array([best_fit_params[2:]])
-        
-        # Make a normal spectrum just to subtract from the new spectrum
-        atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, 
-                                    PT_params, log_X_params)
-        
-        spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+    Returns:
+        Contribution (np.array)
+            Array. [i,j,k] i = molecule number (or total if total = True), j = Pressure layer, k = Wavelength 
+        Norm (np.array)
+            Array [i,j] where i = molecule number and j = wavelength. If user wants to normalize them   
+    '''
+
+    # Generate our normal transmission spectrum
+    spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                 spectrum_type = 'transmission')
-        
-        # Create contribution Function 
-        # Order of indices : 
-        # [H2,He,active species,all species][Pressure layers][Difference in terms of wavelength]
-        
 
-        # Define arrays where pressure contribution functions will live 
-        Contribution = np.zeros(shape=(len(model['chemical_species'])+1,len(P), len(spectrum)))
-        # For denominator of contribution function 
-        norm = np.zeros(shape=(len(model['chemical_species'])+1,len(spectrum)))   # Running sum for contribution
+    # Define arrays where pressure contribution functions will live 
+    Contribution = np.zeros(shape=(len(contribution_molecule_list)+1,len(P), len(spectrum)))
+    # For denominator of contribution function 
+    norm = np.zeros(shape=(len(contribution_molecule_list)+1,len(spectrum)))   # Running sum for contribution
 
-        # Loop over each molecule
-        for i in range(len(model['chemical_species'])):
-            # Loop over each layer 
+
+    for i in range(len(contribution_molecule_list)+1):
+
+        if i != len(contribution_molecule_list):
+
             for j in range(len(P)):
 
-                # Generate the atmosphere
-                atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, 
-                                    PT_params, log_X_params)
-
-                # Bug : I can't just make a copy of the atmopshere object above without breaking something 
-                new_atmosphere = atmosphere
-
-                # 'X' array lines up with chemical species one-to-one
-                new_atmosphere['X'][i,j,0,0] = 0.0
-
-                # 'X_active' only lines up with the end of chemical species 
-                if i > 1:
-                    new_atmosphere['X_active'][i-2,j,0,0] = 0.0
-
-                # 'X_CIA' only has He and H (for now)
-                # First index = species Second index = Reaction
-
-                # if we are on H2
-                if i == 0: 
-                    new_atmosphere['X_CIA'][0,0,j,0,0] = 0.0 # H2 in H2-H2
-                    new_atmosphere['X_CIA'][1,0,j,0,0] = 0.0 # H2 in H2-H2
-                    new_atmosphere['X_CIA'][0,1,j,0,0] = 0.0 # H2 in H2-He
-                    new_atmosphere['X_CIA'][1,1,j,0,0] = 0.0 # He in H2-He
-                    
-                # if we are on He
-                if i == 1:
-                    new_atmosphere['X_CIA'][0,1,j,0,0] = 0.0 # H2 in H2-He
-                    new_atmosphere['X_CIA'][1,1,j,0,0] = 0.0 # He in H2-H2
-
-                # Calculate new spectrum without molecule i and layer j
-                new_spectrum = compute_spectrum(planet, star, model, new_atmosphere, opac, wl,
-                                                spectrum_type = 'transmission')
+                new_spectrum = compute_spectrum_p(planet, star, model, atmosphere, opac, wl,
+                                                    spectrum_type = 'transmission', save_spectrum = False,
+                                                    disable_continuum = False, suppress_print = False,
+                                                    Gauss_quad = 2, use_photosphere_radius = True,
+                                                    device = 'cpu', y_p = np.array([0.0]),
+                                                    contribution_molecule = contribution_molecule_list[i],
+                                                    layer_to_ignore = j)
 
                 # Find the difference between spectrums
                 diff = spectrum - new_spectrum 
@@ -109,74 +68,110 @@ def pressure_contribution_function(planet,star,model,P,P_ref,best_fit_params,
                 # Increment normalization factor 
                 norm[i,:] += diff
 
-        # Total contribtuion function with whole layer turned off 
-        index_end = len(model['chemical_species'])
+        # If its the last index it runs total, which is just total = True with some dummy variable. 
+        else:
 
-        for j in range(len(P)):
-
-            # Generate the atmosphere
-            atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, 
-                                    PT_params, log_X_params)
-
-            new_atmosphere = atmosphere
-
-            # Turn off all molecules in layer j
-            for i in range(len(model['chemical_species'])):
-
-                new_atmosphere['X'][i,j,0,0] = 0.0
-
-                if i > 1:
-                    new_atmosphere['X_active'][i-2,j,0,0] = 0.0
-
-            # Turn off all X_CIA 
-            for k in range(len(new_atmosphere['X_CIA'][0])):
-                new_atmosphere['X_CIA'][0,k,j,0,0] = 0.0
-                new_atmosphere['X_CIA'][1,k,j,0,0] = 0.0
-
-            # Find new spectrum without layer j
-            new_spectrum = compute_spectrum(planet, star, model, new_atmosphere, opac, wl,
-                                            spectrum_type = 'transmission')
-
-            # Find the difference
-            diff = spectrum - new_spectrum 
-
-            # Add to contribution function (not yet normalized)
-            Contribution[index_end,j,:] = diff
-
-            # Increment normalization factor 
-            norm[index_end,:] += diff
-
-
-        # Now normalize everything 
-        # Loop over each molecule + 1
-        for i in range(len(model['chemical_species'])+1):
-            # Loop over each layer 
             for j in range(len(P)):
-                Contribution[i,j,:] = Contribution[i,j,:]/norm[i,:]
-                
-        return Contribution
+
+                new_spectrum = compute_spectrum_p(planet, star, model, atmosphere, opac, wl,
+                                                        spectrum_type = 'transmission', save_spectrum = False,
+                                                        disable_continuum = False, suppress_print = False,
+                                                        Gauss_quad = 2, use_photosphere_radius = True,
+                                                        device = 'cpu', y_p = np.array([0.0]),
+                                                        layer_to_ignore = j,
+                                                        total = True)
+
+                # Find the difference between spectrums
+                diff = spectrum - new_spectrum 
+
+                # Add to contribution function (not yet normalized)
+                Contribution[i,j,:] = diff
+
+                # Increment normalization factor 
+                norm[i,:] += diff
+
+    return Contribution, norm
+
+# Now normalize everything 
+# Loop over each molecule + 1
+#for i in range(len(contribution_molecule_list)+1):
+#    # Loop over each layer 
+#    for j in range(len(P)):
+#        Contribution[i,j,:] = Contribution[i,j,:]/norm[i,:]
 
 
-def photometric_contribution_function(model,wl,N_layers,Contribution):
+
+
+def plot_pressure_contribution(wl,P,
+                               Contribution,
+                               contribution_molecule_list = [], 
+                               R = 100):
+
+    # Plots out the pressure contribution functions. Only displays them, doesn't save them.
     
-    ''' Computes photometric contribution function (averaging over wavelengths)
-        
-            Inputs:
-            
-            model = from define_model()
-            wl = wavelength grid 
-            N_Layers = How many pressure layers there are 
-            Contribution = from pressure_contribution_function()
+    for i in range(len(contribution_molecule_list)+1):
 
-            Outputs:
+            fig, ax = plt.subplots(figsize=(10, 10))
+
+            a = ax.contourf(wl, np.log10(P), Contribution[i,:,:],cmap='plasma')
+
+            ax.set_ylabel('Log Pressure (bar)')
+            ax.invert_yaxis()
+            ax.set_xlabel('Wavelength ($\mu$m)')
+
+            if i != len(contribution_molecule_list):
+                    title = 'Contribution Function : ' + str(contribution_molecule_list[i])
+            else:
+                    title = 'Contribution Function : Total'
             
-            bins,photometric_contribution, photometric_total (goes straight into graphing function) 
-        
-        '''
+            ax.set_title(title)
+            plt.colorbar(a, label='Transmission CF')
+            plt.show()
+
+            # Trying Ryan's Binning 
+
+            fig = plt.figure()  
+            fig.set_size_inches(14, 7)
+            ax = plt.gca()
+
+            ax.set_yscale("log")
+
+            # Bin the wavelengths using the first pressure layer of the spectrum 
+            # This is because bin_spectrum returns both a wl binned and spectrum grid and we want the wl binned for now 
+            wl_binned, _ , _ = bin_spectrum(wl, Contribution[i,0,:], R)
+
+            # Now to create the contribution function but binned 
+            Contribution_binned = np.zeros(shape=(len(P), len(wl_binned)))
+
+            # Now loop over all pressure layers 
+            for j in range(len(P)):
+                    _, Contribution_binned[j,:], _ = bin_spectrum(wl, Contribution[i,j,:], R)
+
+            X_bin, Y_bin = np.meshgrid(wl_binned, P)
+            
+            # Plot binned contribution function
+            contour_plot = plt.contourf(X_bin, Y_bin, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
+            #contour_plot = plt.contourf(wl_binned, P, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
+
+            ax.invert_yaxis()    
+
+            ax.set_xlim([wl[0], wl[-1]])
+            ax.set_ylim([P[0], P[-1]])        
+            
+            ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5)
+            ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
+            ax.set_title(title)
+
+            plt.show()
+
+
+def photometric_contribution_function(wl, P, Contribution, 
+                                      contribution_molecule_list = [],
+                                      ):
 
     wl_min = np.min(wl)
     wl_max = np.max(wl)
-    
+
     # Bin Stuff from minimum wavelength to maximum wavelength by 0.1 
     bins = np.arange(wl_min,wl_max+0.1,0.1)
 
@@ -201,20 +196,18 @@ def photometric_contribution_function(model,wl,N_layers,Contribution):
 
     # Now to find photometric contribution 
 
-    labels = np.append(model['chemical_species'],'Total')
-
     # [molecule][photometric conitrbution for each bin]
     photometric_contribution = []
 
     # Loop over each molecule
-    for i in range(len(labels)):
+    for i in range(len(contribution_molecule_list)+1):
 
         median_array_one_molecule = []
         # Loop over each wavelength range 
         for j in range(len(indices_for_loop)-1):
             # Loop over each pressure range to get the median 
             temp_row = []
-            for p in range(N_layers):
+            for p in range(len(P)):
 
                 temp_row.append(np.nanmedian(Contribution[i,p,indices_for_loop[j]:indices_for_loop[j+1]]))
 
@@ -231,49 +224,33 @@ def photometric_contribution_function(model,wl,N_layers,Contribution):
             
         photometric_total.append(temp_row)
 
-    return bins,photometric_contribution, photometric_total 
 
-# Graphing Functions
-def plot_pressure_contribution(model,P,wl,Contribution):
+    return photometric_contribution, photometric_total
 
-    labels = np.append(model['chemical_species'],'Total')
 
-    for i in range(len(labels)):
-
-        fig, ax = plt.subplots(figsize=(10, 10))
-
-        levels = np.arange(-16,2,2)
-        a = ax.contourf(wl, np.log10(P), np.log10(Contribution[i,:,:]),cmap='plasma', levels = levels)
-
-        ax.set_ylabel('Log Pressure (bar)')
-        ax.invert_yaxis()
-        ax.set_xlabel('Wavelength ($\mu$m)')
-        title = 'Contribution Function : ' + str(labels[i])
-        ax.set_title(title)
-        plt.colorbar(a, label='Log10 Transmission CF')
-        
-def plot_photometric_contribution(model,P,bins,photometric_contribution,photometric_total):
-    
-     # Now to find contribution 
-    labels = np.append(model['chemical_species'],'Total')
+def plot_photometric_contribution(wl,P,
+                                  photometric_contribution, photometric_total,
+                                  contribution_molecule_list = []):
 
     # Loop over each molecule
-    for i in range(len(labels)):
+
+    labels = []
+    for i in contribution_molecule_list:
+        labels.append(i)
+    labels.append('Total')
+
+    for i in range(len(contribution_molecule_list)+1):
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
-        for b in range(len(bins)-1):
-            label = '[' + str(round(bins[b],1)) + ':' + str(round(bins[b+1],1)) + ')'
-            if b == len(bins)-2:
-                label = '[' + str(round(bins[b],1)) + ':' + str(round(bins[b+1],1)) + ']'
-            ax.plot(photometric_contribution[i][b],np.log10(P), label = label)
+        for b in range(len(photometric_contribution[i])):
+            ax.plot(photometric_contribution[i][b],np.log10(P))
 
         ax.set_ylabel('Log Pressure (bar)')
         ax.invert_yaxis()
         ax.set_xlabel('Contribution')
         title = 'Photometric Contribution Function : ' + str(labels[i])
         ax.set_title(title)
-        ax.legend()
         plt.show()
         
         fig, ax = plt.subplots(figsize=(10, 10))
@@ -284,3 +261,16 @@ def plot_photometric_contribution(model,P,bins,photometric_contribution,photomet
         ax.set_title(title)
         ax.plot(photometric_total[i],np.log10(P))
         plt.show()
+
+    # Plots all of them together, and the log version as well 
+    fig, ax = plt.subplots(figsize=(10, 10))
+    ax.set_ylabel('Log Pressure (bar)')
+    ax.invert_yaxis()
+    ax.set_xlabel('Contribution')
+    title = 'Photometric Contribution Function All Wavelength All Molecules:'
+    ax.set_title(title)
+    for i in range(len(contribution_molecule_list)):
+        ax.plot(np.log10(photometric_total[i]),np.log10(P), label = labels[i])
+    ax.legend()
+    plt.show()
+

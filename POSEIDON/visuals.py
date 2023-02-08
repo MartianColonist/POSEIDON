@@ -3405,3 +3405,30 @@ def plot_composition(planet, models, plot_type = 'abundances', include_bulk = Fa
         file_name = (plot_dir + planet_name + '_' + plt_label + '_' + plot_type + '.png')
 
     fig.savefig(file_name, bbox_inches='tight', dpi=800)
+
+
+def plot_spectra_c(spectrum, spectrum_contribution_list,
+                    wl, planet, colour_list = [], save_fig = False, plot_full_res = False):
+
+    from POSEIDON.utility import plot_collection
+    from POSEIDON.visuals import plot_spectra
+
+    # Initialize plot collection
+    spectra = plot_collection(spectrum, wl, collection = [])
+    spectra_labels = ['Full Spectrum']
+
+    # Loop over the contribution functions 
+    for i in range(len(spectrum_contribution_list)):
+
+        spectra = plot_collection(spectrum_contribution_list[i][1], wl, collection=spectra) 
+        spectra_contribution_title = spectrum_contribution_list[i][0] + ' + CIA and Rayleigh'
+        spectra_labels.append(spectra_contribution_title)
+
+
+    fig = plot_spectra(spectra, planet, R_to_bin = 100, plt_label = 'Wasp 62b First Model',
+                       colour_list = colour_list[:len(spectra)],
+                       spectra_labels = spectra_labels,
+                       save_fig = False,
+                       plot_full_res = False)
+
+    
