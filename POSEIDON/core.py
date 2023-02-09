@@ -150,7 +150,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
     star = {'stellar_radius': R_s, 'stellar_T_eff': T_eff, 
             'stellar_T_eff_error': T_eff_error, 'stellar_metallicity': Met, 
             'stellar_log_g': log_g, 'F_star': F_star, 'wl_star': wl_star,
-            'f_het': f_het, 'T_het': T_het, 'I_phot': I_phot, 'I_het': I_het
+            'f_het': f_het, 'T_het': T_het, 'I_phot': I_phot, 'I_het': I_het,
+            'stellar_grid': stellar_grid
            }
 
     return star

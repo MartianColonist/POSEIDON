@@ -93,7 +93,7 @@ def load_stellar_pysynphot(T_eff, Met, log_g, stellar_grid = 'cbk04'):
 
     
 def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
-                               stellar_grid = 'cbk04', T_step_interp = 10):
+                               T_step_interp = 10):
     '''
     Precompute a grid of stellar spectra across a range of T_eff.
 
@@ -132,6 +132,7 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
     # Unpack stellar properties
     Met_s = star['stellar_metallicity']
     log_g_s = star['stellar_log_g']
+    stellar_grid = star['stellar_grid']
 
     # Set range for T_phot according to whether prior is uniform or Gaussian
     if (prior_types['T_phot'] == 'uniform'):
@@ -211,7 +212,8 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
     for j in range(N_spec_het):
         
         # Load interpolated stellar spectrum from model grid
-        wl_grid, I_het_grid = load_stellar_pysynphot(T_het_grid[j], Met_s, log_g_s)
+        wl_grid, I_het_grid = load_stellar_pysynphot(T_het_grid[j], Met_s, 
+                                                     log_g_s, stellar_grid)
         
         # Bin / interpolate stellar spectrum to output wavelength grid
         I_het_out[j,:] = spectres(wl_out, wl_grid, I_het_grid)
