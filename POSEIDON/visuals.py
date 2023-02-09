@@ -516,7 +516,8 @@ def plot_geometry_spectrum_mixed(planet, star, model, atmosphere, spectra,
 
 def plot_PT(planet, model, atmosphere, show_profiles = [],
             PT_label = None, log_P_min = None, log_P_max = None, T_min = None,
-            T_max = None, colour = 'darkblue', legend_location = 'lower left'):
+            T_max = None, colour = 'darkblue', legend_location = 'lower left',
+            ax = None):
     '''
     Plot the pressure-temperature (P-T) profiles defining the atmosphere.
     
@@ -553,6 +554,8 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
             Colour of the plotted P-T profile.
 		legend_location (str, optional):
             Location of the legend. Default is 'lower left'.
+        ax (matplotlib axis object, optional):
+            Matplotlib axis provided externally.
 	
     Returns:
 		fig (matplotlib figure object):
@@ -595,8 +598,12 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
         log_P_max = np.log10(np.max(P))
     
     # create figure
-    fig = plt.figure()  
-    ax = plt.gca()
+    fig = plt.figure()
+
+    if (ax == None):
+        ax = plt.gca()
+    else:
+        ax = ax
     
     # Assign axis spacing
     xmajorLocator_PT = MultipleLocator(major_spacing)
@@ -702,14 +709,14 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
             
     # Common plot settings for all profiles
     ax.invert_yaxis()            
-    ax.set_xlabel(r'Temperature (K)', fontsize = 20)
+    ax.set_xlabel(r'Temperature (K)', fontsize = 16)
     ax.set_xlim(T_min, T_max)
-    ax.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax.set_ylabel(r'Pressure (bar)', fontsize = 16)
     ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))  
     ax.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
+    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':10}, ncol=1, 
                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
@@ -1212,7 +1219,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  y_unit = 'transit_depth', plt_label = None, 
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
-                 data_marker_size_list = [], wl_axis = 'log', 
+                 data_marker_size_list = [], text_annotations = [],
+                 annotation_pos = [], wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True):
     ''' 
@@ -1262,6 +1270,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             A list of marker styles for the observational data.
         data_marker_size_list (list, optional):
             A list of marker sizes for the observational data.
+        text_annotations (list of str, optional):
+            A list of text annotations for Figure decoration (e.g. molecule names)
+        annotation_pos (list of tuples of str, optional):
+            (x, y) locations of the text annotations in the previous argument.
         wl_axis (str, optional):
             The type of x-axis to use ('log' or 'linear').
         figure_shape (str, optional):
@@ -1312,6 +1324,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         raise Exception("Number of colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
         raise Exception("Number of model labels does not match number of spectra.")
+    if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
+        raise Exception("Number of annotation labels does not match provided positions.")
         
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
@@ -1586,6 +1600,16 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                                                zorder = 100)
 
             [markers.set_alpha(1.0)]
+
+    # Plot text annotations
+    if (text_annotations != []):
+
+        for i in range(len(text_annotations)):
+
+            # Plot each annotation at the location provided by the user
+            ax1.text(annotation_pos[i][0], annotation_pos[i][1], 
+                     text_annotations[i], fontsize=14, color = 'black')
+
 
     # Set axis ranges
     ax1.set_xlim([wl_min, wl_max])
