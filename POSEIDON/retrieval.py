@@ -457,7 +457,9 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                             min_value = prior_ranges[parameter][0]
                             max_value = prior_ranges[parameter][1]
 
-                            cube[i] = ((cube[i] * (max_value - min_value)) + min_value)
+                            last_value = ((cube[i] * (max_value - min_value)) + min_value)
+
+                            cube[i] = last_value
 
                             # Store name of previous parameter for delta prior
                             prev_parameter = parameter
@@ -473,7 +475,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                             max_prior_delta = prior_ranges[parameter][1]
 
                             # Load chosen abundance from previous parameter
-                            sampled_abundance = cube[i-1]
+                            sampled_abundance = last_value
 
                             # Find largest gradient such that the abundances in all
                             # atmospheric regions satisfy the absolute abundance constraint
@@ -485,7 +487,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                             max_value_delta = min(max_prior_delta, largest_delta)
                             min_value_delta = max(min_prior_delta, -largest_delta)
                             
-                            cube[i] = ((cube[i] * (max_value_delta - min_value_delta)) + min_value_delta) 
+                            cube[i] = ((cube[i] * (max_value_delta - min_value_delta)) + min_value_delta)
                     
         # If mixing ratio parameters have centred-log ratio prior, treat separately 
         if ('CLR' in prior_types.values()):
@@ -538,7 +540,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         # For a retrieval we do not have user provided P-T or chemical profiles
         T_input = []
-        log_X_input = []
+        X_input = []
 
         #***** Step 1: unpack parameter values from prior sample *****#
         
@@ -586,7 +588,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
-                                     log_g, T_input, log_X_input, P_surf, P_param_set,
+                                     log_g, T_input, X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN)
 
         #***** Step 3: generate spectrum of atmosphere ****#
