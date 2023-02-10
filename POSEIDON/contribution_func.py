@@ -7,7 +7,8 @@ import numpy as np
 
 def pressure_contribution_function(planet, star, model, atmosphere, opac, wl,P,
                                    spectrum_type = 'transmission',
-                                   contribution_molecule_list = [],):
+                                   contribution_molecule_list = [],
+                                   bulk = False):
 
 
     '''
@@ -24,9 +25,6 @@ def pressure_contribution_function(planet, star, model, atmosphere, opac, wl,P,
         
         contribution_molecule_list (np.array) 
             list of strings of molecules that user wants pressure contribution calculated for 
-
-        total (bool)
-            If true, the total pressure contribution function is also calculated
     
     Returns:
         Contribution (np.array)
@@ -68,7 +66,7 @@ def pressure_contribution_function(planet, star, model, atmosphere, opac, wl,P,
                 # Increment normalization factor 
                 norm[i,:] += diff
 
-        # If its the last index it runs total, which is just total = True with some dummy variable. 
+        # If its the last index it runs total, which is just total = True
         else:
 
             for j in range(len(P)):
@@ -267,6 +265,17 @@ def plot_photometric_contribution(wl,P,
     ax.set_ylabel('Log Pressure (bar)')
     ax.invert_yaxis()
     ax.set_xlabel('Contribution')
+    title = 'Photometric Contribution Function All Wavelength All Molecules:'
+    ax.set_title(title)
+    for i in range(len(contribution_molecule_list)):
+        ax.plot(photometric_total[i],np.log10(P), label = labels[i])
+    ax.legend()
+    plt.show()
+
+    fig, ax = plt.subplots(figsize=(10, 10))
+    ax.set_ylabel('Log Pressure (bar)')
+    ax.invert_yaxis()
+    ax.set_xlabel('Log Contribution')
     title = 'Photometric Contribution Function All Wavelength All Molecules:'
     ax.set_title(title)
     for i in range(len(contribution_molecule_list)):

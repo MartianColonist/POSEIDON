@@ -1785,7 +1785,8 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
                             kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
                             bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
                             N_zones, T_fine, log_P_fine, P_surf, P_deep = 1000.0,
-                            contribution_molecule_list = []):                          # DOES P_DEEP SOLVE BD PROBLEM?!
+                            contribution_molecule_list = [],
+                            bulk = False):                          # DOES P_DEEP SOLVE BD PROBLEM?!
     
     ''' Main function to evaluate extinction coefficients for molecules / atoms,
         Rayleigh scattering, hazes, and clouds for parameter combination
@@ -1817,14 +1818,15 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
     # Set up all the indices for contribution functions
     N_bulk_species = N_species - N_species_active
     bulk_species_indices = range(N_bulk_species)
-   
-    for i in range(len(chemical_species)):
-        if contribution_molecule_list[0] == chemical_species[i]:
-            contribution_molecule_species_index = i
 
-    for i in range(len(active_species)):
-        if contribution_molecule_list[0] == active_species[i]:
-            contribution_molecule_active_index = i
+    if bulk == False:
+        for i in range(len(chemical_species)):
+            if contribution_molecule_list[0] == chemical_species[i]:
+                contribution_molecule_species_index = i
+
+        for i in range(len(active_species)):
+            if contribution_molecule_list[0] == active_species[i]:
+                contribution_molecule_active_index = i
     
     # Layers and wavelengths 
     N_wl = len(wl)     # Number of wavelengths on model grid
@@ -1863,6 +1865,7 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
                 idx_P_fine = closest_index(np.log10(P[i]), log_P_fine[0], log_P_fine[-1], N_P_fine)
                 
                 # For each collisionally-induced absorption (CIA) pair
+                # Need to fix this for non bulk species absorption 
                 for q in range(N_cia_pairs): 
                     
                     n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
@@ -1902,11 +1905,16 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
                 # For each molecular / atomic species with active absorption features
 
                 for q in range(N_species_active): 
-           
-                    if q == contribution_molecule_active_index:
-                        n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
-            
+
+                    if bulk == False:
+                        if q == contribution_molecule_active_index:
+                            n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
+                
+                        else:
+                            n_q = 0
+                    
                     else:
+                        # If bulk is true, then everything in active is turned off 
                         n_q = 0
                     
                     # For each wavelength
@@ -1917,13 +1925,21 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
                     
                 # For each molecular / atomic species
                 for q in range(N_species):  
+                    
+                    if bulk == False:
+                        if q == contribution_molecule_species_index:
+                            n_q = n_level*X[q,i,j,k]   # Number density of given species
+                        elif q in bulk_species_indices:
+                            n_q = n_level*X[q,i,j,k]   # Number density of given species
+                        else:
+                            n_q = 0
 
-                    if q == contribution_molecule_species_index:
-                        n_q = n_level*X[q,i,j,k]   # Number density of given species
-                    elif q in bulk_species_indices:
-                        n_q = n_level*X[q,i,j,k]   # Number density of given species
                     else:
-                        n_q = 0
+                        # If bulk is true, only keep the bulk species on 
+                        if q in bulk_species_indices:
+                            n_q = n_level*X[q,i,j,k]   # Number density of given species
+                        else:
+                            n_q = 0
                     
                     # For each wavelength
                     for l in range(N_wl):

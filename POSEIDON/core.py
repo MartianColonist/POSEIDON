@@ -230,7 +230,7 @@ def define_model(model_name, bulk_species, param_species,
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-                 surface = False, chemistry_type = 'free'):
+                 surface = False, chemistry_model = 'free'):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -398,7 +398,8 @@ def define_model(model_name, bulk_species, param_species,
              'stellar_param_names': stellar_param_names, 
              'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
-             'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface
+             'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
+             'chemistry_model': chemistry_model
             }
 
     return model
@@ -1154,7 +1155,8 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
                      disable_continuum = False, suppress_print = False,
                      Gauss_quad = 2, use_photosphere_radius = True,
                      device = 'cpu', y_p = np.array([0.0]),
-                     contribution_molecule_list = []):
+                     contribution_molecule_list = [],
+                     bulk = False):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -1198,6 +1200,10 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
             is identical at all times due to translational symmetry, so y_p = 0
             is good for all times post second contact and pre third contact.
             Units are in m, not in stellar radii.
+        contribution_molecule_list = [] (np.array of strings)
+            Has a list of (active) molecules you want the spectral contribution function of 
+        bulk (bool)
+            If true, also returns the spectral contribution of the bulk species 
 
     Returns:
         spectrum (np.array of float):
@@ -1333,8 +1339,8 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
 
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
-            
-            # Calculate extinction coefficients in standard mode
+
+            # Calculate extinction coefficients in standard mode (to get normal spectrum)
             kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
                                                 CIA_pairs, ff_pairs, bf_species,
                                                 n, T, P, wl, X, X_active, X_CIA, 
@@ -1346,10 +1352,33 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
                                                 N_sectors, N_zones, T_fine, 
                                                 log_P_fine, P_surf)
 
-            if (contribution_molecule_list != []):
 
-                kappa_clear_contribution_array = []
-                kappa_cloud_contribution_array = []
+            # This is to store the contribution kappas
+            kappa_clear_contribution_array = []
+            kappa_cloud_contribution_array = []
+            
+            # If you want to see only the bulk species contribution, this runs first 
+            if bulk == True:
+
+                kappa_clear_temp, kappa_cloud_temp = extinction_spectrum_contribution(chemical_species, active_species,
+                                                                                    CIA_pairs, ff_pairs, bf_species,
+                                                                                    n, T, P, wl, X, X_active, X_CIA, 
+                                                                                    X_ff, X_bf, a, gamma, P_cloud, 
+                                                                                    kappa_cloud_0, sigma_stored, 
+                                                                                    CIA_stored, Rayleigh_stored, 
+                                                                                    ff_stored, bf_stored, enable_haze, 
+                                                                                    enable_deck, enable_surface,
+                                                                                    N_sectors, N_zones, T_fine, 
+                                                                                    log_P_fine, P_surf,
+                                                                                    contribution_molecule_list = [contribution_molecule_list[0]],
+                                                                                    bulk = True)
+
+                kappa_clear_contribution_array.append(kappa_clear_temp)
+                kappa_cloud_contribution_array.append(kappa_cloud_temp)
+
+                        
+            # Then it runs the rest of the molecules that are provided 
+            if (contribution_molecule_list != []):
 
                 for i in range(len(contribution_molecule_list)):
 
@@ -1363,10 +1392,12 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
                                                         enable_deck, enable_surface,
                                                         N_sectors, N_zones, T_fine, 
                                                         log_P_fine, P_surf,
-                                                        contribution_molecule_list = [contribution_molecule_list[i]])
+                                                        contribution_molecule_list = [contribution_molecule_list[i]],
+                                                        bulk = False)
 
                     kappa_clear_contribution_array.append(kappa_clear_temp)
                     kappa_cloud_contribution_array.append(kappa_cloud_temp)
+
 
 
         # Running POSEIDON on the GPU
@@ -1409,12 +1440,41 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
         if (device == 'gpu'):
             raise Exception("GPU transmission spectra not yet supported.")
 
-        # Call the core TRIDENT routine to compute the transmission spectrum
+       
+       # Calculate normal spectrum 
         spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
                            enable_deck, enable_haze, b_p, y_p[0], R_s, f_cloud,
                            phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+       
+        # If you have both contribution molecules and bulk molecules
+        if contribution_molecule_list != [] and bulk == True:
 
-        if (contribution_molecule_list != []):
+            spectrum_contribution_list = []
+
+            # First add the bulk spectrum 
+            kappa_clear_temp = kappa_clear_contribution_array[0]
+            kappa_cloud_temp = kappa_cloud_contribution_array[0]
+
+            spectrum_temp = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear_temp, kappa_cloud_temp,
+                                            enable_deck, enable_haze, b_p, y_p[0], R_s, f_cloud,
+                                            phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+
+            spectrum_contribution_list.append(['Bulk Species',spectrum_temp])
+
+            # Then add the rest 
+            for i in range(len(contribution_molecule_list)):
+
+                    kappa_clear_temp = kappa_clear_contribution_array[i+1]
+                    kappa_cloud_temp = kappa_cloud_contribution_array[i+1]
+
+                    spectrum_temp = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear_temp, kappa_cloud_temp,
+                                            enable_deck, enable_haze, b_p, y_p[0], R_s, f_cloud,
+                                            phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+
+                    spectrum_contribution_list.append([contribution_molecule_list[i],spectrum_temp])
+
+        # If you just have contirbution moelcules 
+        elif contribution_molecule_list != [] and bulk == False:
 
                 spectrum_contribution_list = []
 
@@ -1428,6 +1488,20 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
                                             phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
 
                     spectrum_contribution_list.append([contribution_molecule_list[i],spectrum_temp])
+
+        # If you 'just' have bulk 
+        elif contribution_molecule_list == [] and bulk == True:
+            spectrum_contribution_list = []
+
+            # First add the bulk spectrum 
+            kappa_clear_temp = kappa_clear_contribution_array[0]
+            kappa_cloud_temp = kappa_cloud_contribution_array[0]
+
+            spectrum_temp = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear_temp, kappa_cloud_temp,
+                                            enable_deck, enable_haze, b_p, y_p[0], R_s, f_cloud,
+                                            phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+
+            spectrum_contribution_list.append(['Bulk Species',spectrum_temp])
 
     # Generate time-averaged transmission spectrum 
     elif (spectrum_type == 'transmission_time_average'):
@@ -1547,7 +1621,7 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
     if (save_spectrum == True):
         write_spectrum(planet['planet_name'], model['model_name'], spectrum, wl)
 
-    if (contribution_molecule_list != []):
+    if (contribution_molecule_list != [] or bulk==True):
         return spectrum, spectrum_contribution_list
 
     else:
