@@ -3439,6 +3439,8 @@ def plot_spectra_c(spectrum, spectrum_contribution_list, bulk,
     # This is so that it only plots two at a time
     for i in range(int(len(spectrum_contribution_list)/2)):
         
+        print(i)
+
         if i != int(len(spectrum_contribution_list))/2:
 
             # Initialize plot collection
@@ -3446,11 +3448,13 @@ def plot_spectra_c(spectrum, spectrum_contribution_list, bulk,
             spectra_labels = ['Full Spectrum']
 
             # Loop over the contribution functions 
-            for i in range(len(spectrum_contribution_list[int(i*2):int((i+1)*2)])):
+            for j in [int(i*2),int((i*2)+1)]:
 
-                spectra = plot_collection(spectrum_contribution_list[i][1], wl, collection=spectra) 
-                spectra_contribution_title = spectrum_contribution_list[i][0] + ' + CIA and Rayleigh'
+                spectra = plot_collection(spectrum_contribution_list[j][1], wl, collection=spectra) 
+                spectra_contribution_title = spectrum_contribution_list[j][0] + ' + CIA and Rayleigh'
+                print(spectra_contribution_title)
                 spectra_labels.append(spectra_contribution_title)
+                print(spectra_labels)
 
 
             fig = plot_spectra(spectra, planet, R_to_bin = 100, plt_label = plt_label,
@@ -3467,10 +3471,17 @@ def plot_spectra_c(spectrum, spectrum_contribution_list, bulk,
             spectra_labels = ['Full Spectrum']
 
             # Loop over the contribution functions 
-            for i in range(len(spectrum_contribution_list[int(i*2):])):
 
-                spectra = plot_collection(spectrum_contribution_list[i][1], wl, collection=spectra) 
-                spectra_contribution_title = spectrum_contribution_list[i][0] + ' + CIA and Rayleigh'
+            # Does either 2 or 3 indices
+            if len(spectrum_contribution_list[int(i*2):]) == 3:
+                j_array = [int(i*2),int(i*2)+1,int(i*2)+2]
+            else:
+                j_array = [int(i*2),int((i*2)+1)]
+
+            for j in j_array:
+
+                spectra = plot_collection(spectrum_contribution_list[j][1], wl, collection=spectra) 
+                spectra_contribution_title = spectrum_contribution_list[j][0] + ' + CIA and Rayleigh'
                 spectra_labels.append(spectra_contribution_title)
 
 
