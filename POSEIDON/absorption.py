@@ -2046,11 +2046,30 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
     N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
     N_bf_species = len(bf_species)           # Number of bound-free species included
 
-    # Set up all the indices for contribution functions
+    # Set up all the indices for contribution functions (keeps bulk species on)
     N_bulk_species = N_species - N_species_active
     bulk_species_indices = range(N_bulk_species)
-    
-    # If total = false then it was passed a chemical species 
+
+    # Find the name of the bulk species to check and see if they are in the cia list 
+    bulk_species_names = chemical_species[:N_bulk_species]
+
+    # Find the bulk species indices for cia 
+    # For this to occur, both need to be a bulk species
+    bulk_cia_indices = []
+    for i in range(len(cia_pairs)):
+        pair_1, pair_2 = cia_pairs[i].split('-')
+        pair_1_bool = False
+        pair_2_bool = False 
+        for j in bulk_species_names:
+            if pair_1 == j:
+                pair_1_bool = True
+            if pair_2 == j:
+                pair_2_bool = True
+        
+        if pair_1_bool == True and pair_2_bool == True:
+            bulk_cia_indices.append(i)
+
+    # If total = false then it was passed a chemical species
     if total == False:
         for i in range(len(chemical_species)):
             if contribution_molecule == chemical_species[i]:
@@ -2059,6 +2078,14 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
         for i in range(len(active_species)):
             if contribution_molecule == active_species[i]:
                 contribution_molecule_active_index = i
+
+        # Now I need to find the cia_pair indices 
+        cia_indices = []
+        for i in range(len(cia_pairs)):
+            pair_1, pair_2 = cia_pairs[i].split('-')
+            if contribution_molecule == pair_1 or contribution_molecule == pair_2:
+                cia_indices.append(i)
+    
     
     # Layers and wavelengths 
     N_wl = len(wl)     # Number of wavelengths on model grid
@@ -2099,10 +2126,15 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                     
                     # For each collisionally-induced absorption (CIA) pair
                     for q in range(N_cia_pairs): 
-                        
-                        n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
-                        n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
-                        n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+
+                        # For total, keep on the bulk species no matter what and keep on any layer except the one to ignore
+                        if q in bulk_cia_indices or i != layer_to_ignore:
+                            n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
+                            n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
+                            n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+
+                        else:
+                            n_n_cia = 0
                         
                         # For each wavelength
                         for l in range(N_wl):
@@ -2210,10 +2242,15 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                     
                     # For each collisionally-induced absorption (CIA) pair
                     for q in range(N_cia_pairs): 
-                        
-                        n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
-                        n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
-                        n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+
+                        # For total = true, ignores the cia of the molecule we are on 
+                        if q in cia_indices and i == layer_to_ignore:
+                            n_n_cia = 0
+
+                        else:
+                            n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
+                            n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
+                            n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
                         
                         # For each wavelength
                         for l in range(N_wl):
