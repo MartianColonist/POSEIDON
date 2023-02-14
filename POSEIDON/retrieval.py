@@ -666,7 +666,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         offset_start = data['offset_start']
         offset_end = data['offset_end']
 
-        if (offsets_applied == 'relative'): 
+        if (offsets_applied == 'single-offset'): 
             ydata_adjusted = ydata.copy()
             ydata_adjusted[offset_start:offset_end] += offset_params[0]
         else: 
