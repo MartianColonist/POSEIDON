@@ -3439,7 +3439,6 @@ def plot_spectra_c(spectrum, spectrum_contribution_list, bulk,
     # This is so that it only plots two at a time
     for i in range(int(len(spectrum_contribution_list)/2)):
         
-        print(i)
 
         if i != int(len(spectrum_contribution_list))/2:
 
@@ -3452,9 +3451,7 @@ def plot_spectra_c(spectrum, spectrum_contribution_list, bulk,
 
                 spectra = plot_collection(spectrum_contribution_list[j][1], wl, collection=spectra) 
                 spectra_contribution_title = spectrum_contribution_list[j][0] + ' + CIA and Rayleigh'
-                print(spectra_contribution_title)
                 spectra_labels.append(spectra_contribution_title)
-                print(spectra_labels)
 
 
             fig = plot_spectra(spectra, planet, R_to_bin = 100, plt_label = plt_label,

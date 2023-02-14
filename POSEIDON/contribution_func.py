@@ -160,6 +160,7 @@ def plot_pressure_contribution(wl,P,
             ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
             ax.set_title(title)
 
+            plt.colorbar()
             plt.show()
 
 
