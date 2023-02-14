@@ -235,16 +235,16 @@ def plot_transit(ax, R_p, R_s, b_p, r, T, phi, phi_edge, theta, theta_edge,
         if (show_star == True):
             p = PatchCollection(patches, cmap=matplotlib.cm.RdBu_r, alpha=1.0, 
                                 edgecolor=colorConverter.to_rgba('black', alpha=0.4), 
-                                lw=0.1, zorder = 10)
+                                lw=0.1, zorder = 10, rasterized = True)
 
             # Add text label to indicate system geometry is shown
             ax.text(0.04, 0.96, 'System Geometry', horizontalalignment='left', 
-                verticalalignment='top', transform=ax.transAxes, color = 'black', fontsize = 16)
+                    verticalalignment='top', transform=ax.transAxes, color = 'black', fontsize = 16)
 
         else:
             p = PatchCollection(patches, cmap=matplotlib.cm.RdYlBu_r, alpha=1.0, 
-                                edgecolor=colorConverter.to_rgba('black', alpha=0.4), 
-                                lw=0.1, zorder = 10)
+                                edgecolor=colorConverter.to_rgba('black', alpha=0.1), 
+                                lw=0.1, zorder = 10, rasterized = True)
 
         # Colour each segment according to atmospheric temperature
         colors = np.array(T_colors)
@@ -276,8 +276,6 @@ def plot_transit(ax, R_p, R_s, b_p, r, T, phi, phi_edge, theta, theta_edge,
                     verticalalignment = 'top', fontsize = 14, color='white')
 
 
-        
-  
     # Slice through the north-south pole plane
     elif (perspective == 'day-night'):
     
@@ -341,7 +339,7 @@ def plot_transit(ax, R_p, R_s, b_p, r, T, phi, phi_edge, theta, theta_edge,
         # Plot atmosphere segment collection
         p = PatchCollection(patches, cmap=matplotlib.cm.RdYlBu_r, alpha=1.0, 
                             edgecolor=colorConverter.to_rgba('black', alpha=0.1), 
-                            lw=0.1, zorder = 10)
+                            lw=0.1, zorder = 10, rasterized = True)
         
         # Colour each segment according to atmospheric temperature
         colors = np.array(T_colors)
