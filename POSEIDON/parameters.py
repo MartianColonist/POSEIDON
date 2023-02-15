@@ -29,7 +29,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: transiting / directly_imaged).
         PT_profile (str):
             Chosen P-T profile parametrisation 
-            (Options: isotherm / gradient / two-gradients / Madhu / slope / file_read).
+            (Options: isotherm / gradient / two-gradients / Madhu / slope / 
+             file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
             (Options: isochem / gradient / two-gradients / file_read).
@@ -44,13 +45,14 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
-            (Options: No / one-spot).
+            (Options: one_spot / one_spot_free_log_g / two_spots / 
+             two_spots_free_log_g).
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
-            (Options: No / single-dataset).
+            (Options: single_dataset).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
-            (Options: No / Line15).
+            (Options: Line15).
         PT_dim (int):
             Dimensionality of the pressure-temperature field (uniform -> 1, 
             a day-night or evening-morning gradient -> 2, both day-night and 
@@ -521,9 +523,16 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     
     #***** Stellar contamination parameters *****#
     
-    if (stellar_contam == 'one-spot'):
+    if (stellar_contam == 'one_spot'):
         stellar_params += ['f_het', 'T_het', 'T_phot']
-    elif (stellar_contam == 'No'):
+    elif (stellar_contam == 'one_spot_free_log_g'):
+        stellar_params += ['f_het', 'T_het', 'T_phot', 'log_g_het', 'log_g_phot']
+    elif (stellar_contam == 'two_spots'):
+        stellar_params += ['f_spot', 'f_fac', 'T_spot', 'T_fac', 'T_phot']
+    elif (stellar_contam == 'two_spots_free_log_g'):
+        stellar_params += ['f_spot', 'f_fac', 'T_spot', 'T_fac', 'T_phot', 
+                           'log_g_spot', 'log_g_fac', 'log_g_phot']
+    elif (stellar_contam == None):
         stellar_params = []
     else:
         raise Exception("Error: unsupported stellar contamination model.")
@@ -533,10 +542,10 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
              
     #***** Offset parameters *****#
     
-    if (offsets_applied == 'single-dataset'):
+    if (offsets_applied == 'single_dataset'):
         params += ['delta_rel']
         N_offset_params = 1
-    elif (offsets_applied == 'No'):
+    elif (offsets_applied == None):
         N_offset_params = 0
     else:
         raise Exception("Error: unsupported offset prescription.")
@@ -546,7 +555,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     if (error_inflation == 'Line15'): 
         params += ['log_b']                  # TBD: CHECK definition
         N_error_params = 1
-    elif (error_inflation == 'No'):    
+    elif (error_inflation == None):    
         N_error_params = 0
     else:
         raise Exception("Error: unsupported error adjustment prescription.")
@@ -1406,3 +1415,122 @@ def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):
         beta = 0.0
     
     return alpha, beta
+
+
+def unpack_stellar_params(param_names, star, stellar_in, stellar_contam, 
+                          N_params_cumulative):
+    '''
+    Extract the stellar properties from the drawn stellar parameters, according 
+    to the stellar contamination model specified by the user.
+    
+    Args:
+        param_names (np.array of str):
+            Free parameters defining this POSEIDON model.
+        star (dict):
+            Collection of stellar properties used by POSEIDON.
+        stellar_in (list of float | np.array of float):
+            Drawn values of the stellar parameters.
+        stellar_contam (str):
+            Chosen prescription for modelling unocculted stellar contamination
+            (Options: one_spot / one_spot_free_log_g / two_spots / 
+             two_spots_free_log_g).
+        N_params_cumulative (np.array of int):
+            Cumulative sum of number of parameters (used for indexing).
+
+    Returns:
+        f_het (float):
+            For the 'one_spot' model, the fraction of stellar photosphere 
+            covered by either spots or faculae.
+        f_spot (float):
+            For the 'two_spots' model, the fraction of stellar photosphere 
+            covered by spots.
+        f_fac (float):
+            For the 'two_spots' model, the fraction of stellar photosphere 
+            covered by faculae.
+        T_het (float):
+            For the 'one_spot' model, the temperature of the heterogeneity (K).
+        T_spot (float):
+            For the 'two_spots' model, the temperature of the spot (K).
+        T_fac (float):
+            For the 'two_spots' model, the temperature of the facula (K).
+        T_phot (float):
+            Stellar photosphere temperature (K).
+        log_g_het (float):
+            For the 'one_spot' model, the log g of the heterogeneity (log10(cm/s^2)).
+        log_g_spot (float):
+            For the 'two_spots' model, the log g of the spot (log10(cm/s^2)).
+        log_g_fac (float):
+            For the 'two_spots' model, the log g of the facula (log10(cm/s^2)).
+        log_g_phot (float):
+            Stellar photosphere log g (log10(cm/s^2)).
+
+    '''
+    
+    # Unpack names of stellar parameters
+    stellar_param_names = param_names[N_params_cumulative[4]:N_params_cumulative[5]]
+
+    # Unpack stellar properties
+    T_phot_obs = star['T_eff']
+    Met_phot_obs = star['Met']
+    log_g_phot_obs = star['log_g']
+
+    if (stellar_contam == 'one_spot'):
+        stellar_params += ['f_het', 'T_het', 'T_phot']
+    elif (stellar_contam == 'one_spot_free_log_g'):
+        stellar_params += ['f_het', 'T_het', 'T_phot', 'log_g_het', 'log_g_phot']
+    elif (stellar_contam == 'two_spots'):
+        stellar_params += ['f_spot', 'f_fac', 'T_spot', 'T_fac', 'T_phot']
+    elif (stellar_contam == 'two_spots_free_log_g'):
+        stellar_params += ['f_spot', 'f_fac', 'T_spot', 'T_fac', 'T_phot', 
+                           'log_g_spot', 'log_g_fac', 'log_g_phot']
+
+    # Extract parameters for a single stellar heterogeneity
+    if ('one_spot' in stellar_contam):
+
+        f_het = np.array(stellar_in[np.where(stellar_param_names == 'f_het')[0][0]])
+        T_het = np.array(stellar_in[np.where(stellar_param_names == 'T_het')[0][0]])
+        T_phot = np.array(stellar_in[np.where(stellar_param_names == 'T_phot')[0][0]])
+
+        # Extract log g parameters 
+        if ('free_log_g' in stellar_contam):
+            log_g_het = np.array(stellar_in[np.where(stellar_param_names == 'log_g_het')[0][0]])
+            log_g_phot = np.array(stellar_in[np.where(stellar_param_names == 'log_g_phot')[0][0]])
+        else:
+            log_g_het = log_g_phot_obs
+            log_g_phot = log_g_phot_obs
+
+        # The below parameters are not used for a one heterogeneity model
+        f_spot = 0.0
+        f_fac = 0.0
+        T_spot = T_phot_obs
+        T_fac = T_phot_obs
+        log_g_spot = log_g_phot_obs
+        log_g_fac = log_g_phot_obs
+
+    # Extract parameters for two stellar heterogeneities
+    elif ('two_spots' in stellar_contam):
+
+        f_spot = np.array(stellar_in[np.where(stellar_param_names == 'f_spot')[0][0]])
+        f_fac = np.array(stellar_in[np.where(stellar_param_names == 'f_fac')[0][0]])
+        T_spot = np.array(stellar_in[np.where(stellar_param_names == 'T_spot')[0][0]])
+        T_fac = np.array(stellar_in[np.where(stellar_param_names == 'T_fac')[0][0]])
+        T_phot = np.array(stellar_in[np.where(stellar_param_names == 'T_phot')[0][0]])
+
+        # Extract log g parameters 
+        if ('free_log_g' in stellar_contam):
+            log_g_spot = np.array(stellar_in[np.where(stellar_param_names == 'log_g_spot')[0][0]])
+            log_g_fac = np.array(stellar_in[np.where(stellar_param_names == 'log_g_fac')[0][0]])
+            log_g_phot = np.array(stellar_in[np.where(stellar_param_names == 'log_g_phot')[0][0]])
+        else:
+            log_g_spot = log_g_phot_obs
+            log_g_fac = log_g_phot_obs
+            log_g_phot = log_g_phot_obs
+
+        # The below parameters are not used for a two heterogeneity model
+        f_het = 0.0
+        T_het = T_phot_obs
+        log_g_het = log_g_phot_obs
+
+    return f_het, f_spot, f_fac, T_het, T_spot, T_fac, T_phot, log_g_het, \
+           log_g_spot, log_g_fac, log_g_phot
+

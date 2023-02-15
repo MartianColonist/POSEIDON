@@ -58,9 +58,12 @@ import warnings
 warnings.filterwarnings("ignore") # Suppress numba performance warning
 
 
-def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, 
+def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
                 stellar_spectrum = False, stellar_grid = 'blackbody',
-                heterogeneous = False, f_het = 0.0, T_het = None):
+                stellar_contam = None, f_het = None, T_het = None,
+                log_g_het = None, f_spot = None, f_fac = None, T_spot = None,
+                T_fac = None, log_g_spot = None, log_g_fac = None,
+                interp_backend = 'pysynphot'):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
 
@@ -80,17 +83,40 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
             Stellar metallicity [log10(Fe/H_star / Fe/H_solar)].
         T_eff_error (float):
             A priori 1-sigma error on stellar effective temperature (K).
+        T_eff_error (float):
+            A priori 1-sigma error on stellar log g (log10(cm/s^2)).
         stellar_spectrum (bool):
             If True, compute a stellar spectrum.
         grid (string):
             Stellar model grid to use if 'stellar_spectrum' is True.
             (Options: blackbody / cbk04 / phoenix).
-        heterogeneous (bool):
-            if True, add contributions from unocculted spots/faculae.
+        stellar_contam (str):
+            Type of stellar heterogeneity.
+            (Options: one_spot / two_spots).
         f_het (float):
-            Fraction of stellar photosphere covered by spots/faculae.
+            For the 'one_spot' model, the fraction of stellar photosphere 
+            covered by either spots or faculae.
         T_het (float):
-            Temperature of the heterogeneity (K). 
+            For the 'one_spot' model, the temperature of the heterogeneity (K).
+        log_g_het (float):
+            For the 'one_spot' model, the log g of the heterogeneity (log10(cm/s^2)).
+        f_spot (float):
+            For the 'two_spots' model, the fraction of stellar photosphere 
+            covered by spots.
+        f_fac (float):
+            For the 'two_spots' model, the fraction of stellar photosphere 
+            covered by faculae.
+        T_spot (float):
+            For the 'two_spots' model, the temperature of the spot (K).
+        T_fac (float):
+            For the 'two_spots' model, the temperature of the facula (K).
+        log_g_spot (float):
+            For the 'two_spots' model, the log g of the spot (log10(cm/s^2)).
+        log_g_fac (float):
+            For the 'two_spots' model, the log g of the facula (log10(cm/s^2)).
+        interp_backend (str):
+            Stellar grid interpolation package for POSEIDON to use.
+            (Options: pysynphot / msg).
     
     Returns:
         star (dict):
@@ -102,6 +128,10 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
     if (stellar_spectrum == True):
 
         if (stellar_grid == 'blackbody'):
+
+            if (stellar_contam != None):
+                raise Exception("Error: cannot use black bodies for a model " +
+                                "with heterogeneities, please specify a stellar grid.")
 
             # Create fiducial wavelength grid for blackbody spectrum
             wl_min = 0.2
@@ -117,11 +147,12 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
         else:
 
             # Obtain photosphere spectrum by interpolating stellar grids
-            wl_star, I_phot = load_stellar_pysynphot(T_eff, Met, log_g, 
-                                                     stellar_grid)
+            if (interp_backend == 'pysynphot'):
+                wl_star, I_phot = load_stellar_pysynphot(T_eff, Met, log_g, 
+                                                        stellar_grid)
 
         # For uniform stellar surfaces
-        if (heterogeneous == False):
+        if (stellar_contam == None):
 
             # No heterogeneity spectrum to return 
             I_het = np.zeros(len(wl_star))   
@@ -130,13 +161,58 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
             F_star = np.pi * I_phot
 
         # For non-uniform stellar surfaces
-        elif (heterogeneous == True):
+        elif ('one_spot' in stellar_contam):
+
+            # If log g not specified for the heterogeneities, set to photosphere
+            if (log_g_het == None):
+                log_g_het = log_g
+
+            # Individual spot and faculae intensities not needed for one spot model
+            I_spot = None
+            I_fac = None
 
             # Obtain heterogeneity spectrum by interpolation
-            _, I_het = load_stellar_pysynphot(T_het, Met, log_g, stellar_grid)
+            if (interp_backend == 'pysynphot'):
+                _, I_het = load_stellar_pysynphot(T_het, Met, log_g_het, stellar_grid)
 
             # Evaluate total stellar flux as a weighted sum of each region 
             F_star = np.pi * ((f_het * I_het) + (1.0 - f_het) * I_phot)
+
+        # For non-uniform stellar surfaces
+        elif ('two_spots' in stellar_contam):
+
+            # If log g not specified for the heterogeneities, set to photosphere
+            if (log_g_spot == None):
+                log_g_spot = log_g
+            if (log_g_fac == None):
+                log_g_fac = log_g
+
+            # Check provided temperatures are physical
+            if (T_spot > T_fac):
+                raise Exception("Error: spots must be cooler than faculae")
+            if (T_spot > T_eff):
+                raise Exception("Error: spots must be cooler than the photosphere")
+            if (T_fac < T_eff):
+                raise Exception("Error: faculae must be hotter than the photosphere")
+
+            # Single heterogeneity intensity not needed for two spot model
+            I_het = None
+
+            # Obtain spot spectrum by interpolation
+            if (interp_backend == 'pysynphot'):
+                _, I_spot = load_stellar_pysynphot(T_spot, Met, log_g_spot, stellar_grid)
+
+            # Obtain facula spectrum by interpolation
+            if (interp_backend == 'pysynphot'):
+                _, I_fac = load_stellar_pysynphot(T_fac, Met, log_g_fac, stellar_grid)
+
+            # Evaluate total stellar flux as a weighted sum of each region 
+            F_star = np.pi * ((f_spot * I_spot) + (f_fac * I_fac) + 
+                              (1.0 - (f_spot + f_fac)) * I_phot)
+            
+        else:
+            raise Exception("Error: unsupported heterogeneity type. Supported " +
+                            "types are: None, 'one_spot', 'two_spots'")
 
     # If user doesn't require a stellar spectrum
     else:
@@ -145,12 +221,17 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
         wl_star = None
         I_phot = None
         I_het = None
+        I_spot = None
+        I_fac = None
 
     # Package stellar properties
-    star = {'stellar_radius': R_s, 'stellar_T_eff': T_eff, 
-            'stellar_T_eff_error': T_eff_error, 'stellar_metallicity': Met, 
-            'stellar_log_g': log_g, 'F_star': F_star, 'wl_star': wl_star,
-            'f_het': f_het, 'T_het': T_het, 'I_phot': I_phot, 'I_het': I_het,
+    star = {'R_s': R_s, 'T_eff': T_eff, 'T_eff_error': T_eff_error,
+            'log_g_error': log_g_error, 'Met': Met, 'log_g': log_g, 
+            'F_star': F_star, 'wl_star': wl_star,
+            'f_het': f_het, 'T_het': T_het, 'log_g_het': log_g_het, 
+            'f_spot': f_het, 'T_spot': T_het, 'log_g_spot': log_g_het,
+            'f_fac': f_het, 'T_fac': T_het, 'log_g_fac': log_g_het,
+            'I_phot': I_phot, 'I_het': I_het, 'I_spot': I_spot, 'I_fac': I_fac,
             'stellar_grid': stellar_grid
            }
 
@@ -225,8 +306,8 @@ def define_model(model_name, bulk_species, param_species,
                  object_type = 'transiting', PT_profile = 'isotherm', 
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
                  cloud_type = 'deck', opaque_Iceberg = False,
-                 gravity_setting = 'fixed', stellar_contam = 'No', 
-                 offsets_applied = 'No', error_inflation = 'No', 
+                 gravity_setting = 'fixed', stellar_contam = None, 
+                 offsets_applied = None, error_inflation = None, 
                  radius_unit = 'R_J', distance_unit = 'pc',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
@@ -248,7 +329,8 @@ def define_model(model_name, bulk_species, param_species,
             (Options: transiting / directly_imaged).
         PT_profile (str):
             Chosen P-T profile parametrisation 
-            (Options: isotherm / gradient / two-gradients / Madhu / slope / file_read).
+            (Options: isotherm / gradient / two-gradients / Madhu / slope /
+             file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
             (Options: isochem / gradient / two-gradients / file_read).
@@ -265,13 +347,14 @@ def define_model(model_name, bulk_species, param_species,
             (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
-            (Options: No / one-spot).
+            (Options: one_spot / one_spot_free_log_g / two_spots / 
+             two_spots_free_log_g).
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
-            (Options: No / single-dataset).
+            (Options: single_dataset).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
-            (Options: No / Line15).
+            (Options: Line15).
         radius_unit (str)
             Planet radius unit used to report retrieval results
             (Options: R_J / R_E)
@@ -880,7 +963,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     d = planet['system_distance']
 
     if (star is not None):
-        R_s = star['stellar_radius']
+        R_s = star['R_s']
 
     # Check that a distance is provided if user wants a direct spectrum
     if (d is None) and ('direct' in spectrum_type):
@@ -1334,11 +1417,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     T_eq = planet['planet_T_eq']
 
     if (star != None):
-        T_s = star['stellar_T_eff']
-        err_T_s = star['stellar_T_eff_error']
+        T_phot = star['T_eff']
+        err_T_phot = star['T_eff_error']
+        log_g_phot = star['log_g']
+        err_log_g_phot = star['log_g_error']
     else:
-        T_s = 0.0
-        err_T_s = 0.0
+        T_phot = None
+        err_T_phot = None
+        log_g_phot = None
+        err_log_g_phot = None
 
     # Unpack data error bars (not error inflation parameter prior)
     err_data = data['err_data']    
@@ -1374,8 +1461,14 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_kappa_cloud': [-10, -4], 'f_cloud': [0, 1],
                              'phi_0': [-180, 180], 'theta_0': [-35, 35],
                              'alpha': [0.1, 180], 'beta': [0.1, 70],
-                             'f_het': [0.0, 0.5], 'T_het': [0.6*T_s, 1.2*T_s],
-                             'T_phot': [T_s, err_T_s], 
+                             'f_het': [0.0, 0.5], 'T_het': [0.6*T_phot, 1.2*T_phot],
+                             'f_spot': [0.0, 0.5], 'T_spot': [0.6*T_phot, T_phot],
+                             'f_fac': [0.0, 0.5], 'T_fac': [T_phot, 1.2*T_phot],
+                             'log_g_het': [log_g_phot-0.5, log_g_phot+0.5],
+                             'log_g_spot': [log_g_phot-0.5, log_g_phot+0.5],
+                             'log_g_fac': [log_g_phot-0.5, log_g_phot+0.5],
+                             'T_phot': [T_phot, err_T_phot], 
+                             'log_g_phot': [log_g_phot, err_log_g_phot], 
                              'delta_rel': [-1.0e-3, 1.0e-3],
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
                                        np.log10(100.0*np.max(err_data**2))]
@@ -1508,8 +1601,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 else:
                     prior_types[parameter] = 'uniform'
 
-            # Only the stellar T_phot defaults to a Gaussian prior
-            elif (parameter == 'T_phot'):
+            # The stellar T_phot and log_g_phot default to a Gaussian prior
+            elif (parameter in ['T_phot', 'log_g_phot']):
                 prior_types[parameter] = 'gaussian'
             
             # All other parameters default to uniform priors
@@ -1567,6 +1660,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         # Check that centred-log ratio is being employed in a 1D model
         if ((prior_types[parameter] == 'CLR') and (Atmosphere_dimension != 1)):
             raise Exception("CLR prior only supported for 1D models.")
+        
+        if ((parameter in ['T_spot', 'T_fac', 'log_g_spot', 'log_g_fac']) and 
+            (prior_types[parameter] == 'gaussian')):
+            raise Exception("Gaussian priors can only be used on T_phot or log_g_phot.")
 
         # Check mixing ratio parameter have valid settings
         if (parameter in X_param_names):
