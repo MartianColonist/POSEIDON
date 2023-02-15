@@ -7,8 +7,7 @@ import numpy as np
 
 def pressure_contribution_function(planet, star, model, atmosphere, opac, wl,P,
                                    spectrum_type = 'transmission',
-                                   contribution_molecule_list = [],
-                                   bulk = False):
+                                   contribution_molecule_list = [],):
 
 
     '''
@@ -87,6 +86,11 @@ def pressure_contribution_function(planet, star, model, atmosphere, opac, wl,P,
 
                 # Increment normalization factor 
                 norm[i,:] += diff
+
+
+    for i in range(len(contribution_molecule_list)+1):
+       for j in range(len(P)):
+            Contribution[i,j,:] = np.divide(Contribution[i,j,:],norm[-1,:])
 
     return Contribution, norm
 
