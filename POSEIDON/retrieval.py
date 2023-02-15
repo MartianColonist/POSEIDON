@@ -597,18 +597,19 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             P_surf = None
 
         # Reject models with spots hotter than faculae (by definition)
-        if ('two_spots' in stellar_contam):
+        if (stellar_contam != None):
+            if ('two_spots' in stellar_contam):
 
-            # Unpack stellar contamination parameters
-            _, f_spot, f_fac, _, \
-            T_spot, T_fac, T_phot, \
-            log_g_spot, log_g_fac, \
-            log_g_phot = unpack_stellar_params(param_names, star, stellar_params, 
-                                               stellar_contam, N_params_cum)
-            
-            if ((T_spot > T_phot) or (T_fac < T_phot) or (T_spot > T_fac)):
-                loglikelihood = -1.0e100   
-                return loglikelihood
+                # Unpack stellar contamination parameters
+                _, f_spot, f_fac, _, \
+                T_spot, T_fac, T_phot, \
+                log_g_spot, log_g_fac, \
+                log_g_phot = unpack_stellar_params(param_names, star, stellar_params, 
+                                                   stellar_contam, N_params_cum)
+                
+                if ((T_spot > T_phot) or (T_fac < T_phot) or (T_spot > T_fac)):
+                    loglikelihood = -1.0e100   
+                    return loglikelihood
 
         #***** Step 2: generate atmosphere corresponding to parameter draw *****#
 
