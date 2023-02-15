@@ -409,7 +409,7 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     model_name = model['model_name']
     R_p = planet['planet_radius']
     b_p = planet['planet_impact_parameter']
-    R_s = star['stellar_radius']
+    R_s = star['R_s']
     r = atmosphere['r']
     T = atmosphere['T']
     phi = atmosphere['phi']
@@ -476,7 +476,7 @@ def plot_geometry_spectrum_mixed(planet, star, model, atmosphere, spectra,
     planet_name = planet['planet_name']
     R_p = planet['planet_radius']
     b_p = planet['planet_impact_parameter']
-    R_s = star['stellar_radius']
+    R_s = star['R_s']
     r = atmosphere['r']
     T = atmosphere['T']
     phi = atmosphere['phi']
@@ -1608,7 +1608,6 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             ax1.text(annotation_pos[i][0], annotation_pos[i][1], 
                      text_annotations[i], fontsize=14, color = 'black')
 
-
     # Set axis ranges
     ax1.set_xlim([wl_min, wl_max])
     ax1.set_ylim([y_range[0], y_range[1]])
@@ -1969,6 +1968,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            colour_list = [], spectra_labels = [],
                            data_colour_list = [], data_labels = [],
                            data_marker_list = [], data_marker_size_list = [],
+                           binned_colour_list = [], text_annotations = [],
+                           annotation_pos = [],
                            wl_axis = 'log', figure_shape = 'default',
                            legend_location = 'upper right', legend_box = False):
     ''' 
@@ -2026,6 +2027,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             A list of marker styles for the observational data.
         data_marker_size_list (list, optional):
             A list of marker sizes for the observational data.
+        binned_colour_list (list, optional):
+            A list of colours for the binned models.
+        text_annotations (list of str, optional):
+            A list of text annotations for Figure decoration (e.g. molecule names)
+        annotation_pos (list of tuples of str, optional):
+            (x, y) locations of the text annotations in the previous argument.
         wl_axis (str, optional):
             The type of x-axis to use ('log' or 'linear').
         figure_shape (str, optional):
@@ -2058,13 +2065,15 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
          
-    # Quick validity checks for plotting
+    # Quick spectra validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
     if (N_spectra > 3):
         raise Exception("Max number of concurrent retrieved spectra to plot is 3.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
+    if ((binned_colour_list != []) and (N_spectra != len(binned_colour_list))):
+        raise Exception("Number of binned model colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
         raise Exception("Number of model labels does not match number of spectra.")
 
@@ -2074,7 +2083,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     else:
         colours = colour_list
 
-    binned_colours = ['gold', 'pink', 'cyan']
+    # Define colours for binned model points (default or user choice)
+    if (binned_colour_list == []):
+        binned_colours = ['gold', 'pink', 'cyan']
+    else:
+        binned_colours = binned_colour_list
 
     # Unpack data properties (if provided)
     datasets = data_properties['datasets']
@@ -2087,7 +2100,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Find number of datasets to plot
     N_datasets = len(datasets)
         
-    # Quick validity checks for plotting
+    # Quick data validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
     if (N_datasets > 6):
@@ -2100,6 +2113,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         raise Exception("Number of dataset markers does not match number of datasets.")
     if ((data_marker_size_list != []) and (N_datasets != len(data_marker_size_list))):
         raise Exception("Number of dataset marker sizes does not match number of datasets.")
+    if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
+        raise Exception("Number of annotation labels does not match provided positions.")
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
@@ -2310,7 +2325,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             ymodel_median = bin_spectrum_to_data(spec_med, wl, data_properties)
 
             ax1.scatter(wl_data, ymodel_median, color = binned_colours[i], 
-                        s=5, marker='D', lw=0.1, alpha=0.8, edgecolor='black',
+                        s=5, marker='D', lw=0.5, alpha=0.8, edgecolor='black',
                         label = label_i + r' (Binned)', zorder = 200)
             
     # Overplot datapoints
@@ -2334,14 +2349,23 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
         # Plot dataset
         markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                            xerr=bin_size_i, marker=data_markers[i], 
-                                            markersize=data_markers_size[i], 
-                                            capsize=2, ls='none', elinewidth=0.8, 
-                                            color=data_colours[i], alpha = 0.8,
-                                            ecolor = 'black', label=label_i,
-                                            zorder = 100)
+                                           xerr=bin_size_i, marker=data_markers[i], 
+                                           markersize=data_markers_size[i], 
+                                           capsize=2, ls='none', elinewidth=0.8, 
+                                           color=data_colours[i], alpha = 0.8,
+                                           ecolor = 'black', label=label_i,
+                                           zorder = 100)
 
         [markers.set_alpha(1.0)]
+
+    # Plot text annotations
+    if (text_annotations != []):
+
+        for i in range(len(text_annotations)):
+
+            # Plot each annotation at the location provided by the user
+            ax1.text(annotation_pos[i][0], annotation_pos[i][1], 
+                     text_annotations[i], fontsize=14, color = 'black')
     
     # Set axis ranges
     ax1.set_xlim([wl_min, wl_max])
