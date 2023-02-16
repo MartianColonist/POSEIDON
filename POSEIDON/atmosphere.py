@@ -13,6 +13,7 @@ from numba.core.decorators import jit
 from .supported_opac import inactive_species
 from .species_data import masses
 from .utility import prior_index
+from .eq_interpolate import read_logX
 
 
 @jit(nopython = True)
@@ -1463,6 +1464,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         
         # Gaussian smooth P-T profile
         T = T_rough   # No need to Gaussian smooth a user profile
+    
 
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
@@ -1479,6 +1481,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
 
     else:   # Alternatively, compute 4D mixing ratio array
 
+
         # For isochemical or gradient profiles
         if (X_profile in ['isochem', 'gradient']):
             X_param = compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, 
@@ -1491,6 +1494,19 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                                                     param_species, species_has_profile, 
                                                     alpha, beta, phi, theta) 
 
+        # Read in equilibrium mixing ratio profiles 
+        elif (X_profile == 'chem_eq'):
+            # Unpack C/O and Metallicity 
+            C_to_O = log_X_state[0]
+            log_Met = log_X_state[1]
+
+            if PT_profile == 'isotherm':
+                X_input = read_logX(np.log10(P), T[0], C_to_O, log_Met, param_species, return_dict=False)
+                X_input = 10**X_input
+                X_param = X_input.reshape((len(param_species), len(P), 1, 1))
+            else:
+                raise Exception('Chemical Equilibrium only supports Isothermal PT (for now)')
+
         # Gaussian smooth any profiles with a vertical profile
         for q, species in enumerate(param_species):
             if (species_has_profile[q] == 1):
@@ -1500,6 +1516,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # Add bulk mixing ratios to form full mixing ratio array
         X = add_bulk_component(P, X_param, N_species, N_sectors, N_zones, 
                                bulk_species, He_fraction)
+
     
     # Check if any mixing ratios are negative (i.e. trace species sum to > 1, so bulk < 0)
     if (np.any(X[0,:,:,:] < 0.0)): 

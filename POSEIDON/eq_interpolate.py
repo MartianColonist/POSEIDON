@@ -96,7 +96,7 @@ def read_logX(log_P, T, C_O, log_Met, species, return_dict=True):
     Prerequisites:
         len(P_array) = len(T_array)
     '''
-    
+
     supported_species = get_supported_species()
     if isinstance(species, str):
         if species not in supported_species: 
@@ -113,6 +113,7 @@ def read_logX(log_P, T, C_O, log_Met, species, return_dict=True):
         raise Exception("Input shape not accepted. The lengths must either be the same or 1 (to be extended).")
 
     C_O_num, Met_num, T_num, P_num = len(c_o_grid), len(metallicity_grid), len(temperature_gird), len(pressure_grid)
+
     if len_P == 1:
         log_P = np.full(max_len, log_P)
     if len_T == 1:

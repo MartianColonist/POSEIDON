@@ -88,9 +88,9 @@ def pressure_contribution_function(planet, star, model, atmosphere, opac, wl,P,
                 norm[i,:] += diff
 
 
-    for i in range(len(contribution_molecule_list)+1):
-       for j in range(len(P)):
-            Contribution[i,j,:] = np.divide(Contribution[i,j,:],norm[-1,:])
+    #for i in range(len(contribution_molecule_list)+1):
+    #   for j in range(len(P)):
+    #        Contribution[i,j,:] = np.divide(Contribution[i,j,:],norm[-1,:])
 
     return Contribution, norm
 

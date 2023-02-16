@@ -230,7 +230,7 @@ def define_model(model_name, bulk_species, param_species,
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-                 surface = False, chemistry_model = 'free'):
+                 surface = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -250,7 +250,7 @@ def define_model(model_name, bulk_species, param_species,
             (Options: isotherm / gradient / two-gradients / Madhu / slope / file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / file_read).
+            (Options: isochem / gradient / two-gradients / file_read / chem_eq).
         cloud_model (str):
             Chosen cloud parametrisation 
             (Options: cloud-free / MacMad17 / Iceberg).
@@ -399,7 +399,6 @@ def define_model(model_name, bulk_species, param_species,
              'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
              'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
-             'chemistry_model': chemistry_model
             }
 
     return model
