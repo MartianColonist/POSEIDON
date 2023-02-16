@@ -1474,16 +1474,6 @@ def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
     Met_phot_obs = star['Met']
     log_g_phot_obs = star['log_g']
 
-    if (stellar_contam == 'one_spot'):
-        stellar_params += ['f_het', 'T_het', 'T_phot']
-    elif (stellar_contam == 'one_spot_free_log_g'):
-        stellar_params += ['f_het', 'T_het', 'T_phot', 'log_g_het', 'log_g_phot']
-    elif (stellar_contam == 'two_spots'):
-        stellar_params += ['f_spot', 'f_fac', 'T_spot', 'T_fac', 'T_phot']
-    elif (stellar_contam == 'two_spots_free_log_g'):
-        stellar_params += ['f_spot', 'f_fac', 'T_spot', 'T_fac', 'T_phot', 
-                           'log_g_spot', 'log_g_fac', 'log_g_phot']
-
     # Extract parameters for a single stellar heterogeneity
     if ('one_spot' in stellar_contam):
 
