@@ -222,6 +222,10 @@ def closest_index(value, grid_start, grid_end, N_grid):
 
     '''
 
+    # Single value grids only have one element, so return 0
+    if (N_grid == 1):
+        return 0
+
     # Set to lower boundary
     if (value < grid_start): 
         return 0
