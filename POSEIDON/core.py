@@ -150,15 +150,18 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             if (interp_backend == 'pysynphot'):
                 wl_star, I_phot = load_stellar_pysynphot(T_eff, Met, log_g, 
                                                         stellar_grid)
+#            elif (interp_backend == 'msg'):
 
         # For uniform stellar surfaces
-        if (stellar_contam == None):
-
-            # No heterogeneity spectrum to return 
-            I_het = np.zeros(len(wl_star))   
+        if (stellar_contam == None): 
 
             # Surface flux is pi * intensity
             F_star = np.pi * I_phot
+
+            # No heterogeneity spectra to return 
+            I_het = None
+            I_spot = None
+            I_fac = None 
 
         # For non-uniform stellar surfaces
         elif ('one_spot' in stellar_contam):

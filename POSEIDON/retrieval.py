@@ -603,10 +603,10 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 # Unpack stellar contamination parameters
                 _, f_spot, f_fac, _, \
                 T_spot, T_fac, T_phot, \
-                log_g_spot, log_g_fac, \
+                _, log_g_spot, log_g_fac, \
                 log_g_phot = unpack_stellar_params(param_names, star, stellar_params, 
                                                    stellar_contam, N_params_cum)
-                
+                                
                 if ((T_spot > T_phot) or (T_fac < T_phot) or (T_spot > T_fac)):
                     loglikelihood = -1.0e100   
                     return loglikelihood
@@ -678,7 +678,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                     # Unpack stellar contamination parameters
                     _, f_spot, f_fac, _, \
                     T_spot, T_fac, T_phot, \
-                    log_g_spot, log_g_fac, \
+                    _, log_g_spot, log_g_fac, \
                     log_g_phot = unpack_stellar_params(param_names, star, 
                                                        stellar_params, 
                                                        stellar_contam, 
@@ -897,7 +897,7 @@ def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P, P_ref,
                     # Unpack stellar contamination parameters
                     _, f_spot, f_fac, _, \
                     T_spot, T_fac, T_phot, \
-                    log_g_spot, log_g_fac, \
+                    _, log_g_spot, log_g_fac, \
                     log_g_phot = unpack_stellar_params(param_names, star, 
                                                        stellar_params, 
                                                        stellar_contam, 
