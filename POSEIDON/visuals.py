@@ -3436,7 +3436,8 @@ def plot_spectra_c(spectrum, spectrum_contribution_list, bulk,
         # Redefine the spectrum contribution list without bulk species to make next part work 
         spectrum_contribution_list = spectrum_contribution_list[1:]
 
-    # This is so that it only plots two at a time
+    # This is so that it only plots two at a tim
+
     for i in range(int(len(spectrum_contribution_list)/2)):
         
 
@@ -3487,6 +3488,28 @@ def plot_spectra_c(spectrum, spectrum_contribution_list, bulk,
                             spectra_labels = spectra_labels,
                             save_fig = False,
                             plot_full_res = False)
+
+
+    # If odd 
+    if len(spectrum_contribution_list)%2!= 0:
+
+        # Initialize plot collection
+        spectra = plot_collection(spectrum, wl, collection = [])
+        spectra_labels = ['Full Spectrum']
+
+        # Loop over the contribution functions 
+        spectra = plot_collection(spectrum_contribution_list[-1][1], wl, collection=spectra) 
+        spectra_contribution_title = spectrum_contribution_list[-1][0] + ' + CIA and Rayleigh'
+        spectra_labels.append(spectra_contribution_title)
+
+
+        fig = plot_spectra(spectra, planet, R_to_bin = 100, plt_label = plt_label,
+                        colour_list = colour_list[:len(spectra)],
+                        spectra_labels = spectra_labels,
+                        save_fig = False,
+                        plot_full_res = False)
+
+
     
 
     

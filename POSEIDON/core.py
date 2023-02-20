@@ -324,6 +324,29 @@ def define_model(model_name, bulk_species, param_species,
     param_species = np.array(param_species)
     chemical_species = np.append(bulk_species, param_species)
 
+    # For X_profile = chem_eq, if param_species = [] then we need a default of all species
+    if X_profile == 'chem_eq' and not param_species:
+        param_species = ['H2O', 'CO2', 'OH', 'C2H2', 'H2S',
+                        'O2', 'O3', 'HCN', 'NH3', 'SiO', 'CH4', 'CO', 
+                        'CaH', 'CrH', 'FeH', 'K', 'MgH', 'N2', 
+                        'Na', 'NO', 'NO2', 'PH3', 'SH', 'SiH',
+                        'SO2', 'TiH', 'TiO', 'VO']
+        bulk_species = ['H2', 'He'] 
+
+        bulk_species = np.array(bulk_species)
+        param_species = np.array(param_species)
+        chemical_species = np.append(bulk_species, param_species)
+        
+    # If param_species is not empty, make sure the species are compatable with Roger's grid
+    else:
+        supported_eq_species = ['H2O', 'CO2', 'OH', 'C2H2', 'H2S',
+                        'O2', 'O3', 'HCN', 'NH3', 'SiO', 'CH4', 'CO', 
+                        'CaH', 'CrH', 'FeH', 'K', 'MgH', 'N2', 
+                        'Na', 'NO', 'NO2', 'PH3', 'SH', 'SiH',
+                        'SO2', 'TiH', 'TiO', 'VO']
+        if (np.any(~np.isin(param_species, supported_eq_species)) == True):
+            raise Exception("A chemical species you selected is not supported for equilibrium chemistry.\n")
+
     # Identify chemical species with active spectral features
     active_species = chemical_species[~np.isin(chemical_species, inactive_species)]
 
@@ -2238,7 +2261,9 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'T_phot': [T_s, err_T_s], 
                              'delta_rel': [-1.0e-3, 1.0e-3],
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
-                                       np.log10(100.0*np.max(err_data**2))]
+                                       np.log10(100.0*np.max(err_data**2))],
+                             'C_to_O': [0.3,1.9],
+                             'log_Met' : [-0.9,3.9]
                             }    
 
     # Iterate through parameters, ensuring we have a full set of priors
