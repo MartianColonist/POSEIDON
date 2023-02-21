@@ -336,7 +336,7 @@ def define_model(model_name, bulk_species, param_species,
         bulk_species = np.array(bulk_species)
         param_species = np.array(param_species)
         chemical_species = np.append(bulk_species, param_species)
-        
+
     # If param_species is not empty, make sure the species are compatable with Roger's grid
     else:
         supported_eq_species = ['H2O', 'CO2', 'OH', 'C2H2', 'H2S',
@@ -1231,8 +1231,9 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
         spectrum (np.array of float):
             The spectrum of the atmosphere (transmission or emission).
         If contribution_molecule_list != []
-            Returns spectrum, ['Molecule',contribution_spectrum]
-            Where the second is a list 
+            Returns spectrum (np.array of float), ['Molecule',contribution_spectrum]
+            The second is a list where the first element is a string of the molecule being considered
+            And the second element is the contribution_spectrum [np.array of float]
     
     '''
 
@@ -1700,13 +1701,21 @@ def compute_spectrum_p(planet, star, model, atmosphere, opac, wl,
             is identical at all times due to translational symmetry, so y_p = 0
             is good for all times post second contact and pre third contact.
             Units are in m, not in stellar radii.
+        contribution_molecule (string)
+            The molecule that will be turned off in the layer to ignore
+        layer_to_ignore (int)
+            This is looped over in the contribution_func.py
+            Indicates the pressure layer in which the molecule will be turned off 
+        total (bool)
+            If true, the total pressure contribution spectrum is returned
 
     Returns:
         spectrum (np.array of float):
             The spectrum of the atmosphere (transmission or emission).
-        If contribution_molecule_list != []
-            Returns spectrum, ['Molecule',contribution_spectrum]
-            Where the second is a  
+        If contribution_molecule_list != [] or total = True
+            Returns a spectrum where the molecule indicated is turned off for the pressure layer to ignore 
+            If total = true, then a whole layer is turned off 
+    
     
     '''
 

@@ -1804,7 +1804,6 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
         sector, and wavelength.
 
         This is to turn off every opacity except one molecule.
-        For now, I am ignoring CIA 
     
     '''
     
@@ -2034,8 +2033,8 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
         of layer number (indexed from low to high altitude), terminator
         sector, and wavelength.
 
-        This is to turn off every opacity except one molecule.
-        For now, I am ignoring CIA 
+        This is to turn off the opacity of a single molecule in a single pressure layer 
+        Or, if total = True, turns off the entire layer 
     
     '''
     
