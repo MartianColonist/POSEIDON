@@ -15,7 +15,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
-                       sharp_DN_transition):
+                       sharp_DN_transition, reference_parameter):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -90,6 +90,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             If True, model a surface via an opaque cloud deck.
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
+        reference_parameter (str):
+            For retrievals, whether R_p_ref or P_ref will be a free parameter
+            (Options: R_p_ref / P_ref).
 
     Returns:
         params (np.array of str):
@@ -122,8 +125,15 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
     #***** Physical property parameters *****#
 
- #   if (spectrum_type == 'transmission'):
-    physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
+    if (reference_parameter == 'R_p_ref'):
+        physical_params += ['R_p_ref']        # Reference radius parameter (in R_J or R_E)
+    elif (reference_parameter == 'P_ref'):
+        physical_params += ['log_P_ref']      # Reference pressure
+    else:
+        raise Exception("Error: Only R_p_ref or P_ref are supported reference parameters.")
+    
+    if ((reference_parameter == 'log_P_ref') and (Atmosphere_dimension > 1)):
+        raise Exception("Error: P_ref is not a valid parameter for multidimensional models.")
 
     if (gravity_setting == 'free'):
         physical_params += ['log_g']         # log_10 surface gravity (cm / s^2)

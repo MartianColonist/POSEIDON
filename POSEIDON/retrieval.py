@@ -31,15 +31,15 @@ allowed_simplex = 1
 
 
 
-def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0, 
-                  P_param_set = 1.0e-2, R = None, retrieval_name = None,
-                  He_fraction = 0.17, N_slice_EM = 2, N_slice_DN = 4, 
+def run_retrieval(planet, star, model, opac, data, priors, wl, P, 
+                  P_ref = None, R_p_ref = None, P_param_set = 1.0e-2, 
+                  R = None, retrieval_name = None, He_fraction = 0.17, 
+                  N_slice_EM = 2, N_slice_DN = 4, 
                   spectrum_type = 'transmission', y_p = np.array([0.0]),
-                  stellar_T_step = 10, stellar_log_g_step = 0.05, 
+                  stellar_T_step = 20, stellar_log_g_step = 0.1, 
                   stellar_interp_backend = 'pysynphot',
-                  N_live = 400, ev_tol = 0.5,
-                  sampling_algorithm = 'MultiNest', resume = False, 
-                  verbose = True, sampling_target = 'parameter',
+                  N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest', 
+                  resume = False, verbose = True, sampling_target = 'parameter',
                   N_output_samples = 1000):
     '''
     ADD DOCSTRING
@@ -57,6 +57,13 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0,
     chemical_species = model['chemical_species']
     param_names = model['param_names']
     stellar_contam = model['stellar_contam']
+    reference_parameter = model['reference_parameter']
+
+    # Check that one of the two reference parameters has been provided by the user
+    if ((reference_parameter == 'R_p_ref') and (P_ref is None)):
+        raise Exception("Error: Must provide P_ref when R_p_ref is a free parameter.")
+    if ((reference_parameter == 'P_ref') and (R_p_ref is None)):
+        raise Exception("Error: Must provide R_p_ref when P_ref is a free parameter.")
 
     N_params = len(param_names)
 
@@ -107,10 +114,11 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0,
 
         # Run MultiNest
         PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
-                              prior_ranges, spectrum_type, wl, P, P_ref, 
-                              P_param_set, He_fraction, N_slice_EM, N_slice_DN, 
-                              N_params, T_phot_grid, T_het_grid, log_g_phot_grid,
-                              log_g_het_grid, I_phot_grid, I_het_grid, y_p, 
+                              prior_ranges, spectrum_type, wl, P, P_ref,
+                              R_p_ref, P_param_set, He_fraction, N_slice_EM, 
+                              N_slice_DN, N_params, T_phot_grid, T_het_grid, 
+                              log_g_phot_grid, log_g_het_grid, I_phot_grid, 
+                              I_het_grid, y_p, 
                               resume = resume, verbose = verbose,
                               outputfiles_basename = basename, 
                               n_live_points = N_live, multimodal = False,
@@ -141,7 +149,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0,
             spec_low2, spec_low1, \
             spec_median, spec_high1, \
             spec_high2 = retrieved_samples(planet, star, model, opac,
-                                           retrieval_name, wl, P, P_ref, 
+                                           retrieval_name, wl, P, P_ref, R_p_ref,
                                            P_param_set, He_fraction, N_slice_EM, 
                                            N_slice_DN, spectrum_type, T_phot_grid, 
                                            T_het_grid,  log_g_phot_grid,
@@ -221,8 +229,8 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
 
 
 def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
-                          prior_ranges, spectrum_type, wl, P, P_ref, P_param_set, 
-                          He_fraction, N_slice_EM, N_slice_DN, N_params, 
+                          prior_ranges, spectrum_type, wl, P, P_ref_set, R_p_ref_set, 
+                          P_param_set, He_fraction, N_slice_EM, N_slice_DN, N_params, 
                           T_phot_grid, T_het_grid, log_g_phot_grid, log_g_het_grid, 
                           I_phot_grid, I_het_grid, y_p, **kwargs):
     ''' 
@@ -245,6 +253,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     distance_unit = model['distance_unit']
     surface = model['surface']
     stellar_contam = model['stellar_contam']
+
+    # Unpack planet properties
     R_p = planet['planet_radius']
     d = planet['system_distance']
 
@@ -561,14 +571,24 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         geometry_params, stellar_params, \
         offset_params, err_inflation_params = split_params(cube, N_params_cum)
 
-        # Unpack reference radius parameter
-        R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
+        # Unpack reference pressure if set as a free parameter
+        if ('log_P_ref' in physical_param_names):
+            P_ref = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_ref')[0][0]])
+        else:
+            P_ref = P_ref_set
 
-        # Convert normalised radius drawn by MultiNest back into SI
-        if (radius_unit == 'R_J'):
-            R_p_ref *= R_J
-        elif (radius_unit == 'R_E'):
-            R_p_ref *= R_E
+        # Unpack reference radius if set as a free parameter
+        if ('R_p_ref' in physical_param_names):
+            R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
+
+            # Convert normalised radius drawn by MultiNest back into SI
+            if (radius_unit == 'R_J'):
+                R_p_ref *= R_J
+            elif (radius_unit == 'R_E'):
+                R_p_ref *= R_E
+
+        else:
+            R_p_ref = R_p_ref_set
 
         # Unpack log(gravity) if set as a free parameter
         if ('log_g' in physical_param_names):
@@ -758,10 +778,11 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
 	
 
-def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P, P_ref,
-                      P_param_set, He_fraction, N_slice_EM, N_slice_DN, 
-                      spectrum_type, T_phot_grid, T_het_grid, log_g_phot_grid,
-                      log_g_het_grid, I_phot_grid, I_het_grid, y_p, N_output_samples):
+def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P, 
+                      P_ref_set, R_p_ref_set, P_param_set, He_fraction, 
+                      N_slice_EM, N_slice_DN, spectrum_type, T_phot_grid, 
+                      T_het_grid, log_g_phot_grid, log_g_het_grid, I_phot_grid, 
+                      I_het_grid, y_p, N_output_samples):
     '''
     ADD DOCSTRING
     '''
@@ -815,15 +836,25 @@ def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P, P_ref,
         geometry_params, stellar_params, \
         offset_params, err_inflation_params = split_params(samples[sample[i],:], 
                                                            N_params_cum)
+        
+        # Unpack reference pressure if set as a free parameter
+        if ('log_P_ref' in physical_param_names):
+            P_ref = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_ref')[0][0]])
+        else:
+            P_ref = P_ref_set
 
-        # Unpack reference radius parameter
-        R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
+        # Unpack reference radius if set as a free parameter
+        if ('R_p_ref' in physical_param_names):
+            R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
 
-        # Convert normalised radius drawn by MultiNest back into SI
-        if (radius_unit == 'R_J'):
-            R_p_ref *= R_J
-        elif (radius_unit == 'R_E'):
-            R_p_ref *= R_E
+            # Convert normalised radius drawn by MultiNest back into SI
+            if (radius_unit == 'R_J'):
+                R_p_ref *= R_J
+            elif (radius_unit == 'R_E'):
+                R_p_ref *= R_E
+
+        else:
+            R_p_ref = R_p_ref_set
 
         # Unpack log(gravity) if set as a free parameter
         if ('log_g' in physical_param_names):

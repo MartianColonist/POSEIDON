@@ -315,7 +315,8 @@ def define_model(model_name, bulk_species, param_species,
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-                 surface = False, sharp_DN_transition = False):
+                 surface = False, sharp_DN_transition = False,
+                 reference_parameter = 'R_p_ref'):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -396,6 +397,9 @@ def define_model(model_name, bulk_species, param_species,
             If True, model a surface via an opaque cloud deck.
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
+        reference_parameter (str):
+            For retrievals, whether R_p_ref or P_ref will be a free parameter
+            (Options: R_p_ref / P_ref).
 
     Returns:
         model (dict):
@@ -458,7 +462,8 @@ def define_model(model_name, bulk_species, param_species,
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
-                                      opaque_Iceberg, surface, sharp_DN_transition)
+                                      opaque_Iceberg, surface, sharp_DN_transition,
+                                      reference_parameter)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -485,7 +490,8 @@ def define_model(model_name, bulk_species, param_species,
              'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
              'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
-             'sharp_DN_transition': sharp_DN_transition
+             'sharp_DN_transition': sharp_DN_transition,
+             'reference_parameter': reference_parameter,
             }
 
     return model
@@ -1457,7 +1463,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'a1': [0.02, 2.00], 'a2': [0.02, 2.00], 
                              'log_P1': [-6, 2], 'log_P2': [-6, 2], 
                              'log_P3': [-2, 2], 'log_P_mid': [-5, 1], 
-                             'log_P_surf': [-4, 1], 'log_X': [-12, -1], 
+                             'log_P_surf': [-4, 1], 'log_P_ref': [-6, 2],
+                             'log_X': [-12, -1], 
                              'Delta_log_X': [-10, 10], 'Grad_log_X': [-1, 1], 
                              'log_a': [-4, 8], 'gamma': [-20, 2], 
                              'log_P_cloud': [-6, 2], 'phi_cloud': [0, 1],
