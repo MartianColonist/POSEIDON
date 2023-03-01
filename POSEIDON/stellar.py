@@ -3,11 +3,19 @@ Stellar spectra and star spot/faculae contamination calculations.
 
 '''
 
+import os
 import numpy as np
 from numba.core.decorators import jit
 from spectres import spectres
 import scipy.constants as sc
 import pysynphot as psyn
+
+from .utility import mock_missing
+
+try:
+    import pymsg as pymsg
+except ImportError:
+    pymsg = mock_missing('pymsg')
 
 
 @jit(nopython = True)
@@ -48,7 +56,7 @@ def planck_lambda(T, wl):
     return B_lambda
 
 
-def load_stellar_pysynphot(T_eff, Met, log_g, stellar_grid = 'cbk04'):
+def load_stellar_pysynphot(wl_out, T_eff, Met, log_g, stellar_grid = 'cbk04'):
     '''
     Load a stellar model using pysynphot. Pynshot's ICAT function handles
     interpolation within the model grid to the specified stellar parameters.
@@ -57,6 +65,8 @@ def load_stellar_pysynphot(T_eff, Met, log_g, stellar_grid = 'cbk04'):
           metallicity. So we default to the Castelli-Kurucz 2004 grids.
 
     Args:
+        wl_out (np.array of float):
+            Wavelength grid on which to output the stellar spectra (μm).
         T_eff (float):
             Effective temperature of star (K).
         Met (float):
@@ -68,9 +78,7 @@ def load_stellar_pysynphot(T_eff, Met, log_g, stellar_grid = 'cbk04'):
             (Options: cbk04 / phoenix).
     
     Returns:
-        wl_grid (np.array of float):
-            Wavelength grid for model stellar spectrum (μm).
-        I_grid (np.array of float):
+        I_out (np.array of float):
             Stellar specific intensity spectrum in SI units (W/m^2/sr/m).
 
     '''
@@ -86,18 +94,121 @@ def load_stellar_pysynphot(T_eff, Met, log_g, stellar_grid = 'cbk04'):
     sp.convert("um")                # Convert wavelengths to micron
     sp.convert('flam')              # Convert to flux units (erg/s/cm^2/A)
 
-    wl_grid = sp.wave                         # Stellar wavelength array (m)
+    wl_grid = sp.wave                         # Stellar wavelength array (um)
     I_grid = (sp.flux*1e-7*1e4*1e10)/np.pi    # Convert to W/m^2/sr/m
-    
-    return wl_grid, I_grid
 
+    # Bin / interpolate stellar spectrum to output wavelength grid
+    I_out = spectres(wl_out, wl_grid, I_grid)
     
+    return I_out
+
+
+def open_pymsg_grid(stellar_grid):
+    '''
+    Check if pymsg is installed, then opens the HDF5 file for the  grid.
+
+    Args:
+        stellar_grid (string):
+            Stellar model grid to use if 'stellar_spectrum' is True.
+            (Options: blackbody / cbk04 [for pysynphot] / phoenix [for pysynphot] /
+                      Goettingen-HiRes [for pymsg]).
+
+    Returns:
+        specgrid (pymsg object):
+            Stellar grid object in pymsg format.
+    
+    '''
+
+    # Check if pymsg is installed (required for this optional functionality)
+    try:
+        import pymsg as pymsg
+    except ImportError:
+        raise Exception("PyMSG is not installed on this machine. PyMSG " +
+                        "is an optional add-on to POSEIDON, so please " +
+                        "either install it or fall back on the default " +
+                        "interpolation scheme interp_backend = 'pysynphot'.")
+    
+    # Allow alias 'phoenix' for pymsg stellar grid
+    if (stellar_grid == 'phoenix'):
+        stellar_grid = 'Goettingen-HiRes'   # Alias
+    
+    if (stellar_grid not in ['Goettingen-HiRes']):
+        raise Exception("Unsupported stellar grid")
+
+    # Find user's MSG stellar grid directory
+    MSG_DIR = os.environ['MSG_DIR']
+    GRID_DIR = os.path.join(MSG_DIR, 'data', 'grids')
+
+    # Open stellar grid HDF5 file
+    specgrid_file_name = os.path.join(GRID_DIR, 'sg-' + stellar_grid + '.h5')
+    specgrid = pymsg.SpecGrid(specgrid_file_name)
+
+    return specgrid
+
+
+def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g):
+    '''
+    Load a stellar model using PyMSG. The MSG package 
+    (https://msg.readthedocs.io/en/stable/index.html) handles
+    interpolation within the model grid to the specified stellar parameters.
+
+    Args:
+        wl_out (np.array of float):
+            Wavelength grid on which to output the stellar spectra (μm).
+        specgrid (pymsg object):
+            Stellar grid object in pymsg format.
+        T_eff (float):
+            Effective temperature of star (K).
+        Met (float):
+            Stellar metallicity [log10(Fe/H_star / Fe/H_solar)].
+        log_g (float):
+            Stellar log surface gravity (log10(cm/s^2) by convention).
+    
+    Returns:
+        I_grid (np.array of float):
+            Stellar specific intensity spectrum in SI units (W/m^2/sr/m).
+
+    '''
+
+    # Load minimum and maximum grid wavelengths
+    wl_s_min = specgrid.lam_min / 10000   # Convert from A to μm
+    wl_s_max = specgrid.lam_max / 10000   # Convert from A to μm
+
+    # Compute array of wavelength grid edges
+    wl_edges = np.zeros(len(wl_out)+1)
+    wl_edges[0] = wl_out[0] - 0.5*(wl_out[1] - wl_out[0])
+    wl_edges[-1] = wl_out[-1] + 0.5*(wl_out[-1] - wl_out[-2])
+    wl_edges[1:-1] = 0.5*(wl_out[1:] + wl_out[:-1])
+
+    # Check for user's wavelength grid lying outside PyMSG's grid wavelength range
+    if (wl_edges[0] < wl_s_min):
+        raise Exception("Wavelength grid extends lower than PyMSG's minimum " + 
+                        "wavelength for this grid (" + str(wl_s_min) + "μm)")
+    if (wl_edges[-1] > wl_s_max):
+        raise Exception("Wavelength grid extends higher than PyMSG's maximum " + 
+                        "wavelength for this grid (" + str(wl_s_max) + "μm)")
+
+    # Package stellar parameters into PyMSG's expected input dictionary format
+    x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met, '[alpha/Fe]': 0.0}
+
+    # Interpolate stellar grid to obtain stellar flux (also handles wl interpolation)
+    F_s = specgrid.flux(x, wl_edges*10000)   # PyMSG expects Angstroms
+
+    # UPDATE CONVERSION FACTOR AFTER GRID FIXED
+    F_s = np.array(F_s) * 1e-1   # Convert flux from erg/s/cm^2/A to W/m^2/m
+
+    # Calculate average specific intensity
+    I_grid = F_s / np.pi    # W/m^2/sr/m
+
+    return I_grid
+
+
 def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
-                               stellar_contam, T_step_interp = 10,
-                               log_g_step_interp = 0.05, 
+                               stellar_contam, T_step_interp = 20,
+                               log_g_step_interp = 0.10, 
                                interp_backend = 'pysynphot'):
     '''
-    Precompute a grid of stellar spectra across a range of T_eff.
+    Precompute a grid of stellar spectra across a range of T_eff and log g.
 
     Args:
         wl_out (np.array of float):
@@ -122,7 +233,7 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
             log g step for stellar grid interpolation (uniform priors only).
         interp_backend (str):
             Stellar grid interpolation package for POSEIDON to use.
-            (Options: pysynphot / msg).
+            (Options: pysynphot / pymsg).
     
     Returns:
         T_phot_grid (np.array of float):
@@ -147,9 +258,13 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
     log_g_phot = star['log_g']
     stellar_grid = star['stellar_grid']
 
-    if (interp_backend not in ['pysynphot', 'msg']):
-        raise Exception("Error: supported stellar grid interpolator backends are " +
-                        "'pysynphot' or 'msg'.")
+    if (interp_backend not in ['pysynphot', 'pymsg']):
+        raise Exception("Error: supported stellar grid interpolater backends are " +
+                        "'pysynphot' or 'pymsg'.")
+    
+    # If using PyMSG, load spectral grid
+    if (interp_backend == 'pymsg'):
+        specgrid = open_pymsg_grid(stellar_grid)
     
     #***** Find photosphere grid ranges *****#
 
@@ -158,7 +273,7 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
 
         T_phot_min = prior_ranges['T_phot'][0]
         T_phot_max = prior_ranges['T_phot'][1]
-        T_phot_step = T_step_interp                # Default interpolation step of 10 K
+        T_phot_step = T_step_interp                # Default interpolation step of 20 K
 
     elif (prior_types['T_phot'] == 'gaussian'):
 
@@ -166,9 +281,9 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
         T_phot_mean = prior_ranges['T_phot'][0]  # Mean
         err_T_phot = prior_ranges['T_phot'][1]   # Standard deviation
 
-        T_phot_min = T_phot_mean - (10.0 * err_T_phot)  # 10 sigma below mean
-        T_phot_max = T_phot_mean + (10.0 * err_T_phot)  # 10 sigma above mean
-        T_phot_step = err_T_phot/10.0                   # Interpolation step of 0.1 sigma
+        T_phot_min = T_phot_mean - (5.0 * err_T_phot)  # 10 sigma below mean
+        T_phot_max = T_phot_mean + (5.0 * err_T_phot)  # 10 sigma above mean
+        T_phot_step = err_T_phot/5.0                   # Interpolation step of 0.2 sigma
 
     # Find number of spectra needed to span desired range (rounding up)
     N_spec_T_phot = np.ceil((T_phot_max - T_phot_min)/T_phot_step).astype(np.int64) + 1
@@ -188,7 +303,7 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
 
             log_g_phot_min = prior_ranges['log_g_phot'][0]
             log_g_phot_max = prior_ranges['log_g_phot'][1]
-            log_g_phot_step = log_g_step_interp               # Default interpolation step of 0.05
+            log_g_phot_step = log_g_step_interp               # Default interpolation step of 0.1
 
         elif (prior_types['log_g_phot'] == 'gaussian'):
 
@@ -196,9 +311,9 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
             log_g_phot_mean = prior_ranges['log_g_phot'][0]   # Mean
             err_log_g_phot = prior_ranges['log_g_phot'][1]    # Standard deviation
 
-            log_g_phot_min = log_g_phot_mean - (10.0 * err_log_g_phot)  # 10 sigma below mean
-            log_g_phot_max = log_g_phot_mean + (10.0 * err_log_g_phot)  # 10 sigma above mean
-            log_g_phot_step = err_log_g_phot/10.0                  # Interpolation step of 0.1 sigma
+            log_g_phot_min = log_g_phot_mean - (5.0 * err_log_g_phot)  # 5 sigma below mean
+            log_g_phot_max = log_g_phot_mean + (5.0 * err_log_g_phot)  # 5 sigma above mean
+            log_g_phot_step = err_log_g_phot/2.0                       # Interpolation step of 0.5 sigma
 
         # Find number of spectra needed to span desired range (rounding up)
         N_spec_log_g_phot = np.ceil((log_g_phot_max - log_g_phot_min)/log_g_phot_step).astype(np.int64) + 1
@@ -226,13 +341,12 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
         
             # Load interpolated stellar spectrum from model grid
             if (interp_backend == 'pysynphot'):
-                wl_grid, I_phot_grid = load_stellar_pysynphot(T_phot_grid[i], 
-                                                              Met_phot, 
-                                                              log_g_phot_grid[j], 
-                                                              stellar_grid)
-        
-            # Bin / interpolate stellar spectrum to output wavelength grid
-            I_phot_out[i,j,:] = spectres(wl_out, wl_grid, I_phot_grid)
+                I_phot_out[i,j,:] = load_stellar_pysynphot(wl_out, T_phot_grid[i], 
+                                                           Met_phot, log_g_phot_grid[j], 
+                                                           stellar_grid)
+            elif (interp_backend == 'pymsg'):
+                I_phot_out[i,j,:] = load_stellar_pymsg(wl_out, specgrid, T_phot_grid[i], 
+                                                       Met_phot, log_g_phot_grid[j])
 
     #***** Find heterogeneity grid ranges *****#
 
@@ -251,7 +365,7 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
         T_het_min = min(T_spot_min, T_fac_min)
         T_het_max = max(T_spot_max, T_fac_max)
         
-    T_het_step = T_step_interp    # Default interpolation step of 10 K
+    T_het_step = T_step_interp    # Default interpolation step of 20 K
 
     # Find number of spectra needed to span desired range (rounding up)
     N_spec_T_het = np.ceil((T_het_max - T_het_min)/T_het_step).astype(np.int64) + 1
@@ -281,7 +395,7 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
             log_g_het_min = min(log_g_spot_min, log_g_fac_min)
             log_g_het_max = max(log_g_spot_max, log_g_fac_max)
             
-        log_g_het_step = log_g_step_interp    # Default interpolation step of 0.05
+        log_g_het_step = log_g_step_interp    # Default interpolation step of 0.5
 
         # Find number of spectra needed to span desired range (rounding up)
         N_spec_log_g_het = np.ceil((log_g_het_max - log_g_het_min)/log_g_het_step).astype(np.int64) + 1
@@ -309,13 +423,12 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
         
             # Load interpolated stellar spectrum from model grid
             if (interp_backend == 'pysynphot'):
-                wl_grid, I_het_grid = load_stellar_pysynphot(T_het_grid[i], 
-                                                             Met_phot, 
-                                                             log_g_het_grid[j], 
-                                                             stellar_grid)
-        
-            # Bin / interpolate stellar spectrum to output wavelength grid
-            I_het_out[i,j,:] = spectres(wl_out, wl_grid, I_het_grid)
+                I_het_out[i,j,:] = load_stellar_pysynphot(wl_out, T_het_grid[i], 
+                                                          Met_phot, log_g_het_grid[j], 
+                                                          stellar_grid)
+            elif (interp_backend == 'pymsg'):
+                I_het_out[i,j,:] = load_stellar_pymsg(wl_out, specgrid, T_het_grid[i], 
+                                                      Met_phot, log_g_het_grid[j])
 
     return T_phot_grid, T_het_grid, log_g_phot_grid, log_g_het_grid, \
            I_phot_out, I_het_out
