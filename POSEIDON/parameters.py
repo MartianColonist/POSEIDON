@@ -15,7 +15,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
-                       sharp_DN_transition, reference_parameter):
+                       sharp_DN_transition, reference_parameter, disable_atmosphere):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -93,6 +93,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         reference_parameter (str):
             For retrievals, whether R_p_ref or P_ref will be a free parameter
             (Options: R_p_ref / P_ref).
+        disable_atmosphere (bool):
+            If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
 
     Returns:
         params (np.array of str):
@@ -123,326 +125,155 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     geometry_params = []  # Geometry parameters
     stellar_params = []   # Stellar parameters
 
-    #***** Physical property parameters *****#
 
-    if (reference_parameter == 'R_p_ref'):
-        physical_params += ['R_p_ref']        # Reference radius parameter (in R_J or R_E)
-    elif (reference_parameter == 'P_ref'):
-        physical_params += ['log_P_ref']      # Reference pressure
+    # Models with no atmosphere only have Rp as a free parameter
+    if (disable_atmosphere == True):
+
+        physical_params += ['R_p_ref']   # Reference radius parameter (in R_J or R_E)
+
+        N_physical_params = 1
+        N_PT_params = 0 
+        N_species_params = 0
+        N_cloud_params = 0
+        N_geometry_params = 0
+
+        params += physical_params         # Add physical parameter names to combined list
+
+    # Models including atmospheres
     else:
-        raise Exception("Error: Only R_p_ref or P_ref are supported reference parameters.")
-    
-    if ((reference_parameter == 'log_P_ref') and (Atmosphere_dimension > 1)):
-        raise Exception("Error: P_ref is not a valid parameter for multidimensional models.")
 
-    if (gravity_setting == 'free'):
-        physical_params += ['log_g']         # log_10 surface gravity (cm / s^2)
+        #***** Physical property parameters *****#
 
-    if (object_type == 'directly_imaged'):
-        physical_params += ['d']             # Distance to system (pc)
-
-    if (surface == True):
-        physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
-
-    N_physical_params = len(physical_params)   # Store number of physical parameters
-    params += physical_params                  # Add physical parameter names to combined list
-
-    #***** PT profile parameters *****#
-
-    if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
-                           'slope', 'file_read']):
-        raise Exception("Error: unsupported P-T profile.")
-
-    # Check profile settings are supported
-    if ((PT_profile == 'isotherm') and (PT_dim > 1)):
-        raise Exception("Cannot retrieve multiple PT profiles with an isothermal shape")
+        if (reference_parameter == 'R_p_ref'):
+            physical_params += ['R_p_ref']        # Reference radius parameter (in R_J or R_E)
+        elif (reference_parameter == 'P_ref'):
+            physical_params += ['log_P_ref']      # Reference pressure
+        else:
+            raise Exception("Error: Only R_p_ref or P_ref are supported reference parameters.")
         
-    if ((PT_profile == 'Madhu') and (PT_dim > 1)):
-        raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D models")
+        if ((reference_parameter == 'log_P_ref') and (Atmosphere_dimension > 1)):
+            raise Exception("Error: P_ref is not a valid parameter for multidimensional models.")
 
-    if ((PT_profile == 'slope') and (PT_dim > 1)):
-        raise Exception("Slope profile only supported for 1D models")
-           
-    # 1D model (global average)
-    if (PT_dim == 1): 
- 
-        if (PT_profile == 'isotherm'):  
-            PT_params += ['T']
-        elif (PT_profile == 'gradient'):  
-            PT_params += ['T_high', 'T_deep']
-        elif (PT_profile == 'two-gradients'):  
-            PT_params += ['T_high', 'T_mid', 'log_P_mid', 'T_deep']
-        elif (PT_profile == 'Madhu'):     
-            PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_ref']
-        elif (PT_profile == 'slope'):
-            PT_params += ['T_phot', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
-                          'Delta_T_1-0.1b', 'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 
-                          'Delta_T_32-10b', 'Delta_T_100-32b']
-        
-    # 2D model (asymmetric terminator or day-night transition)
-    elif (PT_dim == 2):
+        if (gravity_setting == 'free'):
+            physical_params += ['log_g']         # log_10 surface gravity (cm / s^2)
 
-        # Check that a 2D model type has been specified 
-        if (TwoD_type not in ['D-N', 'E-M']):
-            raise Exception("Error: 2D model type is not 'D-N' or 'E-M'.")
-        
-        # Parametrisation with separate morning / evening or day / night profiles
-        if (TwoD_param_scheme == 'absolute'):
+        if (object_type == 'directly_imaged'):
+            physical_params += ['d']             # Distance to system (pc)
 
-            if (TwoD_type == 'E-M'):
-                if (PT_profile == 'gradient'):            
-                    PT_params += ['T_Even_high', 'T_Morn_high', 'T_deep']
-                elif (PT_profile == 'two-gradients'):   
-                    PT_params += ['T_Even_high', 'T_Even_mid', 'T_Morn_high',
-                                  'T_Morn_mid', 'log_P_mid', 'T_deep']
+        if (surface == True):
+            physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
 
-            elif (TwoD_type == 'D-N'):
-                if (PT_profile == 'gradient'):            
-                    PT_params += ['T_Day_high', 'T_Night_high', 'T_deep']
-                elif (PT_profile == 'two-gradients'):   
-                    PT_params += ['T_Day_high', 'T_Day_mid', 'T_Night_high',
-                                  'T_Night_mid', 'log_P_mid', 'T_deep']
-   
-        # Difference parameter prescription from MacDonald & Lewis (2022)
-        elif (TwoD_param_scheme == 'difference'):
+        N_physical_params = len(physical_params)   # Store number of physical parameters
+        params += physical_params                  # Add physical parameter names to combined list
 
-            if (TwoD_type == 'E-M'):
-                if (PT_profile == 'gradient'):
-                    PT_params += ['T_bar_term_high', 'Delta_T_term_high', 'T_deep']
-                elif (PT_profile == 'two-gradients'):            
-                    PT_params += ['T_bar_term_high', 'T_bar_term_mid', 'Delta_T_term_high', 
-                                  'Delta_T_term_mid', 'log_P_mid', 'T_deep']
+        #***** PT profile parameters *****#
 
-            elif (TwoD_type == 'D-N'):
-                if (PT_profile == 'gradient'):            
-                    PT_params += ['T_bar_DN_high', 'Delta_T_DN_high', 'T_deep']
-                elif (PT_profile == 'two-gradients'):            
-                    PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Delta_T_DN_high', 
-                                  'Delta_T_DN_mid', 'log_P_mid', 'T_deep']
+        if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
+                            'slope', 'file_read']):
+            raise Exception("Error: unsupported P-T profile.")
 
-        # Gradient parameter prescription from MacDonald & Lewis (2023)
-        elif (TwoD_param_scheme == 'gradient'):
-
-            if (TwoD_type == 'D-N'):
-                if (PT_profile == 'gradient'):
-                    PT_params += ['T_bar_DN_high', 'Grad_theta_T_high', 'T_deep']
-                elif (PT_profile == 'two-gradients'):            
-                    PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Grad_theta_T_high', 
-                                  'Grad_theta_T_mid', 'log_P_mid', 'T_deep']
-    
-    # 3D model (asymmetric terminator + day-night transition)
-    elif (PT_dim == 3):
-
-        if (PT_profile == 'gradient'):            
-            PT_params += ['T_bar_term_high', 'Delta_T_term_high', 'Delta_T_DN_high', 'T_deep']
-        elif (PT_profile == 'two-gradients'):            
-            PT_params += ['T_bar_term_high', 'T_bar_term_mid', 'Delta_T_term_high', 
-                          'Delta_T_term_mid', 'Delta_T_DN_high', 'Delta_T_DN_mid', 
-                          'log_P_mid', 'T_deep']
-        
-    N_PT_params = len(PT_params)   # Store number of P-T profile parameters
-    params += PT_params            # Add P-T parameter names to combined list
-    
-    #***** Mixing ratio parameters *****#
-
-    if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read']):
-        raise Exception("Error: unsupported mixing ratio profile.")
-        
-    # Create list of mixing ratio free parameters
-    for species in param_species:
-        
-        # If all species have uniform abundances (1D X_i)
-        if (X_dim == 1):
+        # Check profile settings are supported
+        if ((PT_profile == 'isotherm') and (PT_dim > 1)):
+            raise Exception("Cannot retrieve multiple PT profiles with an isothermal shape")
             
-            # Check if given species has an altitude profile or not
-            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                if (X_profile == 'gradient'):  
-                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                elif (X_profile == 'two-gradients'):  
-                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                 'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-            else:
-                X_params += ['log_' + species]
-            
-        # If some species vary either around or across the terminator (2D X_i)
-        elif (X_dim == 2):
+        if ((PT_profile == 'Madhu') and (PT_dim > 1)):
+            raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D models")
 
+        if ((PT_profile == 'slope') and (PT_dim > 1)):
+            raise Exception("Slope profile only supported for 1D models")
+            
+        # 1D model (global average)
+        if (PT_dim == 1): 
+    
+            if (PT_profile == 'isotherm'):  
+                PT_params += ['T']
+            elif (PT_profile == 'gradient'):  
+                PT_params += ['T_high', 'T_deep']
+            elif (PT_profile == 'two-gradients'):  
+                PT_params += ['T_high', 'T_mid', 'log_P_mid', 'T_deep']
+            elif (PT_profile == 'Madhu'):     
+                PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_ref']
+            elif (PT_profile == 'slope'):
+                PT_params += ['T_phot', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
+                            'Delta_T_1-0.1b', 'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 
+                            'Delta_T_32-10b', 'Delta_T_100-32b']
+            
+        # 2D model (asymmetric terminator or day-night transition)
+        elif (PT_dim == 2):
+
+            # Check that a 2D model type has been specified 
+            if (TwoD_type not in ['D-N', 'E-M']):
+                raise Exception("Error: 2D model type is not 'D-N' or 'E-M'.")
+            
             # Parametrisation with separate morning / evening or day / night profiles
             if (TwoD_param_scheme == 'absolute'):
-            
-                # Species with variation only around the terminator (2D Evening-Morning X_i)
-                if (TwoD_type == 'E-M'):                
-                    if ((species_EM_gradient != []) and (species in species_EM_gradient)):
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Morn_high', 
-                                             'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Even_mid',
-                                             'log_' + species + '_Morn_high', 'log_' + species + '_Morn_mid', 
-                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species + '_Even', 'log_' + species + '_Morn']
 
-                    else:       # No Evening-Morning variation for this species
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                            'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species]
-                            
-                # Species with variation only across the terminator (2D Day-Night X_i)
-                if (TwoD_type == 'D-N'):                
-                    if ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Night_high', 
-                                             'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Day_mid',
-                                             'log_' + species + '_Night_high', 'log_' + species + '_Night_mid', 
-                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species + '_Day', 'log_' + species + '_Night']
+                if (TwoD_type == 'E-M'):
+                    if (PT_profile == 'gradient'):            
+                        PT_params += ['T_Even_high', 'T_Morn_high', 'T_deep']
+                    elif (PT_profile == 'two-gradients'):   
+                        PT_params += ['T_Even_high', 'T_Even_mid', 'T_Morn_high',
+                                    'T_Morn_mid', 'log_P_mid', 'T_deep']
 
-                    else:       # No Day-Night variation for this species
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                            'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species]
-                                                
+                elif (TwoD_type == 'D-N'):
+                    if (PT_profile == 'gradient'):            
+                        PT_params += ['T_Day_high', 'T_Night_high', 'T_deep']
+                    elif (PT_profile == 'two-gradients'):   
+                        PT_params += ['T_Day_high', 'T_Day_mid', 'T_Night_high',
+                                    'T_Night_mid', 'log_P_mid', 'T_deep']
+    
             # Difference parameter prescription from MacDonald & Lewis (2022)
-            if (TwoD_param_scheme == 'difference'):
+            elif (TwoD_param_scheme == 'difference'):
 
-                # Species with variation only around the terminator (2D Evening-Morning X_i)
-                if (TwoD_type == 'E-M'):                
-                    if ((species_EM_gradient != []) and (species in species_EM_gradient)):
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high', 
-                                             'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
-                                             'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
-                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
+                if (TwoD_type == 'E-M'):
+                    if (PT_profile == 'gradient'):
+                        PT_params += ['T_bar_term_high', 'Delta_T_term_high', 'T_deep']
+                    elif (PT_profile == 'two-gradients'):            
+                        PT_params += ['T_bar_term_high', 'T_bar_term_mid', 'Delta_T_term_high', 
+                                    'Delta_T_term_mid', 'log_P_mid', 'T_deep']
 
-                    else:       # No Evening-Morning variation for this species
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                            'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species]
-
-                # Species with variation only across the terminator (2D Day-Night X_i)
-                if (TwoD_type == 'D-N'):                
-                    if ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_bar_DN_high', 'Delta_log_' + species + '_DN_high', 
-                                             'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
-                                             'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
-                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
-
-                    else:       # No Day-Night variation for this species
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                            'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species]
+                elif (TwoD_type == 'D-N'):
+                    if (PT_profile == 'gradient'):            
+                        PT_params += ['T_bar_DN_high', 'Delta_T_DN_high', 'T_deep']
+                    elif (PT_profile == 'two-gradients'):            
+                        PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Delta_T_DN_high', 
+                                    'Delta_T_DN_mid', 'log_P_mid', 'T_deep']
 
             # Gradient parameter prescription from MacDonald & Lewis (2023)
-            if (TwoD_param_scheme == 'gradient'):
+            elif (TwoD_param_scheme == 'gradient'):
 
-                # Species with variation only across the terminator (2D Day-Night X_i)
-                if (TwoD_type == 'D-N'):                
-                    if ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_bar_DN_high', 'Grad_theta_log_' + species + '_high', 
-                                             'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
-                                             'Grad_theta_log_' + species + '_high', 'Grad_theta_log_' + species + '_mid', 
-                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species + '_bar_DN', 'Grad_theta_log_' + species + '_DN']
-
-                    else:       # No Day-Night variation for this species
-                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                            if (X_profile == 'gradient'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                            elif (X_profile == 'two-gradients'):  
-                                X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                            'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                        else:   # No altitude variation for this species
-                            X_params += ['log_' + species]
+                if (TwoD_type == 'D-N'):
+                    if (PT_profile == 'gradient'):
+                        PT_params += ['T_bar_DN_high', 'Grad_theta_T_high', 'T_deep']
+                    elif (PT_profile == 'two-gradients'):            
+                        PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Grad_theta_T_high', 
+                                    'Grad_theta_T_mid', 'log_P_mid', 'T_deep']
         
-        # If some species vary both around and across the terminator (3D X_i)
-        elif (X_dim == 3):
+        # 3D model (asymmetric terminator + day-night transition)
+        elif (PT_dim == 3):
 
-            # Species with 3D mixing ratio field
-            if ((species_EM_gradient != []) and (species in species_EM_gradient) and
-                (species_DN_gradient != []) and (species in species_DN_gradient)):
-                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                    if (X_profile == 'gradient'):  
-                        X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high',
-                                     'Delta_log_' + species + '_DN_high', 'log_' + species + '_deep']
-                    elif (X_profile == 'two-gradients'):  
-                        X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
-                                     'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
-                                     'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
-                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                else:   # No altitude variation for this species
-                    X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term',
-                                 'Delta_log_' + species + '_DN']
+            if (PT_profile == 'gradient'):            
+                PT_params += ['T_bar_term_high', 'Delta_T_term_high', 'Delta_T_DN_high', 'T_deep']
+            elif (PT_profile == 'two-gradients'):            
+                PT_params += ['T_bar_term_high', 'T_bar_term_mid', 'Delta_T_term_high', 
+                            'Delta_T_term_mid', 'Delta_T_DN_high', 'Delta_T_DN_mid', 
+                            'log_P_mid', 'T_deep']
             
-            # Species with only Evening-Morning variation
-            elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
-                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                    if (X_profile == 'gradient'):  
-                        X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high', 
-                                     'log_' + species + '_deep']
-                    elif (X_profile == 'two-gradients'):  
-                        X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
-                                     'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
-                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                else:   # No altitude variation for this species
-                    X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
+        N_PT_params = len(PT_params)   # Store number of P-T profile parameters
+        params += PT_params            # Add P-T parameter names to combined list
+        
+        #***** Mixing ratio parameters *****#
 
-            # Species with only Day-Night variation
-            elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                    if (X_profile == 'gradient'):  
-                        X_params += ['log_' + species + '_bar_DN_high', 'Delta_log_' + species + '_DN_high', 
-                                     'log_' + species + '_deep']
-                    elif (X_profile == 'two-gradients'):  
-                        X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
-                                     'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
-                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                else:   # No altitude variation for this species
-                    X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
-
-            # Species with 1D profile
-            else:
+        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read']):
+            raise Exception("Error: unsupported mixing ratio profile.")
+            
+        # Create list of mixing ratio free parameters
+        for species in param_species:
+            
+            # If all species have uniform abundances (1D X_i)
+            if (X_dim == 1):
+                
+                # Check if given species has an altitude profile or not
                 if ((species_vert_gradient != []) and (species in species_vert_gradient)):
                     if (X_profile == 'gradient'):  
                         X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
@@ -452,84 +283,272 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 else:
                     X_params += ['log_' + species]
                 
-    N_species_params = len(X_params)   # Store number of mixing ratio parameters
-    params += X_params                 # Add mixing ratio parameter names to combined list
-                   
-    #***** Cloud parameters *****#
-    
-    # Cloud-free models need no extra free parameters
-    if (cloud_model == 'cloud-free'):
-        cloud_params = []
+            # If some species vary either around or across the terminator (2D X_i)
+            elif (X_dim == 2):
 
-    # Patchy cloud model from MacDonald & Madhusudhan (2017)
-    elif (cloud_model == 'MacMad17'):
-        
-        if ('haze' in cloud_type):
-            cloud_params += ['log_a', 'gamma']
-            
-        if ('deck' in cloud_type):
-            cloud_params += ['log_P_cloud']
-            
-        # If working with a 2D patchy cloud model
-        if (cloud_dim == 2):
-            cloud_params += ['phi_cloud']
-            
-        if (cloud_type not in ['deck', 'haze', 'deck_haze']):
-            raise Exception("Error: unsupported cloud model.")
-
-        if (cloud_dim not in [1, 2]):
-            raise Exception("The MacDonald & Madhusudhan (2017) cloud model " +
-                            "only supports 1D and 2D clouds")
-        
-    # 3D patchy cloud model from MacDonald & Lewis (2022)
-    elif (cloud_model == 'Iceberg'):
-        
-        # Disable haze in radiative transfer (for now)
+                # Parametrisation with separate morning / evening or day / night profiles
+                if (TwoD_param_scheme == 'absolute'):
                 
-    #    if ('haze' in cloud_type):
-    #        cloud_params = np.append(cloud_params, np.array(['log_a', 'gamma']))
+                    # Species with variation only around the terminator (2D Evening-Morning X_i)
+                    if (TwoD_type == 'E-M'):                
+                        if ((species_EM_gradient != []) and (species in species_EM_gradient)):
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Morn_high', 
+                                                'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Even_mid',
+                                                'log_' + species + '_Morn_high', 'log_' + species + '_Morn_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species + '_Even', 'log_' + species + '_Morn']
+
+                        else:       # No Evening-Morning variation for this species
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species]
+                                
+                    # Species with variation only across the terminator (2D Day-Night X_i)
+                    if (TwoD_type == 'D-N'):                
+                        if ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Night_high', 
+                                                'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Day_mid',
+                                                'log_' + species + '_Night_high', 'log_' + species + '_Night_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species + '_Day', 'log_' + species + '_Night']
+
+                        else:       # No Day-Night variation for this species
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species]
+                                                    
+                # Difference parameter prescription from MacDonald & Lewis (2022)
+                if (TwoD_param_scheme == 'difference'):
+
+                    # Species with variation only around the terminator (2D Evening-Morning X_i)
+                    if (TwoD_type == 'E-M'):                
+                        if ((species_EM_gradient != []) and (species in species_EM_gradient)):
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high', 
+                                                'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
+                                                'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
+
+                        else:       # No Evening-Morning variation for this species
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species]
+
+                    # Species with variation only across the terminator (2D Day-Night X_i)
+                    if (TwoD_type == 'D-N'):                
+                        if ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_bar_DN_high', 'Delta_log_' + species + '_DN_high', 
+                                                'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
+                                                'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
+
+                        else:       # No Day-Night variation for this species
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species]
+
+                # Gradient parameter prescription from MacDonald & Lewis (2023)
+                if (TwoD_param_scheme == 'gradient'):
+
+                    # Species with variation only across the terminator (2D Day-Night X_i)
+                    if (TwoD_type == 'D-N'):                
+                        if ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_bar_DN_high', 'Grad_theta_log_' + species + '_high', 
+                                                'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
+                                                'Grad_theta_log_' + species + '_high', 'Grad_theta_log_' + species + '_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species + '_bar_DN', 'Grad_theta_log_' + species + '_DN']
+
+                        else:       # No Day-Night variation for this species
+                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                if (X_profile == 'gradient'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                elif (X_profile == 'two-gradients'):  
+                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                            else:   # No altitude variation for this species
+                                X_params += ['log_' + species]
             
-        if ('deck' in cloud_type):
-            if (opaque_Iceberg == True):
+            # If some species vary both around and across the terminator (3D X_i)
+            elif (X_dim == 3):
+
+                # Species with 3D mixing ratio field
+                if ((species_EM_gradient != []) and (species in species_EM_gradient) and
+                    (species_DN_gradient != []) and (species in species_DN_gradient)):
+                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                        if (X_profile == 'gradient'):  
+                            X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high',
+                                        'Delta_log_' + species + '_DN_high', 'log_' + species + '_deep']
+                        elif (X_profile == 'two-gradients'):  
+                            X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
+                                        'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
+                                        'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
+                                        'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                    else:   # No altitude variation for this species
+                        X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term',
+                                    'Delta_log_' + species + '_DN']
+                
+                # Species with only Evening-Morning variation
+                elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
+                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                        if (X_profile == 'gradient'):  
+                            X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high', 
+                                        'log_' + species + '_deep']
+                        elif (X_profile == 'two-gradients'):  
+                            X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
+                                        'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
+                                        'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                    else:   # No altitude variation for this species
+                        X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
+
+                # Species with only Day-Night variation
+                elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                        if (X_profile == 'gradient'):  
+                            X_params += ['log_' + species + '_bar_DN_high', 'Delta_log_' + species + '_DN_high', 
+                                        'log_' + species + '_deep']
+                        elif (X_profile == 'two-gradients'):  
+                            X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
+                                        'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
+                                        'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                    else:   # No altitude variation for this species
+                        X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
+
+                # Species with 1D profile
+                else:
+                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                        if (X_profile == 'gradient'):  
+                            X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                        elif (X_profile == 'two-gradients'):  
+                            X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                        'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                    else:
+                        X_params += ['log_' + species]
+                    
+        N_species_params = len(X_params)   # Store number of mixing ratio parameters
+        params += X_params                 # Add mixing ratio parameter names to combined list
+                    
+        #***** Cloud parameters *****#
+        
+        # Cloud-free models need no extra free parameters
+        if (cloud_model == 'cloud-free'):
+            cloud_params = []
+
+        # Patchy cloud model from MacDonald & Madhusudhan (2017)
+        elif (cloud_model == 'MacMad17'):
+            
+            if ('haze' in cloud_type):
+                cloud_params += ['log_a', 'gamma']
+                
+            if ('deck' in cloud_type):
                 cloud_params += ['log_P_cloud']
-            else:
-                cloud_params += ['log_kappa_cloud', 'log_P_cloud']
-            
-        # If working with a 2D patchy cloud model
-        if (cloud_dim == 2):
-            if (TwoD_type == 'E-M'):
-                cloud_params += ['f_cloud', 'phi_0']
-            elif (TwoD_type == 'D-N'):
-                cloud_params += ['theta_0']
                 
-        # If using a full 3D patchy cloud model
-        if (cloud_dim == 3):
-            cloud_params += ['f_cloud', 'phi_0', 'theta_0']
+            # If working with a 2D patchy cloud model
+            if (cloud_dim == 2):
+                cloud_params += ['phi_cloud']
+                
+            if (cloud_type not in ['deck', 'haze', 'deck_haze']):
+                raise Exception("Error: unsupported cloud model.")
+
+            if (cloud_dim not in [1, 2]):
+                raise Exception("The MacDonald & Madhusudhan (2017) cloud model " +
+                                "only supports 1D and 2D clouds")
             
-        if ('haze' not in cloud_type) and ('deck' not in cloud_type):
+        # 3D patchy cloud model from MacDonald & Lewis (2022)
+        elif (cloud_model == 'Iceberg'):
+            
+            # Disable haze in radiative transfer (for now)
+                    
+        #    if ('haze' in cloud_type):
+        #        cloud_params = np.append(cloud_params, np.array(['log_a', 'gamma']))
+                
+            if ('deck' in cloud_type):
+                if (opaque_Iceberg == True):
+                    cloud_params += ['log_P_cloud']
+                else:
+                    cloud_params += ['log_kappa_cloud', 'log_P_cloud']
+                
+            # If working with a 2D patchy cloud model
+            if (cloud_dim == 2):
+                if (TwoD_type == 'E-M'):
+                    cloud_params += ['f_cloud', 'phi_0']
+                elif (TwoD_type == 'D-N'):
+                    cloud_params += ['theta_0']
+                    
+            # If using a full 3D patchy cloud model
+            if (cloud_dim == 3):
+                cloud_params += ['f_cloud', 'phi_0', 'theta_0']
+                
+            if ('haze' not in cloud_type) and ('deck' not in cloud_type):
+                raise Exception("Error: unsupported cloud model.")
+                
+        else:
             raise Exception("Error: unsupported cloud model.")
             
-    else:
-        raise Exception("Error: unsupported cloud model.")
+        N_cloud_params = len(cloud_params)   # Store number of cloud parameters
+        params += cloud_params               # Add cloud parameter names to combined list
+            
+        #***** Geometry parameters *****#
         
-    N_cloud_params = len(cloud_params)   # Store number of cloud parameters
-    params += cloud_params               # Add cloud parameter names to combined list
-        
-    #***** Geometry parameters *****#
-    
-    if (Atmosphere_dimension == 3):
-        if (sharp_DN_transition == False):
-            geometry_params += ['alpha', 'beta']
-        else:
-            geometry_params += ['alpha']
-    elif (Atmosphere_dimension == 2):
-        if (TwoD_type == 'E-M'):
-            geometry_params += ['alpha']
-        elif ((TwoD_type == 'D-N') and (sharp_DN_transition == False)):
-            geometry_params += ['beta']
+        if (Atmosphere_dimension == 3):
+            if (sharp_DN_transition == False):
+                geometry_params += ['alpha', 'beta']
+            else:
+                geometry_params += ['alpha']
+        elif (Atmosphere_dimension == 2):
+            if (TwoD_type == 'E-M'):
+                geometry_params += ['alpha']
+            elif ((TwoD_type == 'D-N') and (sharp_DN_transition == False)):
+                geometry_params += ['beta']
 
-    N_geometry_params = len(geometry_params)   # Store number of geometry parameters
-    params += geometry_params                  # Add geometry parameter names to combined list
+        N_geometry_params = len(geometry_params)   # Store number of geometry parameters
+        params += geometry_params                  # Add geometry parameter names to combined list
     
     #***** Stellar contamination parameters *****#
     

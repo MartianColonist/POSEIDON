@@ -37,7 +37,6 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                   N_slice_EM = 2, N_slice_DN = 4, 
                   spectrum_type = 'transmission', y_p = np.array([0.0]),
                   stellar_T_step = 20, stellar_log_g_step = 0.1, 
-                  stellar_interp_backend = 'pysynphot',
                   N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest', 
                   resume = False, verbose = True, sampling_target = 'parameter',
                   N_output_samples = 1000):
@@ -58,12 +57,19 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     param_names = model['param_names']
     stellar_contam = model['stellar_contam']
     reference_parameter = model['reference_parameter']
+    disable_atmosphere = model['disable_atmosphere']
+
+    # Unpack stellar properties
+    stellar_interp_backend = star['stellar_interp_backend']
 
     # Check that one of the two reference parameters has been provided by the user
     if ((reference_parameter == 'R_p_ref') and (P_ref is None)):
         raise Exception("Error: Must provide P_ref when R_p_ref is a free parameter.")
     if ((reference_parameter == 'P_ref') and (R_p_ref is None)):
         raise Exception("Error: Must provide R_p_ref when P_ref is a free parameter.")
+    
+    if ((disable_atmosphere == True) and ('transmission' not in spectrum_type)):
+        raise Exception("Error: An atmosphere can only be disabled for transmission spectra ")
 
     N_params = len(param_names)
 
@@ -253,10 +259,14 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     distance_unit = model['distance_unit']
     surface = model['surface']
     stellar_contam = model['stellar_contam']
+    disable_atmosphere = model['disable_atmosphere']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
     d = planet['system_distance']
+
+    # Unpack stellar properties
+    R_s = star['R_s']
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
@@ -280,7 +290,11 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         # Load stellar spectrum
         F_s = star['F_star']
         wl_s = star['wl_star']
-        R_s = star['R_s']
+
+        if (wl_s != wl):
+            raise Exception("Error: wavelength grid for stellar spectrum does " +
+                            "not match wavelength grid of planet spectrum. " +
+                            "Did you forget to provide 'wl' to create_star?")
 
         # Distance only used for flux ratios, so set it to 1 since it cancels
         if (d is None):
@@ -288,10 +302,10 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             d = planet['system_distance']
 
         # Interpolate stellar spectrum onto planet spectrum wavelength grid
-        F_s_interp = spectres(wl, wl_s, F_s)
+    #    F_s_interp = spectres(wl, wl_s, F_s)
 
         # Convert stellar surface flux to observed flux at Earth
-        F_s_obs = (R_s / d)**2 * F_s_interp
+        F_s_obs = (R_s / d)**2 * F_s
 
     # Skip for directly imaged planets or brown dwarfs
     else:
@@ -571,51 +585,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         geometry_params, stellar_params, \
         offset_params, err_inflation_params = split_params(cube, N_params_cum)
 
-        # Unpack reference pressure if set as a free parameter
-        if ('log_P_ref' in physical_param_names):
-            P_ref = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_ref')[0][0]])
-        else:
-            P_ref = P_ref_set
-
-        # Unpack reference radius if set as a free parameter
-        if ('R_p_ref' in physical_param_names):
-            R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
-
-            # Convert normalised radius drawn by MultiNest back into SI
-            if (radius_unit == 'R_J'):
-                R_p_ref *= R_J
-            elif (radius_unit == 'R_E'):
-                R_p_ref *= R_E
-
-        else:
-            R_p_ref = R_p_ref_set
-
-        # Unpack log(gravity) if set as a free parameter
-        if ('log_g' in physical_param_names):
-            log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
-        else:
-            log_g = None
-
-        # Unpack system distance if set as a free parameter
-        if ('d' in physical_param_names):
-            d_sampled = physical_params[np.where(physical_param_names == 'd')[0][0]]
-
-            # Convert distance drawn by MultiNest (in parsec) back into SI
-            if (distance_unit == 'pc'):
-                d_sampled *= parsec
-
-            # Redefine object distance to sampled value 
-            planet['system_distance'] = d_sampled
-
-        else:
-            d_sampled = planet['system_distance']
-
-        # Unpack surface pressure if set as a free parameter
-        if (surface == True):
-            P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
-        else:
-            P_surf = None
-
         # Reject models with spots hotter than faculae (by definition)
         if (stellar_contam != None):
             if ('two_spots' in stellar_contam):
@@ -630,35 +599,96 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 if ((T_spot > T_phot) or (T_fac < T_phot) or (T_spot > T_fac)):
                     loglikelihood = -1.0e100   
                     return loglikelihood
+                
+        # If the atmosphere is disabled
+        if ((disable_atmosphere == True) and ('transmission' in spectrum_type)):
 
-        #***** Step 2: generate atmosphere corresponding to parameter draw *****#
+            R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
 
-        atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
-                                     log_X_params, cloud_params, geometry_params, 
-                                     log_g, T_input, X_input, P_surf, P_param_set,
-                                     He_fraction, N_slice_EM, N_slice_DN)
+            # Convert normalised radius drawn by MultiNest back into SI
+            if (radius_unit == 'R_J'):
+                R_p_ref *= R_J
+            elif (radius_unit == 'R_E'):
+                R_p_ref *= R_E
 
-        #***** Step 3: generate spectrum of atmosphere ****#
+            # The spectrum is remarkably simple for a ball of rock
+            spectrum = (R_p_ref / R_s)**2
 
-        # For emission spectra retrievals we directly compute Fp (instead of Fp/F*)
-        # so we can convolve and bin Fp and F* separately when comparing to data
-        if (('emission' in spectrum_type) and (spectrum_type != 'direct_emission')):
-            spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                        spectrum_type = ('direct_' + spectrum_type))   # Always Fp (even for secondary eclipse)
-
-        # For transmission spectra
         else:
-            spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                        spectrum_type, y_p = y_p)
 
-        # Reject unphysical spectra (forced to be NaN by function above)
-        if (np.any(np.isnan(spectrum))):
-            
-            # Assign penalty to likelihood => point ignored in retrieval
-            loglikelihood = -1.0e100
-            
-            # Quit if given parameter combination is unphysical
-            return loglikelihood
+            # Unpack reference pressure if set as a free parameter
+            if ('log_P_ref' in physical_param_names):
+                P_ref = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_ref')[0][0]])
+            else:
+                P_ref = P_ref_set
+
+            # Unpack reference radius if set as a free parameter
+            if ('R_p_ref' in physical_param_names):
+                R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
+
+                # Convert normalised radius drawn by MultiNest back into SI
+                if (radius_unit == 'R_J'):
+                    R_p_ref *= R_J
+                elif (radius_unit == 'R_E'):
+                    R_p_ref *= R_E
+
+            else:
+                R_p_ref = R_p_ref_set
+
+            # Unpack log(gravity) if set as a free parameter
+            if ('log_g' in physical_param_names):
+                log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
+            else:
+                log_g = None
+
+            # Unpack system distance if set as a free parameter
+            if ('d' in physical_param_names):
+                d_sampled = physical_params[np.where(physical_param_names == 'd')[0][0]]
+
+                # Convert distance drawn by MultiNest (in parsec) back into SI
+                if (distance_unit == 'pc'):
+                    d_sampled *= parsec
+
+                # Redefine object distance to sampled value 
+                planet['system_distance'] = d_sampled
+
+            else:
+                d_sampled = planet['system_distance']
+
+            # Unpack surface pressure if set as a free parameter
+            if (surface == True):
+                P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+            else:
+                P_surf = None
+
+            #***** Step 2: generate atmosphere corresponding to parameter draw *****#
+
+            atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
+                                         log_X_params, cloud_params, geometry_params, 
+                                         log_g, T_input, X_input, P_surf, P_param_set,
+                                         He_fraction, N_slice_EM, N_slice_DN)
+
+            #***** Step 3: generate spectrum of atmosphere ****#
+
+            # For emission spectra retrievals we directly compute Fp (instead of Fp/F*)
+            # so we can convolve and bin Fp and F* separately when comparing to data
+            if (('emission' in spectrum_type) and (spectrum_type != 'direct_emission')):
+                spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                            spectrum_type = ('direct_' + spectrum_type))   # Always Fp (even for secondary eclipse)
+
+            # For transmission spectra
+            else:
+                spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                            spectrum_type, y_p = y_p)
+
+            # Reject unphysical spectra (forced to be NaN by function above)
+            if (np.any(np.isnan(spectrum))):
+                
+                # Assign penalty to likelihood => point ignored in retrieval
+                loglikelihood = -1.0e100
+                
+                # Quit if given parameter combination is unphysical
+                return loglikelihood
 
         #***** Step 4: stellar contamination *****#
         
@@ -798,8 +828,11 @@ def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P,
     N_params_cum = model['N_params_cum']
     surface = model['surface']
     stellar_contam = model['stellar_contam']
+    disable_atmosphere = model['disable_atmosphere']
 
+    # Unpack planet and star properties
     R_p = planet['planet_radius']
+    R_s = star['R_s']
 
     # Load relevant output directory
     output_prefix = retrieval_name + '-'
@@ -837,14 +870,9 @@ def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P,
         offset_params, err_inflation_params = split_params(samples[sample[i],:], 
                                                            N_params_cum)
         
-        # Unpack reference pressure if set as a free parameter
-        if ('log_P_ref' in physical_param_names):
-            P_ref = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_ref')[0][0]])
-        else:
-            P_ref = P_ref_set
+        # If the atmosphere is disabled
+        if ((disable_atmosphere == True) and ('transmission' in spectrum_type)):
 
-        # Unpack reference radius if set as a free parameter
-        if ('R_p_ref' in physical_param_names):
             R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
 
             # Convert normalised radius drawn by MultiNest back into SI
@@ -853,44 +881,65 @@ def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P,
             elif (radius_unit == 'R_E'):
                 R_p_ref *= R_E
 
-        else:
-            R_p_ref = R_p_ref_set
-
-        # Unpack log(gravity) if set as a free parameter
-        if ('log_g' in physical_param_names):
-            log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
-        else:
-            log_g = None
-
-        # Unpack system distance if set as a free parameter
-        if ('d' in physical_param_names):
-            d_sampled = physical_params[np.where(physical_param_names == 'd')[0][0]]
-
-            # Convert distance drawn by MultiNest (in parsec) back into SI
-            if (distance_unit == 'pc'):
-                d_sampled *= parsec
-
-            # Redefine object distance to sampled value 
-            planet['system_distance'] = d_sampled
+            # The spectrum is remarkably simple for a ball of rock
+            spectrum = (R_p_ref / R_s)**2
 
         else:
-            d_sampled = planet['system_distance']
+        
+            # Unpack reference pressure if set as a free parameter
+            if ('log_P_ref' in physical_param_names):
+                P_ref = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_ref')[0][0]])
+            else:
+                P_ref = P_ref_set
 
-        # Unpack surface pressure if set as a free parameter
-        if (surface == True):
-            P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
-        else:
-            P_surf = None
+            # Unpack reference radius if set as a free parameter
+            if ('R_p_ref' in physical_param_names):
+                R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
 
-        # Generate atmosphere corresponding to parameter draw
-        atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
-                                     log_X_params, cloud_params, geometry_params, 
-                                     log_g, T_input, log_X_input, P_surf, P_param_set,
-                                     He_fraction, N_slice_EM, N_slice_DN)
+                # Convert normalised radius drawn by MultiNest back into SI
+                if (radius_unit == 'R_J'):
+                    R_p_ref *= R_J
+                elif (radius_unit == 'R_E'):
+                    R_p_ref *= R_E
 
-        # Generate spectrum of atmosphere
-        spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                    spectrum_type, y_p = y_p)
+            else:
+                R_p_ref = R_p_ref_set
+
+            # Unpack log(gravity) if set as a free parameter
+            if ('log_g' in physical_param_names):
+                log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
+            else:
+                log_g = None
+
+            # Unpack system distance if set as a free parameter
+            if ('d' in physical_param_names):
+                d_sampled = physical_params[np.where(physical_param_names == 'd')[0][0]]
+
+                # Convert distance drawn by MultiNest (in parsec) back into SI
+                if (distance_unit == 'pc'):
+                    d_sampled *= parsec
+
+                # Redefine object distance to sampled value 
+                planet['system_distance'] = d_sampled
+
+            else:
+                d_sampled = planet['system_distance']
+
+            # Unpack surface pressure if set as a free parameter
+            if (surface == True):
+                P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+            else:
+                P_surf = None
+
+            # Generate atmosphere corresponding to parameter draw
+            atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
+                                        log_X_params, cloud_params, geometry_params, 
+                                        log_g, T_input, log_X_input, P_surf, P_param_set,
+                                        He_fraction, N_slice_EM, N_slice_DN)
+
+            # Generate spectrum of atmosphere
+            spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                        spectrum_type, y_p = y_p)
 
         # Stellar contamination is only relevant for transmission spectra
         if ('transmission' in spectrum_type):
