@@ -1496,7 +1496,7 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
 
                     spectrum_contribution_list.append([contribution_molecule_list[i],spectrum_temp])
 
-        # If you just have contirbution moelcules 
+        # If you just have contribution molecules 
         elif contribution_molecule_list != [] and bulk == False:
 
                 spectrum_contribution_list = []

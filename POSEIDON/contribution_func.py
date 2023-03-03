@@ -225,6 +225,8 @@ def photometric_contribution_function(wl, P, Contribution,
         for j in range(len(photometric_contribution[i])):
             temp_row += photometric_contribution[i][j]
             
+        # Now to normalize the area to 1 
+        temp_row = temp_row / np.trapz(temp_row)
         photometric_total.append(temp_row)
 
 

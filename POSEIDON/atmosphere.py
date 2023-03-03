@@ -1504,8 +1504,13 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                 X_input = read_logX(np.log10(P), T[0], C_to_O, log_Met, param_species, return_dict=False)
                 X_input = 10**X_input
                 X_param = X_input.reshape((len(param_species), len(P), 1, 1))
+            if PT_profile == 'gradient':
+                T_grid = T.T[0][0]
+                X_input = read_logX(np.log10(P), T_grid, C_to_O, log_Met, param_species, return_dict=False)
+                X_input = 10**X_input
+                X_param = X_input.reshape((len(param_species), len(P), 1, 1))
             else:
-                raise Exception('Chemical Equilibrium only supports Isothermal PT (for now)')
+                raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT (for now)')
 
         # Gaussian smooth any profiles with a vertical profile
         for q, species in enumerate(param_species):
