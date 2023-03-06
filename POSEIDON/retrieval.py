@@ -612,7 +612,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 R_p_ref *= R_E
 
             # The spectrum is remarkably simple for a ball of rock
-            spectrum = (R_p_ref / R_s)**2
+            spectrum = (R_p_ref / R_s)**2 * np.ones_like(wl)
 
         else:
 
@@ -882,7 +882,7 @@ def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P,
                 R_p_ref *= R_E
 
             # The spectrum is remarkably simple for a ball of rock
-            spectrum = (R_p_ref / R_s)**2
+            spectrum = (R_p_ref / R_s)**2 * np.ones_like(wl)
 
         else:
         

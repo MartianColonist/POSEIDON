@@ -91,8 +91,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             (Options: blackbody / cbk04 [for pysynphot] / phoenix [for pysynphot] /
                       Goettingen-HiRes [for pymsg]).
         stellar_contam (str):
-            Type of stellar heterogeneity.
-            (Options: one_spot / two_spots).
+            Chosen prescription for modelling unocculted stellar contamination
+            (Options: one_spot / one_spot_free_log_g / two_spots).
         f_het (float):
             For the 'one_spot' model, the fraction of stellar photosphere 
             covered by either spots or faculae.
@@ -247,6 +247,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             'f_fac': f_het, 'T_fac': T_het, 'log_g_fac': log_g_het,
             'I_phot': I_phot, 'I_het': I_het, 'I_spot': I_spot, 'I_fac': I_fac,
             'stellar_grid': stellar_grid, 'stellar_interp_backend': interp_backend,
+            'stellar_contam': stellar_contam,
            }
 
     return star
