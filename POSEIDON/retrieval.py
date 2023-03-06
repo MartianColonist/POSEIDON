@@ -161,19 +161,22 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                            T_het_grid,  log_g_phot_grid,
                                            log_g_het_grid, I_phot_grid, 
                                            I_het_grid, y_p, N_output_samples)
-               
-            # Save sampled P-T profile
-            write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
-                               T_median, T_high1, T_high2)
-
-            # Save sampled mixing ratio profiles
-            write_retrieved_log_X(retrieval_name, chemical_species, P, 
-                                  log_X_low2, log_X_low1, log_X_median, 
-                                  log_X_high1, log_X_high2)
-
+            
             # Save sampled spectrum
             write_retrieved_spectrum(retrieval_name, wl, spec_low2, 
                                      spec_low1, spec_median, spec_high1, spec_high2)
+               
+            # Only write retrieved P-T profile and mixing ratio arrays if atmosphere enabled
+            if (disable_atmosphere == False):
+
+                # Save sampled P-T profile
+                write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
+                                   T_median, T_high1, T_high2)
+
+                # Save sampled mixing ratio profiles
+                write_retrieved_log_X(retrieval_name, chemical_species, P, 
+                                      log_X_low2, log_X_low1, log_X_median, 
+                                      log_X_high1, log_X_high2)
 
             print("All done! Output files can be found in " + output_dir + "results/")
          
@@ -1019,40 +1022,57 @@ def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P,
             
             print('This process will take approximately ' + str(total) + ' minutes')
 
-            # Find size of mixing ratio field (same as temperature field)
-            N_species, N_D, N_sectors, N_zones = np.shape(atmosphere['X'])
+            # Only store T and log X if an atmosphere enabled
+            if (disable_atmosphere == False):
 
-            # Create arrays to store sampled retrieval outputs
-            T_stored = np.zeros(shape=(N_sample_draws, N_D, N_sectors, N_zones))
-            log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
+                # Find size of mixing ratio field (same as temperature field)
+                N_species, N_D, N_sectors, N_zones = np.shape(atmosphere['X'])
+
+                # Create arrays to store sampled retrieval outputs
+                T_stored = np.zeros(shape=(N_sample_draws, N_D, N_sectors, N_zones))
+                log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
+
             spectrum_stored = np.zeros(shape=(N_sample_draws, len(wl)))
 
-        # Store temperature field and spectrum in sample arrays
-        T_stored[i,:,:,:] = atmosphere['T']
-        log_X_stored[i,:,:,:,:] = np.log10(atmosphere['X'])
+        if (disable_atmosphere == False):
+
+            # Store temperature field and mixing ratios in sample arrays
+            T_stored[i,:,:,:] = atmosphere['T']
+            log_X_stored[i,:,:,:,:] = np.log10(atmosphere['X'])
+
+        # Store spectrum in sample array
         spectrum_stored[i,:] = spectrum
             
     # Compute 1 and 2 sigma confidence intervals for P-T and mixing ratio profiles and spectrum
         
     # P-T profile
-    _, T_low2, T_low1, T_median, \
-    T_high1, T_high2, _ = confidence_intervals(N_sample_draws, 
-                                               T_stored[:,:,0,0], N_D)
+    if (disable_atmosphere == False):
+        _, T_low2, T_low1, T_median, \
+        T_high1, T_high2, _ = confidence_intervals(N_sample_draws, 
+                                                T_stored[:,:,0,0], N_D)
+    else:
+        T_low2, T_low1, T_median, T_high1, T_high2 = None, None, None, None, None
 
     # Mixing ratio profiles
-    log_X_low2 = np.zeros(shape=(N_species, N_D))
-    log_X_low1 = np.zeros(shape=(N_species, N_D))
-    log_X_median = np.zeros(shape=(N_species, N_D))
-    log_X_high1 = np.zeros(shape=(N_species, N_D))
-    log_X_high2 = np.zeros(shape=(N_species, N_D))
+    if (disable_atmosphere == False):
 
-    # Loop over each chemical species
-    for q in range(N_species):
+        log_X_low2 = np.zeros(shape=(N_species, N_D))
+        log_X_low1 = np.zeros(shape=(N_species, N_D))
+        log_X_median = np.zeros(shape=(N_species, N_D))
+        log_X_high1 = np.zeros(shape=(N_species, N_D))
+        log_X_high2 = np.zeros(shape=(N_species, N_D))
 
-        _, log_X_low2[q,:], log_X_low1[q,:], \
-        log_X_median[q,:], log_X_high1[q,:], \
-        log_X_high2[q,:], _ = confidence_intervals(N_sample_draws, 
-                                                   log_X_stored[:,q,:,0,0], N_D)
+        for q in range(N_species):
+
+            _, log_X_low2[q,:], log_X_low1[q,:], \
+            log_X_median[q,:], log_X_high1[q,:], \
+            log_X_high2[q,:], _ = confidence_intervals(N_sample_draws, 
+                                                    log_X_stored[:,q,:,0,0], N_D)
+            
+    else:
+
+        log_X_low2, log_X_low1, log_X_median, \
+        log_X_high1, log_X_high2 = None, None, None, None, None
     
     # Spectrum
     _, spec_low2, spec_low1, spec_median, \
