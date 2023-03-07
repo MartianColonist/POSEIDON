@@ -892,8 +892,11 @@ def round_sig_figs(value, sig_figs):
     ''' Round a quantity to a specified number of significant figures.
     
     '''
-    
-    return round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
+
+    if (value == 0.0):
+        return 0.0
+    else:
+        return round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
     
 
 def confidence_intervals(sample_draws, array, length, integer=False):
