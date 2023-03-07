@@ -1,5 +1,5 @@
 from __future__ import absolute_import, unicode_literals, print_function
-from POSEIDON.high_res import fast_filter, log_likelihood_sysrem, get_rot_kernel
+from POSEIDON.high_res import fast_filter, log_likelihood_sysrem, get_rot_kernel, fit_uncertainties
 import math, os
 import numpy as np
 import pickle
@@ -16,24 +16,16 @@ import numpy as np
 from spectres import spectres
 from tqdm import tqdm
 from multiprocessing import Pool
+import time
+from scipy.ndimage import gaussian_filter1d, median_filter
 
-
-def cross_correlate(spectrum, wl, K_p_arr, V_sys_arr, wl_grid, residuals, Bs, V_bary, Phi, uncertainties):
+def cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr, wl_grid, residuals, Bs, V_bary, Phi, uncertainties):
     dPhi = 0.0
-    a = 1.0
-    b = 1
-    # rotational coonvolutiono
-    V_sin_i = 14.5
-    rot_kernel = get_rot_kernel(V_sin_i, wl)
-    F_p_rot = np.convolve(spectrum, rot_kernel, mode='same') # calibrate for planetary rotation
-# 
-
-    # instrument profile convolustion
-    xker = np.arange(-20, 21)
-    sigma = 5.5/(2.* np.sqrt(2.0 * np.log(2.0)))  # nominal
-    yker = np.exp(-0.5 * (xker / sigma) ** 2.0)   # instrumental broadening kernel; not understand yet
-    yker /= yker.sum()
-    F_p_conv = np.convolve(F_p_rot, yker, mode='same') * a
+    a = 4.5
+    b = None
+    W_conv = 5
+    F_p_conv = gaussian_filter1d((spectrum - continuum) * a + continuum, W_conv)
+    # F_p_conv = gaussian_filter1d(spectrum - continuum, W_conv) * a + continuum
 
     cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p_obs, F_s_obs are already observed value on Earth
 
@@ -41,20 +33,20 @@ def cross_correlate(spectrum, wl, K_p_arr, V_sys_arr, wl_grid, residuals, Bs, V_
     
     for i in range(len(K_p_arr)):
         for j in range(len(V_sys_arr)):
-            loglikelihood = log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, b)
+            loglikelihood = log_likelihood_sysrem(V_sys_arr[j], K_p_arr[i], dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b)
             loglikelihood_arr[i, j] = loglikelihood
 
     return loglikelihood_arr
 
-K_p = 200
-N_K_p = 100
-d_K_p = 1
+K_p = -200
+N_K_p = 200
+d_K_p = 2
 K_p_arr = (np.arange(N_K_p) - (N_K_p-1)//2) * d_K_p + K_p # making K_p_arr (centered on published or predicted K_p)
 # K_p_arr = [92.06 , ..., 191.06, 192.06, 193.06, ..., 291.06]
 
-V_sys = 0
-N_V_sys = 100
-d_V_sys = 1
+V_sys = 5
+N_V_sys = 200
+d_V_sys = 2
 V_sys_arr = (np.arange(N_V_sys) - (N_V_sys-1)//2) * d_V_sys + V_sys # making V_sys_arr (centered on published or predicted V_sys (here 0 because we already added V_sys in V_bary))
 
 N_cores = 10 # Change how many cores to use here.
@@ -62,21 +54,39 @@ core_indices = np.arange(N_cores)
 V_sys_arr_split = np.array_split(V_sys_arr, N_cores)
 
 def batch_cross_correlate(core_index, args):
-    spectrum, wl = args
+    spectrum, continuum, wl = args
     for i in range(core_index, len(V_sys_arr_split), N_cores):
         print("Core "+str(i)+" is running.")
         output_path = './CC_output/WASP-121b' # Could modify output path here.
         data_path = './reference_data/observations/WASP-121b'
         os.makedirs(output_path, exist_ok=True)
 
-        wl_grid, data_raw = pickle.load(open(data_path+'/data_RAW.pic', 'rb'))
+        wl_grid, data_raw = pickle.load(open(data_path+'/data_injection.pic', 'rb'))
         Phi = pickle.load(open(data_path+'/ph.pic','rb'))                    # Time-resolved phases
         V_bary = pickle.load(open(data_path+'/rvel.pic','rb'))               # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
-        residuals, Us, Ws = fast_filter(data_raw, iter=15)
-        uncertainties = pickle.load(open(data_path+'/uncertainties.pic', 'rb'))
-        # We could also just use V_bary instead, then V_sys is just V_sys (not around zero anymore)
 
-        Ndet, Nphi, Nphi = data_raw.shape
+        data_raw[data_raw < 0] = 0
+        Ndet, Nphi, Npix = data_raw.shape
+        data_norm = np.zeros(data_raw.shape)
+
+        # uncertainties = fit_uncertainties(data_raw, NPC=5)
+        uncertainties = pickle.load(open(data_path+'/uncertainties.pic', 'rb'))
+
+        for k in range(len(data_raw)):
+            order = data_raw[k]
+            
+            median = np.median(order, axis=0)
+            median[median == 0] = np.mean(median)
+            order_norm = order / median
+
+            uncertainty = uncertainties[k]
+
+            uncertainty_norm = uncertainty / median
+            
+            uncertainties[k] = uncertainty_norm
+            data_norm[k] = order_norm
+
+        residuals, Us = fast_filter(data_norm, uncertainties, iter=15)
         Bs = np.zeros((Ndet, Nphi, Nphi))
 
         for j in range(Ndet):
@@ -85,8 +95,8 @@ def batch_cross_correlate(core_index, args):
             B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
             Bs[j] = B
 
-        log_L_arr, CCF_arr = cross_correlate(spectrum, wl, K_p_arr, V_sys_arr, wl_grid, residuals, Bs, V_bary, Phi, uncertainties)
-        pickle.dump([V_sys_arr_split[i], K_p_arr, CCF_arr, log_L_arr], open(output_path+'/test_sysrem_'+str(i)+'.pic','wb')) # N_cores of these produced. Will be read in by plot_CCF.py
+        log_L_arr = cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr_split[i], wl_grid, residuals, Bs, V_bary, Phi, uncertainties)
+        pickle.dump([V_sys_arr_split[i], K_p_arr, log_L_arr], open(output_path+'/test_sysrem_'+str(i)+'.pic','wb')) # N_cores of these produced. Will be read in by plot_CCF.py
 
 # The code below will only be run on one core to get the model spectrum.
 if __name__ == '__main__':
@@ -129,17 +139,17 @@ if __name__ == '__main__':
 
     # Create the model object
     model = define_model(model_name, bulk_species, param_species,
-                        PT_profile = 'Madhu', high_res = 'pca', R_p_ref_enabled=False)
+                        PT_profile = 'Madhu', high_res = 'sysrem', R_p_ref_enabled=False)
 
     # Check the free parameters defining this model
     print("Free parameters: " + str(model['param_names']))
-                                
+
 
     #***** Wavelength grid *****#
 
     wl_min = 3.7      # Minimum wavelength (um)
     wl_max = 5.1      # Maximum wavelength (um)
-    R = 250000        # Spectral resolution of grid
+    R = 200000        # Spectral resolution of grid
 
     # wl = wl_grid_line_by_line(wl_min, wl_max)
     wl = wl_grid_constant_R(wl_min, wl_max, R)
@@ -179,25 +189,39 @@ if __name__ == '__main__':
     R_p_ref = R_p  # Radius at reference pressure
 
     
-    # log_H2O, log_CO, log_CH4, log_H2S, log_NH3, log_HCN, a1, a2, log_P1, log_P2, log_P3, T_deep = params
-    # log_H2O, log_CO, a1, a2, log_P1, log_P2, log_P3, T_deep
-    params = (-4, 0.38, 0.56, 0.17, -1.39, 0.36, 3000) # Using maxmimum likelihood values from Brogi & Line
+    params = (-3, 2, 1, -2.5, -1.5, 1, 3000)
     log_Fe, a1, a2, log_P1, log_P2, log_P3, T_ref = params
 
     # Provide a specific set of model parameters for the atmosphere
     PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])     # a1, a2, log_P1, log_P2, log_P3, T_deep
-    # log_X_params = np.array([[log_H2O, log_CO, log_CH4, log_H2S, log_NH3, log_HCN]])
     log_X_params = np.array([[log_Fe]])
     
     atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params)
 
     # Generate planet surface flux
-    F_p_obs = compute_spectrum(planet, star, model, atmosphere, opac, wl, spectrum_type='direct_emission')
+    spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl, spectrum_type='transmission')
+
+    param_species = []
+
+    # Create the model object
+    model = define_model(model_name, bulk_species, param_species,
+                        PT_profile = 'Madhu', high_res = 'sysrem', R_p_ref_enabled=False)
+    params = (2, 1, -2.5, -1.5, 1, 3000)
+    a1, a2, log_P1, log_P2, log_P3, T_ref = params
+
+    # Provide a specific set of model parameters for the atmosphere
+    PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])     # a1, a2, log_P1, log_P2, log_P3, T_deep
+    log_X_params = np.array([[log_Fe]])
     
-    F_s_interp = spectres(wl, wl_s, F_s)
-    F_s_obs = (R_s / d)**2 * F_s_interp # observed flux of star on earth
+    atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params)
+
+    # Generate planet surface flux
+    continuum = compute_spectrum(planet, star, model, atmosphere, opac, wl, spectrum_type='transmission')
 
     # Passing stellar spectrum, planet spectrum, wavelenght grid to each core, thus saving time for reading the opacity again
     from itertools import repeat
     pool = Pool(processes=N_cores)
-    pool.starmap(batch_cross_correlate, zip(core_indices, repeat((F_s_obs, F_p_obs, wl))))
+    time_1 = time.time()
+    pool.starmap(batch_cross_correlate, zip(core_indices, repeat((spectrum, continuum, wl))))
+    time_2 = time.time()
+    print(time_2-time_1)

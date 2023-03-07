@@ -10,6 +10,7 @@ from .constants import R_J, M_J
 import numpy as np
 from spectres import spectres
 from sklearn.decomposition import TruncatedSVD
+from scipy.ndimage import gaussian_filter1d
 
 @jit
 def get_rot_kernel(V_sin_i, wl, W_conv):
@@ -42,10 +43,10 @@ def get_rot_kernel(V_sin_i, wl, W_conv):
 def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi):
     '''
     Perform the loglikelihood calculation using singular value decompositions.
-    Ndet: number of spectral order.
+    Nord: number of spectral order.
     Nphi: number of time-resolved phases.
     Npix: number of wavelengths per spectral order.
-    Typical values for (Ndet, Nphi, Npix) is (44, 79, 1848).
+    Typical values for (Nord, Nphi, Npix) is (44, 79, 1848).
 
     Args:
         V_sys (float):
@@ -59,13 +60,13 @@ def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_sca
         cs_s (np.array of float): 
             Spline representation of the observed flux of star.
         wl_grid (2D np.array of float):
-            2D wavelength grid of the data (Ndet x Npix). Typical size ~(44, 1848).
+            2D wavelength grid of the data (Nord x Npix). Typical size ~(44, 1848).
         data_arr (3D np.array of float):
             3D Array representing the top principal components removed data.
-            Shape: (Ndet x Nphi x Npix)
+            Shape: (Nord x Nphi x Npix)
         data_scale (3D np.array of float):
             3D Array representing the top principal components of data.
-            Shape: (Ndet x Nphi x Npix)
+            Shape: (Nord x Nphi x Npix)
         V_bary (np.array of float):
             Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
             Shape: (Nphi, )
@@ -74,30 +75,26 @@ def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_sca
             Shpae (Nphi, )
     
     Returns:
-        logL_Matteo (float):
-            Loglikelihood given by Log(L) = -N/2 Log(s_f^2 - 2R(s) + s_g^2). Equation 9 in Brogi & Line 2019 March.
-        logL_Zack (float):
-            Loglikelihood given by Log(L) = -N/2 Log(1.0 - CC^2)). Equation 2 in Brogi & Line 2019 March.
-        CCF (float):
-            cross correlation value.
+        Loglikelihood (float):
+            Loglikelihood value.
     '''
 
-    Ndet, Nphi, Npix = data_arr.shape
+    Nord, Nphi, Npix = data_arr.shape
 
     I = np.ones(Npix)
-    N = Npix # np.array([Npix])
+    N = Npix
     
     # Time-resolved total radial velocity
     RV_p = V_sys + V_bary + K_p * np.sin(2 * np.pi * (Phi + dPhi))  # V_sys is an additive term around zero   
     dl_p = RV_p * 1e3 / constants.c # delta lambda, for shifting
-    RV_s = 0 # Velocity of the star is very small compared to planet's velocity and it's already be corrected
-    # RV_s = (V_sys + V_bary - K_s * np.sin(2 * np.pi * Phi)) * 0
+    # RV_s = 0 # Velocity of the star is very small compared to planet's velocity and it's already be corrected
+    RV_s = (V_sys + V_bary - K_s * np.sin(2 * np.pi * Phi)) * 0
     dl_s = RV_s * 1e3 / constants.c # delta lambda, for shifting
     
     loglikelihood = 0
     
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
-    for j in range(Ndet): # Ndet = 44 This takes 2.2 seconds to complete
+    for j in range(Nord): # Nord = 44 This takes 2.2 seconds to complete
         wl_slice = wl_grid[j, ].copy() # Cropped wavelengths
         Fp_Fs = np.zeros((Nphi, Npix))  # "shifted" model spectra array at each phase
         for i in range(Nphi): # This for loop takes 0.025 seconds Nphi = 79
@@ -128,42 +125,64 @@ def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_sca
 
 def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b):
 
-    Ndet = len(residuals)
-    Nphi, Npix = residuals[0].shape
+    
+    Nord, Nphi, Npix = residuals.shape
 
-    N = Ndet * Nphi * Npix
+    N = Nord * Nphi * Npix
 
     # Time-resolved total radial velocity
-    RV_p = V_sys + V_bary + K_p * np.sin(2 * np.pi * (Phi + dPhi))  # V_sys is an additive term around zero   
+    RV_p = V_sys + K_p * np.sin(2 * np.pi * (Phi + dPhi))  # V_sys is an additive term around zero. Data is in rest frame of star.
     dl_p = RV_p * 1e3 / constants.c # delta lambda, for shifting
     
-    # Initializing log-likelihoods and CCFs
+    # Initializing loglikelihood
     loglikelihood = 0
 
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
-    for j in range(Ndet):
-        wl_slice = wl_grid[j]                    # Cropped wavelengths
+    for i in range(Nord):
+        wl_slice = wl_grid[i]                    # Cropped wavelengths
         models_shifted = np.zeros((Nphi, Npix))  # "shifted" model spectra array at each phase
-        for i in range(Nphi):
-            wl_shifted_p = wl_slice * (1.0 - dl_p[i])
+        for j in range(Nphi):
+            wl_shifted_p = wl_slice * (1.0 - dl_p[j])
             Fp = interpolate.splev(wl_shifted_p, cs_p, der=0)
-            models_shifted[i] = Fp + 1
+            t_model = pickle.load(open('./reference_data/observations/WASP-121b/tmodel1.pic','rb')) # Load transit model
+            models_shifted[j] = ((1-t_model[i]))/np.max(1-t_model)*(-Fp) + 1
 
-        models_shifted = models_shifted / np.median(models_shifted, axis=0)
+        models_shifted = (models_shifted.T / np.median(models_shifted, axis=1)).T # divide by the median over wavelength to mimic blaze correction
 
-        B = Bs[j]
-        model_filtered = models_shifted - B @ models_shifted
+        B = Bs[i]
+        model_filtered = models_shifted - B @ models_shifted # filter the model
 
-        for i in range(Nphi):
-            m = model_filtered[i] / uncertainties[j, i] * a
-            m2 = m.dot(m)
-            f = residuals[j, i] / uncertainties[j, i]
-            f2 = f.dot(f)
-            CCF = f.dot(m)
-            loglikelihood -= 0.5 * (m2 + f2 - 2.0*CCF) / (b ** 2)
-            # loglikelihood -= np.log(uncertainties[j, i])
-    loglikelihood -= N * np.log(b)
-    # loglikelihood -= N / 2 * np.log(2*np.pi)
+        if b:
+            for j in range(Nphi):
+                m = model_filtered[j] / uncertainties[i, j]
+                m2 = m.dot(m)
+                f = residuals[i, j] / uncertainties[i, j]
+                f2 = f.dot(f)
+                CCF = f.dot(m)
+                loglikelihood -= 0.5 * (m2 + f2 - 2.0*CCF) / (b ** 2)
+        elif uncertainties:
+            for j in range(Nphi):
+                m = model_filtered[j]/ uncertainties[i, j]
+                m2 = m.dot(m)
+                f = residuals[i, j] / uncertainties[i, j]
+                f2 = f.dot(f)
+                CCF = f.dot(m)
+                loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix)
+        else:
+            for j in range(Nphi):
+                m = model_filtered[j]
+                m2 = m.dot(m)
+                f = residuals[i, j]
+                f2 = f.dot(f)
+                CCF = f.dot(m)
+                loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix)
+
+    if b:
+        loglikelihood -= N * np.log(b)
+
+    # loglikelihood -= np.sum(np.log(uncertainties))
+    # loglikelihood -= N / 2 * np.log(2*np.pi)          (These two terms are normalization)
+    
     return loglikelihood
 
 def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
@@ -171,10 +190,10 @@ def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, 
     '''
     Return the loglikelihood given the observed flux, Keplerian velocity, and centered system velocity.
     Use this function in a high resolutional rerieval.
-    Ndet: number of spectral order.
+    Nord: number of spectral order.
     Nphi: number of time-resolved phases.
     Npix: number of wavelengths per spectral order.
-    Typical values for (Ndet, Nphi, Npix) is (44, 79, 1848).
+    Typical values for (Nord, Nphi, Npix) is (44, 79, 1848).
 
     Args:
         F_s_obs (np.array of float):
@@ -192,13 +211,13 @@ def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, 
         dPhi (float):
             Phase offset.
         wl_grid (2D np.array of float):
-            2D wavelength grid of the data (Ndet x Npix). Typical size ~(44, 1848).
+            2D wavelength grid of the data (Nord x Npix). Typical size ~(44, 1848).
         data_arr (3D np.array of float):
             3D Array representing the top principal components removed data.
-            Shape: (Ndet x Nphi x Npix)
+            Shape: (Nord x Nphi x Npix)
         data_scale (3D np.array of float):
             3D Array representing the top principal components of data.
-            Shape: (Ndet x Nphi x Npix)
+            Shape: (Nord x Nphi x Npix)
         V_bary (np.array of float):
             Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
             Shape: (Nphi, )
@@ -209,10 +228,6 @@ def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, 
     Returns:
         logL_Matteo (float):
             Loglikelihood given by Log(L) = -N/2 Log(s_f^2 - 2R(s) + s_g^2). Equation 9 in Brogi & Line 2019 March.
-        logL_Zack (float):
-            Loglikelihood given by Log(L) = -N/2 Log(1.0 - CCF^2)). Equation 2 in Brogi & Line 2019 March.
-        CCF (float):
-            cross correlation value.
     '''
     if ('K_p' in high_res_param_names):
         K_p = high_res_params[np.where(high_res_param_names == 'K_p')[0][0]]
@@ -227,7 +242,7 @@ def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, 
     if ('a' in high_res_param_names):
         a = high_res_params[np.where(high_res_param_names == 'a')[0][0]]
     else:
-        a = 0
+        a = 1
 
     if ('dPhi' in high_res_param_names):
         dPhi = high_res_params[np.where(high_res_param_names == 'dPhi')[0][0]]
@@ -263,105 +278,97 @@ def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, 
         return log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
 
     elif residuals is not None and Bs is not None:
-
-        xker = np.arange(-W_conv//2, W_conv//2+1)
-        sigma = (R / R_instrument) / (2 * np.sqrt(2.0 * np.log(2.0)))  # model is right now at R=250K.  IGRINS is at R~45K. We make gaussian that is R_model/R_IGRINS ~ 5.5 
-        yker = np.exp(-0.5 * (xker / sigma) ** 2.0)   # instrumental broadening kernel; not understand
-        yker /= yker.sum()
-        F_p_conv = np.convolve(spectrum, yker, mode='same')
-        cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p, F_s are already observed value on Earth
+        F_p_conv = gaussian_filter1d(spectrum, W_conv) * a # Apply filter to the spectrum. And multiply by scale factor a.
+        cs_p = interpolate.splrep(wl, F_p_conv, s=0.0)
         return log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b)
     else:
         raise Exception('Problem in high res retreival data.')
 
-def sysrem(data_array, iter=15):
+def sysrem(data_array, stds, iter=15):
 
-    def generate_matrix(data_raw):
+    data_transpose = data_array.T
+    Npix, Nphi = data_transpose.shape
 
-        Nphi, Npix = np.shape(data_raw)
+    # Create empty matrices for residuals and corresponding errors with the found dimensions such that number of rows correspond to the number of available stars, and the number of columns correspond to each specific epoch:
+    residuals = np.zeros((Npix, Nphi))
 
-        # Create empty matrices for residuals and corresponding errors with the found dimensions such that number of rows correspond to the number of available stars, and the number of columns correspond to each specific epoch:
-        residuals = np.zeros((Nphi, Npix))
-        stds = np.zeros((Nphi, Npix))
+    median_list = []
+    # Import each of the star files
+    for i, wl_channel in enumerate(data_transpose):
 
-        # Import each of the star files
-        for i, sepctrum in enumerate(data_raw):
+        median_list.append(np.median(wl_channel))
 
-            # Calculate residuals from the ORIGINAL light curve
-            sepctrum_residuals = sepctrum - np.median(sepctrum)
+        # Calculate residuals from the ORIGINAL light curve
+        # channel_residual = wl_channel - np.median(wl_channel)
+        channel_residual = wl_channel
 
-            # For the data points with quality flags != 0,
-            # set the errors to a large value
-            sepctrum_std = np.copy(sepctrum.std())
+        # import the residual and error values into the matrices in the correct position (rows corresponding to stars, columns to epochs)
+        residuals[i] = channel_residual
 
-            # import the residual and error values into the matrices in the correct position (rows corresponding to stars, columns to epochs)
-            residuals[i] = sepctrum_residuals
-            stds[i] = sepctrum_std
-
-        return residuals, stds
-
-    residual, stds = generate_matrix(data_array)
-    Nphi, Npix = np.shape(residual)
+    Npix, Nphi = np.shape(residuals)
 
     # This medians.txt file is a 2D list with the first column being the medians
     # of stars' magnitudes at different epochs (the good ones) and their
     # standard deviations, so that they can be plotted against the results after
     # errors are taken out below.
     
-    U = np.zeros((Nphi, iter))
-    W = np.zeros((Npix, iter))
+    U = np.zeros((Nphi, iter+1))
+
     for i in range(iter):         # The number of linear systematics to remove
-        u = np.zeros(Nphi)
-        w = np.ones(Npix)
+        w = np.zeros(Npix)
+        u = np.ones(Nphi)
 
         # minimize a and c values for a number of iterations, iter
         for _ in range(10):
 
             # Using the initial guesses for each a value of each epoch, minimize c for each star
-            for phi in range(Nphi):
-                err_squared = stds[phi] ** 2
-                numerator = np.sum(w * residual[phi] / err_squared)
-                denominator = np.sum(w**2 / err_squared)
-                u[phi] = numerator / denominator
-
-            # Using the c values found above, minimize a for each epoch
             for pix in range(Npix):
-                err_squared = stds[:, pix] ** 2
-                numerator = np.sum(u * residual[:, pix] / err_squared)
+                err_squared = stds.T[pix] ** 2
+                numerator = np.sum(u * residuals[pix] / err_squared)
                 denominator = np.sum(u**2 / err_squared)
                 w[pix] = numerator / denominator
 
-        # Create a matrix for the systematic errors:
-        systematic = np.zeros((Nphi, Npix))
-        for phi in range(Nphi):
-            for pix in range(Npix):
-                systematic[phi, pix] = u[phi] * w[pix]
+            # Using the c values found above, minimize a for each epoch
+            for phi in range(Nphi):
+                err_squared = stds.T[:, phi] ** 2
+                numerator = np.sum(w * residuals[:, phi] / err_squared)
+                denominator = np.sum(w**2 / err_squared)
+                u[phi] = numerator / denominator
 
+        # Create a matrix for the systematic errors:
+        systematic = np.zeros((Npix, Nphi))
+        for pix in range(Npix):
+            for phi in range(Nphi):
+                systematic[pix, phi] = u[phi] * w[pix]
+        
         # Remove the systematic error
-        residual = residual - systematic
+        residuals = residuals - systematic
 
         U[:, i] = u
-        W[:, i] = w
 
-    return residual, U, W
+    # for i in range(len(residuals)):
+    #     residuals[i] += median_list[i]
 
-def fast_filter(data, iter=15):
+    U[:, -1] = np.ones(Nphi)
 
-    Ndet, Nphi, Npix = data.shape
-    residuals = np.zeros((Ndet, Nphi, Npix))
-    Us = np.zeros((Ndet, Nphi, iter))
-    Ws = np.zeros((Ndet, Npix, iter))
+    return residuals.T, U
+
+def fast_filter(data, uncertainties, iter=15):
+
+    Nord, Nphi, Npix = data.shape
+    residuals = np.zeros((Nord, Nphi, Npix))
+    Us = np.zeros((Nord, Nphi, iter+1))
     
     for i, order in enumerate(data):
-        residual, U, W = sysrem(order, iter)
+        stds = uncertainties[i]
+        residual, U = sysrem(order, stds, iter)
         residuals[i] = residual
         Us[i] = U
-        Ws[i] = W
     
-    return residuals, Us, Ws
+    return residuals, Us
 
 def make_data_cube(data, wl_grid):
-    Ndet, Nphi, Npix = data.shape # yup, this again--Norders x Nphases x Npixels
+    Nord, Nphi, Npix = data.shape # yup, this again--Norders x Nphases x Npixels
     # SVD/PCA method
 
     data_scale = np.zeros(data.shape)
@@ -369,7 +376,7 @@ def make_data_cube(data, wl_grid):
 
     NPC = 4 #change the "4" to whatever. This is the number of PC's to remove
 
-    for i in range(Ndet):
+    for i in range(Nord):
         #taking only first four vectors, reconstructiong, and saving
         u,s,vh=np.linalg.svd(data[i], full_matrices = False)  #decompose
         s[NPC: ] = 0
@@ -401,10 +408,10 @@ def cross_correlate(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, data_arr,
     '''
     Cross correlate at an array of Keplerian velocities and an array of centered system velocities given the observed flux.
     Use this function to create the cross correlation plot of detection level.
-    Ndet: number of spectral order.
+    Nord: number of spectral order.
     Nphi: number of time-resolved phases.
     Npix: number of wavelengths per spectral order.
-    Typical values for (Ndet, Nphi, Npix) is (44, 79, 1848).
+    Typical values for (Nord, Nphi, Npix) is (44, 79, 1848).
 
     Args:
         F_s_obs (np.array of float):
@@ -418,13 +425,13 @@ def cross_correlate(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, data_arr,
         V_sys_arr (np.array of float):
             Array of centered system velocity (km/s).
         wl_grid (2D np.array of float):
-            2D wavelength grid of the data (Ndet x Npix). Typical size ~(44, 1848).
+            2D wavelength grid of the data (Nord x Npix). Typical size ~(44, 1848).
         data_arr (3D np.array of float):
             3D Array representing the top principal components removed data.
-            Shape: (Ndet x Nphi x Npix)
+            Shape: (Nord x Nphi x Npix)
         data_scale (3D np.array of float):
             3D Array representing the top principal components of data.
-            Shape: (Ndet x Nphi x Npix)
+            Shape: (Nord x Nphi x Npix)
         V_bary (np.array of float):
             Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
             Shape: (Nphi, )
@@ -477,7 +484,7 @@ def fit_uncertainties(data_raw, NPC=5):
     Nord = len(data_raw)
     for i in range(Nord):
         order = data_raw[i]
-        svd = TruncatedSVD(n_components=NPC, n_iter=4, random_state=42).fit(order)
+        svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(order)
 
         residual = order - (svd.transform(order) @ svd.components_)
         residuals[i] = residual
@@ -489,10 +496,9 @@ def fit_uncertainties(data_raw, NPC=5):
             loglikelihood = -0.5 * np.sum((residuals[i] / sigma) ** 2) - np.sum(np.log(sigma))
             return -loglikelihood
         a, b = minimize(fun, [1, 1], method='Nelder-Mead').x
-
         best_fit = np.sqrt(a * data_raw[i] + b)
 
-        svd = TruncatedSVD(n_components=NPC, n_iter=4, random_state=42).fit(best_fit)
+        svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(best_fit)
 
         uncertainty = svd.transform(best_fit) @ svd.components_
         uncertainties[i] = uncertainty

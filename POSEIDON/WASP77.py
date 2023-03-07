@@ -1,4 +1,3 @@
-# %%
 from POSEIDON.core import create_star, create_planet
 from POSEIDON.constants import R_Sun, R_J, M_J
 
@@ -43,13 +42,14 @@ from POSEIDON.utility import read_high_res_data
 model_name = 'High-res retrieval'  # Model name used for plots, output files etc.
 
 bulk_species = ['H2', 'He']     # H2 + He comprises the bulk atmosphere
-param_species = ['H2O', 'CO']  # H2O, CO as in Brogi & Line
+# param_species = ['H2O', 'CO']  # H2O, CO as in Brogi & Line
+param_species = []  # H2O, CO as in Brogi & Line
 
 high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
 # Create the model object
 model = define_model(model_name, bulk_species, param_species,
-                    PT_profile = 'Madhu', high_res = 'sysrem',
-                    high_res_params = high_res_params, R_p_ref_enabled=False)
+                    PT_profile = 'Madhu', high_res = 'pca',
+                    high_res_params = high_res_params, R_p_ref_enabled=True)
 
 # Check the free parameters defining this model
 print("Free parameters: " + str(model['param_names']))
@@ -68,7 +68,7 @@ model['R_instrument'] = 60000
 
 data_dir = './reference_data/observations/WASP-77Ab'         # Special directory for this tutorial
 
-data = read_high_res_data(data_dir, high_res='sysrem')
+data = read_high_res_data(data_dir, high_res='pca')
 
 # %%
 from POSEIDON.core import set_priors
@@ -153,7 +153,7 @@ log_P_fine = np.arange(log_P_fine_min, (log_P_fine_max + log_P_fine_step),
 opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
 # %%
-from POSEIDON.retrieval import run_retrieval
+from POSEIDON.retrieval_pocomc import run_retrieval
 
 #***** Specify fixed atmospheric settings for retrieval *****#
 
@@ -172,46 +172,46 @@ P_ref = 1e-5   # Reference pressure (bar)
 #***** Run atmospheric retrieval *****#
 
 run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
-                spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
+                spectrum_type = 'emission', sampling_algorithm = 'pocoMC', 
                 N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.5)
 
 
-# %% [markdown]
-# Now that the retrieval is finished, you're eager and ready to see what WASP-999b's atmosphere is hiding. 
-# 
-# You first plot confidence intervals of the retrieved spectrum from this model compared to WASP-999b's observed transmission spectrum. You also generate a corner plot showing the retrieved probability distributions of the model parameters.
+# # %% [markdown]
+# # Now that the retrieval is finished, you're eager and ready to see what WASP-999b's atmosphere is hiding. 
+# # 
+# # You first plot confidence intervals of the retrieved spectrum from this model compared to WASP-999b's observed transmission spectrum. You also generate a corner plot showing the retrieved probability distributions of the model parameters.
 
-# %%
-from POSEIDON.utility import read_retrieved_PT, read_retrieved_log_X
-from POSEIDON.visuals import plot_PT, plot_PT_retrieved, plot_chem_retrieved
-from POSEIDON.corner import generate_cornerplot
+# # %%
+# from POSEIDON.utility import read_retrieved_PT, read_retrieved_log_X
+# from POSEIDON.visuals import plot_PT, plot_PT_retrieved, plot_chem_retrieved
+# from POSEIDON.corner import generate_cornerplot
 
-#***** Plot retrieved transmission spectrum *****#
+# #***** Plot retrieved transmission spectrum *****#
 
-# Read retrieved spectrum confidence regions
+# # Read retrieved spectrum confidence regions
 
-P, T_low2, T_low1, T_median, T_high1, T_high2 = read_retrieved_PT(planet_name, model_name, retrieval_name = None)
-PT_median = [(T_median, P)]
-PT_low2 = [(T_low2, P)]
-PT_low1 = [(T_low1, P)]
-PT_high1 = [(T_high1, P)]
-PT_high2 = [(T_high2, P)]
+# P, T_low2, T_low1, T_median, T_high1, T_high2 = read_retrieved_PT(planet_name, model_name, retrieval_name = None)
+# PT_median = [(T_median, P)]
+# PT_low2 = [(T_low2, P)]
+# PT_low1 = [(T_low1, P)]
+# PT_high1 = [(T_high1, P)]
+# PT_high2 = [(T_high2, P)]
 
-plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
-                    PT_high2, T_true = None, Atmosphere_dimension = 1, 
-                    TwoD_type = None, plt_label = None, show_profiles = [],
-                    PT_labels = [], colour_list = [], log_P_min = None,
-                    log_P_max = None, T_min = None, T_max = None,
-                    legend_location = 'lower left')
+# plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
+#                     PT_high2, T_true = None, Atmosphere_dimension = 1, 
+#                     TwoD_type = None, plt_label = None, show_profiles = [],
+#                     PT_labels = [], colour_list = [], log_P_min = None,
+#                     log_P_max = None, T_min = None, T_max = None,
+#                     legend_location = 'lower left')
 
-P, chemical_species, log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2 = read_retrieved_log_X(planet_name, model_name, retrieval_name = None)
-log_Xs_median = [(log_X_median, P)]
-log_Xs_low2 = [(log_X_low2, P)]
-log_Xs_low1 = [(log_X_low1, P)]
-log_Xs_high1 = [(log_X_high1, P)]
-log_Xs_high2 = [(log_X_high2, P)]
+# P, chemical_species, log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2 = read_retrieved_log_X(planet_name, model_name, retrieval_name = None)
+# log_Xs_median = [(log_X_median, P)]
+# log_Xs_low2 = [(log_X_low2, P)]
+# log_Xs_low1 = [(log_X_low1, P)]
+# log_Xs_high1 = [(log_X_high1, P)]
+# log_Xs_high2 = [(log_X_high2, P)]
 
-plot_chem_retrieved(planet_name, chemical_species, log_Xs_median, log_Xs_low2, log_Xs_low1, log_Xs_high1, log_Xs_high2)
-#***** Make corner plot *****#
+# plot_chem_retrieved(planet_name, chemical_species, log_Xs_median, log_Xs_low2, log_Xs_low1, log_Xs_high1, log_Xs_high2)
+# #***** Make corner plot *****#
 
-fig_corner = generate_cornerplot(planet, model)
+# fig_corner = generate_cornerplot(planet, model)
