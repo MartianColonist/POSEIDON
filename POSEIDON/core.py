@@ -439,11 +439,11 @@ def define_model(model_name, bulk_species, param_species,
             param_species = np.array(param_species)
             chemical_species = np.append(bulk_species, param_species)
 
-    # If param_species is not empty, make sure the species are compatible with Roger's grid
-    else:
-        if (np.any(~np.isin(param_species, supported_chem_eq_species)) == True):
-            raise Exception("A chemical species you selected is not supported " +
-                            "for equilibrium chemistry models.\n")
+        # If param_species is not empty, make sure the species are compatible with Roger's grid
+        else:
+            if (np.any(~np.isin(param_species, supported_chem_eq_species)) == True):
+                raise Exception("A chemical species you selected is not supported " +
+                                "for equilibrium chemistry models.\n")
 
     # Identify chemical species with active spectral features
     active_species = chemical_species[~np.isin(chemical_species, inactive_species)]
