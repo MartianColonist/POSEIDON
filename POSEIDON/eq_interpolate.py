@@ -3,12 +3,12 @@ import h5py
 import os
 from scipy.interpolate import RegularGridInterpolator
 
-print("Reading in database for equillrium chemistry model...")
+print("Reading in database for equilibrium chemistry model...")
 
 # Find the directory where the user downloaded the POSEIDON opacity data
 database_path = os.environ.get("POSEIDON_input_data")
 if database_path == None:
-    raise Exception("POSEIDON cannot locate the database for equillibrium chemistry.\n"
+    raise Exception("POSEIDON cannot locate the database for equilibrium chemistry.\n"
                     "Please set the 'POSEIDON_input_data' variable in " +
                     "your .bashrc or .bash_profile to point to the " +
                     "directory containing the POSEIDON opacity database.")
@@ -52,7 +52,7 @@ def get_supported_species():
 def read_logX(log_P, T, C_O, log_Met, species, return_dict=True):
     '''
     Inquire the traces of a list of chemical species at a given combination of C/O ratio, 
-    metallicity, and pressure-temperature profile, assuming equillibrium chemistry.
+    metallicity, and pressure-temperature profile, assuming equilibrium chemistry.
 
     Args:
         log_P (float or array of float): 
