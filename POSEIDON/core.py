@@ -28,7 +28,8 @@ from .constants import R_J, R_E
 from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
                      open_pymsg_grid
-from .supported_opac import supported_species, supported_cia, inactive_species
+from .supported_opac import supported_species, supported_cia, inactive_species, \
+                            supported_chem_eq_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
@@ -428,28 +429,21 @@ def define_model(model_name, bulk_species, param_species,
     param_species = np.array(param_species)
     chemical_species = np.append(bulk_species, param_species)
 
-    # For X_profile = chem_eq, if param_species = [] then we need a default of all species
-    if ((X_profile == 'chem_eq') and (param_species == [])):
-        param_species = ['H2O', 'CO2', 'OH', 'C2H2', 'H2S',
-                         'O2', 'O3', 'HCN', 'NH3', 'SiO', 'CH4', 'CO', 
-                         'CaH', 'CrH', 'FeH', 'K', 'MgH', 'N2', 
-                         'Na', 'NO', 'NO2', 'PH3', 'SH', 'SiH',
-                         'SO2', 'TiH', 'TiO', 'VO']
-        bulk_species = ['H2', 'He'] 
+    # For equilibrium models, if param_species = [] then default to all species
+    if (X_profile == 'chem_eq'):
+        if (param_species == []):
+            param_species = supported_chem_eq_species
+            bulk_species = ['H2', 'He'] 
 
-        bulk_species = np.array(bulk_species)
-        param_species = np.array(param_species)
-        chemical_species = np.append(bulk_species, param_species)
+            bulk_species = np.array(bulk_species)
+            param_species = np.array(param_species)
+            chemical_species = np.append(bulk_species, param_species)
 
     # If param_species is not empty, make sure the species are compatible with Roger's grid
     else:
-        supported_eq_species = ['H2O', 'CO2', 'OH', 'C2H2', 'H2S',
-                                'O2', 'O3', 'HCN', 'NH3', 'SiO', 'CH4', 'CO', 
-                                'CaH', 'CrH', 'FeH', 'K', 'MgH', 'N2', 
-                                'Na', 'NO', 'NO2', 'PH3', 'SH', 'SiH',
-                                'SO2', 'TiH', 'TiO', 'VO']
-        if (np.any(~np.isin(param_species, supported_eq_species)) == True):
-            raise Exception("A chemical species you selected is not supported for equilibrium chemistry.\n")
+        if (np.any(~np.isin(param_species, supported_chem_eq_species)) == True):
+            raise Exception("A chemical species you selected is not supported " +
+                            "for equilibrium chemistry models.\n")
 
     # Identify chemical species with active spectral features
     active_species = chemical_species[~np.isin(chemical_species, inactive_species)]

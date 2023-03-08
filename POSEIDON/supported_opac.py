@@ -16,6 +16,13 @@ supported_species = np.array(['AlH', 'AlO', 'BeH', 'C2H2', 'CH', 'CH4', 'CO',
                               'SiH', 'SiO', 'Ti', 'Ti+', 'TiH', 'TiO', 'VO',
                               'Mg', 'Mg+', 'Ca', 'Ca+', 'Mn'])
 
+# Chemical species with both a POSEIDON opacity and inclusion in the eq grid
+supported_chem_eq_species = np.array(['H2O', 'CO2', 'OH', 'C2H2', 'H2S', 'O2',
+                                      'O3', 'HCN', 'NH3', 'SiO', 'CH4', 'CO', 
+                                      'CaH', 'CrH', 'FeH', 'K', 'MgH', 'N2', 
+                                      'Na', 'NO', 'NO2', 'PH3', 'SH', 'SiH',
+                                      'SO2', 'TiH', 'TiO', 'VO'])
+
 # Collision-Induced Absorption (CIA) pairs included in opacity database
 supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2', 
                           'CO2-CO2', 'CO2-CH4', 'N2-N2', 'N2-H2O', 'O2-O2',
