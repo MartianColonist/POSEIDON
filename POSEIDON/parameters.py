@@ -264,218 +264,224 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         
         #***** Mixing ratio parameters *****#
 
-        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read']):
+        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'chem_eq']):
             raise Exception("Error: unsupported mixing ratio profile.")
             
-        # Create list of mixing ratio free parameters
-        for species in param_species:
+        if X_profile != 'chem_eq':
+        
+            # Create list of mixing ratio free parameters
+            for species in param_species:
             
-            # If all species have uniform abundances (1D X_i)
-            if (X_dim == 1):
+                # If all species have uniform abundances (1D X_i)
+                if (X_dim == 1):
                 
-                # Check if given species has an altitude profile or not
-                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                    if (X_profile == 'gradient'):  
-                        X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                    elif (X_profile == 'two-gradients'):  
-                        X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                    'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                else:
-                    X_params += ['log_' + species]
-                
-            # If some species vary either around or across the terminator (2D X_i)
-            elif (X_dim == 2):
-
-                # Parametrisation with separate morning / evening or day / night profiles
-                if (TwoD_param_scheme == 'absolute'):
-                
-                    # Species with variation only around the terminator (2D Evening-Morning X_i)
-                    if (TwoD_type == 'E-M'):                
-                        if ((species_EM_gradient != []) and (species in species_EM_gradient)):
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Morn_high', 
-                                                'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Even_mid',
-                                                'log_' + species + '_Morn_high', 'log_' + species + '_Morn_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species + '_Even', 'log_' + species + '_Morn']
-
-                        else:       # No Evening-Morning variation for this species
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species]
-                                
-                    # Species with variation only across the terminator (2D Day-Night X_i)
-                    if (TwoD_type == 'D-N'):                
-                        if ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Night_high', 
-                                                'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Day_mid',
-                                                'log_' + species + '_Night_high', 'log_' + species + '_Night_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species + '_Day', 'log_' + species + '_Night']
-
-                        else:       # No Day-Night variation for this species
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species]
-                                                    
-                # Difference parameter prescription from MacDonald & Lewis (2022)
-                if (TwoD_param_scheme == 'difference'):
-
-                    # Species with variation only around the terminator (2D Evening-Morning X_i)
-                    if (TwoD_type == 'E-M'):                
-                        if ((species_EM_gradient != []) and (species in species_EM_gradient)):
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high', 
-                                                'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
-                                                'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
-
-                        else:       # No Evening-Morning variation for this species
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species]
-
-                    # Species with variation only across the terminator (2D Day-Night X_i)
-                    if (TwoD_type == 'D-N'):                
-                        if ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_bar_DN_high', 'Delta_log_' + species + '_DN_high', 
-                                                'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
-                                                'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
-
-                        else:       # No Day-Night variation for this species
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species]
-
-                # Gradient parameter prescription from MacDonald & Lewis (2023)
-                if (TwoD_param_scheme == 'gradient'):
-
-                    # Species with variation only across the terminator (2D Day-Night X_i)
-                    if (TwoD_type == 'D-N'):                
-                        if ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_bar_DN_high', 'Grad_theta_log_' + species + '_high', 
-                                                'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
-                                                'Grad_theta_log_' + species + '_high', 'Grad_theta_log_' + species + '_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species + '_bar_DN', 'Grad_theta_log_' + species + '_DN']
-
-                        else:       # No Day-Night variation for this species
-                            if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                                if (X_profile == 'gradient'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
-                                elif (X_profile == 'two-gradients'):  
-                                    X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                                'log_P_' + species + '_mid', 'log_' + species + '_deep']      
-                            else:   # No altitude variation for this species
-                                X_params += ['log_' + species]
-            
-            # If some species vary both around and across the terminator (3D X_i)
-            elif (X_dim == 3):
-
-                # Species with 3D mixing ratio field
-                if ((species_EM_gradient != []) and (species in species_EM_gradient) and
-                    (species_DN_gradient != []) and (species in species_DN_gradient)):
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        if (X_profile == 'gradient'):  
-                            X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high',
-                                        'Delta_log_' + species + '_DN_high', 'log_' + species + '_deep']
-                        elif (X_profile == 'two-gradients'):  
-                            X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
-                                        'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
-                                        'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
-                                        'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                    else:   # No altitude variation for this species
-                        X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term',
-                                    'Delta_log_' + species + '_DN']
-                
-                # Species with only Evening-Morning variation
-                elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        if (X_profile == 'gradient'):  
-                            X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high', 
-                                        'log_' + species + '_deep']
-                        elif (X_profile == 'two-gradients'):  
-                            X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
-                                        'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
-                                        'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                    else:   # No altitude variation for this species
-                        X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
-
-                # Species with only Day-Night variation
-                elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        if (X_profile == 'gradient'):  
-                            X_params += ['log_' + species + '_bar_DN_high', 'Delta_log_' + species + '_DN_high', 
-                                        'log_' + species + '_deep']
-                        elif (X_profile == 'two-gradients'):  
-                            X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
-                                        'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
-                                        'log_P_' + species + '_mid', 'log_' + species + '_deep']
-                    else:   # No altitude variation for this species
-                        X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
-
-                # Species with 1D profile
-                else:
+                    # Check if given species has an altitude profile or not
                     if ((species_vert_gradient != []) and (species in species_vert_gradient)):
                         if (X_profile == 'gradient'):  
                             X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                         elif (X_profile == 'two-gradients'):  
                             X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                        'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']      
                     else:
                         X_params += ['log_' + species]
-                    
+                
+                # If some species vary either around or across the terminator (2D X_i)
+                elif (X_dim == 2):
+
+                    # Parametrisation with separate morning / evening or day / night profiles
+                    if (TwoD_param_scheme == 'absolute'):
+                
+                        # Species with variation only around the terminator (2D Evening-Morning X_i)
+                        if (TwoD_type == 'E-M'):                
+                            if ((species_EM_gradient != []) and (species in species_EM_gradient)):
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Morn_high', 
+                                                     'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Even_mid',
+                                                     'log_' + species + '_Morn_high', 'log_' + species + '_Morn_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species + '_Even', 'log_' + species + '_Morn']
+
+                            else:       # No Evening-Morning variation for this species
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species]
+                                
+                        # Species with variation only across the terminator (2D Day-Night X_i)
+                        if (TwoD_type == 'D-N'):                
+                            if ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Night_high', 
+                                                     'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Day_mid',
+                                                     'log_' + species + '_Night_high', 'log_' + species + '_Night_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species + '_Day', 'log_' + species + '_Night']
+
+                            else:       # No Day-Night variation for this species
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species]
+                                                    
+                    # Difference parameter prescription from MacDonald & Lewis (2022)
+                    if (TwoD_param_scheme == 'difference'):
+
+                        # Species with variation only around the terminator (2D Evening-Morning X_i)
+                        if (TwoD_type == 'E-M'):                
+                            if ((species_EM_gradient != []) and (species in species_EM_gradient)):
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high', 
+                                                     'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
+                                                     'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
+
+                            else:       # No Evening-Morning variation for this species
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species]
+
+                        # Species with variation only across the terminator (2D Day-Night X_i)
+                        if (TwoD_type == 'D-N'):                
+                            if ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_bar_DN_high', 'Delta_log_' + species + '_DN_high', 
+                                                     'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
+                                                     'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
+
+                            else:       # No Day-Night variation for this species
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species]
+
+                    # Gradient parameter prescription from MacDonald & Lewis (2023)
+                    if (TwoD_param_scheme == 'gradient'):
+
+                        # Species with variation only across the terminator (2D Day-Night X_i)
+                        if (TwoD_type == 'D-N'):                
+                            if ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_bar_DN_high', 'Grad_theta_log_' + species + '_high', 
+                                                     'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
+                                                     'Grad_theta_log_' + species + '_high', 'Grad_theta_log_' + species + '_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species + '_bar_DN', 'Grad_theta_log_' + species + '_DN']
+
+                            else:       # No Day-Night variation for this species
+                                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                                    if (X_profile == 'gradient'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                                    elif (X_profile == 'two-gradients'):  
+                                        X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                else:   # No altitude variation for this species
+                                    X_params += ['log_' + species]
+            
+                # If some species vary both around and across the terminator (3D X_i)
+                elif (X_dim == 3):
+
+                    # Species with 3D mixing ratio field
+                    if ((species_EM_gradient != []) and (species in species_EM_gradient) and
+                        (species_DN_gradient != []) and (species in species_DN_gradient)):
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            if (X_profile == 'gradient'):  
+                                X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high',
+                                             'Delta_log_' + species + '_DN_high', 'log_' + species + '_deep']
+                            elif (X_profile == 'two-gradients'):  
+                                X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
+                                             'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
+                                             'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
+                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                        else:   # No altitude variation for this species
+                            X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term',
+                                         'Delta_log_' + species + '_DN']
+                
+                    # Species with only Evening-Morning variation
+                    elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            if (X_profile == 'gradient'):  
+                                X_params += ['log_' + species + '_bar_term_high', 'Delta_log_' + species + '_term_high', 
+                                             'log_' + species + '_deep']
+                            elif (X_profile == 'two-gradients'):  
+                                X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
+                                             'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
+                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                        else:   # No altitude variation for this species
+                            X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
+
+                    # Species with only Day-Night variation
+                    elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            if (X_profile == 'gradient'):  
+                                X_params += ['log_' + species + '_bar_DN_high', 'Delta_log_' + species + '_DN_high', 
+                                             'log_' + species + '_deep']
+                            elif (X_profile == 'two-gradients'):  
+                                X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
+                                             'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
+                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                        else:   # No altitude variation for this species
+                            X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
+
+                    # Species with 1D profile
+                    else:
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            if (X_profile == 'gradient'):  
+                                X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
+                            elif (X_profile == 'two-gradients'):  
+                                X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
+                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                        else:
+                            X_params += ['log_' + species]
+    
+        # If the X profile is set to chem_eq, then we have only CO and log_met
+        else:
+            X_params = ['C_to_O','log_Met']
+                
         N_species_params = len(X_params)   # Store number of mixing ratio parameters
         params += X_params                 # Add mixing ratio parameter names to combined list
-                    
+                   
         #***** Cloud parameters *****#
-        
+    
         # Cloud-free models need no extra free parameters
         if (cloud_model == 'cloud-free'):
             cloud_params = []
@@ -699,7 +705,7 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             (Options: isotherm / gradient / two-gradients / Madhu / slope / file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / file_read).
+            (Options: isochem / gradient / two-gradients / file_read / chem_eq).
         TwoD_type (str):
             For 2D models, specifies whether the model considers day-night
             gradients or evening-morning gradients
@@ -745,6 +751,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
     elif (X_profile == 'isochem'):
         len_X = 4      # To cover multi-D cases, we use same log_X format as gradient profile
     elif (X_profile == 'file_read'):   # User provided file
+        len_X = 0
+    elif (X_profile == 'chem_eq'):   # Chemical equilibrium 
         len_X = 0
     
     # Store number of parametrised chemical species in model
@@ -874,393 +882,399 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             PT_state[7] = PT_in[7]              # T_deep
             
     #***** Process mixing ratio parameters into mixing ratio state array *****#
-                
-    # 1D atmosphere
-    if (X_dim == 1):
-
-        if (X_profile == 'isochem'):
-            log_X_state[:,0] = log_X_in     # Assign log_X_iso to log_X_bar_term_high
-            log_X_state[:,1] = 0.0          # No Evening-Morning gradient
-            log_X_state[:,2] = 0.0          # No Day-Night gradient
-            log_X_state[:,3] = log_X_in     # Assign log_X_iso to log_X_deep
-        
-        elif (X_profile == 'gradient'):  
-            
-            count = 0  # Counter to make tracking location in log_X_in easier
-            
-            # Loop over parametrised chemical species
-            for q, species in enumerate(param_species):
-                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                    log_X_state[q,0] = log_X_in[count]       # log_X_bar_term_high
-                    log_X_state[q,1] = 0.0                   # No Evening-Morning gradient
-                    log_X_state[q,2] = 0.0                   # No Day-Night gradient
-                    log_X_state[q,3] = log_X_in[count+1]     # log_X_deep
-                    count += 2
-                else:   # No altitude variation for this species
-                    log_X_state[q,0] = log_X_in[count]       # log_X_bar_term_high
-                    log_X_state[q,1] = 0.0                   # No Evening-Morning gradient
-                    log_X_state[q,2] = 0.0                   # No Day-Night gradient
-                    log_X_state[q,3] = log_X_in[count]       # log_X_deep
-                    count += 1
-        
-        elif (X_profile == 'two-gradients'):  
-            
-            count = 0  # Counter to make tracking location in log_X_in easier
-            
-            # Loop over parametrised chemical species
-            for q, species in enumerate(param_species):
-                if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                    log_X_state[q,0] = log_X_in[count]       # log_X_bar_term_high
-                    log_X_state[q,1] = log_X_in[count+1]     # log_X_bar_term_mid
-                    log_X_state[q,2] = 0.0                   # No Evening-Morning gradient
-                    log_X_state[q,3] = 0.0                   # No Evening-Morning gradient
-                    log_X_state[q,4] = 0.0                   # No Day-Night gradient
-                    log_X_state[q,5] = 0.0                   # No Day-Night gradient
-                    log_X_state[q,6] = log_X_in[count+2]     # log_P_X_mid
-                    log_X_state[q,7] = log_X_in[count+3]     # log_X_deep
-                    count += 4
-                else:   # No altitude variation for this species
-                    log_X_state[q,0] = log_X_in[count]       # log_X_bar_term_high
-                    log_X_state[q,1] = log_X_in[count]       # log_X_bar_term_mid
-                    log_X_state[q,2] = 0.0                   # No Evening-Morning gradient
-                    log_X_state[q,3] = 0.0                   # No Evening-Morning gradient
-                    log_X_state[q,4] = 0.0                   # No Day-Night gradient
-                    log_X_state[q,5] = 0.0                   # No Day-Night gradient
-                    log_X_state[q,6] = -2.0                  # Fix P (X_mid) to 10 mbar for isochem
-                    log_X_state[q,7] = log_X_in[count]       # log_X_deep
-                    count += 1
-
-    # 2D atmosphere
-    elif (X_dim == 2):
-
-        count = 0  # Counter to make tracking location in log_X_in easier
     
-        # Loop over parametrised chemical species
-        for q, species in enumerate(param_species):
+    if X_profile != 'chem_eq':
 
-            # Convert input parameters into average terminator mixing ratio and difference
-            if (X_profile == 'isochem'):
-                if (((species_EM_gradient != []) and (species in species_EM_gradient)) or 
-                    ((species_DN_gradient != []) and (species in species_DN_gradient))):
-                    if (TwoD_param_scheme == 'absolute'):
-                        log_X_bar = 0.5*(log_X_in[count] + log_X_in[count+1])
-                        Delta_log_X = (log_X_in[count] - log_X_in[count+1])
-                    elif (TwoD_param_scheme == 'difference'):
-                        log_X_bar = log_X_in[count]
-                        Delta_log_X = log_X_in[count+1]
-                    elif (TwoD_param_scheme == 'gradient'):
-                        log_X_bar = log_X_in[count]
-                        if (TwoD_type == 'D-N'):
-                            Delta_log_X = -1.0 * (log_X_in[count+1] * beta)
-                        elif (TwoD_type == 'E-M'):
-                            Delta_log_X = -1.0 * (log_X_in[count+1] * alpha)
-                    count += 2
-                else:
-                    log_X_bar = log_X_in[count]
-                    Delta_log_X = 0.0
-                    count += 1
-                log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-
-            # Convert input parameters into average terminator mixing ratio and difference
-            elif (X_profile == 'gradient'):
-                if (((species_EM_gradient != []) and (species in species_EM_gradient)) or 
-                    ((species_DN_gradient != []) and (species in species_DN_gradient))):
-                    if (TwoD_param_scheme == 'absolute'):
-                        log_X_bar = 0.5*(log_X_in[count] + log_X_in[count+1])
-                        Delta_log_X = (log_X_in[count] - log_X_in[count+1])
-                    elif (TwoD_param_scheme == 'difference'):
-                        log_X_bar = log_X_in[count]
-                        Delta_log_X = log_X_in[count+1]
-                    elif (TwoD_param_scheme == 'gradient'):
-                        log_X_bar = log_X_in[count]
-                        if (TwoD_type == 'D-N'):
-                            Delta_log_X = -1.0 * (log_X_in[count+1] * beta)
-                        elif (TwoD_type == 'E-M'):
-                            Delta_log_X = -1.0 * (log_X_in[count+1] * alpha)
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_deep = log_X_in[count+2]
-                        count += 3
-                    else:
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 2
-                else:
-                    log_X_bar = log_X_in[count]
-                    Delta_log_X = 0.0
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_deep = log_X_in[count+1]
-                        count += 2
-                    else:
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 1
-
-            # Convert input parameters into average terminator mixing ratios and differences (high and mid atmosphere)
-            elif (X_profile == 'two-gradients'):
-                if (((species_EM_gradient != []) and (species in species_EM_gradient)) or 
-                    ((species_DN_gradient != []) and (species in species_DN_gradient))):
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        if (TwoD_param_scheme == 'absolute'):
-                            log_X_bar_high = 0.5*(log_X_in[count] + log_X_in[count+1])
-                            log_X_bar_mid = 0.5*(log_X_in[count+2] + log_X_in[count+3])
-                            Delta_log_X_high = (log_X_in[count] - log_X_in[count+1])
-                            Delta_log_X_mid = (log_X_in[count+2] - log_X_in[count+3])
-                        elif (TwoD_param_scheme == 'difference'):
-                            log_X_bar_high = log_X_in[count]
-                            log_X_bar_mid = log_X_in[count+1]
-                            Delta_log_X_high = log_X_in[count+2]
-                            Delta_log_X_mid = log_X_in[count+3]
-                        elif (TwoD_param_scheme == 'gradient'):
-                            log_X_bar_high = log_X_in[count]
-                            log_X_bar_mid = log_X_in[count+1]
-                            if (TwoD_type == 'D-N'):
-                                Delta_log_X_high = -1.0 * (log_X_in[count+2] * beta)
-                                Delta_log_X_mid = -1.0 * (log_X_in[count+3] * beta)
-                            elif (TwoD_type == 'E-M'):
-                                Delta_log_X_high = -1.0 * (log_X_in[count+2] * alpha)
-                                Delta_log_X_mid = -1.0 * (log_X_in[count+3] * alpha)
-                        log_P_X_mid = log_X_in[count+4]
-                        log_X_deep = log_X_in[count+5]
-                        count += 6
-                    else:
-                        if (TwoD_param_scheme == 'absolute'):
-                            log_X_bar_high = 0.5*(log_X_in[count] + log_X_in[count+1])
-                            log_X_bar_mid = log_X_bar_high
-                            Delta_log_X_high = (log_X_in[count] - log_X_in[count+1])
-                            Delta_log_X_mid = Delta_log_X_high
-                        elif (TwoD_param_scheme == 'difference'):
-                            log_X_bar_high = log_X_in[count]
-                            log_X_bar_mid = log_X_bar_high
-                            Delta_log_X_high = log_X_in[count+1]
-                            Delta_log_X_mid = Delta_log_X_high
-                        elif (TwoD_param_scheme == 'gradient'):
-                            if (TwoD_type == 'D-N'):
-                                Delta_log_X_high = -1.0 * (log_X_in[count+1] * beta)
-                                Delta_log_X_mid = Delta_log_X_high
-                            elif (TwoD_type == 'E-M'):
-                                Delta_log_X_high = -1.0 * (log_X_in[count+1] * alpha)
-                                Delta_log_X_mid = Delta_log_X_high
-                        log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 2
-                else:
-                    log_X_bar_high = log_X_in[count]
-                    Delta_log_X_high = 0.0
-                    Delta_log_X_mid = 0.0
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_bar_mid = log_X_in[count+1]
-                        log_P_X_mid = log_X_in[count+2]
-                        log_X_deep = log_X_in[count+3]
-                        count += 4
-                    else:
-                        log_X_bar_mid = log_X_bar_high
-                        log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 1
-
-            # For Evening-Morning gradients
-            if (TwoD_type == 'E-M'):
-                if (X_profile in ['isochem', 'gradient']):
-                    log_X_state[q,0] = log_X_bar
-                    log_X_state[q,1] = Delta_log_X
-                    log_X_state[q,2] = 0.0                  # No Day-Night gradient
-                    log_X_state[q,3] = log_X_deep
-                elif (X_profile == 'two-gradients'):
-                    log_X_state[q,0] = log_X_bar_high
-                    log_X_state[q,1] = log_X_bar_mid
-                    log_X_state[q,2] = Delta_log_X_high
-                    log_X_state[q,3] = Delta_log_X_mid
-                    log_X_state[q,4] = 0.0                  # No Day-Night gradients
-                    log_X_state[q,5] = 0.0                  # No Day-Night gradients
-                    log_X_state[q,6] = log_P_X_mid
-                    log_X_state[q,7] = log_X_deep
-
-            # For Day-Night gradients
-            if (TwoD_type == 'D-N'):
-                if (X_profile in ['isochem', 'gradient']):
-                    log_X_state[q,0] = log_X_bar
-                    log_X_state[q,1] = 0.0                  # No Evening-Morning gradient
-                    log_X_state[q,2] = Delta_log_X
-                    log_X_state[q,3] = log_X_deep
-                elif (X_profile == 'two-gradients'):
-                    log_X_state[q,0] = log_X_bar_high
-                    log_X_state[q,1] = log_X_bar_mid
-                    log_X_state[q,2] = 0.0                   # No Evening-Morning gradients
-                    log_X_state[q,3] = 0.0                   # No Evening-Morning gradients
-                    log_X_state[q,4] = Delta_log_X_high
-                    log_X_state[q,5] = Delta_log_X_mid
-                    log_X_state[q,6] = log_P_X_mid
-                    log_X_state[q,7] = log_X_deep
-
-    # 3D atmosphere
-    elif (X_dim == 3):
-
-        count = 0  # Counter to make tracking location in log_X_in easier
-    
-        # Loop over parametrised chemical species
-        for q, species in enumerate(param_species):
+        # 1D atmosphere
+        if (X_dim == 1):
 
             if (X_profile == 'isochem'):
-                if (((species_EM_gradient != []) and (species in species_EM_gradient)) and
-                    ((species_DN_gradient != []) and (species in species_DN_gradient))):
-                    log_X_bar_term = log_X_in[count]
-                    Delta_log_X_term = log_X_in[count+1]
-                    Delta_log_X_DN = log_X_in[count+2]
-                    count += 3
-                elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
-                    log_X_bar_term = log_X_in[count]
-                    Delta_log_X_term = log_X_in[count+1]
-                    Delta_log_X_DN = 0.0
-                    count += 2
-                elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                    log_X_bar_term = log_X_in[count]
-                    Delta_log_X_term = 0.0
-                    Delta_log_X_DN = log_X_in[count+1]
-                    count += 2
-                else:
-                    log_X_bar_term = log_X_in[count]
-                    Delta_log_X_term = 0.0
-                    Delta_log_X_DN = 0.0
-                    count += 1
-                log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-
-            elif (X_profile == 'gradient'):
-                if (((species_EM_gradient != []) and (species in species_EM_gradient)) and
-                    ((species_DN_gradient != []) and (species in species_DN_gradient))):
-                    log_X_bar_term = log_X_in[count]
-                    Delta_log_X_term = log_X_in[count+1]
-                    Delta_log_X_DN = log_X_in[count+2]
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_deep = log_X_in[count+3]
-                        count += 4
-                    else:
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 3
-                elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
-                    log_X_bar_term = log_X_in[count]
-                    Delta_log_X_term = log_X_in[count+1]
-                    Delta_log_X_DN = 0.0
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_deep = log_X_in[count+2]
-                        count += 3
-                    else:
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 2
-                elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                    log_X_bar_term = log_X_in[count]
-                    Delta_log_X_term = 0.0
-                    Delta_log_X_DN = log_X_in[count+1]
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_deep = log_X_in[count+2]
-                        count += 3
-                    else:
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 2     
-                else:
-                    log_X_bar_term = log_X_in[count]
-                    Delta_log_X_term = 0.0
-                    Delta_log_X_DN = 0.0
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_deep = log_X_in[count+1]
-                        count += 2
-                    else:
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 1
+                log_X_state[:,0] = log_X_in     # Assign log_X_iso to log_X_bar_term_high
+                log_X_state[:,1] = 0.0          # No Evening-Morning gradient
+                log_X_state[:,2] = 0.0          # No Day-Night gradient
+                log_X_state[:,3] = log_X_in     # Assign log_X_iso to log_X_deep
+            
+            elif (X_profile == 'gradient'):  
                 
-            elif (X_profile == 'two-gradients'):
-                if (((species_EM_gradient != []) and (species in species_EM_gradient)) and
-                    ((species_DN_gradient != []) and (species in species_DN_gradient))):
+                count = 0  # Counter to make tracking location in log_X_in easier
+                
+                # Loop over parametrised chemical species
+                for q, species in enumerate(param_species):
                     if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_bar_term_high = log_X_in[count]
-                        log_X_bar_term_mid = log_X_in[count+1]
-                        Delta_log_X_term_high = log_X_in[count+2]
-                        Delta_log_X_term_mid = log_X_in[count+3]
-                        Delta_log_X_DN_high = log_X_in[count+4]
-                        Delta_log_X_DN_mid = log_X_in[count+5]
-                        log_P_X_mid = log_X_in[count+6]
-                        log_X_deep = log_X_in[count+7]
-                        count += 8
+                        log_X_state[q,0] = log_X_in[count]       # log_X_bar_term_high
+                        log_X_state[q,1] = 0.0                   # No Evening-Morning gradient
+                        log_X_state[q,2] = 0.0                   # No Day-Night gradient
+                        log_X_state[q,3] = log_X_in[count+1]     # log_X_deep
+                        count += 2
+                    else:   # No altitude variation for this species
+                        log_X_state[q,0] = log_X_in[count]       # log_X_bar_term_high
+                        log_X_state[q,1] = 0.0                   # No Evening-Morning gradient
+                        log_X_state[q,2] = 0.0                   # No Day-Night gradient
+                        log_X_state[q,3] = log_X_in[count]       # log_X_deep
+                        count += 1
+            
+            elif (X_profile == 'two-gradients'):  
+                
+                count = 0  # Counter to make tracking location in log_X_in easier
+                
+                # Loop over parametrised chemical species
+                for q, species in enumerate(param_species):
+                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                        log_X_state[q,0] = log_X_in[count]       # log_X_bar_term_high
+                        log_X_state[q,1] = log_X_in[count+1]     # log_X_bar_term_mid
+                        log_X_state[q,2] = 0.0                   # No Evening-Morning gradient
+                        log_X_state[q,3] = 0.0                   # No Evening-Morning gradient
+                        log_X_state[q,4] = 0.0                   # No Day-Night gradient
+                        log_X_state[q,5] = 0.0                   # No Day-Night gradient
+                        log_X_state[q,6] = log_X_in[count+2]     # log_P_X_mid
+                        log_X_state[q,7] = log_X_in[count+3]     # log_X_deep
+                        count += 4
+                    else:   # No altitude variation for this species
+                        log_X_state[q,0] = log_X_in[count]       # log_X_bar_term_high
+                        log_X_state[q,1] = log_X_in[count]       # log_X_bar_term_mid
+                        log_X_state[q,2] = 0.0                   # No Evening-Morning gradient
+                        log_X_state[q,3] = 0.0                   # No Evening-Morning gradient
+                        log_X_state[q,4] = 0.0                   # No Day-Night gradient
+                        log_X_state[q,5] = 0.0                   # No Day-Night gradient
+                        log_X_state[q,6] = -2.0                  # Fix P (X_mid) to 10 mbar for isochem
+                        log_X_state[q,7] = log_X_in[count]       # log_X_deep
+                        count += 1
+
+        # 2D atmosphere
+        elif (X_dim == 2):
+
+            count = 0  # Counter to make tracking location in log_X_in easier
+        
+            # Loop over parametrised chemical species
+            for q, species in enumerate(param_species):
+
+                # Convert input parameters into average terminator mixing ratio and difference
+                if (X_profile == 'isochem'):
+                    if (((species_EM_gradient != []) and (species in species_EM_gradient)) or 
+                        ((species_DN_gradient != []) and (species in species_DN_gradient))):
+                        if (TwoD_param_scheme == 'absolute'):
+                            log_X_bar = 0.5*(log_X_in[count] + log_X_in[count+1])
+                            Delta_log_X = (log_X_in[count] - log_X_in[count+1])
+                        elif (TwoD_param_scheme == 'difference'):
+                            log_X_bar = log_X_in[count]
+                            Delta_log_X = log_X_in[count+1]
+                        elif (TwoD_param_scheme == 'gradient'):
+                            log_X_bar = log_X_in[count]
+                            if (TwoD_type == 'D-N'):
+                                Delta_log_X = -1.0 * (log_X_in[count+1] * beta)
+                            elif (TwoD_type == 'E-M'):
+                                Delta_log_X = -1.0 * (log_X_in[count+1] * alpha)
+                        count += 2
                     else:
-                        log_X_bar_term_high = log_X_in[count]
-                        log_X_bar_term_mid = log_X_bar_term_high
-                        Delta_log_X_term_high = log_X_in[count+1]
-                        Delta_log_X_term_mid = Delta_log_X_term_high
-                        Delta_log_X_DN_high = log_X_in[count+2]
-                        Delta_log_X_DN_mid = Delta_log_X_DN_high
-                        log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                        log_X_bar = log_X_in[count]
+                        Delta_log_X = 0.0
+                        count += 1
+                    log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+
+                # Convert input parameters into average terminator mixing ratio and difference
+                elif (X_profile == 'gradient'):
+                    if (((species_EM_gradient != []) and (species in species_EM_gradient)) or 
+                        ((species_DN_gradient != []) and (species in species_DN_gradient))):
+                        if (TwoD_param_scheme == 'absolute'):
+                            log_X_bar = 0.5*(log_X_in[count] + log_X_in[count+1])
+                            Delta_log_X = (log_X_in[count] - log_X_in[count+1])
+                        elif (TwoD_param_scheme == 'difference'):
+                            log_X_bar = log_X_in[count]
+                            Delta_log_X = log_X_in[count+1]
+                        elif (TwoD_param_scheme == 'gradient'):
+                            log_X_bar = log_X_in[count]
+                            if (TwoD_type == 'D-N'):
+                                Delta_log_X = -1.0 * (log_X_in[count+1] * beta)
+                            elif (TwoD_type == 'E-M'):
+                                Delta_log_X = -1.0 * (log_X_in[count+1] * alpha)
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_deep = log_X_in[count+2]
+                            count += 3
+                        else:
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 2
+                    else:
+                        log_X_bar = log_X_in[count]
+                        Delta_log_X = 0.0
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_deep = log_X_in[count+1]
+                            count += 2
+                        else:
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 1
+
+                # Convert input parameters into average terminator mixing ratios and differences (high and mid atmosphere)
+                elif (X_profile == 'two-gradients'):
+                    if (((species_EM_gradient != []) and (species in species_EM_gradient)) or 
+                        ((species_DN_gradient != []) and (species in species_DN_gradient))):
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            if (TwoD_param_scheme == 'absolute'):
+                                log_X_bar_high = 0.5*(log_X_in[count] + log_X_in[count+1])
+                                log_X_bar_mid = 0.5*(log_X_in[count+2] + log_X_in[count+3])
+                                Delta_log_X_high = (log_X_in[count] - log_X_in[count+1])
+                                Delta_log_X_mid = (log_X_in[count+2] - log_X_in[count+3])
+                            elif (TwoD_param_scheme == 'difference'):
+                                log_X_bar_high = log_X_in[count]
+                                log_X_bar_mid = log_X_in[count+1]
+                                Delta_log_X_high = log_X_in[count+2]
+                                Delta_log_X_mid = log_X_in[count+3]
+                            elif (TwoD_param_scheme == 'gradient'):
+                                log_X_bar_high = log_X_in[count]
+                                log_X_bar_mid = log_X_in[count+1]
+                                if (TwoD_type == 'D-N'):
+                                    Delta_log_X_high = -1.0 * (log_X_in[count+2] * beta)
+                                    Delta_log_X_mid = -1.0 * (log_X_in[count+3] * beta)
+                                elif (TwoD_type == 'E-M'):
+                                    Delta_log_X_high = -1.0 * (log_X_in[count+2] * alpha)
+                                    Delta_log_X_mid = -1.0 * (log_X_in[count+3] * alpha)
+                            log_P_X_mid = log_X_in[count+4]
+                            log_X_deep = log_X_in[count+5]
+                            count += 6
+                        else:
+                            if (TwoD_param_scheme == 'absolute'):
+                                log_X_bar_high = 0.5*(log_X_in[count] + log_X_in[count+1])
+                                log_X_bar_mid = log_X_bar_high
+                                Delta_log_X_high = (log_X_in[count] - log_X_in[count+1])
+                                Delta_log_X_mid = Delta_log_X_high
+                            elif (TwoD_param_scheme == 'difference'):
+                                log_X_bar_high = log_X_in[count]
+                                log_X_bar_mid = log_X_bar_high
+                                Delta_log_X_high = log_X_in[count+1]
+                                Delta_log_X_mid = Delta_log_X_high
+                            elif (TwoD_param_scheme == 'gradient'):
+                                if (TwoD_type == 'D-N'):
+                                    Delta_log_X_high = -1.0 * (log_X_in[count+1] * beta)
+                                    Delta_log_X_mid = Delta_log_X_high
+                                elif (TwoD_type == 'E-M'):
+                                    Delta_log_X_high = -1.0 * (log_X_in[count+1] * alpha)
+                                    Delta_log_X_mid = Delta_log_X_high
+                            log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 2
+                    else:
+                        log_X_bar_high = log_X_in[count]
+                        Delta_log_X_high = 0.0
+                        Delta_log_X_mid = 0.0
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_bar_mid = log_X_in[count+1]
+                            log_P_X_mid = log_X_in[count+2]
+                            log_X_deep = log_X_in[count+3]
+                            count += 4
+                        else:
+                            log_X_bar_mid = log_X_bar_high
+                            log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 1
+
+                # For Evening-Morning gradients
+                if (TwoD_type == 'E-M'):
+                    if (X_profile in ['isochem', 'gradient']):
+                        log_X_state[q,0] = log_X_bar
+                        log_X_state[q,1] = Delta_log_X
+                        log_X_state[q,2] = 0.0                  # No Day-Night gradient
+                        log_X_state[q,3] = log_X_deep
+                    elif (X_profile == 'two-gradients'):
+                        log_X_state[q,0] = log_X_bar_high
+                        log_X_state[q,1] = log_X_bar_mid
+                        log_X_state[q,2] = Delta_log_X_high
+                        log_X_state[q,3] = Delta_log_X_mid
+                        log_X_state[q,4] = 0.0                  # No Day-Night gradients
+                        log_X_state[q,5] = 0.0                  # No Day-Night gradients
+                        log_X_state[q,6] = log_P_X_mid
+                        log_X_state[q,7] = log_X_deep
+
+                # For Day-Night gradients
+                if (TwoD_type == 'D-N'):
+                    if (X_profile in ['isochem', 'gradient']):
+                        log_X_state[q,0] = log_X_bar
+                        log_X_state[q,1] = 0.0                  # No Evening-Morning gradient
+                        log_X_state[q,2] = Delta_log_X
+                        log_X_state[q,3] = log_X_deep
+                    elif (X_profile == 'two-gradients'):
+                        log_X_state[q,0] = log_X_bar_high
+                        log_X_state[q,1] = log_X_bar_mid
+                        log_X_state[q,2] = 0.0                   # No Evening-Morning gradients
+                        log_X_state[q,3] = 0.0                   # No Evening-Morning gradients
+                        log_X_state[q,4] = Delta_log_X_high
+                        log_X_state[q,5] = Delta_log_X_mid
+                        log_X_state[q,6] = log_P_X_mid
+                        log_X_state[q,7] = log_X_deep
+
+        # 3D atmosphere
+        elif (X_dim == 3):
+
+            count = 0  # Counter to make tracking location in log_X_in easier
+        
+            # Loop over parametrised chemical species
+            for q, species in enumerate(param_species):
+
+                if (X_profile == 'isochem'):
+                    if (((species_EM_gradient != []) and (species in species_EM_gradient)) and
+                        ((species_DN_gradient != []) and (species in species_DN_gradient))):
+                        log_X_bar_term = log_X_in[count]
+                        Delta_log_X_term = log_X_in[count+1]
+                        Delta_log_X_DN = log_X_in[count+2]
                         count += 3
-                elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_bar_term_high = log_X_in[count]
-                        log_X_bar_term_mid = log_X_in[count+1]
-                        Delta_log_X_term_high = log_X_in[count+2]
-                        Delta_log_X_term_mid = log_X_in[count+3]
-                        Delta_log_X_DN_high = 0.0
-                        Delta_log_X_DN_high = 0.0
-                        log_P_X_mid = log_X_in[count+4]
-                        log_X_deep = log_X_in[count+5]
-                        count += 6
+                    elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
+                        log_X_bar_term = log_X_in[count]
+                        Delta_log_X_term = log_X_in[count+1]
+                        Delta_log_X_DN = 0.0
+                        count += 2
+                    elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                        log_X_bar_term = log_X_in[count]
+                        Delta_log_X_term = 0.0
+                        Delta_log_X_DN = log_X_in[count+1]
+                        count += 2
+                    else:
+                        log_X_bar_term = log_X_in[count]
+                        Delta_log_X_term = 0.0
+                        Delta_log_X_DN = 0.0
+                        count += 1
+                    log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+
+                elif (X_profile == 'gradient'):
+                    if (((species_EM_gradient != []) and (species in species_EM_gradient)) and
+                        ((species_DN_gradient != []) and (species in species_DN_gradient))):
+                        log_X_bar_term = log_X_in[count]
+                        Delta_log_X_term = log_X_in[count+1]
+                        Delta_log_X_DN = log_X_in[count+2]
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_deep = log_X_in[count+3]
+                            count += 4
+                        else:
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 3
+                    elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
+                        log_X_bar_term = log_X_in[count]
+                        Delta_log_X_term = log_X_in[count+1]
+                        Delta_log_X_DN = 0.0
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_deep = log_X_in[count+2]
+                            count += 3
+                        else:
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 2
+                    elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                        log_X_bar_term = log_X_in[count]
+                        Delta_log_X_term = 0.0
+                        Delta_log_X_DN = log_X_in[count+1]
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_deep = log_X_in[count+2]
+                            count += 3
+                        else:
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 2     
+                    else:
+                        log_X_bar_term = log_X_in[count]
+                        Delta_log_X_term = 0.0
+                        Delta_log_X_DN = 0.0
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_deep = log_X_in[count+1]
+                            count += 2
+                        else:
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 1
+                    
+                elif (X_profile == 'two-gradients'):
+                    if (((species_EM_gradient != []) and (species in species_EM_gradient)) and
+                        ((species_DN_gradient != []) and (species in species_DN_gradient))):
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_bar_term_high = log_X_in[count]
+                            log_X_bar_term_mid = log_X_in[count+1]
+                            Delta_log_X_term_high = log_X_in[count+2]
+                            Delta_log_X_term_mid = log_X_in[count+3]
+                            Delta_log_X_DN_high = log_X_in[count+4]
+                            Delta_log_X_DN_mid = log_X_in[count+5]
+                            log_P_X_mid = log_X_in[count+6]
+                            log_X_deep = log_X_in[count+7]
+                            count += 8
+                        else:
+                            log_X_bar_term_high = log_X_in[count]
+                            log_X_bar_term_mid = log_X_bar_term_high
+                            Delta_log_X_term_high = log_X_in[count+1]
+                            Delta_log_X_term_mid = Delta_log_X_term_high
+                            Delta_log_X_DN_high = log_X_in[count+2]
+                            Delta_log_X_DN_mid = Delta_log_X_DN_high
+                            log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 3
+                    elif ((species_EM_gradient != []) and (species in species_EM_gradient)):
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_bar_term_high = log_X_in[count]
+                            log_X_bar_term_mid = log_X_in[count+1]
+                            Delta_log_X_term_high = log_X_in[count+2]
+                            Delta_log_X_term_mid = log_X_in[count+3]
+                            Delta_log_X_DN_high = 0.0
+                            Delta_log_X_DN_high = 0.0
+                            log_P_X_mid = log_X_in[count+4]
+                            log_X_deep = log_X_in[count+5]
+                            count += 6
+                        else:
+                            log_X_bar_term_high = log_X_in[count]
+                            log_X_bar_term_mid = log_X_bar_term_high
+                            Delta_log_X_term_high = log_X_in[count+1]
+                            Delta_log_X_term_mid = Delta_log_X_term_high
+                            Delta_log_X_DN_high = 0.0
+                            Delta_log_X_DN_mid = 0.0
+                            log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 2
+                    elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_bar_term_high = log_X_in[count]
+                            log_X_bar_term_mid = log_X_in[count+1]
+                            Delta_log_X_term_high = 0.0
+                            Delta_log_X_term_mid = 0.0
+                            Delta_log_X_DN_high = log_X_in[count+2]
+                            Delta_log_X_DN_high = log_X_in[count+3]
+                            log_P_X_mid = log_X_in[count+4]
+                            log_X_deep = log_X_in[count+5]
+                            count += 6
+                        else:
+                            log_X_bar_term_high = log_X_in[count]
+                            log_X_bar_term_mid = log_X_bar_term_high
+                            Delta_log_X_term_high = 0.0
+                            Delta_log_X_term_mid = 0.0
+                            Delta_log_X_DN_high = log_X_in[count+1]
+                            Delta_log_X_DN_mid = Delta_log_X_term_high
+                            log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 2
                     else:
                         log_X_bar_term_high = log_X_in[count]
-                        log_X_bar_term_mid = log_X_bar_term_high
-                        Delta_log_X_term_high = log_X_in[count+1]
-                        Delta_log_X_term_mid = Delta_log_X_term_high
+                        Delta_log_X_term_high = 0.0
+                        Delta_log_X_term_mid = 0.0
                         Delta_log_X_DN_high = 0.0
                         Delta_log_X_DN_mid = 0.0
-                        log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 2
-                elif ((species_DN_gradient != []) and (species in species_DN_gradient)):
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_bar_term_high = log_X_in[count]
-                        log_X_bar_term_mid = log_X_in[count+1]
-                        Delta_log_X_term_high = 0.0
-                        Delta_log_X_term_mid = 0.0
-                        Delta_log_X_DN_high = log_X_in[count+2]
-                        Delta_log_X_DN_high = log_X_in[count+3]
-                        log_P_X_mid = log_X_in[count+4]
-                        log_X_deep = log_X_in[count+5]
-                        count += 6
-                    else:
-                        log_X_bar_term_high = log_X_in[count]
-                        log_X_bar_term_mid = log_X_bar_term_high
-                        Delta_log_X_term_high = 0.0
-                        Delta_log_X_term_mid = 0.0
-                        Delta_log_X_DN_high = log_X_in[count+1]
-                        Delta_log_X_DN_mid = Delta_log_X_term_high
-                        log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 2
-                else:
-                    log_X_bar_term_high = log_X_in[count]
-                    Delta_log_X_term_high = 0.0
-                    Delta_log_X_term_mid = 0.0
-                    Delta_log_X_DN_high = 0.0
-                    Delta_log_X_DN_mid = 0.0
-                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
-                        log_X_bar_term_mid = log_X_in[count+1]
-                        log_P_X_mid = log_X_in[count+2]
-                        log_X_deep = log_X_in[count+3]
-                        count += 4
-                    else:
-                        log_X_bar_term_mid = log_X_bar_term_high
-                        log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
-                        log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
-                        count += 1
+                        if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                            log_X_bar_term_mid = log_X_in[count+1]
+                            log_P_X_mid = log_X_in[count+2]
+                            log_X_deep = log_X_in[count+3]
+                            count += 4
+                        else:
+                            log_X_bar_term_mid = log_X_bar_term_high
+                            log_P_X_mid = -2.0     # Fix P (X_mid) to 10 mbar for isochem
+                            log_X_deep = -50.0     # Dummy value for log_X_deep, since not used in this case
+                            count += 1
 
-            if (X_profile in ['isochem', 'gradient']):
-                log_X_state[q,0] = log_X_bar_term
-                log_X_state[q,1] = Delta_log_X_term
-                log_X_state[q,2] = Delta_log_X_DN
-                log_X_state[q,3] = log_X_deep
-            elif (X_profile == 'two-gradients'):
-                log_X_state[q,0] = log_X_bar_term_high
-                log_X_state[q,1] = log_X_bar_term_mid
-                log_X_state[q,2] = Delta_log_X_term_high
-                log_X_state[q,3] = Delta_log_X_term_mid
-                log_X_state[q,4] = Delta_log_X_DN_high
-                log_X_state[q,5] = Delta_log_X_DN_mid
-                log_X_state[q,6] = log_P_X_mid
-                log_X_state[q,7] = log_X_deep
+                if (X_profile in ['isochem', 'gradient']):
+                    log_X_state[q,0] = log_X_bar_term
+                    log_X_state[q,1] = Delta_log_X_term
+                    log_X_state[q,2] = Delta_log_X_DN
+                    log_X_state[q,3] = log_X_deep
+                elif (X_profile == 'two-gradients'):
+                    log_X_state[q,0] = log_X_bar_term_high
+                    log_X_state[q,1] = log_X_bar_term_mid
+                    log_X_state[q,2] = Delta_log_X_term_high
+                    log_X_state[q,3] = Delta_log_X_term_mid
+                    log_X_state[q,4] = Delta_log_X_DN_high
+                    log_X_state[q,5] = Delta_log_X_DN_mid
+                    log_X_state[q,6] = log_P_X_mid
+                    log_X_state[q,7] = log_X_deep
+
+    # If it is chem_eq, then we need the 
+    else:
+        log_X_state = log_X_in
                 
     return PT_state, log_X_state
 
