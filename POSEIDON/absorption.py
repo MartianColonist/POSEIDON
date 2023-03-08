@@ -2126,15 +2126,15 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                     # For each collisionally-induced absorption (CIA) pair
                     for q in range(N_cia_pairs): 
 
-                        # For total, keep on the bulk species no matter what and keep on any layer except the one to ignore
-                        if q in bulk_cia_indices or i != layer_to_ignore:
+                        if (i == layer_to_ignore):
+                            n_n_cia = 0
+
+                        else:
+
                             n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
                             n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
                             n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
 
-                        else:
-                            n_n_cia = 0
-                        
                         # For each wavelength
                         for l in range(N_wl):
                             

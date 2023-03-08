@@ -1383,7 +1383,7 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
     d = planet['system_distance']
 
     if (star is not None):
-        R_s = star['stellar_radius']
+        R_s = star['R_s']
 
     # Check that a distance is provided if user wants a direct spectrum
     if (d is None) and ('direct' in spectrum_type):
@@ -1865,7 +1865,7 @@ def compute_spectrum_p(planet, star, model, atmosphere, opac, wl,
     d = planet['system_distance']
 
     if (star is not None):
-        R_s = star['stellar_radius']
+        R_s = star['R_s']
 
     # Check that a distance is provided if user wants a direct spectrum
     if (d is None) and ('direct' in spectrum_type):
