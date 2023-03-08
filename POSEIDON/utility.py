@@ -222,6 +222,10 @@ def closest_index(value, grid_start, grid_end, N_grid):
 
     '''
 
+    # Single value grids only have one element, so return 0
+    if (N_grid == 1):
+        return 0
+
     # Set to lower boundary
     if (value < grid_start): 
         return 0
@@ -888,8 +892,11 @@ def round_sig_figs(value, sig_figs):
     ''' Round a quantity to a specified number of significant figures.
     
     '''
-    
-    return round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
+
+    if (value == 0.0):
+        return 0.0
+    else:
+        return round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
     
 
 def confidence_intervals(sample_draws, array, length, integer=False):
@@ -1040,8 +1047,8 @@ def generate_latex_param_names(param_names):
                          'Phi', 'Chi', 'Psi', 'Omega']
     
     # Define key parameters used in subscripts of parameter names
-    phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 'Night', 
-               'cloud', 'rel', '0', 'het', 'phot', 'p']
+    phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 
+               'Night', 'cloud', 'rel', '0', 'het', 'phot', 'fac', 'spot', 'surf', 'p']
     
     # Initialise output array
     latex_names = []

@@ -26,7 +26,8 @@ from scipy.constants import parsec
 
 from .constants import R_J, R_E
 from .utility import create_directories, write_spectrum, read_data
-from .stellar import planck_lambda, load_stellar_pysynphot
+from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
+                     open_pymsg_grid
 from .supported_opac import supported_species, supported_cia, inactive_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
@@ -58,9 +59,12 @@ import warnings
 warnings.filterwarnings("ignore") # Suppress numba performance warning
 
 
-def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, 
-                stellar_spectrum = False, stellar_grid = 'blackbody',
-                heterogeneous = False, f_het = 0.0, T_het = None):
+def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
+                stellar_grid = 'blackbody', stellar_contam = None, 
+                f_het = None, T_het = None, log_g_het = None, 
+                f_spot = None, f_fac = None, T_spot = None,
+                T_fac = None, log_g_spot = None, log_g_fac = None,
+                wl = [], interp_backend = 'pysynphot'):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
 
@@ -80,17 +84,42 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
             Stellar metallicity [log10(Fe/H_star / Fe/H_solar)].
         T_eff_error (float):
             A priori 1-sigma error on stellar effective temperature (K).
-        stellar_spectrum (bool):
-            If True, compute a stellar spectrum.
-        grid (string):
-            Stellar model grid to use if 'stellar_spectrum' is True.
-            (Options: blackbody / cbk04 / phoenix).
-        heterogeneous (bool):
-            if True, add contributions from unocculted spots/faculae.
+        T_eff_error (float):
+            A priori 1-sigma error on stellar log g (log10(cm/s^2)).
+        stellar_grid (string):
+            Chosen stellar model grid
+            (Options: blackbody / cbk04 [for pysynphot] / phoenix [for pysynphot] /
+                      Goettingen-HiRes [for pymsg]).
+        stellar_contam (str):
+            Chosen prescription for modelling unocculted stellar contamination
+            (Options: one_spot / one_spot_free_log_g / two_spots).
         f_het (float):
-            Fraction of stellar photosphere covered by spots/faculae.
+            For the 'one_spot' model, the fraction of stellar photosphere 
+            covered by either spots or faculae.
         T_het (float):
-            Temperature of the heterogeneity (K). 
+            For the 'one_spot' model, the temperature of the heterogeneity (K).
+        log_g_het (float):
+            For the 'one_spot' model, the log g of the heterogeneity (log10(cm/s^2)).
+        f_spot (float):
+            For the 'two_spots' model, the fraction of stellar photosphere 
+            covered by spots.
+        f_fac (float):
+            For the 'two_spots' model, the fraction of stellar photosphere 
+            covered by faculae.
+        T_spot (float):
+            For the 'two_spots' model, the temperature of the spot (K).
+        T_fac (float):
+            For the 'two_spots' model, the temperature of the facula (K).
+        log_g_spot (float):
+            For the 'two_spots' model, the log g of the spot (log10(cm/s^2)).
+        log_g_fac (float):
+            For the 'two_spots' model, the log g of the facula (log10(cm/s^2)).
+        wl (np.array of float):
+            Wavelength grid on which to output the stellar spectra (μm). If not
+            provided, a fiducial grid from 0.2 to 5.4 μm will be used.
+        interp_backend (str):
+            Stellar grid interpolation package for POSEIDON to use.
+            (Options: pysynphot / pymsg).
     
     Returns:
         star (dict):
@@ -98,59 +127,127 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0,
 
     '''
 
-    # Compute stellar spectrum
-    if (stellar_spectrum == True):
+    # If the user did not specify a wavelength grid for the stellar spectrum 
+    if (wl == []):
 
-        if (stellar_grid == 'blackbody'):
+        # Create fiducial wavelength grid
+        wl_min = 0.2  # μm
+        wl_max = 5.4  # μm
+        R = 20000     # Spectral resolution (wl / dwl)
 
-            # Create fiducial wavelength grid for blackbody spectrum
-            wl_min = 0.2
-            wl_max = 20.0
-            R = 10000
+        wl_star = wl_grid_constant_R(wl_min, wl_max, R)
 
-            # This grid should be broad enough for most applications
-            wl_star = wl_grid_constant_R(wl_min, wl_max, R)
+    else:
+        wl_star = wl
 
-            # Evaluate Planck function at stellar effective temperature
-            I_phot = planck_lambda(T_eff, wl_star)
+    # Compute stellar spectrum (not used for uncontaminated transmission spectra)
+    if (stellar_grid == 'blackbody'):
 
-        else:
+        if (stellar_contam != None):
+            raise Exception("Error: cannot use black bodies for a model " +
+                            "with heterogeneities, please specify a stellar grid.")
 
-            # Obtain photosphere spectrum by interpolating stellar grids
-            wl_star, I_phot = load_stellar_pysynphot(T_eff, Met, log_g, 
-                                                     stellar_grid)
+        # Evaluate Planck function at stellar effective temperature
+        I_phot = planck_lambda(T_eff, wl_star)
 
-        # For uniform stellar surfaces
-        if (heterogeneous == False):
-
-            # No heterogeneity spectrum to return 
-            I_het = np.zeros(len(wl_star))   
-
-            # Surface flux is pi * intensity
-            F_star = np.pi * I_phot
-
-        # For non-uniform stellar surfaces
-        elif (heterogeneous == True):
-
-            # Obtain heterogeneity spectrum by interpolation
-            _, I_het = load_stellar_pysynphot(T_het, Met, log_g, stellar_grid)
-
-            # Evaluate total stellar flux as a weighted sum of each region 
-            F_star = np.pi * ((f_het * I_het) + (1.0 - f_het) * I_phot)
-
-    # If user doesn't require a stellar spectrum
     else:
 
-        F_star = None
-        wl_star = None
-        I_phot = None
+        if (interp_backend not in ['pysynphot', 'pymsg']):
+            raise Exception("Error: supported stellar grid interpolater backends " +
+                            "are 'pysynphot' or 'pymsg'.")
+
+        # Obtain photosphere spectrum from pysynphot
+        if (interp_backend == 'pysynphot'):
+
+            # Load stellar model from Pysynphot
+            I_phot = load_stellar_pysynphot(wl_star, T_eff, Met, log_g, stellar_grid)
+
+        # Obtain photosphere spectrum from pymsg
+        elif (interp_backend == 'pymsg'):
+
+            # Open pymsg grid file
+            specgrid = open_pymsg_grid(stellar_grid)
+
+            # Interpolate stellar grid to compute photosphere intensity
+            I_phot = load_stellar_pymsg(wl_star, specgrid, T_eff, Met, log_g)
+
+    # For uniform stellar surfaces
+    if (stellar_contam == None): 
+
+        # Surface flux is pi * intensity
+        F_star = np.pi * I_phot
+
+        # No heterogeneity spectra to return 
+        I_het = None
+        I_spot = None
+        I_fac = None 
+
+    # For non-uniform stellar surfaces
+    elif ('one_spot' in stellar_contam):
+
+        # If log g not specified for the heterogeneities, set to photosphere
+        if (log_g_het == None):
+            log_g_het = log_g
+
+        # Individual spot and faculae intensities not needed for one spot model
+        I_spot = None
+        I_fac = None
+
+        # Obtain heterogeneity spectrum
+        if (interp_backend == 'pysynphot'):
+            I_het = load_stellar_pysynphot(wl_star, T_het, Met, log_g_het, stellar_grid)
+        elif (interp_backend == 'pymsg'):
+            I_het = load_stellar_pymsg(wl_star, specgrid, T_het, Met, log_g_het)
+
+        # Evaluate total stellar flux as a weighted sum of each region 
+        F_star = np.pi * ((f_het * I_het) + (1.0 - f_het) * I_phot)
+
+    # For non-uniform stellar surfaces
+    elif ('two_spots' in stellar_contam):
+
+        # If log g not specified for the heterogeneities, set to photosphere
+        if (log_g_spot == None):
+            log_g_spot = log_g
+        if (log_g_fac == None):
+            log_g_fac = log_g
+
+        # Check provided temperatures are physical
+        if (T_spot > T_fac):
+            raise Exception("Error: spots must be cooler than faculae")
+        if (T_spot > T_eff):
+            raise Exception("Error: spots must be cooler than the photosphere")
+        if (T_fac < T_eff):
+            raise Exception("Error: faculae must be hotter than the photosphere")
+
+        # Single heterogeneity intensity not needed for two spot model
         I_het = None
 
+        # Obtain spot and facula spectra
+        if (interp_backend == 'pysynphot'):
+            I_spot = load_stellar_pysynphot(wl_star, T_spot, Met, log_g_spot, stellar_grid)
+            I_fac = load_stellar_pysynphot(wl_star, T_fac, Met, log_g_fac, stellar_grid)
+        elif (interp_backend == 'pymsg'):
+            I_spot = load_stellar_pymsg(wl_star, specgrid, T_spot, Met, log_g_spot)
+            I_fac = load_stellar_pymsg(wl_star, specgrid, T_fac, Met, log_g_fac)
+
+        # Evaluate total stellar flux as a weighted sum of each region 
+        F_star = np.pi * ((f_spot * I_spot) + (f_fac * I_fac) + 
+                            (1.0 - (f_spot + f_fac)) * I_phot)
+        
+    else:
+        raise Exception("Error: unsupported heterogeneity type. Supported " +
+                        "types are: None, 'one_spot', 'two_spots'")
+
     # Package stellar properties
-    star = {'stellar_radius': R_s, 'stellar_T_eff': T_eff, 
-            'stellar_T_eff_error': T_eff_error, 'stellar_metallicity': Met, 
-            'stellar_log_g': log_g, 'F_star': F_star, 'wl_star': wl_star,
-            'f_het': f_het, 'T_het': T_het, 'I_phot': I_phot, 'I_het': I_het
+    star = {'R_s': R_s, 'T_eff': T_eff, 'T_eff_error': T_eff_error,
+            'log_g_error': log_g_error, 'Met': Met, 'log_g': log_g, 
+            'F_star': F_star, 'wl_star': wl_star,
+            'f_het': f_het, 'T_het': T_het, 'log_g_het': log_g_het, 
+            'f_spot': f_het, 'T_spot': T_het, 'log_g_spot': log_g_het,
+            'f_fac': f_het, 'T_fac': T_het, 'log_g_fac': log_g_het,
+            'I_phot': I_phot, 'I_het': I_het, 'I_spot': I_spot, 'I_fac': I_fac,
+            'stellar_grid': stellar_grid, 'stellar_interp_backend': interp_backend,
+            'stellar_contam': stellar_contam,
            }
 
     return star
@@ -224,13 +321,14 @@ def define_model(model_name, bulk_species, param_species,
                  object_type = 'transiting', PT_profile = 'isotherm', 
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
                  cloud_type = 'deck', opaque_Iceberg = False,
-                 gravity_setting = 'fixed', stellar_contam = 'No', 
-                 offsets_applied = 'No', error_inflation = 'No', 
+                 gravity_setting = 'fixed', stellar_contam = None, 
+                 offsets_applied = None, error_inflation = None, 
                  radius_unit = 'R_J', distance_unit = 'pc',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
-                 surface = False):
+                 surface = False, sharp_DN_transition = False,
+                 reference_parameter = 'R_p_ref', disable_atmosphere = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -247,7 +345,8 @@ def define_model(model_name, bulk_species, param_species,
             (Options: transiting / directly_imaged).
         PT_profile (str):
             Chosen P-T profile parametrisation 
-            (Options: isotherm / gradient / two-gradients / Madhu / slope / file_read).
+            (Options: isotherm / gradient / two-gradients / Madhu / slope /
+             file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
             (Options: isochem / gradient / two-gradients / file_read / chem_eq).
@@ -264,13 +363,14 @@ def define_model(model_name, bulk_species, param_species,
             (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
-            (Options: No / one-spot).
+            (Options: one_spot / one_spot_free_log_g / two_spots / 
+             two_spots_free_log_g).
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
-            (Options: No / single-dataset).
+            (Options: single_dataset).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
-            (Options: No / Line15).
+            (Options: Line15).
         radius_unit (str)
             Planet radius unit used to report retrieval results
             (Options: R_J / R_E)
@@ -307,9 +407,13 @@ def define_model(model_name, bulk_species, param_species,
             List of chemical species with a vertical mixing ratio gradient.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
-        chemistry_model (str):
-            User choice of free chemical abundances or equilibrium chem
-            (Options: free / equilibrium)
+        sharp_DN_transition (bool):
+            For 2D / 3D models, sets day-night transition width (beta) to 0.
+        reference_parameter (str):
+            For retrievals, whether R_p_ref or P_ref will be a free parameter
+            (Options: R_p_ref / P_ref).
+        disable_atmosphere (bool):
+            If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
 
     Returns:
         model (dict):
@@ -395,7 +499,8 @@ def define_model(model_name, bulk_species, param_species,
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
-                                      opaque_Iceberg, surface)
+                                      opaque_Iceberg, surface, sharp_DN_transition,
+                                      reference_parameter, disable_atmosphere)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -422,6 +527,9 @@ def define_model(model_name, bulk_species, param_species,
              'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
              'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
+             'sharp_DN_transition': sharp_DN_transition,
+             'reference_parameter': reference_parameter,
+             'disable_atmosphere': disable_atmosphere,
             }
 
     return model
@@ -663,6 +771,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     cloud_model = model['cloud_model']
     cloud_dim = model['cloud_dim']
     gravity_setting = model['gravity_setting']
+    sharp_DN_transition = model['sharp_DN_transition']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -695,10 +804,15 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
         raise Exception("No user-provided composition profile. Did you read in a file?")
     if ((cloud_params == []) and (cloud_model != 'cloud-free')):
         raise Exception("Cloud parameters must be provided for cloudy models.")
-    if ((geometry_params == []) and (Atmosphere_dimension > 1)):
-        raise Exception("Geometry parameters must be provided for 2D or 3D models.")
+    if ((geometry_params == []) and (Atmosphere_dimension > 1) and
+        (sharp_DN_transition == False)):
+            raise Exception("Geometry parameters must be provided for 2D or 3D models.")
 
     #***** Establish model geometry *****# 
+
+    # If user specifies a sharp day-night transition, use no transition slices
+    if (sharp_DN_transition == True):
+        N_slice_DN = 0
 
     # Check that the number of azimuthal and zenith slices are even
     if ((N_slice_EM % 2 != 0) or (N_slice_DN % 2 != 0)):
@@ -710,14 +824,13 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                                             N_slice_EM, N_slice_DN)
 
     # Unpack terminator opening angles (for 2D or 3D models)
-    alpha, beta = unpack_geometry_params(param_names, geometry_params,
-                                         N_params_cum)
+    alpha, beta = unpack_geometry_params(param_names, geometry_params, N_params_cum)
 
     # Compute discretised angular grids for multidimensional atmospheres
     phi, theta, phi_edge, \
     theta_edge, dphi, dtheta = angular_grids(Atmosphere_dimension, TwoD_type, 
                                              N_slice_EM, N_slice_DN, 
-                                             alpha, beta)
+                                             alpha, beta, sharp_DN_transition)
 
     #***** Generate state arrays for the PT and mixing ratio profiles *****#
 
@@ -896,7 +1009,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     d = planet['system_distance']
 
     if (star is not None):
-        R_s = star['stellar_radius']
+        R_s = star['R_s']
 
     # Check that a distance is provided if user wants a direct spectrum
     if (d is None) and ('direct' in spectrum_type):
@@ -1153,11 +1266,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             F_s = star['F_star']
             wl_s = star['wl_star']
 
+            if (wl_s != wl):
+                raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                "not match wavelength grid of planet spectrum. " +
+                                "Did you forget to provide 'wl' to create_star?")
+
             # Interpolate stellar spectrum onto planet spectrum wavelength grid
-            F_s_interp = spectres(wl, wl_s, F_s)
+        #    F_s_interp = spectres(wl, wl_s, F_s)
 
             # Convert stellar surface flux to observed flux at Earth
-            F_s_obs = (R_s / d)**2 * F_s_interp
+            F_s_obs = (R_s / d)**2 * F_s
 
             # Convert planet surface flux to observed flux at Earth
             F_p_obs = (R_p_eff / d)**2 * F_p
@@ -2226,11 +2344,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     T_eq = planet['planet_T_eq']
 
     if (star != None):
-        T_s = star['stellar_T_eff']
-        err_T_s = star['stellar_T_eff_error']
+        T_phot = star['T_eff']
+        err_T_phot = star['T_eff_error']
+        log_g_phot = star['log_g']
+        err_log_g_phot = star['log_g_error']
     else:
-        T_s = 0.0
-        err_T_s = 0.0
+        T_phot = None
+        err_T_phot = None
+        log_g_phot = None
+        err_log_g_phot = None
 
     # Unpack data error bars (not error inflation parameter prior)
     err_data = data['err_data']    
@@ -2259,15 +2381,22 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'a1': [0.02, 2.00], 'a2': [0.02, 2.00], 
                              'log_P1': [-6, 2], 'log_P2': [-6, 2], 
                              'log_P3': [-2, 2], 'log_P_mid': [-5, 1], 
-                             'log_P_surf': [-4, 1], 'log_X': [-12, -1], 
+                             'log_P_surf': [-4, 1], 'log_P_ref': [-6, 2],
+                             'log_X': [-12, -1], 
                              'Delta_log_X': [-10, 10], 'Grad_log_X': [-1, 1], 
                              'log_a': [-4, 8], 'gamma': [-20, 2], 
                              'log_P_cloud': [-6, 2], 'phi_cloud': [0, 1],
                              'log_kappa_cloud': [-10, -4], 'f_cloud': [0, 1],
                              'phi_0': [-180, 180], 'theta_0': [-35, 35],
                              'alpha': [0.1, 180], 'beta': [0.1, 70],
-                             'f_het': [0.0, 0.5], 'T_het': [0.6*T_s, 1.2*T_s],
-                             'T_phot': [T_s, err_T_s], 
+                             'f_het': [0.0, 0.5], 'T_het': [0.6*T_phot, 1.2*T_phot],
+                             'f_spot': [0.0, 0.5], 'T_spot': [0.6*T_phot, T_phot],
+                             'f_fac': [0.0, 0.5], 'T_fac': [T_phot, 1.2*T_phot],
+                             'log_g_het': [log_g_phot-0.5, log_g_phot+0.5],
+                             'log_g_spot': [log_g_phot-0.5, log_g_phot+0.5],
+                             'log_g_fac': [log_g_phot-0.5, log_g_phot+0.5],
+                             'T_phot': [T_phot, err_T_phot], 
+                             'log_g_phot': [log_g_phot, err_log_g_phot], 
                              'delta_rel': [-1.0e-3, 1.0e-3],
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
                                        np.log10(100.0*np.max(err_data**2))],
@@ -2402,8 +2531,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 else:
                     prior_types[parameter] = 'uniform'
 
-            # Only the stellar T_phot defaults to a Gaussian prior
-            elif (parameter == 'T_phot'):
+            # The stellar T_phot and log_g_phot default to a Gaussian prior
+            elif (parameter in ['T_phot', 'log_g_phot']):
                 prior_types[parameter] = 'gaussian'
             
             # All other parameters default to uniform priors
@@ -2461,6 +2590,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         # Check that centred-log ratio is being employed in a 1D model
         if ((prior_types[parameter] == 'CLR') and (Atmosphere_dimension != 1)):
             raise Exception("CLR prior only supported for 1D models.")
+        
+        if ((parameter in ['T_spot', 'T_fac', 'log_g_spot', 'log_g_fac']) and 
+            (prior_types[parameter] == 'gaussian')):
+            raise Exception("Gaussian priors can only be used on T_phot or log_g_phot.")
 
         # Check mixing ratio parameter have valid settings
         if (parameter in X_param_names):
