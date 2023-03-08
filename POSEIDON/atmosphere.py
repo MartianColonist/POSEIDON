@@ -1481,7 +1481,6 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
 
     else:   # Alternatively, compute 4D mixing ratio array
 
-
         # For isochemical or gradient profiles
         if (X_profile in ['isochem', 'gradient']):
             X_param = compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, 
@@ -1496,6 +1495,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
 
         # Read in equilibrium mixing ratio profiles 
         elif (X_profile == 'chem_eq'):
+
             # Unpack C/O and Metallicity 
             C_to_O = log_X_state[0]
             log_Met = log_X_state[1]
@@ -1504,8 +1504,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                 X_input = read_logX(np.log10(P), T[0], C_to_O, log_Met, param_species, return_dict=False)
                 X_input = 10**X_input
                 X_param = X_input.reshape((len(param_species), len(P), 1, 1))
-            if PT_profile == 'gradient':
-                T_grid = T.T[0][0]
+            elif PT_profile == 'gradient':
+                T_grid = T.T[0][0]    # tea.tea is the most British code ever
                 X_input = read_logX(np.log10(P), T_grid, C_to_O, log_Met, param_species, return_dict=False)
                 X_input = 10**X_input
                 X_param = X_input.reshape((len(param_species), len(P), 1, 1))
