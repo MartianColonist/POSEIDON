@@ -3745,3 +3745,107 @@ def plot_histograms(planet_name, models, plot_parameters,
         fig.savefig(file_name, bbox_inches='tight', dpi=800)
 
     return fig
+
+
+def plot_spectra_c(spectrum, spectrum_contribution_list, bulk,
+                    wl, planet, colour_list = [], 
+                    save_fig = False, plot_full_res = False, plt_label = ''):
+
+    from POSEIDON.utility import plot_collection
+    from POSEIDON.visuals import plot_spectra
+
+    #if bulk is true, it first prints out the bulk molecules then goes to the active molecules 
+    if bulk == True:
+
+        # Initialize plot collection
+        spectra = plot_collection(spectrum, wl, collection = [])
+        spectra_labels = ['Full Spectrum']
+
+        spectra = plot_collection(spectrum_contribution_list[0][1], wl, collection=spectra) 
+        spectra_contribution_title = spectrum_contribution_list[0][0] + ' + CIA and Rayleigh'
+        spectra_labels.append(spectra_contribution_title)
+
+
+        fig = plot_spectra(spectra, planet, R_to_bin = 100, plt_label = plt_label,
+                            colour_list = colour_list[:len(spectra)],
+                            spectra_labels = spectra_labels,
+                            save_fig = False,
+                            plot_full_res = False)
+
+
+        # Redefine the spectrum contribution list without bulk species to make next part work 
+        spectrum_contribution_list = spectrum_contribution_list[1:]
+
+    # This is so that it only plots two at a tim
+
+    for i in range(int(len(spectrum_contribution_list)/2)):
+        
+
+        if i != int(len(spectrum_contribution_list))/2:
+
+            # Initialize plot collection
+            spectra = plot_collection(spectrum, wl, collection = [])
+            spectra_labels = ['Full Spectrum']
+
+            # Loop over the contribution functions 
+            for j in [int(i*2),int((i*2)+1)]:
+
+                spectra = plot_collection(spectrum_contribution_list[j][1], wl, collection=spectra) 
+                spectra_contribution_title = spectrum_contribution_list[j][0] + ' + CIA and Rayleigh'
+                spectra_labels.append(spectra_contribution_title)
+
+
+            fig = plot_spectra(spectra, planet, R_to_bin = 100, plt_label = plt_label,
+                            colour_list = colour_list[:len(spectra)],
+                            spectra_labels = spectra_labels,
+                            save_fig = False,
+                            plot_full_res = False)
+
+        # The final step might plot 2 or 3 depending on how the top was divisble by 2 
+        else:
+            
+            # Initialize plot collection
+            spectra = plot_collection(spectrum, wl, collection = [])
+            spectra_labels = ['Full Spectrum']
+
+            # Loop over the contribution functions 
+
+            # Does either 2 or 3 indices
+            if len(spectrum_contribution_list[int(i*2):]) == 3:
+                j_array = [int(i*2),int(i*2)+1,int(i*2)+2]
+            else:
+                j_array = [int(i*2),int((i*2)+1)]
+
+            for j in j_array:
+
+                spectra = plot_collection(spectrum_contribution_list[j][1], wl, collection=spectra) 
+                spectra_contribution_title = spectrum_contribution_list[j][0] + ' + CIA and Rayleigh'
+                spectra_labels.append(spectra_contribution_title)
+
+
+            fig = plot_spectra(spectra, planet, R_to_bin = 100, plt_label = plt_label,
+                            colour_list = colour_list[:len(spectra)],
+                            spectra_labels = spectra_labels,
+                            save_fig = False,
+                            plot_full_res = False)
+
+
+    # If odd 
+    if len(spectrum_contribution_list)%2!= 0:
+
+        # Initialize plot collection
+        spectra = plot_collection(spectrum, wl, collection = [])
+        spectra_labels = ['Full Spectrum']
+
+        # Loop over the contribution functions 
+        spectra = plot_collection(spectrum_contribution_list[-1][1], wl, collection=spectra) 
+        spectra_contribution_title = spectrum_contribution_list[-1][0] + ' + CIA and Rayleigh'
+        spectra_labels.append(spectra_contribution_title)
+
+
+        fig = plot_spectra(spectra, planet, R_to_bin = 100, plt_label = plt_label,
+                        colour_list = colour_list[:len(spectra)],
+                        spectra_labels = spectra_labels,
+                        save_fig = False,
+                        plot_full_res = False)
+

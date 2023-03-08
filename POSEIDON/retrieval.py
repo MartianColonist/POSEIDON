@@ -328,7 +328,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         for i, parameter in enumerate(param_names):
 
             # First deal with all parameters besides mixing ratios 
-            if (parameter not in X_params):
+            if (parameter not in X_params) or (parameter in ['C_to_O', 'log_Met']):
 
                 # Uniform priors
                 if (prior_types[parameter] == 'uniform'):
