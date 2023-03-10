@@ -1971,7 +1971,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            binned_colour_list = [], text_annotations = [],
                            annotation_pos = [],
                            wl_axis = 'log', figure_shape = 'default',
-                           legend_location = 'upper right', legend_box = False):
+                           legend_location = 'upper right', legend_box = False,
+                           ax = None, save_fig = True):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -2042,6 +2043,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             'lower left', 'lower right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
+        ax (matplotlib axis object, optional):
+            Matplotlib axis provided externally.
+        save_fig (bool, optional):
+            If True, saves a PDF in the POSEIDON output folder.
 
     Returns:
         fig (matplotlib figure object):
@@ -2255,8 +2260,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
-    
-    ax1 = plt.gca()
+
+    if (ax == None):
+        ax1 = plt.gca()
+    else:
+        ax1 = ax
     
     # Set x axis to be linear or logarithmic
     ax1.set_xscale(wl_axis)
@@ -2409,12 +2417,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     plt.tight_layout()
 
     # Write figure to file
-    if (plt_label == None):
-        file_name = output_dir + planet_name + '_retrieved_spectra.pdf'
-    else:
-        file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_spectra.pdf'
+    if (save_fig == True):
+        if (plt_label == None):
+            file_name = output_dir + planet_name + '_retrieved_spectra.pdf'
+        else:
+            file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_spectra.pdf'
 
-    plt.savefig(file_name, bbox_inches='tight')
+        plt.savefig(file_name, bbox_inches = 'tight')
 
     return fig
 
@@ -3584,16 +3593,16 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             fmt = "{{0:{0}}}".format(title_fmt).format
             title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
             title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
-          #  title = "{0} = {1}".format(param_label, title)
+            title = "{0} = {1}".format(param_label, title)
             title = "{0}".format(title)
-            ax.set_title(title, fontsize = 14)
+            ax.set_title(title, fontsize = 12)
 
         # Add x-axis label
-        ax.set_xlabel(param_label, fontsize = 16)
+     #   ax.set_xlabel(param_label, fontsize = 16)
        
         # For first column add y label
-        if (column_idx == 0):
-            ax.set_ylabel(r'Probability density (normalized)', fontsize = 9, labelpad = 10)
+     #   if (column_idx == 0):
+     #       ax.set_ylabel(r'Probability density (normalized)', fontsize = 9, labelpad = 10)
 
      
 
