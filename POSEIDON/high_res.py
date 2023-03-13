@@ -88,6 +88,7 @@ def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_sca
     RV_p = V_sys + V_bary + K_p * np.sin(2 * np.pi * (Phi + dPhi))  # V_sys is an additive term around zero   
     dl_p = RV_p * 1e3 / constants.c # delta lambda, for shifting
     # RV_s = 0 # Velocity of the star is very small compared to planet's velocity and it's already be corrected
+    K_s = 0.3229*1.
     RV_s = (V_sys + V_bary - K_s * np.sin(2 * np.pi * Phi)) * 0
     dl_s = RV_s * 1e3 / constants.c # delta lambda, for shifting
     
@@ -125,7 +126,6 @@ def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_sca
 
 def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b):
 
-    
     Nord, Nphi, Npix = residuals.shape
 
     N = Nord * Nphi * Npix
@@ -136,22 +136,23 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary
     
     # Initializing loglikelihood
     loglikelihood = 0
-
+    CCF_sum = 0
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
     for i in range(Nord):
         wl_slice = wl_grid[i]                    # Cropped wavelengths
         models_shifted = np.zeros((Nphi, Npix))  # "shifted" model spectra array at each phase
         for j in range(Nphi):
-            wl_shifted_p = wl_slice * (1.0 - dl_p[j])
-            Fp = interpolate.splev(wl_shifted_p, cs_p, der=0)
-            t_model = pickle.load(open('./reference_data/observations/WASP-121b/tmodel1.pic','rb')) # Load transit model
-            models_shifted[j] = ((1-t_model[i]))/np.max(1-t_model)*(-Fp) + 1
+            # wl_shifted_p = wl_slice / (1.0 + dl_p[j])
+            wl_shifted_p = wl_slice * np.sqrt((1.0 - dl_p[j]) / (1 + dl_p[j]))
+            Fp = interpolate.splev(wl_shifted_p, cs_p, der=0) # linear interpolation, einsum
+            t_model = pickle.load(open('/Users/Victini/Desktop/POSEIDON_high_res/POSEIDON/reference_data/observations/WASP-121b/tmodel1.pic','rb')) # Load transit model
+            models_shifted[j] = ((1-t_model[j]))/np.max(1-t_model)*(-Fp) + 1 
 
         models_shifted = (models_shifted.T / np.median(models_shifted, axis=1)).T # divide by the median over wavelength to mimic blaze correction
 
         B = Bs[i]
         model_filtered = models_shifted - B @ models_shifted # filter the model
-
+        
         if b:
             for j in range(Nphi):
                 m = model_filtered[j] / uncertainties[i, j]
@@ -160,14 +161,15 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary
                 f2 = f.dot(f)
                 CCF = f.dot(m)
                 loglikelihood -= 0.5 * (m2 + f2 - 2.0*CCF) / (b ** 2)
-        elif uncertainties:
+                CCF_sum += CCF
+        elif uncertainties != None:
             for j in range(Nphi):
                 m = model_filtered[j]/ uncertainties[i, j]
                 m2 = m.dot(m)
                 f = residuals[i, j] / uncertainties[i, j]
                 f2 = f.dot(f)
                 CCF = f.dot(m)
-                loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix)
+                loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix) # nulled b
         else:
             for j in range(Nphi):
                 m = model_filtered[j]
@@ -175,7 +177,7 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary
                 f = residuals[i, j]
                 f2 = f.dot(f)
                 CCF = f.dot(m)
-                loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix)
+                loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix) # nulled b and uncertainties
 
     if b:
         loglikelihood -= N * np.log(b)
@@ -183,7 +185,7 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary
     # loglikelihood -= np.sum(np.log(uncertainties))
     # loglikelihood -= N / 2 * np.log(2*np.pi)          (These two terms are normalization)
     
-    return loglikelihood
+    return loglikelihood, CCF_sum
 
 def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
                     high_res_param_names, data_arr=None, data_scale=None, residuals=None, uncertainties=None, Bs=None):
@@ -278,9 +280,9 @@ def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, 
         return log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
 
     elif residuals is not None and Bs is not None:
-        F_p_conv = gaussian_filter1d(spectrum, W_conv) * a # Apply filter to the spectrum. And multiply by scale factor a.
+        F_p_conv = gaussian_filter1d(spectrum, W_conv) * a # np.convolve use smaller kernel. Apply filter to the spectrum. And multiply by scale factor a.
         cs_p = interpolate.splrep(wl, F_p_conv, s=0.0)
-        return log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b)
+        return log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b)[0]
     else:
         raise Exception('Problem in high res retreival data.')
 
@@ -299,8 +301,8 @@ def sysrem(data_array, stds, iter=15):
         median_list.append(np.median(wl_channel))
 
         # Calculate residuals from the ORIGINAL light curve
-        # channel_residual = wl_channel - np.median(wl_channel)
-        channel_residual = wl_channel
+        channel_residual = wl_channel - np.median(wl_channel)
+        # channel_residual = wl_channel
 
         # import the residual and error values into the matrices in the correct position (rows corresponding to stars, columns to epochs)
         residuals[i] = channel_residual
@@ -482,6 +484,7 @@ def fit_uncertainties(data_raw, NPC=5):
     uncertainties = np.zeros(data_raw.shape)
     residuals = np.zeros(data_raw.shape)
     Nord = len(data_raw)
+    mask = data_raw == 0
     for i in range(Nord):
         order = data_raw[i]
         svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(order)
@@ -502,4 +505,5 @@ def fit_uncertainties(data_raw, NPC=5):
 
         uncertainty = svd.transform(best_fit) @ svd.components_
         uncertainties[i] = uncertainty
+    uncertainties[mask] = np.inf
     return uncertainties

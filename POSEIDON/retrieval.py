@@ -277,7 +277,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             for j in range(Ndet):
                 U = Us[j]
                 L = np.diag(1 / np.mean(uncertainties[j], axis=-1))
-                B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
+                # B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
+                B = U @ np.linalg.pinv(L @ U) @ L
                 Bs[j] = B
 
         elif high_res == 'pca':

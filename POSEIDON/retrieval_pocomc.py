@@ -11,6 +11,7 @@ from numba.core.decorators import jit
 from scipy.special import erfcinv
 from scipy.special import lambertw as W
 from scipy.constants import parsec
+import matplotlib.pyplot as plt
 
 from POSEIDON.constants import R_J, R_E
 
@@ -429,7 +430,7 @@ def log_prior(cube, model, prior_types, prior_ranges):
 # Define the log-likelihood function
 def LogLikelihood(cube, model, planet, star, data, F_s_obs, P, P_ref, P_param_set, spectrum_type,
                 He_fraction, N_slice_EM, N_slice_DN, opac, wl, T_phot_grid,
-                T_het_grid, I_phot_grid, I_het_grid, y_p, norm_log_default):
+                T_het_grid, I_phot_grid, I_het_grid, y_p):
 
     ''' 
     Evaluates the log-likelihood for a given point in parameter space.
@@ -523,7 +524,7 @@ def LogLikelihood(cube, model, planet, star, data, F_s_obs, P, P_ref, P_param_se
 
     atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                     log_X_params, cloud_params, geometry_params, 
-                                    log_g, T_input, log_X_input, P_surf, P_param_set,
+                                    log_g, T_input, log_X_input, P_surf, # P_param_set
                                     He_fraction, N_slice_EM, N_slice_DN)
 
     #***** Step 3: generate spectrum of atmosphere ****#
@@ -709,26 +710,31 @@ def pocoMC_retrieval(planet, star, model, opac, data, prior_types,
             prior_samples[:, i] = np.random.normal(mean, std, size=n_live_points)
 
     from multiprocessing import Pool
-    n_cpus = 10
+
+    # n_cpus = 9
     
-    if __name__ == '__main__':
-        with Pool(n_cpus) as pool:
 
-            sampler = pc.Sampler(
-                n_live_points,
-                n_dims,
-                log_likelihood=LogLikelihood,
-                log_likelihood_args=[model, planet, star, data, F_s_obs, P, P_ref, P_param_set, spectrum_type,
-                He_fraction, N_slice_EM, N_slice_DN, opac, wl, T_phot_grid,
-                T_het_grid, I_phot_grid, I_het_grid, y_p, norm_log_default], 
-                log_prior=log_prior,
-                log_prior_args=[model, prior_types, prior_ranges],
-                vectorize_likelihood=False,
-                bounds=bounds,
-                random_state=0,
-                infer_vectorization=False,
-                pool=pool
-            )
+    # with Pool(n_cpus) as pool:
 
-            # Problem: looks like each cube has three samples
-            sampler.run(prior_samples)
+    sampler = pc.Sampler(
+        n_live_points,
+        n_dims,
+        log_likelihood=LogLikelihood,
+        log_likelihood_args=[model, planet, star, data, F_s_obs, P, P_ref, P_param_set, spectrum_type,
+        He_fraction, N_slice_EM, N_slice_DN, opac, wl, T_phot_grid,
+        T_het_grid, I_phot_grid, I_het_grid, y_p], 
+        log_prior=log_prior,
+        log_prior_args=[model, prior_types, prior_ranges],
+        vectorize_likelihood=False,
+        bounds=bounds,
+        random_state=0,
+        infer_vectorization=False,
+        # pool=pool,
+        # parallelize_prior=True
+    )
+
+    # Problem: looks like each cube has three samples
+    sampler.run(prior_samples)
+    results = sampler.results
+    pc.plotting.corner(results, dims = np.arange(n_dims))
+    plt.show()

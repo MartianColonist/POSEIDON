@@ -18,33 +18,37 @@ from tqdm import tqdm
 from multiprocessing import Pool
 import time
 from scipy.ndimage import gaussian_filter1d, median_filter
+from POSEIDON.utility import read_high_res_data
 
 def cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr, wl_grid, residuals, Bs, V_bary, Phi, uncertainties):
     dPhi = 0.0
-    a = 4.5
-    b = None
-    W_conv = 5
-    F_p_conv = gaussian_filter1d((spectrum - continuum) * a + continuum, W_conv)
-    # F_p_conv = gaussian_filter1d(spectrum - continuum, W_conv) * a + continuum
-
+    a = 1.57
+    b = 0.7652
+    W_conv = 4.44
+    # F_p_conv = gaussian_filter1d((spectrum - continuum) * a + continuum, W_conv)
+    # F_p_conv = (spectrum - continuum) * a + continuum
+    F_p_conv = gaussian_filter1d(spectrum - continuum, W_conv) * a + continuum
+    
     cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p_obs, F_s_obs are already observed value on Earth
 
     loglikelihood_arr = np.zeros((len(K_p_arr), len(V_sys_arr)))
-    
+    CCF_arr = np.zeros((len(K_p_arr), len(V_sys_arr)))
+
     for i in range(len(K_p_arr)):
         for j in range(len(V_sys_arr)):
-            loglikelihood = log_likelihood_sysrem(V_sys_arr[j], K_p_arr[i], dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b)
+            loglikelihood, CCF_sum = log_likelihood_sysrem(V_sys_arr[j], K_p_arr[i], dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b)
             loglikelihood_arr[i, j] = loglikelihood
+            CCF_arr[i, j] = CCF_sum
 
-    return loglikelihood_arr
+    return loglikelihood_arr, CCF_arr
 
-K_p = -200
+K_p = 200
 N_K_p = 200
 d_K_p = 2
 K_p_arr = (np.arange(N_K_p) - (N_K_p-1)//2) * d_K_p + K_p # making K_p_arr (centered on published or predicted K_p)
 # K_p_arr = [92.06 , ..., 191.06, 192.06, 193.06, ..., 291.06]
 
-V_sys = 5
+V_sys = 0
 N_V_sys = 200
 d_V_sys = 2
 V_sys_arr = (np.arange(N_V_sys) - (N_V_sys-1)//2) * d_V_sys + V_sys # making V_sys_arr (centered on published or predicted V_sys (here 0 because we already added V_sys in V_bary))
@@ -61,10 +65,11 @@ def batch_cross_correlate(core_index, args):
         data_path = './reference_data/observations/WASP-121b'
         os.makedirs(output_path, exist_ok=True)
 
-        wl_grid, data_raw = pickle.load(open(data_path+'/data_injection.pic', 'rb'))
-        Phi = pickle.load(open(data_path+'/ph.pic','rb'))                    # Time-resolved phases
-        V_bary = pickle.load(open(data_path+'/rvel.pic','rb'))               # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
-
+        data = read_high_res_data(data_path, high_res='sysrem')
+        data_raw = data['data_raw']
+        wl_grid = data['wl_grid']
+        Phi = data['Phi']
+        V_bary = data['V_bary']
         data_raw[data_raw < 0] = 0
         Ndet, Nphi, Npix = data_raw.shape
         data_norm = np.zeros(data_raw.shape)
@@ -92,16 +97,17 @@ def batch_cross_correlate(core_index, args):
         for j in range(Ndet):
             U = Us[j]
             L = np.diag(1 / np.mean(uncertainties[j], axis=-1))
-            B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
+            # B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
+            B = U @ np.linalg.pinv(L @ U) @ L
             Bs[j] = B
 
-        log_L_arr = cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr_split[i], wl_grid, residuals, Bs, V_bary, Phi, uncertainties)
-        pickle.dump([V_sys_arr_split[i], K_p_arr, log_L_arr], open(output_path+'/test_sysrem_'+str(i)+'.pic','wb')) # N_cores of these produced. Will be read in by plot_CCF.py
+        log_L_arr, CCF_arr = cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr_split[i], wl_grid, residuals, Bs, V_bary, Phi, uncertainties)
+        pickle.dump([V_sys_arr_split[i], K_p_arr, log_L_arr, CCF_arr], open(output_path+'/test_sysrem_'+str(i)+'.pic','wb')) # N_cores of these produced. Will be read in by plot_CCF.py
 
 # The code below will only be run on one core to get the model spectrum.
 if __name__ == '__main__':
     R_s = 1.458*R_Sun     # Stellar radius (m)
-    T_s = 6776            # Stellar effective temperature (K)
+    T_s = 6776            # Stellar effectsive temperature (K)
     Met_s = 0.13          # Stellar metallicity [log10(Fe/H_star / Fe/H_solar)]
     log_g_s = 4.24        # Stellar log surface gravity (log10(cm/s^2) by convention)
 
@@ -153,7 +159,6 @@ if __name__ == '__main__':
 
     # wl = wl_grid_line_by_line(wl_min, wl_max)
     wl = wl_grid_constant_R(wl_min, wl_max, R)
-
     #***** Read opacity data *****#
 
     opacity_treatment = 'opacity_sampling'
@@ -189,7 +194,7 @@ if __name__ == '__main__':
     R_p_ref = R_p  # Radius at reference pressure
 
     
-    params = (-3, 2, 1, -2.5, -1.5, 1, 3000)
+    params = (-3.28, 2, 1, -2.5, -1.5, 1, 3000)
     log_Fe, a1, a2, log_P1, log_P2, log_P3, T_ref = params
 
     # Provide a specific set of model parameters for the atmosphere
