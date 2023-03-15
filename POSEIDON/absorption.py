@@ -1421,18 +1421,31 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
                         sigma_inp[i, ((N_wl-1)-k)] =  (np.power(sig_T1, (w_T[i]*((1.0/T2) - (1.0/T_i)))) *
                                                        np.power(sig_T2, (w_T[i]*((1.0/T_i) - (1.0/T1)))))
             
-                # If both desired P and T are on opacity grid (should be true in most cases!)
+                # If desired P is on opacity grid
                 else:
+
+                    # If layer T below minimum on opacity grid (100 K), only interpolate over P
+                    if (y[i] == -1):
+                        sigma_inp[i, ((N_wl-1)-k)] = 10 ** (b1[i]*reduced_log_sigma[x[i], 0, k] +
+                                                            b2[i]*reduced_log_sigma[x[i]+1, 0, k])  
+                        
+                    # If layer T also above maximum on opacity grid (3500 K), only interpolate over P
+                    elif (y[i] == -2):
+                        sigma_inp[i, ((N_wl-1)-k)] = 10 ** (b1[i]*reduced_log_sigma[x[i], (N_T-1), k] +
+                                                            b2[i]*reduced_log_sigma[x[i]+1, (N_T-1), k])
                     
-                    # Interpolate log(cross section) in log(P), then power to get interpolated values at T1 and T2
-                    sig_T1 =  10 ** (b1[i]*(log_sigma_PT_rectangle[0,0]) +       # Cross section at T1
-                                     b2[i]*(log_sigma_PT_rectangle[1,0]))
-                    sig_T2 =  10 ** (b1[i]*(log_sigma_PT_rectangle[0,1]) +       # Cross section at T2
-                                     b2[i]*(log_sigma_PT_rectangle[1,1]))
-        
-                    # Now interpolate cross section to layer temperature                    
-                    sigma_inp[i, ((N_wl-1)-k)] =  (np.power(sig_T1, (w_T[i]*((1.0/T2) - (1.0/T_i)))) *
-                                                   np.power(sig_T2, (w_T[i]*((1.0/T_i) - (1.0/T1)))))
+                    # If desired temperature is on opacity grid, do full P and T interpolation
+                    else:
+
+                        # Interpolate log(cross section) in log(P), then power to get interpolated values at T1 and T2
+                        sig_T1 =  10 ** (b1[i]*(log_sigma_PT_rectangle[0,0]) +       # Cross section at T1
+                                        b2[i]*(log_sigma_PT_rectangle[1,0]))
+                        sig_T2 =  10 ** (b1[i]*(log_sigma_PT_rectangle[0,1]) +       # Cross section at T2
+                                        b2[i]*(log_sigma_PT_rectangle[1,1]))
+            
+                        # Now interpolate cross section to layer temperature                    
+                        sigma_inp[i, ((N_wl-1)-k)] =  (np.power(sig_T1, (w_T[i]*((1.0/T2) - (1.0/T_i)))) *
+                                                       np.power(sig_T2, (w_T[i]*((1.0/T_i) - (1.0/T1)))))
             
     
     return sigma_inp
@@ -1569,18 +1582,18 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                 # Add haze scattering to total extinction in layer i, sector j, for each wavelength
                 kappa_cloud[i,j,k,l] += haze_amp * slope[l]
 
-        # If a cloud deck is enabled in this model
-        if (enable_deck == 1):
-            
-            # Set extinction inside cloud deck
-            kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
-
-        # If a surface is enabled in this model
-        if (enable_surface == 1):
-
-            # Set extinction to infinity below surface
-            kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+    # If a cloud deck is enabled in this model
+    if (enable_deck == 1):
         
+        # Set extinction inside cloud deck
+        kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
+
+    # If a surface is enabled in this model
+    if (enable_surface == 1):
+
+        # Set extinction to infinity below surface
+        kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+
     
 def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs, 
                    bf_species, n, T, P, wl_model, X, X_active, X_cia, X_ff, X_bf, 
