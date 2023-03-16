@@ -290,7 +290,7 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
 
     # Specify starting and ending grid points
     T_start = T_phot_min                      
-    T_end = T_phot_min + (N_spec_T_phot * T_phot_step)   # Slightly > T_max if T_step doesn't divide exactly
+    T_end = T_phot_min + ((N_spec_T_phot-1) * T_phot_step)   # Slightly > T_max if T_step doesn't divide exactly
 
     # Initialise photosphere temperature array
     T_phot_grid = np.linspace(T_start, T_end, N_spec_T_phot)
@@ -320,7 +320,7 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
 
         # Specify starting and ending grid points
         log_g_start = log_g_phot_min                      
-        log_g_end = log_g_phot_min + (N_spec_log_g_phot * log_g_phot_step)   # Slightly > log_g_max if log_g_step doesn't divide exactly 
+        log_g_end = log_g_phot_min + ((N_spec_log_g_phot-1) * log_g_phot_step)   # Slightly > log_g_max if log_g_step doesn't divide exactly 
         
         # Initialise photosphere log_g array
         log_g_phot_grid = np.linspace(log_g_start, log_g_end, N_spec_log_g_phot)
@@ -372,7 +372,7 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
 
     # Specify starting and ending grid points
     T_start = T_het_min                      
-    T_end = T_het_min + (N_spec_T_het * T_het_step)   # Slightly > T_max if T_step doesn't divide exactly
+    T_end = T_het_min + ((N_spec_T_het-1) * T_het_step)   # Slightly > T_max if T_step doesn't divide exactly
 
     # Initialise heterogeneity temperature array
     T_het_grid = np.linspace(T_start, T_end, N_spec_T_het)
@@ -395,14 +395,14 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
             log_g_het_min = min(log_g_spot_min, log_g_fac_min)
             log_g_het_max = max(log_g_spot_max, log_g_fac_max)
             
-        log_g_het_step = log_g_step_interp    # Default interpolation step of 0.5
+        log_g_het_step = log_g_step_interp    # Default interpolation step of 0.1
 
         # Find number of spectra needed to span desired range (rounding up)
         N_spec_log_g_het = np.ceil((log_g_het_max - log_g_het_min)/log_g_het_step).astype(np.int64) + 1
 
         # Specify starting and ending grid points
         log_g_start = log_g_het_min                      
-        log_g_end = log_g_het_min + (N_spec_log_g_het * log_g_het_step)   # Slightly > log_g_max if log_g_step doesn't divide exactly 
+        log_g_end = log_g_het_min + ((N_spec_log_g_het-1) * log_g_het_step)   # Slightly > log_g_max if log_g_step doesn't divide exactly 
         
         # Initialise heterogeneity log_g array
         log_g_het_grid = np.linspace(log_g_start, log_g_end, N_spec_log_g_het)
