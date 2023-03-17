@@ -5,13 +5,13 @@
 import numpy as np
 import time
 import os
+from mpi4py import MPI
 from scipy.special import ndtri
 from spectres import spectres
 from numba.core.decorators import jit
 from scipy.special import erfcinv
 from scipy.special import lambertw as W
 from scipy.constants import parsec
-import matplotlib.pyplot as plt
 
 from POSEIDON.constants import R_J, R_E
 
@@ -23,10 +23,11 @@ from POSEIDON.utility import write_MultiNest_results, round_sig_figs, closest_in
 from POSEIDON.core import make_atmosphere, compute_spectrum
 from POSEIDON.stellar import precompute_stellar_spectra, stellar_contamination_single_spot
 import pocomc as pc
-from POSEIDON.high_res import log_likelihood, sysrem, fast_filter, fit_uncertainties
+from schwimmbad import MPIPool
+import sys
 
-# comm = MPI.COMM_WORLD
-# rank = comm.Get_rank()
+comm = MPI.COMM_WORLD
+rank = comm.Get_rank()
 
 # Create global variable needed for centred log-ratio prior function
 allowed_simplex = 1
@@ -65,8 +66,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0,
     # Pre-compute stellar spectra for models with unocculted spots / faculae
     if (model['stellar_contam'] != 'No'):
 
-        # if (rank == 0):
-        print("Pre-computing stellar spectra before starting retrieval...")
+        if (rank == 0):
+            print("Pre-computing stellar spectra before starting retrieval...")
 
         # Interpolate and store stellar photosphere and heterogeneity spectra
         T_phot_grid, T_het_grid, \
@@ -80,8 +81,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0,
         T_phot_grid, T_het_grid = None, None
         I_phot_grid, I_het_grid = None, None
 
-    # if (rank == 0):
-    print("POSEIDON now running '" + retrieval_name + "'")
+    if (rank == 0):
+        print("POSEIDON now running '" + retrieval_name + "'")
 
     # Run POSEIDON retrieval using PyMultiNest
     if (sampling_algorithm == 'pocoMC'):
@@ -93,8 +94,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref = 10.0,
         basename = retrieval_name + '-'
 
         # Begin retrieval timer
-        # if (rank == 0):
-        t0 = time.perf_counter()
+        if (rank == 0):
+            t0 = time.perf_counter()
 
         # Run MultiNest
         pocoMC_retrieval(planet, star, model, opac, data, prior_types, 
@@ -430,7 +431,7 @@ def log_prior(cube, model, prior_types, prior_ranges):
 # Define the log-likelihood function
 def LogLikelihood(cube, model, planet, star, data, F_s_obs, P, P_ref, P_param_set, spectrum_type,
                 He_fraction, N_slice_EM, N_slice_DN, opac, wl, T_phot_grid,
-                T_het_grid, I_phot_grid, I_het_grid, y_p):
+                T_het_grid, I_phot_grid, I_het_grid, y_p, norm_log_default):
 
     ''' 
     Evaluates the log-likelihood for a given point in parameter space.
@@ -452,21 +453,8 @@ def LogLikelihood(cube, model, planet, star, data, F_s_obs, P, P_ref, P_param_se
     radius_unit = model['radius_unit']
     distance_unit = model['distance_unit']
     surface = model['surface']
-    high_res = model['high_res']
-    high_res_param_names = model['high_res_param_names']
-    
-    # Pre-compute normalisation for log-likelihood 
-    if not high_res:
-        err_data = data['err_data']
-        norm_log_default = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
-    else:
-        wl_grid = data['wl_grid']
-        V_bary = data['V_bary']
-        Phi = data['Phi']
-        V_sin_i = planet['V_sin_i']        
-        data_scale = data['data_scale']
-        data_arr = data['data_arr']
 
+    
     # Immediately reject samples falling outside of mixing ratio simplex (CLR prior only)
     global allowed_simplex
     if (allowed_simplex == 0):
@@ -482,8 +470,7 @@ def LogLikelihood(cube, model, planet, star, data, F_s_obs, P, P_ref, P_param_se
     physical_params, PT_params, \
     log_X_params, cloud_params, \
     geometry_params, stellar_params, \
-    offset_params, err_inflation_params, \
-    high_res_params = split_params(cube, N_params_cum)
+    offset_params, err_inflation_params = split_params(cube, N_params_cum)
 
     # Unpack reference radius parameter
     R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
@@ -524,7 +511,7 @@ def LogLikelihood(cube, model, planet, star, data, F_s_obs, P, P_ref, P_param_se
 
     atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                     log_X_params, cloud_params, geometry_params, 
-                                    log_g, T_input, log_X_input, P_surf, # P_param_set
+                                    log_g, T_input, log_X_input, P_surf, P_param_set,
                                     He_fraction, N_slice_EM, N_slice_DN)
 
     #***** Step 3: generate spectrum of atmosphere ****#
@@ -549,16 +536,6 @@ def LogLikelihood(cube, model, planet, star, data, F_s_obs, P, P_ref, P_param_se
         # Quit if given parameter combination is unphysical
         return loglikelihood
 
-    if high_res:
-        if high_res == 'sysrem':
-            # loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
-            #                                 high_res_param_names, residuals=residuals, uncertainties=uncertainties, Bs=Bs)
-            return
-        elif high_res == 'pca':
-            loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
-                                            high_res_param_names, data_arr=data_arr, data_scale=data_scale)
-
-        return loglikelihood
     #***** Step 4: stellar contamination *****#
     
     # Stellar contamination is only relevant for transmission spectra
@@ -639,7 +616,6 @@ def pocoMC_retrieval(planet, star, model, opac, data, prior_types,
     # Unpack model properties
     param_names = model['param_names']
     X_params = model['X_param_names']
-    high_res = model['high_res']
     d = planet['system_distance']
 
     # Unpack number of free mixing ratio parameters for prior function  
@@ -647,10 +623,10 @@ def pocoMC_retrieval(planet, star, model, opac, data, prior_types,
 
     # Assign PyMultiNest keyword arguments
     n_dims = N_params
+    
     # Pre-compute normalisation for log-likelihood
-    if not high_res:
-        err_data = data['err_data']
-        norm_log_default = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+    err_data = data['err_data']
+    norm_log_default = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
 
     bounds = np.empty((n_dims, 2))
     
@@ -709,12 +685,14 @@ def pocoMC_retrieval(planet, star, model, opac, data, prior_types,
             std = prior_ranges[parameter][1]
             prior_samples[:, i] = np.random.normal(mean, std, size=n_live_points)
 
-    from multiprocessing import Pool
-
-    # n_cpus = 9
+    # from multiprocessing import Pool
+    # n_cpus = 10
     
-
-    # with Pool(n_cpus) as pool:
+    # if __name__ == '__main__':
+    #     with MPIPool() as pool:
+    #         if not pool.is_master():
+    #             pool.wait()
+    #             sys.exit(0)
 
     sampler = pc.Sampler(
         n_live_points,
@@ -722,7 +700,7 @@ def pocoMC_retrieval(planet, star, model, opac, data, prior_types,
         log_likelihood=LogLikelihood,
         log_likelihood_args=[model, planet, star, data, F_s_obs, P, P_ref, P_param_set, spectrum_type,
         He_fraction, N_slice_EM, N_slice_DN, opac, wl, T_phot_grid,
-        T_het_grid, I_phot_grid, I_het_grid, y_p], 
+        T_het_grid, I_phot_grid, I_het_grid, y_p, norm_log_default], 
         log_prior=log_prior,
         log_prior_args=[model, prior_types, prior_ranges],
         vectorize_likelihood=False,
@@ -730,11 +708,9 @@ def pocoMC_retrieval(planet, star, model, opac, data, prior_types,
         random_state=0,
         infer_vectorization=False,
         # pool=pool,
-        # parallelize_prior=True
+        parallelize_prior=False
     )
 
     # Problem: looks like each cube has three samples
     sampler.run(prior_samples)
-    results = sampler.results
-    pc.plotting.corner(results, dims = np.arange(n_dims))
-    plt.show()
+    return sampler.results
