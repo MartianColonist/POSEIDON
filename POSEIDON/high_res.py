@@ -142,8 +142,8 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary
         wl_slice = wl_grid[i]                    # Cropped wavelengths
         models_shifted = np.zeros((Nphi, Npix))  # "shifted" model spectra array at each phase
         for j in range(Nphi):
-            # wl_shifted_p = wl_slice / (1.0 + dl_p[j])
-            wl_shifted_p = wl_slice * np.sqrt((1.0 - dl_p[j]) / (1 + dl_p[j]))
+            wl_shifted_p = wl_slice / (1.0 + dl_p[j])
+            # wl_shifted_p = wl_slice * np.sqrt((1.0 - dl_p[j]) / (1 + dl_p[j]))
             Fp = interpolate.splev(wl_shifted_p, cs_p, der=0) # linear interpolation, einsum
             t_model = pickle.load(open('/Users/Victini/Desktop/POSEIDON_high_res/POSEIDON/reference_data/observations/WASP-121b/tmodel1.pic','rb')) # Load transit model
             models_shifted[j] = ((1-t_model[j]))/np.max(1-t_model)*(-Fp) + 1 
@@ -498,12 +498,12 @@ def fit_uncertainties(data_raw, NPC=5):
             sigma = np.sqrt(a * data_raw[i] + b)
             loglikelihood = -0.5 * np.sum((residuals[i] / sigma) ** 2) - np.sum(np.log(sigma))
             return -loglikelihood
-        a, b = minimize(fun, [1, 1], method='Nelder-Mead').x
+        a, b = minimize(fun, [1, 1], method='L-BFGS-B').x
         best_fit = np.sqrt(a * data_raw[i] + b)
 
         svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(best_fit)
 
         uncertainty = svd.transform(best_fit) @ svd.components_
         uncertainties[i] = uncertainty
-    uncertainties[mask] = np.inf
-    return uncertainties
+    uncertainties[mask] = 1e7
+    return uncertainties 

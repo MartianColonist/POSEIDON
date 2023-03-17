@@ -43,13 +43,13 @@ def cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr, wl_grid, residu
     return loglikelihood_arr, CCF_arr
 
 K_p = 200
-N_K_p = 200
+N_K_p = 100
 d_K_p = 2
 K_p_arr = (np.arange(N_K_p) - (N_K_p-1)//2) * d_K_p + K_p # making K_p_arr (centered on published or predicted K_p)
 # K_p_arr = [92.06 , ..., 191.06, 192.06, 193.06, ..., 291.06]
 
 V_sys = 0
-N_V_sys = 200
+N_V_sys = 100
 d_V_sys = 2
 V_sys_arr = (np.arange(N_V_sys) - (N_V_sys-1)//2) * d_V_sys + V_sys # making V_sys_arr (centered on published or predicted V_sys (here 0 because we already added V_sys in V_bary))
 
