@@ -15,7 +15,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
-                       sharp_DN_transition, reference_parameter, disable_atmosphere):
+                       sharp_DN_transition, reference_parameter, disable_atmosphere,
+                       species_quench):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -95,6 +96,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
+        species_quench (list of str)
+            list of species that the user wants to specify a log pressure quench level for (only X_chem = 'chem_eq') 
 
     Returns:
         params (np.array of str):
@@ -472,10 +475,19 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                                              'log_P_' + species + '_mid', 'log_' + species + '_deep']      
                         else:
                             X_params += ['log_' + species]
-    
-        # If the X profile is set to chem_eq, then we have only CO and log_met
+        
+        # If the X profile is set to chem_eq
         else:
-            X_params = ['C_to_O','log_Met']
+            # If no species quench, then it is set to just C_to_O and log_Met
+            if species_quench == []:
+                X_params = ['C_to_O','log_Met']
+            # If there are species quench, then log_P_quench_i is also added 
+            else:
+                X_params += ['C_to_O']
+                X_params += ['log_Met']
+                for species in species_quench:
+                    X_params += ['log_P_quench_' + species]
+
                 
         N_species_params = len(X_params)   # Store number of mixing ratio parameters
         params += X_params                 # Add mixing ratio parameter names to combined list

@@ -1250,7 +1250,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              active_species, CIA_pairs, ff_pairs, bf_species, N_sectors, 
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
              He_fraction, T_input, X_input, P_param_set, 
-             constant_gravity = False):
+             constant_gravity = False,
+             species_quench = []):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1324,6 +1325,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             defined (P_param_set = 1.0e-6 corresponds to that paper's choice).
         constant_gravity (bool):
             If True, disable inverse square law gravity (only for testing).
+        species_quench (list of str)
+            list of species that the user wants to specify a log pressure quench level for (only X_chem = 'chem_eq') 
     
     Returns:
         T (3D np.array of float):
@@ -1493,8 +1496,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                                                     param_species, species_has_profile, 
                                                     alpha, beta, phi, theta) 
 
-        # Read in equilibrium mixing ratio profiles 
-        elif (X_profile == 'chem_eq'):
+        # Read in equilibrium mixing ratio profiles (with no quenching)
+        elif (X_profile == 'chem_eq') and species_quench == []:
 
             # Unpack C/O and Metallicity 
             C_to_O = log_X_state[0]
@@ -1510,8 +1513,76 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                 X_input = 10**X_input
                 X_param = X_input.reshape((len(param_species), len(P), 1, 1))
             else:
-                raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT (for now)')
+                raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT \nTry PT_profile = \'isotherm\' or Pt_profile = \'gradient\'')
 
+        # Read in equilibrium mixing ratio profiles (with quenching)
+        elif (X_profile == 'chem_eq') and species_quench != []:
+
+            # Unpack C/O, Metallicity, and quench pressures 
+            C_to_O = log_X_state[0]
+            log_Met = log_X_state[1]
+            log_quench_pressure = log_X_state[2:]
+            
+            # If quench pressure is higher or lower than highest/lowest pressure, they are set to the highest or lowest pressure 
+            for i in range(len(log_quench_pressure)):
+                pressure = 10**float(log_quench_pressure[i])
+                if pressure >= P[0]: # Highest Pressure
+                    log_quench_pressure[i] = np.log10(P[0])
+                if pressure <= P[-1]: # Lowest Pressure
+                    log_quench_pressure[i] = np.log10(P[-1])
+                    
+            # Make the X profiles
+            if PT_profile == 'isotherm':
+                X_input = read_logX(np.log10(P), T[0], C_to_O, log_Met, param_species, return_dict=False)
+                X_input = 10**X_input
+
+                # Look at the quench levels
+                for n in range(len(param_species)):
+                    if param_species[n] in species_quench:
+                        P_quench_i = 10**float(log_quench_pressure[species_quench.index(param_species[n])])
+                        # Find the indices in the pressure array that P_quench_i is closest to 
+                        # If P_quench_i is the highest or lowest pressure, the quenching starts there 
+                        # Else, it starts at the nearest index 
+                        if P_quench_i == P[0]:
+                            idx = 0
+                        if P_quench_i == P[-1]:
+                            idx = len(P)-1
+                        else:
+                            idx = (np.abs(P - P_quench_i)).argmin()
+
+                        # Set X_input[P_quench_i] as a constant, and any lower pressure also that constant 
+                        quench_value = X_input[n][idx]
+                        X_input[n][idx:] = quench_value 
+
+                X_param = X_input.reshape((len(param_species), len(P), 1, 1))
+
+            elif PT_profile == 'gradient':
+                T_grid = T.T[0][0]    # tea.tea is the most British code ever
+                X_input = read_logX(np.log10(P), T_grid, C_to_O, log_Met, param_species, return_dict=False)
+                X_input = 10**X_input
+
+                # Look at the quench levels
+                for n in range(len(param_species)):
+                    if param_species[n] in species_quench:
+
+                        P_quench_i = 10**float(log_quench_pressure[species_quench.index(param_species[n])])
+
+                        if P_quench_i == P[0]:
+                            idx = 0
+                        if P_quench_i == P[-1]:
+                            idx = len(P)-1
+                        else:
+                            idx = (np.abs(P - P_quench_i)).argmin()
+
+                        quench_value = X_input[n][idx]
+                        X_input[n][idx:] = quench_value
+
+                X_param = X_input.reshape((len(param_species), len(P), 1, 1))
+
+            else:
+                raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT \nTry PT_profile = \'isotherm\' or Pt_profile = \'gradient\'')
+        
+        
         # Gaussian smooth any profiles with a vertical profile
         for q, species in enumerate(param_species):
             if (species_has_profile[q] == 1):

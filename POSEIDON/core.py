@@ -329,7 +329,8 @@ def define_model(model_name, bulk_species, param_species,
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
-                 reference_parameter = 'R_p_ref', disable_atmosphere = False):
+                 reference_parameter = 'R_p_ref', disable_atmosphere = False,
+                 species_quench = []):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -415,6 +416,8 @@ def define_model(model_name, bulk_species, param_species,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
+        species_quench (list of str)
+            list of species that the user wants to specify a log pressure quench level for (only X_chem = 'chem_eq') 
 
     Returns:
         model (dict):
@@ -444,6 +447,13 @@ def define_model(model_name, bulk_species, param_species,
             if (np.any(~np.isin(param_species, supported_chem_eq_species)) == True):
                 raise Exception("A chemical species you selected is not supported " +
                                 "for equilibrium chemistry models.\n")
+            
+    # For species_quench, X_profile must be chem_eq AND species must be in chemical species list 
+    if species_quench != []:
+        if X_profile != 'chem_eq':
+            raise Exception("Only equilibrium models support quenching. Try X_profile = \'chem_eq\'")
+        if (np.any(~np.isin(species_quench, chemical_species)) == True):
+            raise Exception("species_quench contains species not included in param_species or bulk_species")
 
     # Identify chemical species with active spectral features
     active_species = chemical_species[~np.isin(chemical_species, inactive_species)]
@@ -494,7 +504,8 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere)
+                                      reference_parameter, disable_atmosphere,
+                                      species_quench)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -524,6 +535,7 @@ def define_model(model_name, bulk_species, param_species,
              'sharp_DN_transition': sharp_DN_transition,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
+             'species_quench': species_quench,
             }
 
     return model
@@ -766,6 +778,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     cloud_dim = model['cloud_dim']
     gravity_setting = model['gravity_setting']
     sharp_DN_transition = model['sharp_DN_transition']
+    species_quench = model['species_quench']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -846,7 +859,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
-                           T_input, X_input, P_param_set, constant_gravity)
+                           T_input, X_input, P_param_set, constant_gravity,
+                           species_quench = species_quench)
 
     #***** Store cloud / haze / aerosol properties *****#
 
@@ -2395,7 +2409,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
                                        np.log10(100.0*np.max(err_data**2))],
                              'C_to_O': [0.3,1.9],
-                             'log_Met' : [-0.9,3.9]
+                             'log_Met' : [-0.9,3.9],
+                             'log_P_quench_i' : [-7,2],
                             }    
 
     # Iterate through parameters, ensuring we have a full set of priors
