@@ -72,7 +72,7 @@ jobs:
 
     - name: Set environment variables
       run: |
-        echo "POSEIDON_input_data=$GITHUB_WORKSPACE/inputs/opacity/" >> $GITHUB_ENV
+        echo "POSEIDON_input_data=$GITHUB_WORKSPACE/inputs/" >> $GITHUB_ENV
         echo "PYSYN_CDBS=$GITHUB_WORKSPACE/inputs/stellar_grids/" >> $GITHUB_ENV
 
     - name: Run tests
