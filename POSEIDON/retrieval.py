@@ -346,11 +346,8 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         # Reject unphysical spectra (forced to be NaN by function above)
         if (np.any(np.isnan(spectrum))):
             
-            # Assign penalty to likelihood => point ignored in retrieval
-            loglikelihood = -1.0e100
-            
             # Quit if given parameter combination is unphysical
-            return loglikelihood
+            return 0, spectrum, atmosphere
 
     #***** Step 4: stellar contamination *****#
     
@@ -821,15 +818,24 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         
         #***** For valid parameter combinations, run forward model *****#
 
-        ymodel, _, _ = forward_model(cube, planet, star, model, opac, data, 
-                                     wl, P, P_ref_set, R_p_ref_set, P_param_set, 
-                                     He_fraction, N_slice_EM, N_slice_DN, 
-                                     spectrum_type, T_phot_grid, T_het_grid, 
-                                     log_g_phot_grid, log_g_het_grid,
-                                     I_phot_grid, I_het_grid, y_p, F_s_obs,
-                                     constant_gravity, chemistry_grid)
+        ymodel, spectrum, _ = forward_model(cube, planet, star, model, opac, data, 
+                                            wl, P, P_ref_set, R_p_ref_set, P_param_set, 
+                                            He_fraction, N_slice_EM, N_slice_DN, 
+                                            spectrum_type, T_phot_grid, T_het_grid, 
+                                            log_g_phot_grid, log_g_het_grid,
+                                            I_phot_grid, I_het_grid, y_p, F_s_obs,
+                                            constant_gravity, chemistry_grid)
         
-
+        # Reject unphysical spectra (forced to be NaN by function above)
+        if (np.any(np.isnan(spectrum))):
+            
+            # Assign penalty to likelihood => point ignored in retrieval
+            loglikelihood = -1.0e100
+            
+            # Quit if given parameter combination is unphysical
+            return loglikelihood
+        
+        
         #***** Handle error bar inflation and offsets (if optionally enabled) *****#
 
         _, _, _, _, _, _, \
