@@ -22,6 +22,7 @@ from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
 from .core import make_atmosphere, compute_spectrum
 from .parameters import unpack_stellar_params
 from .stellar import precompute_stellar_spectra, stellar_contamination_general
+from .chemistry import load_chemistry_grid
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -34,12 +35,12 @@ allowed_simplex = 1
 def run_retrieval(planet, star, model, opac, data, priors, wl, P, 
                   P_ref = None, R_p_ref = None, P_param_set = 1.0e-2, 
                   R = None, retrieval_name = None, He_fraction = 0.17, 
-                  N_slice_EM = 2, N_slice_DN = 4, 
+                  N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
                   spectrum_type = 'transmission', y_p = np.array([0.0]),
                   stellar_T_step = 20, stellar_log_g_step = 0.1, 
                   N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest', 
                   resume = False, verbose = True, sampling_target = 'parameter',
-                  N_output_samples = 1000):
+                  chem_grid = 'fastchem', N_output_samples = 1000):
     '''
     ADD DOCSTRING
     '''
@@ -58,6 +59,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     stellar_contam = model['stellar_contam']
     reference_parameter = model['reference_parameter']
     disable_atmosphere = model['disable_atmosphere']
+    X_profile = model['X_profile']
 
     # Unpack stellar properties
     R_s = star['R_s']
@@ -81,6 +83,12 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
 
     # Identify output directory location
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+
+    # Load chemistry grid (e.g. equilibrium chemistry) if option selected
+    if (X_profile == 'chem_eq'):
+        chemistry_grid = load_chemistry_grid(chemical_species, chem_grid, comm, rank)
+    else:
+        chemistry_grid = None
 
     # Pre-compute stellar spectra for models with unocculted spots / faculae
     if (stellar_contam != None):
@@ -151,7 +159,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                               R_p_ref, P_param_set, He_fraction, N_slice_EM, 
                               N_slice_DN, N_params, T_phot_grid, T_het_grid, 
                               log_g_phot_grid, log_g_het_grid, I_phot_grid, 
-                              I_het_grid, y_p, F_s_obs,
+                              I_het_grid, y_p, F_s_obs, constant_gravity,
+                              chemistry_grid,
                               resume = resume, verbose = verbose,
                               outputfiles_basename = basename, 
                               n_live_points = N_live, multimodal = False,
@@ -187,7 +196,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                            N_slice_DN, spectrum_type, T_phot_grid, 
                                            T_het_grid, log_g_phot_grid,
                                            log_g_het_grid, I_phot_grid, 
-                                           I_het_grid, y_p, F_s_obs, 
+                                           I_het_grid, y_p, F_s_obs,
+                                           constant_gravity, chemistry_grid,
                                            N_output_samples)
                         
             # Save sampled spectrum
@@ -217,7 +227,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
 def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_set,
                   R_p_ref_set, P_param_set, He_fraction, N_slice_EM, N_slice_DN, 
                   spectrum_type, T_phot_grid, T_het_grid, log_g_phot_grid,
-                  log_g_het_grid, I_phot_grid, I_het_grid, y_p, F_s_obs):
+                  log_g_het_grid, I_phot_grid, I_het_grid, y_p, F_s_obs,
+                  constant_gravity, chemistry_grid):
     '''
     ADD DOCSTRING
     '''
@@ -315,7 +326,8 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
                                      log_g, T_input, X_input, P_surf, P_param_set,
-                                     He_fraction, N_slice_EM, N_slice_DN)
+                                     He_fraction, N_slice_EM, N_slice_DN, 
+                                     constant_gravity, chemistry_grid)
 
         #***** Step 3: generate spectrum of atmosphere ****#
 
@@ -482,7 +494,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                           R_p_ref_set, P_param_set, He_fraction, N_slice_EM, 
                           N_slice_DN, N_params, T_phot_grid, T_het_grid, 
                           log_g_phot_grid, log_g_het_grid, I_phot_grid, 
-                          I_het_grid, y_p, F_s_obs, **kwargs):
+                          I_het_grid, y_p, F_s_obs, constant_gravity,
+                          chemistry_grid, **kwargs):
     ''' 
     Main function for conducting atmospheric retrievals with PyMultiNest.
     
@@ -812,7 +825,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                                      He_fraction, N_slice_EM, N_slice_DN, 
                                      spectrum_type, T_phot_grid, T_het_grid, 
                                      log_g_phot_grid, log_g_het_grid,
-                                     I_phot_grid, I_het_grid, y_p, F_s_obs)
+                                     I_phot_grid, I_het_grid, y_p, F_s_obs,
+                                     constant_gravity, chemistry_grid)
         
 
         #***** Handle error bar inflation and offsets (if optionally enabled) *****#
@@ -859,7 +873,8 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                       P_ref_set, R_p_ref_set, P_param_set, He_fraction, 
                       N_slice_EM, N_slice_DN, spectrum_type, T_phot_grid, 
                       T_het_grid, log_g_phot_grid, log_g_het_grid, I_phot_grid, 
-                      I_het_grid, y_p, F_s_obs, N_output_samples):
+                      I_het_grid, y_p, F_s_obs, constant_gravity, 
+                      chemistry_grid, N_output_samples):
     '''
     ADD DOCSTRING
     '''
@@ -904,7 +919,8 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                                    He_fraction, N_slice_EM, N_slice_DN, 
                                    spectrum_type, T_phot_grid, T_het_grid, 
                                    log_g_phot_grid, log_g_het_grid,
-                                   I_phot_grid, I_het_grid, y_p, F_s_obs)
+                                   I_phot_grid, I_het_grid, y_p, F_s_obs,
+                                   constant_gravity, chemistry_grid)
 
         # Based on first model, create arrays to store retrieved temperature, spectrum, and mixing ratios
         if (i == 0):

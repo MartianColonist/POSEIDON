@@ -29,7 +29,7 @@ from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
                      open_pymsg_grid
 from .supported_opac import supported_species, supported_cia, inactive_species, \
-                            supported_chem_eq_species
+                            fastchem_supported_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
@@ -432,6 +432,8 @@ def define_model(model_name, bulk_species, param_species,
     # For equilibrium models, if param_species = [] then default to all species
     if (X_profile == 'chem_eq'):
         if (param_species == []):
+            supported_chem_eq_species = np.intersect1d(supported_species, 
+                                                       fastchem_supported_species)
             param_species = supported_chem_eq_species
             bulk_species = ['H2', 'He'] 
 
@@ -694,7 +696,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_X_params = [], cloud_params = [], geometry_params = [],
                     log_g = None, T_input = [], X_input = [], P_surf = None,
                     P_param_set = 1.0e-2, He_fraction = 0.17, 
-                    N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False):
+                    N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
+                    chemistry_grid = None):
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
     full generality, this function generates 3D pressure-temperature and mixing 
@@ -740,6 +743,9 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             Number of zenith slices in the day-night transition region.
         constant_gravity (bool):
             If True, disable inverse square law gravity (only for testing).
+        chemistry_grid (dict):
+            For models with a pre-computed chemistry grid only, this dictionary
+            is produced in chemistry.py.
     
     Returns:
         atmosphere (dict):
@@ -846,7 +852,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
-                           T_input, X_input, P_param_set, constant_gravity)
+                           T_input, X_input, P_param_set, constant_gravity,
+                           chemistry_grid)
 
     #***** Store cloud / haze / aerosol properties *****#
 

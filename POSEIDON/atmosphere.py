@@ -3,7 +3,6 @@ Functions for calculating atmospheric temperature, mixing ratio, and other profi
 
 '''
 
-
 import numpy as np
 import scipy.constants as sc
 from scipy.ndimage import gaussian_filter1d as gauss_conv
@@ -13,7 +12,7 @@ from numba.core.decorators import jit
 from .supported_opac import inactive_species
 from .species_data import masses
 from .utility import prior_index
-from .eq_interpolate import read_logX
+from .chemistry import interpolate_log_X_grid
 
 
 @jit(nopython = True)
@@ -1250,7 +1249,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              active_species, CIA_pairs, ff_pairs, bf_species, N_sectors, 
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
              He_fraction, T_input, X_input, P_param_set, 
-             constant_gravity = False):
+             constant_gravity = False, chemistry_grid = None):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1324,6 +1323,9 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             defined (P_param_set = 1.0e-6 corresponds to that paper's choice).
         constant_gravity (bool):
             If True, disable inverse square law gravity (only for testing).
+        chemistry_grid (dict):
+            For models with a pre-computed chemistry grid only, this dictionary
+            is produced in chemistry.py.
     
     Returns:
         T (3D np.array of float):
@@ -1496,19 +1498,29 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # Read in equilibrium mixing ratio profiles 
         elif (X_profile == 'chem_eq'):
 
+            if (chemistry_grid == None):
+                raise Exception("Error: no chemistry grid loaded for an equilibrium model")
+
             # Unpack C/O and Metallicity 
             C_to_O = log_X_state[0]
             log_Met = log_X_state[1]
 
             if PT_profile == 'isotherm':
-                X_input = read_logX(np.log10(P), T[0], C_to_O, log_Met, param_species, return_dict=False)
-                X_input = 10**X_input
-                X_param = X_input.reshape((len(param_species), len(P), 1, 1))
+
+                # UPDATE ARGUMENTS TO INTERPOLATE FUNCTION HERE, THEN LOAD CHEMISTRY_GRID INTO MEMORY AT BEGINNING OF RETRIEVAL
+
+                log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
+                                                     param_species, return_dict = False)
+                X_input = 10**log_X_input
+         #       X_param = X_input.reshape((len(param_species), len(P), 1, 1))
+                X_param = X_input
             elif PT_profile == 'gradient':
-                T_grid = T.T[0][0]    # tea.tea is the most British code ever
-                X_input = read_logX(np.log10(P), T_grid, C_to_O, log_Met, param_species, return_dict=False)
-                X_input = 10**X_input
-                X_param = X_input.reshape((len(param_species), len(P), 1, 1))
+          #      T_grid = T.T[0][0]    # tea.tea is the most British code ever
+                log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
+                                                     param_species, return_dict = False)
+                X_input = 10**log_X_input
+         #       X_param = X_input.reshape((len(param_species), len(P), 1, 1))
+                X_param = X_input
             else:
                 raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT (for now)')
 
