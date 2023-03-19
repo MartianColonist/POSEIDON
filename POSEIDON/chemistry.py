@@ -178,9 +178,9 @@ def interpolate_log_X_grid(chemistry_grid, log_P, T, C_to_O, log_Met,
     # Check that the desired pressures, temperatures, C/O and metallicity fall within the grid
     def not_valid(params, grid, is_log):
         if is_log:
-            return (10**params[0] < grid[0]) or (10**params[-1] > grid[-1])
+            return (10**np.max(params) < grid[0]) or (10**np.min(params) > grid[-1])
         else:
-            return (params[0] < grid[0]) or (params[-1] > grid[-1])
+            return (np.max(params) < grid[0]) or (np.min(params) > grid[-1])
 
     if not_valid(log_P, P_grid, True):
         raise Exception("Requested pressure is out of the grid bounds.")

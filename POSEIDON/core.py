@@ -431,9 +431,9 @@ def define_model(model_name, bulk_species, param_species,
 
     # For equilibrium models, if param_species = [] then default to all species
     if (X_profile == 'chem_eq'):
+        supported_chem_eq_species = np.intersect1d(supported_species, 
+                                                    fastchem_supported_species)
         if (param_species == []):
-            supported_chem_eq_species = np.intersect1d(supported_species, 
-                                                       fastchem_supported_species)
             param_species = supported_chem_eq_species
             bulk_species = ['H2', 'He'] 
 

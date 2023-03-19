@@ -55,6 +55,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     # Unpack model properties
     model_name = model['model_name']
     chemical_species = model['chemical_species']
+    param_species = model['param_species']
     param_names = model['param_names']
     stellar_contam = model['stellar_contam']
     reference_parameter = model['reference_parameter']
@@ -86,7 +87,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
 
     # Load chemistry grid (e.g. equilibrium chemistry) if option selected
     if (X_profile == 'chem_eq'):
-        chemistry_grid = load_chemistry_grid(chemical_species, chem_grid, comm, rank)
+        chemistry_grid = load_chemistry_grid(param_species, chem_grid, comm, rank)
     else:
         chemistry_grid = None
 
