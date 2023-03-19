@@ -22,8 +22,8 @@ except ImportError:
 
 @jit(nopython = True)
 def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
-                                      x, nu_l, nu_model, nu_r, b1, b2, 
-                                      nu_opac, N_nu):
+                                      x, nu_model, b1, b2, nu_opac, N_nu, 
+                                      wl_interp = 'sample'):
     '''
     Interpolates raw cross section onto the desired P and wl grids.
        
@@ -42,7 +42,8 @@ def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
     errors. This has the advantage of lowering memory usage.
     
     Wavelength initialisation is handled via opacity sampling (i.e. setting the 
-    cross section to the nearest pre-computed wavelength point).
+    cross section to the nearest pre-computed wavelength point) or linear 
+    interpolation over wavenumber.
        
     '''
     
@@ -51,12 +52,26 @@ def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
     N_nu_opac = len(nu_opac)   # Number of wavenumber points in CIA array
     
     for k in range(N_nu): # Note that the k here is looping over wavenumber
+
+        # Opacity sampling
+        if (wl_interp == 'sample'):
         
-        # Indices in pre-computed wavenumber array of LHS, centre, and RHS of desired wavenumber grid
-        z_l = closest_index(nu_l[k], nu_opac[0], nu_opac[-1], N_nu_opac)
-        z = closest_index(nu_model[k], nu_opac[0], nu_opac[-1], N_nu_opac)
-        z_r = closest_index(nu_r[k], nu_opac[0], nu_opac[-1], N_nu_opac)
-    
+            # Find closest indices in pre-computed wavenumber array to desired wavenumber grid
+            z = closest_index(nu_model[k], nu_opac[0], nu_opac[-1], N_nu_opac)
+
+        # Linear interpolation over wavenumber
+        elif (wl_interp == 'linear'):
+
+            # Find previous index on pre-computed wavenumber array to desired model wavenumber
+            z = prior_index_V2(nu_model[k], nu_opac[0], nu_opac[-1], N_nu_opac)
+
+            # Weights - fractional distance along wavenumber axis
+            w_nu = (nu_model[k]-nu_opac[z])/(nu_opac[z+1]-nu_opac[z])     
+            
+            # Calculate wavenumber interpolation pre-factors
+            c1 = (1.0-w_nu)
+            c2 = w_nu  
+
         for i in range(N_P_fine):
             for j in range(N_T):
             
@@ -65,30 +80,58 @@ def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
                     sigma_pre_inp[i, j, ((N_wl-1)-k)] = 0.0
                 
                 else:
+
+                    if (wl_interp == 'sample'):
+                                        
+                        # If pressure below minimum, set to value at min pressure
+                        if (x[i] == -1):
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (log_sigma[0, j, z])
                             
-                    # Opacity sampling
-                    
-                    # If pressure below minimum, set to value at min pressure
-                    if (x[i] == -1):
-                        sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (log_sigma[0, j, z])
-                        
-                    # If pressure above maximum, set to value at max pressure
-                    elif (x[i] == -2):
-                        sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (log_sigma[(N_P-1), j, z])
-        
-                    # Interpolate sigma in logsace, then power to get interp array
-                    else:
-                        reduced_sigma = log_sigma[x[i]:x[i]+2, j, z]
-                        
-                        sigma_pre_inp[i, j, ((N_wl-1)-k)] =  10 ** (b1[i]*(reduced_sigma[0]) +
-                                                                    b2[i]*(reduced_sigma[1]))
+                        # If pressure above maximum, set to value at max pressure
+                        elif (x[i] == -2):
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (log_sigma[(N_P-1), j, z])
+            
+                        # Interpolate sigma in logsace, then power to get interp array
+                        else:
+                            reduced_sigma = log_sigma[x[i]:x[i]+2, j, z]
+                            
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] =  10 ** (b1[i]*(reduced_sigma[0]) +
+                                                                        b2[i]*(reduced_sigma[1]))
+                            
+                    elif (wl_interp == 'linear'):
+
+                        # If pressure below minimum, interpolate minimum pressure value over wavenumber
+                        if (x[i] == -1):
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (c1*log_sigma[0, j, z] +
+                                                                       c2*log_sigma[0, j, z+1])
+
+                        # If pressure above maximum, set to value at max pressure
+                        elif (x[i] == -2):
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (c1*log_sigma[(N_P-1), j, z] +
+                                                                       c2*log_sigma[(N_P-1), j, z+1])
+                            
+                        # Pressure and wavenumber interpolation
+                        else:
+
+                            # Find rectangle of stored opacity points located at (log_P_1, log_P_2, nu_1, nu_2)
+                            log_sigma_rectangle = log_sigma[x[i]:x[i]+2, j, z:z+2]
+
+                            # Interpolate over pressure
+                            log_sigma_nu_1 = (b1[i]*(log_sigma_rectangle[0,0]) +       # Cross section at nu_1
+                                              b2[i]*(log_sigma_rectangle[1,0]))
+                            log_sigma_nu_2 = (b1[i]*(log_sigma_rectangle[0,1]) +       # Cross section at nu_2
+                                              b2[i]*(log_sigma_rectangle[1,1]))
+                            
+                            # Interpolate over wavenumber
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] =  10 ** (c1*log_sigma_nu_1 +
+                                                                        c2*log_sigma_nu_2)
                                                         
     return sigma_pre_inp
                     
                 
 @jit(nopython = True)
-def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_l, nu_model, nu_r, 
-                      nu_cia, N_nu):
+def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_model,nu_cia, N_nu, 
+                      wl_interp = 'sample'):
     '''
     Interpolates raw collisionally-induced absorption (CIA) binary cross 
     section onto the desired model wl grid.
@@ -102,9 +145,8 @@ def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_l, nu_model, nu_r,
     handled by indexing by a factor of (N_wl-1)-k throughout .
             
     Wavelength initialisation is handled via either opacity sampling
-    (choosing nearest pre-computed wavelength point) or via averaging
-    the logarithm of the cross section over the wavelength bin range 
-    surrounding each wavelength on the output model wavelength grid.
+    (choosing nearest pre-computed wavelength point) or linear interpolation
+    over wavenumber.
        
     '''
     
@@ -112,21 +154,43 @@ def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_l, nu_model, nu_r,
     
     N_nu_cia = len(nu_cia)   # Number of wavenumber points in CIA array
 
-    for i in range(N_T_cia):  
-        for k in range(N_nu):
-            
-            z_l = closest_index(nu_l[k], nu_cia[0], nu_cia[-1], N_nu_cia)
+    for k in range(N_nu):
+
+        # Opacity sampling
+        if (wl_interp == 'sample'):
+        
+            # Find closest indices in pre-computed wavenumber array to desired wavenumber grid
             z = closest_index(nu_model[k], nu_cia[0], nu_cia[-1], N_nu_cia)
-            z_r = closest_index(nu_r[k], nu_cia[0], nu_cia[-1], N_nu_cia)
+
+        # Linear interpolation over wavenumber
+        elif (wl_interp == 'linear'):
+
+            # Find previous index on pre-computed wavenumber array to desired model wavenumber
+            z = prior_index_V2(nu_model[k], nu_cia[0], nu_cia[-1], N_nu_cia)
+
+            # Weights - fractional distance along wavenumber axis
+            w_nu = (nu_model[k]-nu_cia[z])/(nu_cia[z+1]-nu_cia[z])
             
+            # Calculate wavenumber interpolation pre-factors
+            c1 = (1.0-w_nu)
+            c2 = w_nu  
+            
+        for i in range(N_T_cia):  
+        
             # If wl out of range of opacity, set opacity to zero
-            if ((z_l == 0) or (z_r == (N_nu_cia-1))):
+            if ((z == 0) or (z == (N_nu_cia-1))):
                 cia_pre_inp[i, ((N_wl-1)-k)] = 0.0
-                
+            
             else:
-                
-                # Opacity sampling    
-                cia_pre_inp[i, ((N_wl-1)-k)] = 10 ** (log_cia[i, z])
+
+                # Opacity sampling   
+                if (wl_interp == 'sample'):
+                    cia_pre_inp[i, ((N_wl-1)-k)] = 10 ** (log_cia[i, z])
+
+                # Linear interpolation over wavenumber
+                elif (wl_interp == 'linear'):
+                    cia_pre_inp[i, ((N_wl-1)-k)] = 10 ** (c1*log_cia[i, z] +
+                                                          c2*log_cia[i, z+1])
                
     return cia_pre_inp
 
@@ -618,7 +682,8 @@ def H_minus_free_free(wl_um, T_arr):
 
 def opacity_tables(rank, comm, wl_model, chemical_species, active_species, 
                    cia_pairs, ff_pairs, bf_species, T_fine, log_P_fine,
-                   opacity_database = 'High-T', testing = False):
+                   opacity_database = 'High-T', wl_interp = 'sample', 
+                   testing = False):
     ''' 
     Initialisation function to read in and pre-interpolate all opacities.
         
@@ -761,8 +826,8 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             log_cia_q = np.array(cia_file[cia_pair_q + '/log(cia)']).astype(np.float32) 
             
             # Sample / interpolate / log-average CIA to model P and wl grid
-            cia_pre_inp_q = wl_initialise_cia(N_T_cia_q, N_wl, log_cia_q, nu_l, nu_model, 
-                                              nu_r, nu_cia_q, N_nu)
+            cia_pre_inp_q = wl_initialise_cia(N_T_cia_q, N_wl, log_cia_q, 
+                                              nu_model, nu_cia_q, N_nu, wl_interp)
 
             del log_cia_q 
             
@@ -835,9 +900,9 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
                     
                 # Pre-interpolate cross section to model (P, wl) grid 
                 sigma_pre_inp_q = P_interpolate_wl_initialise_sigma(N_P_fine, N_T_q, N_P_q, 
-                                                                    N_wl, log_sigma_q, x, nu_l,
-                                                                    nu_model, nu_r, b1, b2, nu_q, 
-                                                                    N_nu)
+                                                                    N_wl, log_sigma_q, x,
+                                                                    nu_model, b1, b2, nu_q, 
+                                                                    N_nu, wl_interp)
 
                 del log_sigma_q   # Clear raw cross section to free memory
                 
