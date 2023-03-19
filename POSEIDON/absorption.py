@@ -1,25 +1,24 @@
-# ***** Absorption.py - cross section and extinction computations *****
-# V 8.0: Support for H- bound-free and free-free absorption added.
+''' 
+Functions for cross section and extinction coefficient calculations.
+
+'''
 
 import os
 import numpy as np
 import h5py
-from mpi4py import MPI
 import scipy.constants as sc
 from numba import cuda, jit
 import math
 
-from .utility import mock_missing
+from .species_data import polarisabilities
+from .utility import prior_index, prior_index_V2, closest_index, closest_index_GPU, \
+                     shared_memory_array, mock_missing
 
 try:
     import cupy as cp
 except ImportError:
     cp = mock_missing('cupy')
 
-                   
-from .species_data import polarisabilities
-from .utility import prior_index, prior_index_V2, closest_index, closest_index_GPU
-           
 
 @jit(nopython = True)
 def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
@@ -617,66 +616,13 @@ def H_minus_free_free(wl_um, T_arr):
     return alpha_ff
 
 
-def get_id_within_node(comm, rank):
-
-    nodename =  MPI.Get_processor_name()
-    nodelist = comm.allgather(nodename)
-
-    process_id = len([i for i in nodelist[:rank] if i==nodename]) 
-
-    return process_id
-
-
-def shared_memory_array(rank, comm, shape):
-    ''' 
-    Creates a numpy array shared in memory across multiple cores.
-    
-    Adapted from :
-    https://stackoverflow.com/questions/32485122/shared-memory-in-mpi4py
-    
-    '''
-    
-    # Create a shared array of size given by product of each dimension
-    size = np.prod(shape)
-    itemsize = MPI.DOUBLE.Get_size() 
-
-    if (rank == 0): 
-        nbytes = size * itemsize   # Array memory allocated for first process
-    else:  
-        nbytes = 0   # No memory storage on other processes
-        
-    # On rank 0, create the shared block
-    # On other ranks, get a handle to it (known as a window in MPI speak)
-    new_comm = MPI.Comm.Split(comm)
-    win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
- 
-    # Create a numpy array whose data points to the shared memory
-    buf, itemsize = win.Shared_query(0) 
-    assert itemsize == MPI.DOUBLE.Get_size() 
-    array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
-    
-    return array
-
-
 def opacity_tables(rank, comm, wl_model, chemical_species, active_species, 
                    cia_pairs, ff_pairs, bf_species, T_fine, log_P_fine,
                    opacity_database = 'High-T', testing = False):
     ''' 
     Initialisation function to read in and pre-interpolate all opacities.
         
-    Inputs:
-        
-    wl_model => array of wavelength values in spectral model (um)
-    Note: many fixed input variables specified in config.py - see import
-    
-    Outputs:
-        
-    sigma_stored => molecular and atomic cross sections interpolated to 
-                    'pre' P grid, fine T grid, and model wl grid 
-    cia_stored => collisionally-induced absorption (CIA) binary cross sections
-                    interpolated to fine T grid and model wl grid 
-    Rayleigh_stored => Rayleigh scattering cross sections on model wl grid 
-    eta_stored => refractive indices on model wl grid at standard conditions
+    TBD: write up to date docstring.
     
     '''
             
@@ -725,13 +671,13 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             print("Reading in cross sections in opacity sampling mode...")
 
         # Find the directory where the user downloaded the POSEIDON opacity data
-        opacity_path = os.environ.get("POSEIDON_input_data")
+        input_file_path = os.environ.get("POSEIDON_input_data")
 
-        if opacity_path == None:
-            raise Exception("POSEIDON cannot locate the opacity input data.\n"
+        if input_file_path == None:
+            raise Exception("POSEIDON cannot locate the input folder.\n" +
                             "Please set the 'POSEIDON_input_data' variable in " +
                             "your .bashrc or .bash_profile to point to the " +
-                            "directory containing the POSEIDON opacity database.")
+                            "POSEIDON input folder.")
         
         # If running the automated GitHub tests, don't read the opacity database
         if (testing == True):
@@ -744,16 +690,16 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
 
             # Open HDF5 files containing molecular + atomic opacities
             if (opacity_database == 'High-T'):        # High T database
-                opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1.hdf5', 'r')  
+                opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1.hdf5', 'r')  
             elif (opacity_database == 'Temperate'):   # Low T database
-                opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
+                opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
 
             # Read P grid used in opacity files
             log_P_grid = np.array(opac_file['H2O/log(P)'])   # Units: log10(P/bar) - H2O choice arbitrary, all P grids are the same
             N_P = len(log_P_grid)                            # No. of pressures in opacity files
         
         # Open HDF5 files containing collision-induced absorption (CIA)
-        cia_file = h5py.File(opacity_path + 'Opacity_database_cia.hdf5', 'r')
+        cia_file = h5py.File(input_file_path + '/opacity/Opacity_database_cia.hdf5', 'r')
         
         # Initialise array of indices on pre-calculated pressure opacity grid prior to defined atmosphere layer pressures
         x = np.zeros(N_P_fine, dtype=np.int64)
