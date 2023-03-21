@@ -1274,7 +1274,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             F_s = star['F_star']
             wl_s = star['wl_star']
 
-            if (wl_s != wl):
+            if (np.array_equiv(wl_s, wl) is False):
                 raise Exception("Error: wavelength grid for stellar spectrum does " +
                                 "not match wavelength grid of planet spectrum. " +
                                 "Did you forget to provide 'wl' to create_star?")
