@@ -275,6 +275,9 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         # The spectrum is remarkably simple for a ball of rock
         spectrum = (R_p_ref / R_s)**2 * np.ones_like(wl)
 
+        # No atmosphere dictionary needed if atmosphere disabled
+        atmosphere = None
+
     else:
 
         # Unpack reference pressure if set as a free parameter
