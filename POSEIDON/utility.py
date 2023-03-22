@@ -1290,7 +1290,7 @@ def generate_latex_param_names(param_names):
     return latex_names
 
 
-def return_quantiles(stats, param, i, quantile = '1 sigma'):
+def return_quantiles(stats, param, i, radius_unit, quantile = '1 sigma'):
     
     ''' Extract the median, +/- N sigma (specified by 'quantile'), string 
         formatter and units for a given free parameter.
@@ -1320,7 +1320,10 @@ def return_quantiles(stats, param, i, quantile = '1 sigma'):
                (round(sig_m, decimal_count) == 0.0)):
             decimal_count += 1
         formatter = '{:.' + str(decimal_count) + 'f}'
-        unit = 'RJ'
+        if (radius_unit == 'R_J'):
+            unit = 'R_J'
+        elif (radius_unit == 'R_E'):
+            unit = 'R_E'
     elif ('log' in param):
         formatter = '{:.2f}'
         unit = ''
@@ -1334,7 +1337,8 @@ def return_quantiles(stats, param, i, quantile = '1 sigma'):
 def write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
                        stats, ln_Z, ln_Z_err, reduced_chi_square, chi_square,
-                       dof, best_fit_params, wl, R, instruments, datasets):
+                       dof, best_fit_params, wl, R, instruments, datasets,
+                       radius_unit):
     ''' 
     Write a file summarising the main results from a POSEIDON retrieval.
         
@@ -1435,7 +1439,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '1 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '1 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1451,7 +1456,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '2 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '2 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1467,7 +1473,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '3 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '3 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1483,7 +1490,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '5 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '5 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1500,7 +1508,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         _, _, _, \
-        formatter, unit = return_quantiles(stats, param, i)     # We only need the formatter and unit for the best fit parameters
+        formatter, unit = return_quantiles(stats, param, i, 
+                                           radius_unit)     # We only need the formatter and unit for the best fit parameters
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(best_fit_params[i]) + ' ' + unit + '\n']
@@ -1528,6 +1537,9 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     ydata = data['ydata']
     instruments = data['instruments']
     datasets = data['datasets']
+
+    # Unpack model properties
+    radius_unit = model['radius_unit']
     
     # Load relevant output directory
     output_prefix = retrieval_name + '-'
@@ -1568,7 +1580,8 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
                        stats, ln_Z, ln_Z_err, reduced_chi_square, best_chi_square,
-                       dof, best_fit_params, wl, R, instruments, datasets)
+                       dof, best_fit_params, wl, R, instruments, datasets,
+                       radius_unit)
     
 
 def mock_missing(name):
