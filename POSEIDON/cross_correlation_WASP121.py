@@ -22,12 +22,12 @@ from POSEIDON.utility import read_high_res_data
 
 def cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr, wl_grid, residuals, Bs, V_bary, Phi, uncertainties):
     dPhi = 0.0
-    a = 1.57
+    a = 1
     b = 0.7652
-    W_conv = 4.44
+    # W_conv = 4.44
     # F_p_conv = gaussian_filter1d((spectrum - continuum) * a + continuum, W_conv)
-    # F_p_conv = (spectrum - continuum) * a + continuum
-    F_p_conv = gaussian_filter1d(spectrum - continuum, W_conv) * a + continuum
+    F_p_conv = (spectrum - continuum) * a + continuum
+    # F_p_conv = gaussian_filter1d(spectrum - continuum, W_conv) * a + continuum
     
     cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p_obs, F_s_obs are already observed value on Earth
 
@@ -44,13 +44,13 @@ def cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr, wl_grid, residu
 
 K_p = 200
 N_K_p = 100
-d_K_p = 2
+d_K_p = 1
 K_p_arr = (np.arange(N_K_p) - (N_K_p-1)//2) * d_K_p + K_p # making K_p_arr (centered on published or predicted K_p)
 # K_p_arr = [92.06 , ..., 191.06, 192.06, 193.06, ..., 291.06]
 
 V_sys = 0
 N_V_sys = 100
-d_V_sys = 2
+d_V_sys = 1
 V_sys_arr = (np.arange(N_V_sys) - (N_V_sys-1)//2) * d_V_sys + V_sys # making V_sys_arr (centered on published or predicted V_sys (here 0 because we already added V_sys in V_bary))
 
 N_cores = 10 # Change how many cores to use here.
@@ -153,8 +153,8 @@ if __name__ == '__main__':
 
     #***** Wavelength grid *****#
 
-    wl_min = 3.7      # Minimum wavelength (um)
-    wl_max = 5.1      # Maximum wavelength (um)
+    wl_min = 0.37      # Minimum wavelength (um)
+    wl_max = 0.51      # Maximum wavelength (um)
     R = 200000        # Spectral resolution of grid
 
     # wl = wl_grid_line_by_line(wl_min, wl_max)
@@ -182,7 +182,7 @@ if __name__ == '__main__':
     opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
     # Specify the pressure grid of the atmosphere
-    P_min = 1.0e-5    # 0.1 ubar
+    P_min = 1.0e-9    # 0.1 ubar
     P_max = 100       # 100 bar
     N_layers = 100    # 100 layers
 

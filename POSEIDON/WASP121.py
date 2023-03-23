@@ -59,8 +59,8 @@ print("Free parameters: " + str(model['param_names']))
 
 #***** Wavelength grid *****#
 
-wl_min = 3.7      # Minimum wavelength (um)
-wl_max = 5.1      # Maximum wavelength (um)
+wl_min = 0.37      # Minimum wavelength (um)
+wl_max = 0.51      # Maximum wavelength (um)
 R = 250000        # Spectral resolution of grid
 model['R'] = R
 model['R_instrument'] = 80000

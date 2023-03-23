@@ -42,13 +42,13 @@ def cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr, wl_grid, residu
     return loglikelihood_arr, CCF_arr
 
 K_p = -200
-N_K_p = 400
+N_K_p = 50
 d_K_p = 1
 K_p_arr = (np.arange(N_K_p) - (N_K_p-1)//2) * d_K_p + K_p # making K_p_arr (centered on published or predicted K_p)
 # K_p_arr = [92.06 , ..., 191.06, 192.06, 193.06, ..., 291.06]
 
 V_sys = 0
-N_V_sys = 400
+N_V_sys = 50
 d_V_sys = 1
 V_sys_arr = (np.arange(N_V_sys) - (N_V_sys-1)//2) * d_V_sys + V_sys # making V_sys_arr (centered on published or predicted V_sys (here 0 because we already added V_sys in V_bary))
 
@@ -73,7 +73,7 @@ def batch_cross_correlate(core_index, args):
         data_norm = np.zeros(data_raw.shape)
 
         # uncertainties = fit_uncertainties(data_raw, NPC=5)
-        uncertainties = pickle.load(open(data_path+'/uncertainties.pic', 'rb'))
+        uncertainties = pickle.load(open(data_path+'/uncertainties_injection.pic', 'rb'))
 
         for k in range(len(data_raw)):
             order = data_raw[k]
@@ -95,8 +95,8 @@ def batch_cross_correlate(core_index, args):
         for j in range(Ndet):
             U = Us[j]
             L = np.diag(1 / np.mean(uncertainties[j], axis=-1))
-            # B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
-            B = U @ np.linalg.pinv(L @ U) @ L
+            B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
+            # B = U @ np.linalg.pinv(L @ U) @ L
             Bs[j] = B
 
         log_L_arr, CCF_arr = cross_correlate(spectrum, continuum, wl, K_p_arr, V_sys_arr_split[i], wl_grid, residuals, Bs, V_bary, Phi, uncertainties)
@@ -151,8 +151,8 @@ if __name__ == '__main__':
 
     #***** Wavelength grid *****#
 
-    wl_min = 3.7      # Minimum wavelength (um)
-    wl_max = 5.1      # Maximum wavelength (um)
+    wl_min = 0.37      # Minimum wavelength (um)
+    wl_max = 0.51      # Maximum wavelength (um)
     R = 200000        # Spectral resolution of grid
 
     # wl = wl_grid_line_by_line(wl_min, wl_max)
@@ -180,7 +180,7 @@ if __name__ == '__main__':
     opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
     # Specify the pressure grid of the atmosphere
-    P_min = 1.0e-5    # 0.1 ubar
+    P_min = 1.0e-9    # 0.1 ubar
     P_max = 100       # 100 bar
     N_layers = 100    # 100 layers
 
@@ -214,7 +214,6 @@ if __name__ == '__main__':
 
     # Provide a specific set of model parameters for the atmosphere
     PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])     # a1, a2, log_P1, log_P2, log_P3, T_deep
-    log_X_params = np.array([[log_Fe]])
     
     atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params)
 
