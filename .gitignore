@@ -14,5 +14,11 @@ POSEIDON.egg-info/
 inputs/
 run/
 .vscode
+<<<<<<< Updated upstream
 testing_new_functions/
 docs/
+=======
+docs/
+testing_new_functions/
+.gitignore
+>>>>>>> Stashed changes
