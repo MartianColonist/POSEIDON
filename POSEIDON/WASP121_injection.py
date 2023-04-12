@@ -1,7 +1,7 @@
 # %%
 from POSEIDON.core import create_star, create_planet
 from POSEIDON.constants import R_Sun, R_J, M_J
-
+import pickle
 #***** Define stellar properties *****#
 
 R_s = 1.458*R_Sun     # Stellar radius (m)
@@ -33,6 +33,8 @@ if (planet['system_distance'] is None):
     planet['system_distance'] = 1    # This value only used for flux ratios, so it cancels
 d = planet['system_distance']
 
+planet['V_sin_i'] = 14.5
+
 # %%
 from POSEIDON.core import define_model, wl_grid_constant_R
 from POSEIDON.utility import read_high_res_data
@@ -41,21 +43,21 @@ from POSEIDON.utility import read_high_res_data
 model_name = 'High-res retrieval'  # Model name used for plots, output files etc.
 
 bulk_species = ['H2', 'He']         # H2 + He comprises the bulk atmosphere
-# param_species = ['Mg', 'Fe', 'Ti']
-param_species = ['Fe']
+param_species = ['Mg', 'Fe', 'Ti']
 # param_species = ['Fe']
 
-method = 'sysrem'
+high_res = 'sysrem'
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
-# high_res_params = ['a', 'b', 'K_p', 'V_sys', 'W_conv']
-high_res_params = ['a', 'K_p', 'V_sys', 'W_conv']
+high_res_params = ['a', 'b', 'K_p', 'V_sys', 'W_conv']
 
 # Create the model object
 # model = define_model(model_name, bulk_species, param_species, 
 #                     PT_profile = 'Madhu', high_res = high_res,
 #                     high_res_params = high_res_params, R_p_ref_enabled=False)
+
 model = define_model(model_name, bulk_species, param_species, 
-                    PT_profile = 'isotherm', high_res_params = high_res_params, R_p_ref_enabled=False)
+                    PT_profile = 'isotherm', high_res = high_res,
+                    high_res_params = high_res_params, R_p_ref_enabled=False)
 
 # Check the free parameters defining this model
 print("Free parameters: " + str(model['param_names']))
@@ -64,20 +66,29 @@ print("Free parameters: " + str(model['param_names']))
 
 wl_min = 0.37      # Minimum wavelength (um)
 wl_max = 0.51      # Maximum wavelength (um)
-R = 500000         # Spectral resolution of grid
+R = 250000        # Spectral resolution of grid
 model['R'] = R
-model['R_instrument'] = 80000 # Resolution of instrument
+model['R_instrument'] = 80000
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
-data_dir = './reference_data/observations/WASP-121b'
+data_path = './reference_data/observations/WASP-121b'
 
-data = read_high_res_data(data_dir, method='sysrem', spectrum_type='transmission')
-data['V_sin_i'] = 14.5
-data['uncertainties'] = None
-data_raw = data['data_raw']
+
+wl_grid, data_raw = pickle.load(open(data_path+'/data_injection.pic', 'rb'))
+Phi = pickle.load(open(data_path+'/ph.pic','rb'))                    # Time-resolved phases
+V_bary = pickle.load(open(data_path+'/rvel.pic','rb'))               # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
+
 data_raw[data_raw < 0] = 0
+Ndet, Nphi, Npix = data_raw.shape
+
+data = {}
 data['data_raw'] = data_raw
+data['wl_grid'] = wl_grid
+data['Phi'] = Phi
+data['V_bary'] = V_bary
+# uncertainties = fit_uncertainties(data_raw, NPC=5)
+uncertainties = pickle.load(open(data_path+'/uncertainties_injection.pic', 'rb'))
 # %%
 from POSEIDON.core import set_priors
 
@@ -120,12 +131,12 @@ prior_ranges['a2'] = [0.02, 1]
 prior_ranges['log_P1'] = [-5.5, 2.5]
 prior_ranges['log_P2'] = [-5.5, 2.5]
 prior_ranges['log_P3'] = [-2, 2]
-prior_ranges['K_p'] = [170, 230]
-prior_ranges['V_sys'] = [-10, 10]
+prior_ranges['K_p'] = [-400, 0]
+prior_ranges['V_sys'] = [-200, 50]
 prior_ranges['a'] = [0.1, 10]
 prior_ranges['b'] = [0.1, 10]
 prior_ranges['dPhi'] = [-0.01, 0.01]
-prior_ranges['W_conv'] = [1, 50]
+prior_ranges['W_conv'] = [0.1, 50]
 
 # Create prior object for retrieval
 priors = set_priors(planet, star, model, data, prior_types, prior_ranges)
@@ -174,9 +185,9 @@ P_ref = 1e-5   # Reference pressure (bar)
 
 #***** Run atmospheric retrieval *****#
 
-run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
-                spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
-                N_live = 800, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.05)
+# run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
+#                 spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
+#                 N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.05)
 
 
 # %% [markdown]
@@ -217,4 +228,4 @@ log_Xs_high2 = [(log_X_high2, P)]
 plot_chem_retrieved(planet_name, chemical_species, log_Xs_median, log_Xs_low2, log_Xs_low1, log_Xs_high1, log_Xs_high2)
 #***** Make corner plot *****#
 
-fig_corner = generate_cornerplot(planet, model)
+fig_corner = generate_cornerplot(planet, model, true_vals=[3000, None, -3, None, 4.5, None, -200, -10, 0])

@@ -53,7 +53,7 @@ def run_retrieval(planet, star, model, opac, data, priors,
     model_name = model['model_name']
     chemical_species = model['chemical_species']
     param_names = model['param_names']
-    high_res = model['high_res']
+    method = data['method']
     N_params = len(param_names)
     
     if (retrieval_name is None):
@@ -103,7 +103,7 @@ def run_retrieval(planet, star, model, opac, data, priors,
                               prior_ranges, spectrum_type, wl, P, P_ref, 
                               He_fraction, N_slice_EM, N_slice_DN, N_params, 
                               T_phot_grid, T_het_grid, I_phot_grid,
-                              I_het_grid, high_res, resume = resume, verbose = verbose,
+                              I_het_grid, resume = resume, verbose = verbose,
                               outputfiles_basename = basename, 
                               n_live_points = N_live, multimodal = False,
                               evidence_tolerance = ev_tol, log_zero = -1e90,
@@ -119,9 +119,9 @@ def run_retrieval(planet, star, model, opac, data, priors,
             total = round_sig_figs((t1-t0)/3600.0, 2)  # Round to 2 significant figures
             
             print('POSEIDON retrieval finished in ' + str(total) + ' hours')
-      
+
             # Write POSEIDON retrieval output files
-            if not high_res:
+            if method == None:
                 write_MultiNest_results(planet, model, data, retrieval_name,
                                     N_live, ev_tol, sampling_algorithm, wl, R)
 
@@ -215,7 +215,7 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
 def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
                           prior_ranges, spectrum_type, wl, P, P_ref, He_fraction, 
                           N_slice_EM, N_slice_DN, N_params, T_phot_grid,
-                          T_het_grid, I_phot_grid, I_het_grid, high_res, **kwargs):
+                          T_het_grid, I_phot_grid, I_het_grid, **kwargs):
     ''' 
     Main function for conducting atmospheric retrievals with PyMultiNest.
     
@@ -235,7 +235,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     radius_unit = model['radius_unit']
     distance_unit = model['distance_unit']
     surface = model['surface']
-    high_res = model['high_res']
     high_res_param_names = model['high_res_param_names']
     R_p = planet['planet_radius']
     d = planet['system_distance']
@@ -246,21 +245,24 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     # Assign PyMultiNest keyword arguments
     n_dims = N_params
     
+    high_res = (len(high_res_param_names) != 0)
+
     # Pre-compute normalisation for log-likelihood 
     if not high_res:
         err_data = data['err_data']
         norm_log_default = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
     else:
-        wl_grid = data['wl_grid']
-        V_bary = data['V_bary']
-        Phi = data['Phi']
-        V_sin_i = planet['V_sin_i']
+        method = data['method']
 
-        if high_res == 'sysrem':
+        if method == 'sysrem':
             data_raw = data['data_raw']
+            if data['uncertainties'] == None:
+                uncertainties = fit_uncertainties(data_raw, NPC=5)
+                data['uncertainties'] = uncertainties
+            uncertainties = data['uncertainties']
             Ndet, Nphi, Npix = data_raw.shape
             data_norm = np.zeros(data_raw.shape)
-            uncertainties = fit_uncertainties(data_raw, NPC=5)            
+
             for i in range(len(data_raw)):
                 order = data_raw[i]
                 order_norm = (order.T / np.median(order, axis=1)).T
@@ -270,20 +272,17 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 
                 uncertainties[i] = uncertainty_norm
                 data_norm[i] = order_norm
-            residuals, Us, Ws = fast_filter(data_norm, iter=15)
+            residuals, Us = fast_filter(data_norm, uncertainties, iter=15)
 
             Bs = np.zeros((Ndet, Nphi, Nphi))
 
             for j in range(Ndet):
                 U = Us[j]
                 L = np.diag(1 / np.mean(uncertainties[j], axis=-1))
-                # B = U @ np.linalg.inv((L @ U).T @ (L @ U)) @ (L @ U).T @ L
                 B = U @ np.linalg.pinv(L @ U) @ L
                 Bs[j] = B
-
-        elif high_res == 'pca':
-            data_scale = data['data_scale']
-            data_arr = data['data_arr']
+            data['Bs'] = Bs
+            data['residuals'] = residuals
 
     # Create variable governing if a mixing ratio parameter combination lies in 
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
@@ -654,15 +653,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             return loglikelihood
 
         if high_res:
-            if high_res == 'sysrem':
-                loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
-                                                high_res_param_names, residuals=residuals, uncertainties=uncertainties, Bs=Bs)
-            elif high_res == 'pca':
-                loglikelihood = log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
-                                                high_res_param_names, data_arr=data_arr, data_scale=data_scale)
+            return log_likelihood(F_s_obs, spectrum, wl, data, model, high_res_params, high_res_param_names)
 
-            return loglikelihood
-            
         
         #***** Step 4: stellar contamination *****#
         # Stellar contamination is only relevant for transmission spectra
@@ -729,7 +721,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         return loglikelihood
         
     # Run PyMultiNest
-    pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs, max_iter=20000)
+    # pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs, max_iter=8000)
+    pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
 	
 
 def retrieved_samples(planet, star, model, opac, retrieval_name,

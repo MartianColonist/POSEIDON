@@ -124,7 +124,7 @@ def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_sca
     return loglikelihood
 
 
-def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b):
+def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, tmodel, uncertainties, a, b):
 
     Nord, Nphi, Npix = residuals.shape
 
@@ -142,12 +142,11 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary
         wl_slice = wl_grid[i]                    # Cropped wavelengths
         models_shifted = np.zeros((Nphi, Npix))  # "shifted" model spectra array at each phase
         for j in range(Nphi):
-            # wl_shifted_p = wl_slice / (1.0 + dl_p[j])
             wl_shifted_p = wl_slice * (1.0 - dl_p[j])
             # wl_shifted_p = wl_slice * np.sqrt((1.0 - dl_p[j]) / (1 + dl_p[j]))
-            Fp = interpolate.splev(wl_shifted_p, cs_p, der=0) # linear interpolation, einsum
-            t_model = pickle.load(open('/Users/Victini/Desktop/POSEIDON_high_res/POSEIDON/reference_data/observations/WASP-121b/tmodel1.pic','rb')) # Load transit model
-            models_shifted[j] = ((1-t_model[j]))/np.max(1-t_model)*(-Fp) + 1 
+            Fp = np.interp(wl_shifted_p, cs_p[0], cs_p[1])
+            # Fp = interpolate.splev(wl_shifted_p, cs_p, der=0) # linear interpolation, einsum
+            models_shifted[j] = ((1-tmodel[j]))/np.max(1-tmodel)*(-Fp) + 1 
 
         models_shifted = (models_shifted.T / np.median(models_shifted, axis=1)).T # divide by the median over wavelength to mimic blaze correction
 
@@ -156,29 +155,30 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary
         
         if b:
             for j in range(Nphi):
-                m = model_filtered[j] / uncertainties[i, j]
+                m = model_filtered[j] / uncertainties[i, j] * a
                 m2 = m.dot(m)
                 f = residuals[i, j] / uncertainties[i, j]
                 f2 = f.dot(f)
                 CCF = f.dot(m)
                 loglikelihood -= 0.5 * (m2 + f2 - 2.0*CCF) / (b ** 2)
                 CCF_sum += CCF
-        elif uncertainties != None:
+        else: # nulled b
             for j in range(Nphi):
                 m = model_filtered[j]/ uncertainties[i, j]
                 m2 = m.dot(m)
                 f = residuals[i, j] / uncertainties[i, j]
                 f2 = f.dot(f)
                 CCF = f.dot(m)
-                loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix) # nulled b
-        else:
-            for j in range(Nphi):
-                m = model_filtered[j]
-                m2 = m.dot(m)
-                f = residuals[i, j]
-                f2 = f.dot(f)
-                CCF = f.dot(m)
-                loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix) # nulled b and uncertainties
+                loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix) 
+                CCF_sum += CCF
+        # else: # nulled b and uncertainties
+        #     for j in range(Nphi):
+        #         m = model_filtered[j]
+        #         m2 = m.dot(m)
+        #         f = residuals[i, j]
+        #         f2 = f.dot(f)
+        #         CCF = f.dot(m)
+        #         loglikelihood -= Npix / 2 * np.log((m2 + f2 - 2.0*CCF) / Npix) 
 
     if b:
         loglikelihood -= N * np.log(b)
@@ -188,8 +188,8 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary
     
     return loglikelihood, CCF_sum
 
-def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, high_res_params, 
-                    high_res_param_names, data_arr=None, data_scale=None, residuals=None, uncertainties=None, Bs=None):
+def log_likelihood(F_s_obs, spectrum, wl, data, model, high_res_params, 
+                    high_res_param_names):
     '''
     Return the loglikelihood given the observed flux, Keplerian velocity, and centered system velocity.
     Use this function in a high resolutional rerieval.
@@ -232,6 +232,13 @@ def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, 
         logL_Matteo (float):
             Loglikelihood given by Log(L) = -N/2 Log(s_f^2 - 2R(s) + s_g^2). Equation 9 in Brogi & Line 2019 March.
     '''
+
+    method = data['method']
+    wl_grid = data['wl_grid']
+    V_bary = data['V_bary']
+    Phi = data['Phi']
+    spectrum_type = data['spectrum_type']
+
     if ('K_p' in high_res_param_names):
         K_p = high_res_params[np.where(high_res_param_names == 'K_p')[0][0]]
     else:
@@ -262,12 +269,13 @@ def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, 
     else:
         b = None
 
-    # instrument profile convolution
-    R_instrument = model['R_instrument']
-    R = model['R']
-
-    if data_arr is not None and data_scale is not None:
-        # rotational coavolution
+    if method == 'pca' and spectrum_type == 'emission':
+        data_scale = data['data_scale']
+        data_arr = data['data_arr']
+        # instrument profile convolution
+        R_instrument = model['R_instrument']
+        R = model['R']
+        V_sin_i = data['V_sin_i']
         rot_kernel = get_rot_kernel(V_sin_i, wl, W_conv)
         F_p_rot = np.convolve(spectrum, rot_kernel, mode='same') # calibrate for planetary rotation
         xker = np.arange(-20, 21)
@@ -280,12 +288,17 @@ def log_likelihood(F_s_obs, spectrum, wl, wl_grid, V_bary, Phi, V_sin_i, model, 
         cs_s = interpolate.splrep(wl, F_s_conv, s=0.0)
         return log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
 
-    elif residuals is not None and Bs is not None:
-        F_p_conv = gaussian_filter1d(spectrum, W_conv) * a # np.convolve use smaller kernel. Apply filter to the spectrum. And multiply by scale factor a.
-        cs_p = interpolate.splrep(wl, F_p_conv, s=0.0)
-        return log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, uncertainties, a, b)[0]
+    elif method == 'sysrem' and spectrum_type == 'transmission':
+        residuals = data['residuals']
+        Bs = data['Bs']
+        tmodel = data['transit_weight']
+        uncertainties = data['uncertainties']
+        F_p_conv = gaussian_filter1d(spectrum, W_conv) # np.convolve use smaller kernel. Apply filter to the spectrum. And multiply by scale factor a.
+        # cs_p = interpolate.splrep(wl, F_p_conv, s=0.0)
+        cs_p = [wl, F_p_conv]
+        return log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, tmodel, uncertainties, a, b)[0]
     else:
-        raise Exception('Problem in high res retreival data.')
+        raise Exception('Problem with high res retreival data.')
 
 def sysrem(data_array, stds, iter=15):
 
