@@ -2265,7 +2265,7 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
     # For relative offsets, find which data indices the offset applies to
     if (offset_datasets is not None):
         offset_datasets = np.array(offset_datasets)
-        if (len(offset_datasets > 1)):
+        if (len(offset_datasets) > 1):
             raise Exception("Error: only one dataset can have a free offset.")
         if (offset_datasets[0] in datasets):
             offset_dataset_idx = np.where(datasets == offset_datasets[0])[0][0]

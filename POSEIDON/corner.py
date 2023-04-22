@@ -609,6 +609,8 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                 title_fmt = '.0f'
             elif (('alpha' in param_name) or ('beta' in param_name)):
                 title_fmt = '.0f'
+            elif ('delta_rel' in param_name):
+                title_fmt = '.0f'
             elif ('R_p_ref' in param_name):
                 
                 label_exponent = round_sig_figs(np.floor(np.log10(np.abs(0.5*(qh - ql)))), 1)
