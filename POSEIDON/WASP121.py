@@ -48,7 +48,7 @@ param_species = ['Fe']
 method = 'sysrem'
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
 # high_res_params = ['a', 'b', 'K_p', 'V_sys', 'W_conv']
-high_res_params = ['a', 'K_p', 'V_sys', 'W_conv']
+high_res_params = ['a', 'b', 'K_p', 'V_sys', 'W_conv']
 
 # Create the model object
 # model = define_model(model_name, bulk_species, param_species, 

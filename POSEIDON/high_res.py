@@ -164,7 +164,7 @@ def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary
                 CCF_sum += CCF
         else: # nulled b
             for j in range(Nphi):
-                m = model_filtered[j]/ uncertainties[i, j]
+                m = model_filtered[j]/ uncertainties[i, j] * a
                 m2 = m.dot(m)
                 f = residuals[i, j] / uncertainties[i, j]
                 f2 = f.dot(f)
