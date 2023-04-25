@@ -193,9 +193,7 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g):
 
     # Interpolate stellar grid to obtain stellar flux (also handles wl interpolation)
     F_s = specgrid.flux(x, wl_edges*10000)   # PyMSG expects Angstroms
-
-    # UPDATE CONVERSION FACTOR AFTER GRID FIXED
-    F_s = np.array(F_s) * 1e-1   # Convert flux from erg/s/cm^2/A to W/m^2/m
+    F_s = np.array(F_s) * 1e7   # Convert flux from erg/s/cm^2/A to W/m^2/m
 
     # Calculate average specific intensity
     I_grid = F_s / np.pi    # W/m^2/sr/m
