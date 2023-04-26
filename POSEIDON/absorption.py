@@ -1,30 +1,29 @@
-# ***** Absorption.py - cross section and extinction computations *****
-# V 8.0: Support for H- bound-free and free-free absorption added.
+''' 
+Functions for cross section and extinction coefficient calculations.
+
+'''
 
 import os
 import numpy as np
 import h5py
-from mpi4py import MPI
 import scipy.constants as sc
 from numba import cuda, jit
 import math
 
-from .utility import mock_missing
+from .species_data import polarisabilities
+from .utility import prior_index, prior_index_V2, closest_index, closest_index_GPU, \
+                     shared_memory_array, mock_missing
 
 try:
     import cupy as cp
 except ImportError:
     cp = mock_missing('cupy')
 
-                   
-from .species_data import polarisabilities
-from .utility import prior_index, prior_index_V2, closest_index, closest_index_GPU
-           
 
 @jit(nopython = True)
 def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
-                                      x, nu_l, nu_model, nu_r, b1, b2, 
-                                      nu_opac, N_nu):
+                                      x, nu_model, b1, b2, nu_opac, N_nu, 
+                                      wl_interp = 'sample'):
     '''
     Interpolates raw cross section onto the desired P and wl grids.
        
@@ -43,7 +42,8 @@ def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
     errors. This has the advantage of lowering memory usage.
     
     Wavelength initialisation is handled via opacity sampling (i.e. setting the 
-    cross section to the nearest pre-computed wavelength point).
+    cross section to the nearest pre-computed wavelength point) or linear 
+    interpolation over wavenumber.
        
     '''
     
@@ -52,12 +52,26 @@ def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
     N_nu_opac = len(nu_opac)   # Number of wavenumber points in CIA array
     
     for k in range(N_nu): # Note that the k here is looping over wavenumber
+
+        # Opacity sampling
+        if (wl_interp == 'sample'):
         
-        # Indices in pre-computed wavenumber array of LHS, centre, and RHS of desired wavenumber grid
-        z_l = closest_index(nu_l[k], nu_opac[0], nu_opac[-1], N_nu_opac)
-        z = closest_index(nu_model[k], nu_opac[0], nu_opac[-1], N_nu_opac)
-        z_r = closest_index(nu_r[k], nu_opac[0], nu_opac[-1], N_nu_opac)
-    
+            # Find closest indices in pre-computed wavenumber array to desired wavenumber grid
+            z = closest_index(nu_model[k], nu_opac[0], nu_opac[-1], N_nu_opac)
+
+        # Linear interpolation over wavenumber
+        elif (wl_interp == 'linear'):
+
+            # Find previous index on pre-computed wavenumber array to desired model wavenumber
+            z = prior_index_V2(nu_model[k], nu_opac[0], nu_opac[-1], N_nu_opac)
+
+            # Weights - fractional distance along wavenumber axis
+            w_nu = (nu_model[k]-nu_opac[z])/(nu_opac[z+1]-nu_opac[z])     
+            
+            # Calculate wavenumber interpolation pre-factors
+            c1 = (1.0-w_nu)
+            c2 = w_nu  
+
         for i in range(N_P_fine):
             for j in range(N_T):
             
@@ -66,30 +80,58 @@ def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
                     sigma_pre_inp[i, j, ((N_wl-1)-k)] = 0.0
                 
                 else:
+
+                    if (wl_interp == 'sample'):
+                                        
+                        # If pressure below minimum, set to value at min pressure
+                        if (x[i] == -1):
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (log_sigma[0, j, z])
                             
-                    # Opacity sampling
-                    
-                    # If pressure below minimum, set to value at min pressure
-                    if (x[i] == -1):
-                        sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (log_sigma[0, j, z])
-                        
-                    # If pressure above maximum, set to value at max pressure
-                    elif (x[i] == -2):
-                        sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (log_sigma[(N_P-1), j, z])
-        
-                    # Interpolate sigma in logsace, then power to get interp array
-                    else:
-                        reduced_sigma = log_sigma[x[i]:x[i]+2, j, z]
-                        
-                        sigma_pre_inp[i, j, ((N_wl-1)-k)] =  10 ** (b1[i]*(reduced_sigma[0]) +
-                                                                    b2[i]*(reduced_sigma[1]))
+                        # If pressure above maximum, set to value at max pressure
+                        elif (x[i] == -2):
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (log_sigma[(N_P-1), j, z])
+            
+                        # Interpolate sigma in logsace, then power to get interp array
+                        else:
+                            reduced_sigma = log_sigma[x[i]:x[i]+2, j, z]
+                            
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] =  10 ** (b1[i]*(reduced_sigma[0]) +
+                                                                        b2[i]*(reduced_sigma[1]))
+                            
+                    elif (wl_interp == 'linear'):
+
+                        # If pressure below minimum, interpolate minimum pressure value over wavenumber
+                        if (x[i] == -1):
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (c1*log_sigma[0, j, z] +
+                                                                       c2*log_sigma[0, j, z+1])
+
+                        # If pressure above maximum, set to value at max pressure
+                        elif (x[i] == -2):
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] = 10 ** (c1*log_sigma[(N_P-1), j, z] +
+                                                                       c2*log_sigma[(N_P-1), j, z+1])
+                            
+                        # Pressure and wavenumber interpolation
+                        else:
+
+                            # Find rectangle of stored opacity points located at (log_P_1, log_P_2, nu_1, nu_2)
+                            log_sigma_rectangle = log_sigma[x[i]:x[i]+2, j, z:z+2]
+
+                            # Interpolate over pressure
+                            log_sigma_nu_1 = (b1[i]*(log_sigma_rectangle[0,0]) +       # Cross section at nu_1
+                                              b2[i]*(log_sigma_rectangle[1,0]))
+                            log_sigma_nu_2 = (b1[i]*(log_sigma_rectangle[0,1]) +       # Cross section at nu_2
+                                              b2[i]*(log_sigma_rectangle[1,1]))
+                            
+                            # Interpolate over wavenumber
+                            sigma_pre_inp[i, j, ((N_wl-1)-k)] =  10 ** (c1*log_sigma_nu_1 +
+                                                                        c2*log_sigma_nu_2)
                                                         
     return sigma_pre_inp
                     
                 
 @jit(nopython = True)
-def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_l, nu_model, nu_r, 
-                      nu_cia, N_nu):
+def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_model,nu_cia, N_nu, 
+                      wl_interp = 'sample'):
     '''
     Interpolates raw collisionally-induced absorption (CIA) binary cross 
     section onto the desired model wl grid.
@@ -103,9 +145,8 @@ def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_l, nu_model, nu_r,
     handled by indexing by a factor of (N_wl-1)-k throughout .
             
     Wavelength initialisation is handled via either opacity sampling
-    (choosing nearest pre-computed wavelength point) or via averaging
-    the logarithm of the cross section over the wavelength bin range 
-    surrounding each wavelength on the output model wavelength grid.
+    (choosing nearest pre-computed wavelength point) or linear interpolation
+    over wavenumber.
        
     '''
     
@@ -113,21 +154,43 @@ def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_l, nu_model, nu_r,
     
     N_nu_cia = len(nu_cia)   # Number of wavenumber points in CIA array
 
-    for i in range(N_T_cia):  
-        for k in range(N_nu):
-            
-            z_l = closest_index(nu_l[k], nu_cia[0], nu_cia[-1], N_nu_cia)
+    for k in range(N_nu):
+
+        # Opacity sampling
+        if (wl_interp == 'sample'):
+        
+            # Find closest indices in pre-computed wavenumber array to desired wavenumber grid
             z = closest_index(nu_model[k], nu_cia[0], nu_cia[-1], N_nu_cia)
-            z_r = closest_index(nu_r[k], nu_cia[0], nu_cia[-1], N_nu_cia)
+
+        # Linear interpolation over wavenumber
+        elif (wl_interp == 'linear'):
+
+            # Find previous index on pre-computed wavenumber array to desired model wavenumber
+            z = prior_index_V2(nu_model[k], nu_cia[0], nu_cia[-1], N_nu_cia)
+
+            # Weights - fractional distance along wavenumber axis
+            w_nu = (nu_model[k]-nu_cia[z])/(nu_cia[z+1]-nu_cia[z])
             
+            # Calculate wavenumber interpolation pre-factors
+            c1 = (1.0-w_nu)
+            c2 = w_nu  
+            
+        for i in range(N_T_cia):  
+        
             # If wl out of range of opacity, set opacity to zero
-            if ((z_l == 0) or (z_r == (N_nu_cia-1))):
+            if ((z == 0) or (z == (N_nu_cia-1))):
                 cia_pre_inp[i, ((N_wl-1)-k)] = 0.0
-                
+            
             else:
-                
-                # Opacity sampling    
-                cia_pre_inp[i, ((N_wl-1)-k)] = 10 ** (log_cia[i, z])
+
+                # Opacity sampling   
+                if (wl_interp == 'sample'):
+                    cia_pre_inp[i, ((N_wl-1)-k)] = 10 ** (log_cia[i, z])
+
+                # Linear interpolation over wavenumber
+                elif (wl_interp == 'linear'):
+                    cia_pre_inp[i, ((N_wl-1)-k)] = 10 ** (c1*log_cia[i, z] +
+                                                          c2*log_cia[i, z+1])
                
     return cia_pre_inp
 
@@ -142,14 +205,14 @@ def T_interpolation_init(N_T_fine, T_grid, T_fine, y):
     
     w_T = np.zeros(N_T_fine)
     
-    # Find T index in cross secion arrays prior to fine temperature value
+    # Find T index in cross section arrays prior to fine temperature value
     for j in range(N_T_fine):
         
-        if (T_fine[j] < T_grid[0]):   # If fine temperature point falls off LHS of temperaure grid
+        if (T_fine[j] < T_grid[0]):   # If fine temperature point falls off LHS of temperature grid
             y[j] = -1                 # Special value (-1) stored, interpreted in interpellator
             w_T[j] = 0.0              # Weight not used in this case
             
-        elif (T_fine[j] >= T_grid[-1]):   # If fine temperature point falls off RHS of temperaure grid
+        elif (T_fine[j] >= T_grid[-1]):   # If fine temperature point falls off RHS of temperature grid
             y[j] = -2                     # Special value (-2) stored, interpreted in interpellator
             w_T[j] = 0.0                  # Weight not used in this case
         
@@ -617,66 +680,14 @@ def H_minus_free_free(wl_um, T_arr):
     return alpha_ff
 
 
-def get_id_within_node(comm, rank):
-
-    nodename =  MPI.Get_processor_name()
-    nodelist = comm.allgather(nodename)
-
-    process_id = len([i for i in nodelist[:rank] if i==nodename]) 
-
-    return process_id
-
-
-def shared_memory_array(rank, comm, shape):
-    ''' 
-    Creates a numpy array shared in memory across multiple cores.
-    
-    Adapted from :
-    https://stackoverflow.com/questions/32485122/shared-memory-in-mpi4py
-    
-    '''
-    
-    # Create a shared array of size given by product of each dimension
-    size = np.prod(shape)
-    itemsize = MPI.DOUBLE.Get_size() 
-
-    if (rank == 0): 
-        nbytes = size * itemsize   # Array memory allocated for first process
-    else:  
-        nbytes = 0   # No memory storage on other processes
-        
-    # On rank 0, create the shared block
-    # On other ranks, get a handle to it (known as a window in MPI speak)
-    new_comm = MPI.Comm.Split(comm)
-    win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
- 
-    # Create a numpy array whose data points to the shared memory
-    buf, itemsize = win.Shared_query(0) 
-    assert itemsize == MPI.DOUBLE.Get_size() 
-    array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
-    
-    return array
-
-
 def opacity_tables(rank, comm, wl_model, chemical_species, active_species, 
                    cia_pairs, ff_pairs, bf_species, T_fine, log_P_fine,
-                   opacity_database = 'High-T'):
+                   opacity_database = 'High-T', wl_interp = 'sample', 
+                   testing = False):
     ''' 
     Initialisation function to read in and pre-interpolate all opacities.
         
-    Inputs:
-        
-    wl_model => array of wavelength values in spectral model (um)
-    Note: many fixed input variables specified in config.py - see import
-    
-    Outputs:
-        
-    sigma_stored => molecular and atomic cross sections interpolated to 
-                    'pre' P grid, fine T grid, and model wl grid 
-    cia_stored => collisionally-induced absorption (CIA) binary cross sections
-                    interpolated to fine T grid and model wl grid 
-    Rayleigh_stored => Rayleigh scattering cross sections on model wl grid 
-    eta_stored => refractive indices on model wl grid at standard conditions
+    TBD: write up to date docstring.
     
     '''
             
@@ -725,29 +736,38 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             print("Reading in cross sections in opacity sampling mode...")
 
         # Find the directory where the user downloaded the POSEIDON opacity data
-        opacity_path = os.environ.get("POSEIDON_input_data")
+        input_file_path = os.environ.get("POSEIDON_input_data")
 
-        if opacity_path == None:
-            raise Exception("POSEIDON cannot locate the opacity input data.\n"
+        if input_file_path == None:
+            raise Exception("POSEIDON cannot locate the input folder.\n" +
                             "Please set the 'POSEIDON_input_data' variable in " +
                             "your .bashrc or .bash_profile to point to the " +
-                            "directory containing the POSEIDON opacity database.")
+                            "POSEIDON input folder.")
         
-        # Open HDF5 files containing molecular + atomic opacities
-        if (opacity_database == 'High-T'):        # High T database
-            opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1.hdf5', 'r')  
-        elif (opacity_database == 'Temperate'):   # Low T database
-            opac_file = h5py.File(opacity_path + 'Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
+        # If running the automated GitHub tests, don't read the opacity database
+        if (testing == True):
+            opac_file = ''
+            log_P_grid = np.array([-6, -5, -4, -3, -2, -1, 0, 1, 2])
+            N_P = len(log_P_grid)
+
+        # For all other applications
+        else:
+
+            # Open HDF5 files containing molecular + atomic opacities
+            if (opacity_database == 'High-T'):        # High T database
+                opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1.hdf5', 'r')  
+            elif (opacity_database == 'Temperate'):   # Low T database
+                opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
+
+            # Read P grid used in opacity files
+            log_P_grid = np.array(opac_file['H2O/log(P)'])   # Units: log10(P/bar) - H2O choice arbitrary, all P grids are the same
+            N_P = len(log_P_grid)                            # No. of pressures in opacity files
         
         # Open HDF5 files containing collision-induced absorption (CIA)
-        cia_file = h5py.File(opacity_path + 'Opacity_database_cia.hdf5', 'r')
-        
-        #***** Read in P grid used in opacity files*****#
-        log_P_grid = np.array(opac_file['H2O/log(P)'])   # Units: log10(P/bar) - H2O choice arbitrary, all P grids are the same
-        N_P = len(log_P_grid)                            # No. of pressures in opacity files
+        cia_file = h5py.File(input_file_path + '/opacity/Opacity_database_cia.hdf5', 'r')
         
         # Initialise array of indices on pre-calculated pressure opacity grid prior to defined atmosphere layer pressures
-        x = np.zeros(N_P_fine, dtype=np.int)
+        x = np.zeros(N_P_fine, dtype=np.int64)
         
         # Weights
         w_P = np.zeros(N_P_fine)
@@ -799,15 +819,15 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             nu_cia_q = np.array(cia_file[cia_pair_q + '/nu'])
         
             # Evaluate temperature interpolation weighting factor
-            y_cia_q = np.zeros(N_T_fine, dtype=np.int)   # Index of T in CIA arrays prior to fine temperature value
+            y_cia_q = np.zeros(N_T_fine, dtype=np.int64)   # Index of T in CIA arrays prior to fine temperature value
             w_T_cia_q = T_interpolation_init(N_T_fine, T_grid_cia_q, T_fine, y_cia_q)   # Weighting factor
             
             # Read in log10(binary cross section) for specified CIA pair
             log_cia_q = np.array(cia_file[cia_pair_q + '/log(cia)']).astype(np.float32) 
             
             # Sample / interpolate / log-average CIA to model P and wl grid
-            cia_pre_inp_q = wl_initialise_cia(N_T_cia_q, N_wl, log_cia_q, nu_l, nu_model, 
-                                              nu_r, nu_cia_q, N_nu)
+            cia_pre_inp_q = wl_initialise_cia(N_T_cia_q, N_wl, log_cia_q, 
+                                              nu_model, nu_cia_q, N_nu, wl_interp)
 
             del log_cia_q 
             
@@ -855,44 +875,46 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             
         #***** Process molecular and atomic opacities *****#
 
-        # Load molecular and atomic absorption cross sections
-        for q in range(N_species_active):
+        if (testing == False):  # The automated tests don't download the full cross sections
+
+            # Load molecular and atomic absorption cross sections
+            for q in range(N_species_active):
+                        
+                species_q = active_species[q]     # Chemical species name
                     
-            species_q = active_species[q]     # Chemical species name
-                
-            #***** Read in grids used in this opacity file*****#
-            T_grid_q = np.array(opac_file[species_q + '/T'])   
-            log_P_grid_q = np.array(opac_file[species_q + '/log(P)'])   # Units: log10(P/bar)
-            N_T_q = len(T_grid_q)      # Number of temperatures in this grid
-            N_P_q = len(log_P_grid_q)  # Number of pressures in this grid
-                
-            # Read in wavenumber array used in this opacity file
-            nu_q = np.array(opac_file[species_q + '/nu'])
-                
-            # Evaluate temperature interpolation weighting factor
-            y_q = np.zeros(N_T_fine, dtype=np.int)  # Index of T in cross section arrays prior to fine temperature value
-            w_T_q = T_interpolation_init(N_T_fine, T_grid_q, T_fine, y_q)   # Weighting factor
-    
-            # Read in log10(cross section) of specified molecule (only need float 32 accuracy for exponents)
-            log_sigma_q = np.array(opac_file[species_q + '/log(sigma)']).astype(np.float32)
-                
-            # Pre-interpolate cross section to model (P, wl) grid 
-            sigma_pre_inp_q = P_interpolate_wl_initialise_sigma(N_P_fine, N_T_q, N_P_q, 
-                                                                N_wl, log_sigma_q, x, nu_l,
-                                                                nu_model, nu_r, b1, b2, nu_q, 
-                                                                N_nu)
+                #***** Read in grids used in this opacity file*****#
+                T_grid_q = np.array(opac_file[species_q + '/T'])   
+                log_P_grid_q = np.array(opac_file[species_q + '/log(P)'])   # Units: log10(P/bar)
+                N_T_q = len(T_grid_q)      # Number of temperatures in this grid
+                N_P_q = len(log_P_grid_q)  # Number of pressures in this grid
+                    
+                # Read in wavenumber array used in this opacity file
+                nu_q = np.array(opac_file[species_q + '/nu'])
+                    
+                # Evaluate temperature interpolation weighting factor
+                y_q = np.zeros(N_T_fine, dtype=np.int)  # Index of T in cross section arrays prior to fine temperature value
+                w_T_q = T_interpolation_init(N_T_fine, T_grid_q, T_fine, y_q)   # Weighting factor
+        
+                # Read in log10(cross section) of specified molecule (only need float 32 accuracy for exponents)
+                log_sigma_q = np.array(opac_file[species_q + '/log(sigma)']).astype(np.float32)
+                    
+                # Pre-interpolate cross section to model (P, wl) grid 
+                sigma_pre_inp_q = P_interpolate_wl_initialise_sigma(N_P_fine, N_T_q, N_P_q, 
+                                                                    N_wl, log_sigma_q, x,
+                                                                    nu_model, b1, b2, nu_q, 
+                                                                    N_nu, wl_interp)
 
-            del log_sigma_q   # Clear raw cross section to free memory
-            
-            # Interpolate cross section to fine temperature grid
-            sigma_stored[q,:,:,:] = T_interpolate_sigma(N_P_fine, N_T_fine, N_T_q, 
-                                                        N_wl, sigma_pre_inp_q, T_grid_q, 
-                                                        T_fine, y_q, w_T_q)
-
-            del sigma_pre_inp_q, nu_q, w_T_q, y_q  
-            
-            if (rank == 0):
-                print(species_q + " done")
+                del log_sigma_q   # Clear raw cross section to free memory
+                
+                # Interpolate cross section to fine temperature grid
+                sigma_stored[q,:,:,:] = T_interpolate_sigma(N_P_fine, N_T_fine, N_T_q, 
+                                                            N_wl, sigma_pre_inp_q, T_grid_q, 
+                                                            T_fine, y_q, w_T_q)
+                        
+                del sigma_pre_inp_q, nu_q, w_T_q, y_q  
+                
+                if (rank == 0):
+                    print(species_q + " done")
             
         #***** Process Rayleigh scattering cross sections *****#
         
@@ -906,8 +928,10 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
         # Clear up storage
         del nu_l, nu_r, nu_model
         
-        opac_file.close()
         cia_file.close()
+
+        if (testing == False):
+            opac_file.close()
         
     # Force secondary processors to wait for the primary to finish interpolating cross sections
     node_comm.Barrier()
@@ -1292,7 +1316,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
    
     sigma_inp = np.zeros(shape=(N_layers, N_wl))   # Initialise output cross section
     
-    #***** Firstly, find the (exact) indicies in opacity wavenumber grid corresponding to edges of model wavenumber grid *****#
+    #***** Firstly, find the (exact) indices in opacity wavenumber grid corresponding to edges of model wavenumber grid *****#
 
     nu_opac_min = nu_opac[0]
     nu_opac_max = nu_opac[-1]
@@ -1310,7 +1334,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
     #***** Secondly, find pressure interpolation weighting factors *****#
     log_P = np.log10(P)  # Log of model pressure grid
     
-    # Array of indicies on opacity pressure opacity grid prior to model atmosphere layer pressures
+    # Array of indices on opacity pressure opacity grid prior to model atmosphere layer pressures
     x = np.zeros(N_layers).astype(np.int64) 
     
     w_P = np.zeros(N_layers)  # Pressure weights
@@ -1319,17 +1343,17 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
     b1 = np.zeros(shape=(N_layers))
     b2 = np.zeros(shape=(N_layers))
             
-    # Find closest P indicies in opacity grid corresponding to model layer pressures
+    # Find closest P indices in opacity grid corresponding to model layer pressures
     for i in range(N_layers):
         
         # If pressure below minimum, do not interpolate
         if (log_P[i] < log_P_grid[0]):
-            x[i] = -1      # Special value (1) used in opacity inialiser
+            x[i] = -1      # Special value (1) used in opacity initialiser
             w_P[i] = 0.0
         
         # If pressure above maximum, do not interpolate
         elif (log_P[i] >= log_P_grid[-1]):
-            x[i] = -2      # Special value (2) used in opacity inialiser
+            x[i] = -2      # Special value (2) used in opacity initialiser
             w_P[i] = 0.0
         
         else:
@@ -1342,14 +1366,14 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
         b1[i] = (1.0-w_P[i])
         b2[i] = w_P[i] 
         
-    # Note: temperaure interpolation indicies and weights passed through function arguments
+    # Note: temperature interpolation indices and weights passed through function arguments
 
     # Begin interpolation procedure
     for i in range(N_layers):   # Loop over model layers
         
         T_i = T[i]           # Layer temperature to interpolate to
-        T1 = T_grid[y[i]]    # Closest lower temperaure on opacity grid 
-        T2 = T_grid[y[i]+1]  # Closest higher temperaure on opacity grid 
+        T1 = T_grid[y[i]]    # Closest lower temperature on opacity grid 
+        T2 = T_grid[y[i]+1]  # Closest higher temperature on opacity grid 
         
         for k in range(N_nu):   # Loop over model wavenumbers
             
@@ -1365,7 +1389,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
                 # Find rectangle of stored opacity points located at [log_P1, log_P2, T1, T2, ]
                 log_sigma_PT_rectangle = reduced_log_sigma[x[i]:x[i]+2, y[i]:y[i]+2, k]
 
-                # Pressure interpolation is handled first, followed by temperaure interpolation
+                # Pressure interpolation is handled first, followed by temperature interpolation
                 # First, check for off-grid special cases
                 
                 # If layer P below minimum on opacity grid (1.0e-6 bar), set value to edge case
@@ -1379,12 +1403,12 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
                     elif (y[i] == -2):
                         sigma_inp[i, ((N_wl-1)-k)] = 10 ** (reduced_log_sigma[0, (N_T-1), k])  # No interpolation needed
                         
-                    # If desired temperaure is on opacity grid, set T1 and T2 values to those at min P on grid
+                    # If desired temperature is on opacity grid, set T1 and T2 values to those at min P on grid
                     else:
                         sig_T1 = 10 ** (reduced_log_sigma[0, y[i], k])     
                         sig_T2 = 10 ** (reduced_log_sigma[0, y[i]+1, k])
                         
-                        # Only need to interpolate over temperaure interpolate cross section to layer temperature                    
+                        # Only need to interpolate over temperature interpolate cross section to layer temperature                    
                         sigma_inp[i, ((N_wl-1)-k)] =  (np.power(sig_T1, (w_T[i]*((1.0/T2) - (1.0/T_i)))) *
                                                        np.power(sig_T2, (w_T[i]*((1.0/T_i) - (1.0/T1)))))
                     
@@ -1399,7 +1423,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
                     elif (y[i] == -2):
                         sigma_inp[i, ((N_wl-1)-k)] = 10 ** (reduced_log_sigma[(N_P-1), (N_T-1), k])  # No interpolation needed
                         
-                    # If desired temperaure is on opacity grid, set T1 and T2 values to those at maximum P on grid             
+                    # If desired temperature is on opacity grid, set T1 and T2 values to those at maximum P on grid             
                     else:
                         sig_T1 = 10 ** (reduced_log_sigma[(N_P-1), y[i], k])
                         sig_T2 = 10 ** (reduced_log_sigma[(N_P-1), y[i]+1, k])
@@ -1408,28 +1432,41 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
                         sigma_inp[i, ((N_wl-1)-k)] =  (np.power(sig_T1, (w_T[i]*((1.0/T2) - (1.0/T_i)))) *
                                                        np.power(sig_T2, (w_T[i]*((1.0/T_i) - (1.0/T1)))))
             
-                # If both desired P and T are on opacity grid (should be true in most cases!)
+                # If desired P is on opacity grid
                 else:
+
+                    # If layer T below minimum on opacity grid (100 K), only interpolate over P
+                    if (y[i] == -1):
+                        sigma_inp[i, ((N_wl-1)-k)] = 10 ** (b1[i]*reduced_log_sigma[x[i], 0, k] +
+                                                            b2[i]*reduced_log_sigma[x[i]+1, 0, k])  
+                        
+                    # If layer T also above maximum on opacity grid (3500 K), only interpolate over P
+                    elif (y[i] == -2):
+                        sigma_inp[i, ((N_wl-1)-k)] = 10 ** (b1[i]*reduced_log_sigma[x[i], (N_T-1), k] +
+                                                            b2[i]*reduced_log_sigma[x[i]+1, (N_T-1), k])
                     
-                    # Interpolate log(cross section) in log(P), then power to get interpolated values at T1 and T2
-                    sig_T1 =  10 ** (b1[i]*(log_sigma_PT_rectangle[0,0]) +       # Cross section at T1
-                                     b2[i]*(log_sigma_PT_rectangle[1,0]))
-                    sig_T2 =  10 ** (b1[i]*(log_sigma_PT_rectangle[0,1]) +       # Cross section at T2
-                                     b2[i]*(log_sigma_PT_rectangle[1,1]))
-        
-                    # Now interpolate cross section to layer temperature                    
-                    sigma_inp[i, ((N_wl-1)-k)] =  (np.power(sig_T1, (w_T[i]*((1.0/T2) - (1.0/T_i)))) *
-                                                   np.power(sig_T2, (w_T[i]*((1.0/T_i) - (1.0/T1)))))
+                    # If desired temperature is on opacity grid, do full P and T interpolation
+                    else:
+
+                        # Interpolate log(cross section) in log(P), then power to get interpolated values at T1 and T2
+                        sig_T1 =  10 ** (b1[i]*(log_sigma_PT_rectangle[0,0]) +       # Cross section at T1
+                                        b2[i]*(log_sigma_PT_rectangle[1,0]))
+                        sig_T2 =  10 ** (b1[i]*(log_sigma_PT_rectangle[0,1]) +       # Cross section at T2
+                                        b2[i]*(log_sigma_PT_rectangle[1,1]))
+            
+                        # Now interpolate cross section to layer temperature                    
+                        sigma_inp[i, ((N_wl-1)-k)] =  (np.power(sig_T1, (w_T[i]*((1.0/T2) - (1.0/T_i)))) *
+                                                       np.power(sig_T2, (w_T[i]*((1.0/T_i) - (1.0/T1)))))
             
     
     return sigma_inp
 
 
-#@jit
+@jit
 def store_Rayleigh_eta_LBL(wl_model, chemical_species):
     
     ''' In line-by-line case, output refractive index array (eta) and
-        Rayleigh scattering seperately from main extinction calculation.
+        Rayleigh scattering separately from main extinction calculation.
         
         This is simply to pass eta to profiles.py, where it is needed.
     
@@ -1556,18 +1593,18 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                 # Add haze scattering to total extinction in layer i, sector j, for each wavelength
                 kappa_cloud[i,j,k,l] += haze_amp * slope[l]
 
-        # If a cloud deck is enabled in this model
-        if (enable_deck == 1):
-            
-            # Set extinction inside cloud deck
-            kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
-
-        # If a surface is enabled in this model
-        if (enable_surface == 1):
-
-            # Set extinction to infinity below surface
-            kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+    # If a cloud deck is enabled in this model
+    if (enable_deck == 1):
         
+        # Set extinction inside cloud deck
+        kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
+
+    # If a surface is enabled in this model
+    if (enable_surface == 1):
+
+        # Set extinction to infinity below surface
+        kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+
     
 def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs, 
                    bf_species, n, T, P, wl_model, X, X_active, X_cia, X_ff, X_bf, 
@@ -1764,4 +1801,565 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
             
     return kappa_clear, kappa_cloud
 
+# Elijah New Functions 
     
+@jit(nopython = True)
+def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs, ff_pairs, bf_species,
+                            n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
+                            kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
+                            bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
+                            N_zones, T_fine, log_P_fine, P_surf, P_deep = 1000.0,
+                            contribution_molecule_list = [],
+                            bulk = False):                          # DOES P_DEEP SOLVE BD PROBLEM?!
+    
+    ''' Main function to evaluate extinction coefficients for molecules / atoms,
+        Rayleigh scattering, hazes, and clouds for parameter combination
+        chosen in retrieval step.
+        
+        Takes in cross sections pre-interpolated to 'fine' P and T grids
+        before retrieval run (so no interpolation is required at each step).
+        Instead, for each atmospheric layer the extinction coefficient
+        is simply kappa = n * sigma[log_P_nearest, T_nearest, wl], where the
+        'nearest' values are the closest P_fine, T_fine points to the
+        actual P, T values in each layer. This results in a large speed gain.
+        
+        The output extinction coefficient arrays are given as a function
+        of layer number (indexed from low to high altitude), terminator
+        sector, and wavelength.
+
+        This is to turn off every opacity except one molecule.
+    
+    '''
+    
+    # Store length variables for mixing ratio arrays 
+    N_species = len(chemical_species)        # Number of chemical species
+    N_species_active = len(active_species)   # Number of spectrally active species
+    N_cia_pairs = len(cia_pairs)             # Number of cia pairs included
+    N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
+    N_bf_species = len(bf_species)           # Number of bound-free species included
+    
+    # Set up all the indices for contribution functions (keeps bulk species on)
+    N_bulk_species = N_species - N_species_active
+    bulk_species_indices = range(N_bulk_species)
+
+    # Find the name of the bulk species to check and see if they are in the cia list 
+    bulk_species_names = chemical_species[:N_bulk_species]
+
+    # Find the bulk species indices for cia 
+    # For this to occur, both need to be a bulk species
+    bulk_cia_indices = []
+    for i in range(len(cia_pairs)):
+        pair_1, pair_2 = cia_pairs[i].split('-')
+        pair_1_bool = False
+        pair_2_bool = False 
+        for j in bulk_species_names:
+            if pair_1 == j:
+                pair_1_bool = True
+            if pair_2 == j:
+                pair_2_bool = True
+        
+        if pair_1_bool == True and pair_2_bool == True:
+            bulk_cia_indices.append(i)
+
+    if bulk == False:
+        for i in range(len(chemical_species)):
+            if contribution_molecule_list[0] == chemical_species[i]:
+                contribution_molecule_species_index = i
+
+        for i in range(len(active_species)):
+            if contribution_molecule_list[0] == active_species[i]:
+                contribution_molecule_active_index = i
+
+        # Now I need to find the cia_pair indices 
+        cia_indices = []
+        for i in range(len(cia_pairs)):
+            pair_1, pair_2 = cia_pairs[i].split('-')
+            if contribution_molecule_list[0] == pair_1 or contribution_molecule_list[0] == pair_2:
+                cia_indices.append(i)
+
+    
+    # Layers and wavelengths 
+    N_wl = len(wl)     # Number of wavelengths on model grid
+    N_layers = len(P)  # Number of layers
+    
+    # Define extinction coefficient arrays
+    kappa_clear = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    
+    # Fine temperature grid (for pre-interpolating opacities)    
+    N_T_fine = len(T_fine)
+    N_P_fine = len(log_P_fine)
+    
+    # Find index of deep pressure below which atmosphere is opaque
+    i_bot = np.argmin(np.abs(P - P_deep))
+    
+    # If haze is enabled in this model
+    if (enable_haze == 1):
+        
+        # Generalised scattering slope for haze
+        slope = np.power((wl/0.35), gamma)    # Reference wavelength at 0.35 um
+        
+    # For each terminator sector (terminator plane)
+    for j in range(N_sectors):
+            
+        # For each terminator zone (along day-night transition)
+        for k in range(N_zones):
+            
+            # For each layer, find closest pre-computed cross section to P_fine, T_fine
+            for i in range(i_bot,N_layers):
+                
+                n_level = n[i,j,k]
+                
+                # Find closest index in fine temperature array to given layer temperature
+                idx_T_fine = closest_index(T[i,j,k], T_fine[0], T_fine[-1], N_T_fine)
+                idx_P_fine = closest_index(np.log10(P[i]), log_P_fine[0], log_P_fine[-1], N_P_fine)
+                
+                # For each collisionally-induced absorption (CIA) pair
+                # Need to fix this for non bulk species absorption 
+                for q in range(N_cia_pairs): 
+                    
+                    if bulk == False:
+                        if q in bulk_cia_indices or q in cia_indices:
+                            n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
+                            n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
+                            n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+
+                    if bulk == True:
+                        if q in bulk_cia_indices:
+                            n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
+                            n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
+                            n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+                        
+                    # For each wavelength
+                    for l in range(N_wl):
+                        
+                        # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
+                        
+                # For each free-free absorption pair
+                for q in range(N_ff_pairs): 
+                    
+                    n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
+                    n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
+                    n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
+                    
+                    # For each wavelength
+                    for l in range(N_wl):
+                        
+                        # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
+                        
+                # For each source of bound-free absorption (photodissociation)
+                for q in range(N_bf_species): 
+                    
+                    n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    
+                    # For each wavelength
+                    for l in range(N_wl):
+                        
+                        # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                
+                # For each molecular / atomic species with active absorption features
+
+                for q in range(N_species_active): 
+
+                    if bulk == False:
+                        if q == contribution_molecule_active_index:
+                            n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
+                
+                        else:
+                            n_q = 0
+                    
+                    else:
+                        # If bulk is true, then everything in active is turned off 
+                        n_q = 0
+                    
+                    # For each wavelength
+                    for l in range(N_wl):
+                        
+                        # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
+                    
+                # For each molecular / atomic species
+                for q in range(N_species):  
+                    
+                    if bulk == False:
+                        if q == contribution_molecule_species_index:
+                            n_q = n_level*X[q,i,j,k]   # Number density of given species
+                        elif q in bulk_species_indices:
+                            n_q = n_level*X[q,i,j,k]   # Number density of given species
+                        else:
+                            n_q = 0
+
+                    else:
+                        # If bulk is true, only keep the bulk species on 
+                        if q in bulk_species_indices:
+                            n_q = n_level*X[q,i,j,k]   # Number density of given species
+                        else:
+                            n_q = 0
+                    
+                    # For each wavelength
+                    for l in range(N_wl):
+                                
+                        # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
+                        kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+        
+            # If haze is enabled in this model  
+            if (enable_haze == 1):
+                
+                # For each layer
+                for i in range(i_bot,N_layers):
+                    
+                    haze_amp = (n[i,j,k] * a * 5.31e-31)   # Final factor is H2 Rayleigh scattering cross section at 350 nm
+                    
+                    # For each wavelength
+                    for l in range(N_wl):
+                    
+                        # Add haze scattering to total extinction in layer i, sector j, for each wavelength
+                        kappa_cloud[i,j,k,l] += haze_amp * slope[l]
+                        
+            # If a cloud deck is enabled in this model
+            if (enable_deck == 1):
+                
+                # Set extinction inside cloud deck
+                kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
+
+            # If a surface is enabled in this model
+            if (enable_surface == 1):
+
+                # Set extinction to infinity below surface
+                kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+            
+    return kappa_clear, kappa_cloud
+
+
+@jit(nopython = True)
+def extinction_spectrum_pressure_contribution(chemical_species, active_species, cia_pairs, ff_pairs, bf_species,
+                            n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
+                            kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
+                            bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
+                            N_zones, T_fine, log_P_fine, P_surf, P_deep = 1000.0,
+                            contribution_molecule = '',layer_to_ignore = 0, total = False):                          # DOES P_DEEP SOLVE BD PROBLEM?!
+    
+    ''' Main function to evaluate extinction coefficients for molecules / atoms,
+        Rayleigh scattering, hazes, and clouds for parameter combination
+        chosen in retrieval step.
+        
+        Takes in cross sections pre-interpolated to 'fine' P and T grids
+        before retrieval run (so no interpolation is required at each step).
+        Instead, for each atmospheric layer the extinction coefficient
+        is simply kappa = n * sigma[log_P_nearest, T_nearest, wl], where the
+        'nearest' values are the closest P_fine, T_fine points to the
+        actual P, T values in each layer. This results in a large speed gain.
+        
+        The output extinction coefficient arrays are given as a function
+        of layer number (indexed from low to high altitude), terminator
+        sector, and wavelength.
+
+        This is to turn off the opacity of a single molecule in a single pressure layer 
+        Or, if total = True, turns off the entire layer 
+    
+    '''
+    
+    # Store length variables for mixing ratio arrays 
+    N_species = len(chemical_species)        # Number of chemical species
+    N_species_active = len(active_species)   # Number of spectrally active species
+    N_cia_pairs = len(cia_pairs)             # Number of cia pairs included
+    N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
+    N_bf_species = len(bf_species)           # Number of bound-free species included
+
+    # Set up all the indices for contribution functions (keeps bulk species on)
+    N_bulk_species = N_species - N_species_active
+    bulk_species_indices = range(N_bulk_species)
+
+    # Find the name of the bulk species to check and see if they are in the cia list 
+    bulk_species_names = chemical_species[:N_bulk_species]
+
+    # Find the bulk species indices for cia 
+    # For this to occur, both need to be a bulk species
+    bulk_cia_indices = []
+    for i in range(len(cia_pairs)):
+        pair_1, pair_2 = cia_pairs[i].split('-')
+        pair_1_bool = False
+        pair_2_bool = False 
+        for j in bulk_species_names:
+            if pair_1 == j:
+                pair_1_bool = True
+            if pair_2 == j:
+                pair_2_bool = True
+        
+        if pair_1_bool == True and pair_2_bool == True:
+            bulk_cia_indices.append(i)
+
+    # If total = false then it was passed a chemical species
+    if total == False:
+        for i in range(len(chemical_species)):
+            if contribution_molecule == chemical_species[i]:
+                contribution_molecule_species_index = i
+
+        for i in range(len(active_species)):
+            if contribution_molecule == active_species[i]:
+                contribution_molecule_active_index = i
+
+        # Now I need to find the cia_pair indices 
+        cia_indices = []
+        for i in range(len(cia_pairs)):
+            pair_1, pair_2 = cia_pairs[i].split('-')
+            if contribution_molecule == pair_1 or contribution_molecule == pair_2:
+                cia_indices.append(i)
+    
+    
+    # Layers and wavelengths 
+    N_wl = len(wl)     # Number of wavelengths on model grid
+    N_layers = len(P)  # Number of layers
+    
+    # Define extinction coefficient arrays
+    kappa_clear = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    
+    # Fine temperature grid (for pre-interpolating opacities)    
+    N_T_fine = len(T_fine)
+    N_P_fine = len(log_P_fine)
+    
+    # Find index of deep pressure below which atmosphere is opaque
+    i_bot = np.argmin(np.abs(P - P_deep))
+    
+    # If haze is enabled in this model
+    if (enable_haze == 1):
+        
+        # Generalised scattering slope for haze
+        slope = np.power((wl/0.35), gamma)    # Reference wavelength at 0.35 um
+
+    if total == True:
+        # For each terminator sector (terminator plane)
+        for j in range(N_sectors):
+                
+            # For each terminator zone (along day-night transition)
+            for k in range(N_zones):
+                
+                # For each layer, find closest pre-computed cross section to P_fine, T_fine
+                for i in range(i_bot,N_layers):
+                    
+                    n_level = n[i,j,k]
+                    
+                    # Find closest index in fine temperature array to given layer temperature
+                    idx_T_fine = closest_index(T[i,j,k], T_fine[0], T_fine[-1], N_T_fine)
+                    idx_P_fine = closest_index(np.log10(P[i]), log_P_fine[0], log_P_fine[-1], N_P_fine)
+                    
+                    # For each collisionally-induced absorption (CIA) pair
+                    for q in range(N_cia_pairs): 
+
+                        if (i == layer_to_ignore):
+                            n_n_cia = 0
+
+                        else:
+
+                            n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
+                            n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
+                            n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+
+                        # For each wavelength
+                        for l in range(N_wl):
+                            
+                            # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
+                            
+                    # For each free-free absorption pair
+                    for q in range(N_ff_pairs): 
+                        
+                        n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
+                        n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
+                        n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
+                        
+                        # For each wavelength
+                        for l in range(N_wl):
+                            
+                            # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
+                            
+                    # For each source of bound-free absorption (photodissociation)
+                    for q in range(N_bf_species): 
+                        
+                        n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                        
+                        # For each wavelength
+                        for l in range(N_wl):
+                            
+                            # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                    
+                    # For each molecular / atomic species with active absorption features
+
+                    for q in range(N_species_active): 
+
+                        # If its the molecule and the layer we are ignoring it in, set to 0 
+                        if i == layer_to_ignore:
+                            n_q = 0
+                        
+                        else:
+                            n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
+
+                        # For each wavelength
+                        for l in range(N_wl):
+                            
+                            # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
+                        
+                    # For each molecular / atomic species
+                    for q in range(N_species):  
+                        
+                        # If total then just turn off 
+                        if i == layer_to_ignore and q not in bulk_species_indices:
+                            n_q = 0
+                        else:
+                            n_q = n_level*X[q,i,j,k]
+                        
+                        # For each wavelength
+                        for l in range(N_wl):
+                                    
+                            # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+            
+                # If haze is enabled in this model  
+                if (enable_haze == 1):
+                    
+                    # For each layer
+                    for i in range(i_bot,N_layers):
+                        
+                        haze_amp = (n[i,j,k] * a * 5.31e-31)   # Final factor is H2 Rayleigh scattering cross section at 350 nm
+                        
+                        # For each wavelength
+                        for l in range(N_wl):
+                        
+                            # Add haze scattering to total extinction in layer i, sector j, for each wavelength
+                            kappa_cloud[i,j,k,l] += haze_amp * slope[l]
+                            
+                # If a cloud deck is enabled in this model
+                if (enable_deck == 1):
+                    
+                    # Set extinction inside cloud deck
+                    kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
+
+                # If a surface is enabled in this model
+                if (enable_surface == 1):
+
+                    # Set extinction to infinity below surface
+                    kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+
+    else:
+        # For each terminator sector (terminator plane)
+        for j in range(N_sectors):
+                
+            # For each terminator zone (along day-night transition)
+            for k in range(N_zones):
+                
+                # For each layer, find closest pre-computed cross section to P_fine, T_fine
+                for i in range(i_bot,N_layers):
+                    
+                    n_level = n[i,j,k]
+                    
+                    # Find closest index in fine temperature array to given layer temperature
+                    idx_T_fine = closest_index(T[i,j,k], T_fine[0], T_fine[-1], N_T_fine)
+                    idx_P_fine = closest_index(np.log10(P[i]), log_P_fine[0], log_P_fine[-1], N_P_fine)
+                    
+                    # For each collisionally-induced absorption (CIA) pair
+                    for q in range(N_cia_pairs): 
+
+                        # For total = true, ignores the cia of the molecule we are on 
+                        if q in cia_indices and i == layer_to_ignore:
+                            n_n_cia = 0
+
+                        else:
+                            n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
+                            n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
+                            n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+                        
+                        # For each wavelength
+                        for l in range(N_wl):
+                            
+                            # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
+                            
+                    # For each free-free absorption pair
+                    for q in range(N_ff_pairs): 
+                        
+                        n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
+                        n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
+                        n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
+                        
+                        # For each wavelength
+                        for l in range(N_wl):
+                            
+                            # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
+                            
+                    # For each source of bound-free absorption (photodissociation)
+                    for q in range(N_bf_species): 
+                        
+                        n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                        
+                        # For each wavelength
+                        for l in range(N_wl):
+                            
+                            # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                    
+                    # For each molecular / atomic species with active absorption features
+
+                    for q in range(N_species_active): 
+
+                        # If its the molecule and the layer we are ignoring it in, set to 0 
+                        if q == contribution_molecule_active_index and i == layer_to_ignore:
+                            n_q = 0
+                        
+                        else:
+                            n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
+
+                        # For each wavelength
+                        for l in range(N_wl):
+                            
+                            # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
+                        
+                    # For each molecular / atomic species
+                    for q in range(N_species):  
+                        
+                        if q == contribution_molecule_species_index and i == layer_to_ignore:
+                            n_q = 0                    # Number density of given species
+                        else:
+                            n_q = n_level*X[q,i,j,k]
+                        
+                        # For each wavelength
+                        for l in range(N_wl):
+                                    
+                            # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
+                            kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+            
+                # If haze is enabled in this model  
+                if (enable_haze == 1):
+                    
+                    # For each layer
+                    for i in range(i_bot,N_layers):
+                        
+                        haze_amp = (n[i,j,k] * a * 5.31e-31)   # Final factor is H2 Rayleigh scattering cross section at 350 nm
+                        
+                        # For each wavelength
+                        for l in range(N_wl):
+                        
+                            # Add haze scattering to total extinction in layer i, sector j, for each wavelength
+                            kappa_cloud[i,j,k,l] += haze_amp * slope[l]
+                            
+                # If a cloud deck is enabled in this model
+                if (enable_deck == 1):
+                    
+                    # Set extinction inside cloud deck
+                    kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
+
+                # If a surface is enabled in this model
+                if (enable_surface == 1):
+
+                    # Set extinction to infinity below surface
+                    kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+            
+    return kappa_clear, kappa_cloud

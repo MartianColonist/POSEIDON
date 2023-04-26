@@ -22,7 +22,8 @@ def get_rot_kernel(V_sin_i, wl, W_conv):
             TODO: V sin_i
         wl (np.array of float):
             Wavelength grid of the forward model.
-
+        W_conv (int):
+            Width of the rotational kernel.
     '''
 
     dRV = np.mean(2.0*(wl[1: ]-wl[0: -1])/(wl[1: ]+wl[0: -1]))*2.998E5
@@ -42,11 +43,10 @@ def get_rot_kernel(V_sin_i, wl, W_conv):
 
 def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi):
     '''
-    Perform the loglikelihood calculation using singular value decompositions.
+    Perform the loglikelihood calculation using Principal Component Analysis (PCA).
     Nord: number of spectral order.
     Nphi: number of time-resolved phases.
     Npix: number of wavelengths per spectral order.
-    Typical values for (Nord, Nphi, Npix) is (44, 79, 1848).
 
     Args:
         V_sys (float):
@@ -125,7 +125,49 @@ def log_likelihood_PCA(V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_sca
 
 
 def log_likelihood_sysrem(V_sys, K_p, dPhi, cs_p, wl_grid, residuals, Bs, V_bary, Phi, tmodel, uncertainties, a, b):
+    '''
+    Perform the loglikelihood calculation using Principal Component Analysis (PCA).
+    Nord: number of spectral order.
+    Nphi: number of time-resolved phases.
+    Npix: number of wavelengths per spectral order.
 
+    Args:
+        V_sys (float):
+            The system velocity (km/s) at which we do the loglikelihood calculation.
+        K_p (float):
+            The Keplerian velocity (km/s) at which we do the loglikelihood calculation.
+        dPhi (float):
+            Phase offset.
+        cs_p (np.array of float):
+            Representation of the observed flux of planet.
+        wl_grid (2D np.array of float):
+            2D wavelength grid of the data (Nord x Npix). Typical size ~(44, 1848).
+        residuals (3D np.array of float):
+            3D Array representing the residuals data after filtering.
+            Shape: (Nord x Nphi x Npix)
+        Bs (list of 2D np.array of float):
+            A list of basis vectors returned by fast_filter. 
+            Shape: (Nord x iter x Nphi)
+        V_bary (np.array of float):
+            Array of time-resolved Earth-star velocity. We could absorb barycentric velocity by properly shaping the data.
+            Shape: (Nphi, )
+        Phi (np.array of float):
+            Array of time-resolved phases.
+            Shape (Nphi, )
+        tmodel (np.array of float):
+            Transit model of the planet. A value of 1 is out of transit, and 0 is full transit. 
+            Shape (Nphi, )
+        uncertainties (3D np.array of float):
+            Time and wavelength dependent uncertainties obtained from fit_uncertainties.
+            Shape: (Nord x Nphi x Npix)
+        a (float):
+            Scale parameter for spectrum.
+        b (float):
+            Scale parameter for noise.
+    Returns:
+        Loglikelihood (float):
+            Loglikelihood value.
+    '''
     Nord, Nphi, Npix = residuals.shape
 
     N = Nord * Nphi * Npix
@@ -196,7 +238,6 @@ def log_likelihood(F_s_obs, spectrum, wl, data, model, high_res_params,
     Nord: number of spectral order.
     Nphi: number of time-resolved phases.
     Npix: number of wavelengths per spectral order.
-    Typical values for (Nord, Nphi, Npix) is (44, 79, 1848).
 
     Args:
         F_s_obs (np.array of float):
@@ -205,32 +246,14 @@ def log_likelihood(F_s_obs, spectrum, wl, data, model, high_res_params,
             Flux of the planet observed at distance d = 1 pc.
         wl (np.array of float):
             Wavelength grid of the forward model. Typical size ~10^5 in a high-res retrieval.
-        K_p (float):
-            The Keplerian velocity (km/s) at which we do the loglikelihood calculation.
-        V_sys (float):
-            The system velocity (km/s) at which we do the loglikelihood calculation.
-        log_a (float):
-            Log 10 scale factor for this night. Scale = 10**log_a.
-        dPhi (float):
-            Phase offset.
-        wl_grid (2D np.array of float):
-            2D wavelength grid of the data (Nord x Npix). Typical size ~(44, 1848).
-        data_arr (3D np.array of float):
-            3D Array representing the top principal components removed data.
-            Shape: (Nord x Nphi x Npix)
-        data_scale (3D np.array of float):
-            3D Array representing the top principal components of data.
-            Shape: (Nord x Nphi x Npix)
-        V_bary (np.array of float):
-            Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
-            Shape: (Nphi, )
-        Phi (np.array of float):
-            Array of time-resolved phases.
-            Shpae (Nphi, )
-    
+        data (dict):
+            Dictionary containing properties of the data.
+        Model (dict):
+            Dictionary containing properties of the model.
+        
     Returns:
-        logL_Matteo (float):
-            Loglikelihood given by Log(L) = -N/2 Log(s_f^2 - 2R(s) + s_g^2). Equation 9 in Brogi & Line 2019 March.
+        loglikelihood (float):
+            Loglikelihood calculated based on which filtering method (specified in data['method']).
     '''
 
     method = data['method']
@@ -300,8 +323,34 @@ def log_likelihood(F_s_obs, spectrum, wl, data, model, high_res_params,
     else:
         raise Exception('Problem with high res retreival data.')
 
-def sysrem(data_array, stds, iter=15):
+def sysrem(data_array, stds, Niter=15):
+    '''
+    SYSREM procedure adapted from https://github.com/stephtdouglas/PySysRem, originally used for detrending light curves.
+    
+    Use this function in a high resolutional rerieval.
+    Nord: number of spectral order.
+    Nphi: number of time-resolved phases.
+    Npix: number of wavelengths per spectral order.
 
+    Args:
+        data_array (2D np.array of float):
+            Blaze-corrected data of a single order.
+            Shape: (Nphi x Npix)
+        stds (np.array of float):
+            Time and wavelength dependent uncertainties obtained from fit_uncertainties.
+            Shape: (Nphi x Npix)
+        iter (int):
+            Number of basis vectors to consider.
+        
+    Returns:
+        residuals (np.array of float):
+            2D Array representing the residuals data of a single order after filtering.
+            Shape: (Nord x Nphi x Npix)
+
+        Us (2D np.array of float):
+            Basis vectors obtained from SYSREM of a single vector.
+            Shape: (Niter, Nphi)
+    '''
     data_transpose = data_array.T
     Npix, Nphi = data_transpose.shape
 
@@ -328,13 +377,13 @@ def sysrem(data_array, stds, iter=15):
     # standard deviations, so that they can be plotted against the results after
     # errors are taken out below.
     
-    U = np.zeros((Nphi, iter+1))
+    U = np.zeros((Nphi, Niter+1))
 
-    for i in range(iter):         # The number of linear systematics to remove
+    for i in range(Niter):         # The number of linear systematics to remove
         w = np.zeros(Npix)
         u = np.ones(Nphi)
 
-        # minimize a and c values for a number of iterations, iter
+        # minimize a and c values for a number of iterations, Niter
         for _ in range(10):
 
             # Using the initial guesses for each a value of each epoch, minimize c for each star
@@ -369,21 +418,22 @@ def sysrem(data_array, stds, iter=15):
 
     return residuals.T, U
 
-def fast_filter(data, uncertainties, iter=15):
-
+def fast_filter(data, uncertainties, Niter=15):
+    
     Nord, Nphi, Npix = data.shape
     residuals = np.zeros((Nord, Nphi, Npix))
-    Us = np.zeros((Nord, Nphi, iter+1))
+    Us = np.zeros((Nord, Nphi, Niter+1))
     
     for i, order in enumerate(data):
         stds = uncertainties[i]
-        residual, U = sysrem(order, stds, iter)
+        residual, U = sysrem(order, stds, Niter)
         residuals[i] = residual
         Us[i] = U
     
     return residuals, Us
 
 def make_data_cube(data, wl_grid):
+
     Nord, Nphi, Npix = data.shape # yup, this again--Norders x Nphases x Npixels
     # SVD/PCA method
 
@@ -420,81 +470,81 @@ def make_data_cube(data, wl_grid):
     return data_scale, data_arr
 
 
-def cross_correlate(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, data_arr, data_scale, V_bary, Phi):
-    '''
-    Cross correlate at an array of Keplerian velocities and an array of centered system velocities given the observed flux.
-    Use this function to create the cross correlation plot of detection level.
-    Nord: number of spectral order.
-    Nphi: number of time-resolved phases.
-    Npix: number of wavelengths per spectral order.
-    Typical values for (Nord, Nphi, Npix) is (44, 79, 1848).
+# def cross_correlate(F_s_obs, F_p_obs, wl, K_p_arr, V_sys_arr, wl_grid, data_arr, data_scale, V_bary, Phi):
+#     '''
+#     Cross correlate at an array of Keplerian velocities and an array of centered system velocities given the observed flux.
+#     Use this function to create the cross correlation plot of K_p versus V_sys
+#     Nord: number of spectral order.
+#     Nphi: number of time-resolved phases.
+#     Npix: number of wavelengths per spectral order.
 
-    Args:
-        F_s_obs (np.array of float):
-            Flux of the star observed at distance d = 1 pc.
-        F_p_obs (np.array of float): 
-            Flux of the planet observed at distance d = 1 pc.
-        wl (np.array of float):
-            Wavelength grid of the forward model. Typical size ~10^5 in a high-res retrieval.
-        K_p_arr (np.array of float):
-            Array of Keplerian velocities (km/s).
-        V_sys_arr (np.array of float):
-            Array of centered system velocity (km/s).
-        wl_grid (2D np.array of float):
-            2D wavelength grid of the data (Nord x Npix). Typical size ~(44, 1848).
-        data_arr (3D np.array of float):
-            3D Array representing the top principal components removed data.
-            Shape: (Nord x Nphi x Npix)
-        data_scale (3D np.array of float):
-            3D Array representing the top principal components of data.
-            Shape: (Nord x Nphi x Npix)
-        V_bary (np.array of float):
-            Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
-            Shape: (Nphi, )
-        Phi (np.array of float):
-            Array of time-resolved phases.
-            Shpae (Nphi, )
+#     Args:
+#         F_s_obs (np.array of float):
+#             Flux of the star observed at distance d = 1 pc.
+#         F_p_obs (np.array of float): 
+#             Flux of the planet observed at distance d = 1 pc.
+#         wl (np.array of float):
+#             Wavelength grid of the forward model. Typical size ~10^5 in a high-res retrieval.
+#         K_p_arr (np.array of float):
+#             Array of Keplerian velocities (km/s).
+#         V_sys_arr (np.array of float):
+#             Array of centered system velocity (km/s).
+#         wl_grid (2D np.array of float):
+#             2D wavelength grid of the data (Nord x Npix).
+#         data_arr (3D np.array of float):
+#             3D Array representing the top principal components removed data.
+#             Shape: (Nord x Nphi x Npix)
+#         data_scale (3D np.array of float):
+#             3D Array representing the top principal components of data.
+#             Shape: (Nord x Nphi x Npix)
+#         V_bary (np.array of float):
+#             Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
+#             Shape: (Nphi, )
+#         Phi (np.array of float):
+#             Array of time-resolved phases.
+#             Shpae (Nphi, )
     
-    Returns:
-        logL_M_arr (np.array of float):
-            Array of loglikelihood given by Log(L) = -N/2 Log(s_f^2 - 2R(s) + s_g^2). Equation 9 in Brogi & Line 2019 March.
-        logL_Z_arr (np.array of float):
-            Array of loglikelihood given by Log(L) = -N/2 Log(1.0 - CC^2)). Equation 2 in Brogi & Line 2019 March.
-        CCF_arr (float):
-            Array of cross correlation value.
-    '''
+#     Returns:
+#         logL_M_arr (np.array of float):
+#             Array of loglikelihood given by Log(L) = -N/2 Log(s_f^2 - 2R(s) + s_g^2). Equation 9 in Brogi & Line 2019 March.
+#         logL_Z_arr (np.array of float):
+#             Array of loglikelihood given by Log(L) = -N/2 Log(1.0 - CC^2)). Equation 2 in Brogi & Line 2019 March.
+#         CCF_arr (float):
+#             Array of cross correlation value.
+#     '''
 
-    dPhi = 0.0
-    scale = 1.0
+#     dPhi = 0.0
+#     scale = 1.0
 
-    # rotational coonvolutiono
-    V_sin_i = 4.5
-    rot_kernel = get_rot_kernel(V_sin_i, wl)
-    F_p_rot = np.convolve(F_p_obs, rot_kernel, mode='same') # calibrate for planetary rotation
+#     # rotational coonvolutiono
+#     V_sin_i = 4.5
+#     rot_kernel = get_rot_kernel(V_sin_i, wl)
+#     F_p_rot = np.convolve(F_p_obs, rot_kernel, mode='same') # calibrate for planetary rotation
 
-    # instrument profile convolustion
-    xker = np.arange(-20, 21)
-    sigma = 5.5/(2.* np.sqrt(2.0 * np.log(2.0)))  # nominal
-    yker = np.exp(-0.5 * (xker / sigma) ** 2.0)   # instrumental broadening kernel; not understand yet
-    yker /= yker.sum()
-    F_p_conv = np.convolve(F_p_rot, yker, mode='same') * scale
-    F_s_conv = np.convolve(F_s_obs, yker, mode='same')
+#     # instrument profile convolustion
+#     xker = np.arange(-20, 21)
+#     sigma = 5.5/(2.* np.sqrt(2.0 * np.log(2.0)))  # nominal
+#     yker = np.exp(-0.5 * (xker / sigma) ** 2.0)   # instrumental broadening kernel; not understand yet
+#     yker /= yker.sum()
+#     F_p_conv = np.convolve(F_p_rot, yker, mode='same') * scale
+#     F_s_conv = np.convolve(F_s_obs, yker, mode='same')
 
-    cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p_obs, F_s_obs are already observed value on Earth
-    cs_s = interpolate.splrep(wl, F_s_conv, s=0.0)
+#     cs_p = interpolate.splrep(wl, F_p_conv, s=0.0) # no need to times (R)^2 because F_p_obs, F_s_obs are already observed value on Earth
+#     cs_s = interpolate.splrep(wl, F_s_conv, s=0.0)
 
-    loglikelihood_arr = np.zeros((len(K_p_arr), len(V_sys_arr)))
+#     loglikelihood_arr = np.zeros((len(K_p_arr), len(V_sys_arr)))
     
-    for i in range(len(K_p_arr)):
-        for j in range(len(V_sys_arr)):
-            loglikelihood = log_likelihood_PCA(V_sys_arr[j], K_p_arr[i], dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
-            loglikelihood_arr[i, j] = loglikelihood
+#     for i in range(len(K_p_arr)):
+#         for j in range(len(V_sys_arr)):
+#             loglikelihood = log_likelihood_PCA(V_sys_arr[j], K_p_arr[i], dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi)
+#             loglikelihood_arr[i, j] = loglikelihood
 
-    return loglikelihood_arr
+#     return loglikelihood_arr
 
 from scipy.optimize import minimize
 
 def fit_uncertainties(data_raw, NPC=5):
+    
     uncertainties = np.zeros(data_raw.shape)
     residuals = np.zeros(data_raw.shape)
     Nord = len(data_raw)

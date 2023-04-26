@@ -9,13 +9,6 @@ T_s = 6776            # Stellar effective temperature (K)
 Met_s = 0.13          # Stellar metallicity [log10(Fe/H_star / Fe/H_solar)]
 log_g_s = 4.24        # Stellar log surface gravity (log10(cm/s^2) by convention)
 
-# Create the stellar object
-star = create_star(R_s, T_s, log_g_s, Met_s, stellar_spectrum = True, stellar_grid = 'phoenix')
-
-F_s = star['F_star']
-wl_s = star['wl_star']
-R_s = star['stellar_radius']
-
 #***** Define planet properties *****#
 
 planet_name = 'WASP-121b'  # Planet name used for plots, output files etc.
@@ -43,11 +36,9 @@ model_name = 'High-res retrieval'  # Model name used for plots, output files etc
 bulk_species = ['H2', 'He']         # H2 + He comprises the bulk atmosphere
 # param_species = ['Mg', 'Fe', 'Ti']
 param_species = ['Fe']
-# param_species = ['Fe']
 
 method = 'sysrem'
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
-# high_res_params = ['a', 'b', 'K_p', 'V_sys', 'W_conv']
 high_res_params = ['a', 'b', 'K_p', 'V_sys', 'W_conv']
 
 # Create the model object
@@ -55,7 +46,7 @@ high_res_params = ['a', 'b', 'K_p', 'V_sys', 'W_conv']
 #                     PT_profile = 'Madhu', high_res = high_res,
 #                     high_res_params = high_res_params, R_p_ref_enabled=False)
 model = define_model(model_name, bulk_species, param_species, 
-                    PT_profile = 'isotherm', high_res_params = high_res_params, R_p_ref_enabled=False)
+                    PT_profile = 'isotherm', high_res_params = high_res_params)
 
 # Check the free parameters defining this model
 print("Free parameters: " + str(model['param_names']))
@@ -69,6 +60,9 @@ model['R'] = R
 model['R_instrument'] = 80000 # Resolution of instrument
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
+
+# Create the stellar object
+star = create_star(R_s, T_s, log_g_s, Met_s, stellar_grid = 'phoenix')
 
 data_dir = './reference_data/observations/WASP-121b'
 

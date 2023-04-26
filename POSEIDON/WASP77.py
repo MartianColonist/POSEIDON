@@ -9,13 +9,6 @@ T_s = 5605.0          # Stellar effective temperature (K)
 Met_s = -0.04         # Stellar metallicity [log10(Fe/H_star / Fe/H_solar)]
 log_g_s = 4.48        # Stellar log surface gravity (log10(cm/s^2) by convention)
 
-# Create the stellar object
-star = create_star(R_s, T_s, log_g_s, Met_s, stellar_spectrum = True, stellar_grid = 'phoenix')
-
-F_s = star['F_star']
-wl_s = star['wl_star']
-R_s = star['stellar_radius']
-
 #***** Define planet properties *****#
 
 planet_name = 'WASP-77Ab'  # Planet name used for plots, output files etc.
@@ -33,8 +26,6 @@ if (planet['system_distance'] is None):
     planet['system_distance'] = 1    # This value only used for flux ratios, so it cancels
 d = planet['system_distance']
 
-
-
 # %%
 from POSEIDON.core import define_model, wl_grid_constant_R
 from POSEIDON.utility import read_high_res_data
@@ -43,7 +34,8 @@ from POSEIDON.utility import read_high_res_data
 model_name = 'High-res retrieval'  # Model name used for plots, output files etc.
 
 bulk_species = ['H2', 'He']     # H2 + He comprises the bulk atmosphere
-param_species = ['H2O', 'CO']  # H2O, CO as in Brogi & Line
+# param_species = ['H2O', 'CO']  # H2O, CO as in Brogi & Line
+param_species = []  # H2O, CO as in Brogi & Line
 
 high_res_params = ['a', 'dPhi', 'K_p', 'V_sys']
 # Create the model object
@@ -52,7 +44,7 @@ high_res_params = ['a', 'dPhi', 'K_p', 'V_sys']
 #                     high_res_params = high_res_params, R_p_ref_enabled=False)
 model = define_model(model_name, bulk_species, param_species,
                     PT_profile = 'isotherm',
-                    high_res_params = high_res_params, R_p_ref_enabled=False)
+                    high_res_params = high_res_params)
 
 # Check the free parameters defining this model
 print("Free parameters: " + str(model['param_names']))
@@ -65,6 +57,11 @@ R = 250000          # Spectral resolution of grid
 
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
+
+# Create the stellar object
+star = create_star(R_s, T_s, log_g_s, Met_s, wl = wl, stellar_grid = 'phoenix')
+
+wl_s = star['wl_star']
 
 model['R'] = R
 model['R_instrument'] = 60000

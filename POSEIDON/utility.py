@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pymultinest
 import pickle
+from mpi4py import MPI
 from numba import jit, cuda
 from spectres import spectres
 from scipy.interpolate import interp1d as Interp
@@ -223,6 +224,10 @@ def closest_index(value, grid_start, grid_end, N_grid):
 
     '''
 
+    # Single value grids only have one element, so return 0
+    if (N_grid == 1):
+        return 0
+
     # Set to lower boundary
     if (value < grid_start): 
         return 0
@@ -295,6 +300,47 @@ def size_profile(arr):
     print("%d Mb" % ((arr.size * arr.itemsize)/1048576.0))
 
 
+def get_id_within_node(comm, rank):
+
+    nodename =  MPI.Get_processor_name()
+    nodelist = comm.allgather(nodename)
+
+    process_id = len([i for i in nodelist[:rank] if i==nodename]) 
+
+    return process_id
+
+
+def shared_memory_array(rank, comm, shape):
+    ''' 
+    Creates a numpy array shared in memory across multiple cores.
+    
+    Adapted from :
+    https://stackoverflow.com/questions/32485122/shared-memory-in-mpi4py
+    
+    '''
+    
+    # Create a shared array of size given by product of each dimension
+    size = np.prod(shape)
+    itemsize = MPI.DOUBLE.Get_size() 
+
+    if (rank == 0): 
+        nbytes = size * itemsize   # Array memory allocated for first process
+    else:  
+        nbytes = 0   # No memory storage on other processes
+        
+    # On rank 0, create the shared block
+    # On other ranks, get a handle to it (known as a window in MPI speak)
+    new_comm = MPI.Comm.Split(comm)
+    win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
+ 
+    # Create a numpy array whose data points to the shared memory
+    buf, itemsize = win.Shared_query(0) 
+    assert itemsize == MPI.DOUBLE.Get_size() 
+    array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
+    
+    return array
+
+
 def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half', 
               spectrum_unit = '(Rp/Rs)^2', skiprows = None):
     '''
@@ -332,7 +378,7 @@ def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half',
     '''
     
     # Load data file
-    data = pd.read_csv(data_dir + '/' + fname, sep = '[\s]{1,20}', 
+    data = pd.read_csv(data_dir + '/' + fname, sep = '[\\s]{1,20}', 
                        header = None, skiprows = skiprows, engine = 'python')
 
     # Load wavelength and half bin width, then convert both to μm
@@ -408,6 +454,7 @@ def read_high_res_data(data_dir, method='sysrem', spectrum_type='transmission'):
                 'data_arr': None,
                 'data_scale': None,
                 'data_raw': None,
+                'uncertainties': None,
                 'Phi': Phi,
                 'method': method,
                 'spectrum_type': spectrum_type,
@@ -457,7 +504,7 @@ def read_spectrum(planet_name, fname, wl_unit = 'micron'):
     input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
     
     # Open file
-    data = pd.read_csv(input_dir + fname, sep = '[\s]{1,20}', 
+    data = pd.read_csv(input_dir + fname, sep = '[\\s]{1,20}', 
                        engine = 'python', header=None)
 
     # Load wavelength then convert to μm
@@ -512,7 +559,7 @@ def read_PT_file(PT_file_dir, PT_file_name, P_grid, P_unit = 'bar',
         PT_file_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
                                       '.', 'reference_data/models/TRAPPIST-1e/'))
     
-    PT_file = pd.read_csv(PT_file_dir + '/' + PT_file_name, sep = '[\s]{1,20}', 
+    PT_file = pd.read_csv(PT_file_dir + '/' + PT_file_name, sep = '[\\s]{1,20}', 
                           header = None, skiprows = skiprows, engine = 'python')
     
     # Read pressure
@@ -586,7 +633,7 @@ def read_chem_file(chem_file_dir, chem_file_name, P_grid, chem_species_in_file,
         chem_file_dir = os.path.abspath(os.path.join(os.path.dirname( __file__ ), 
                                         '.', 'reference_data/models/TRAPPIST-1e/'))
 
-    chem_file_input = pd.read_csv(chem_file_dir + '/' + chem_file_name, sep = '[\s]{1,20}', 
+    chem_file_input = pd.read_csv(chem_file_dir + '/' + chem_file_name, sep = '[\\s]{1,20}', 
                                   header = None, skiprows = skiprows, engine = 'python')
     
     # Read pressure and mixing ratios
@@ -812,7 +859,7 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_spectrum_retrieved.txt'
 
     # Read retrieved spectrum confidence intervals
-    spec_file = pd.read_csv(fname, sep = '[\s]{1,20}', engine = 'python', 
+    spec_file = pd.read_csv(fname, sep = '[\\s]{1,20}', engine = 'python', 
                             header = None, skiprows = 1)
 
     wl = np.array(spec_file[0])           # Wavelengths (um)
@@ -842,7 +889,7 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     fname = output_dir + retrieval_name + '_PT_retrieved.txt'
 
     # Read retrieved temperature confidence intervals
-    PT_file = pd.read_csv(fname, sep = '[\s]{1,20}', engine = 'python', 
+    PT_file = pd.read_csv(fname, sep = '[\\s]{1,20}', engine = 'python', 
                           header = None, skiprows = 1)
 
     P = np.array(PT_file[0])         # Pressure (bar)
@@ -907,7 +954,7 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
     for q in range(N_species):
 
         # Read retrieved mixing ratio confidence intervals
-        X_file = pd.read_csv(fname, sep = '[\s]{1,20}', header = None, 
+        X_file = pd.read_csv(fname, sep = '[\\s]{1,20}', header = None, 
                              skiprows = block_line_numbers[q], nrows = N_D,
                              engine = 'python')
 
@@ -939,8 +986,11 @@ def round_sig_figs(value, sig_figs):
     ''' Round a quantity to a specified number of significant figures.
     
     '''
-    
-    return round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
+
+    if (value == 0.0):
+        return 0.0
+    else:
+        return round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
     
 
 def confidence_intervals(sample_draws, array, length, integer=False):
@@ -1091,8 +1141,8 @@ def generate_latex_param_names(param_names):
                          'Phi', 'Chi', 'Psi', 'Omega']
     
     # Define key parameters used in subscripts of parameter names
-    phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 'Night', 
-               'cloud', 'rel', '0', 'het', 'phot', 'p']
+    phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 
+               'Night', 'cloud', 'rel', '0', 'het', 'phot', 'fac', 'spot', 'surf', 'p']
     
     # Initialise output array
     latex_names = []
@@ -1223,7 +1273,7 @@ def generate_latex_param_names(param_names):
         if ('bar' in components_sort):
             
             # Begin LaTeX string with open overline bracket
-            latex_name += '\overline{'
+            latex_name += '\\overline{'
             
             bar_bracket_open = 1
             
@@ -1244,12 +1294,12 @@ def generate_latex_param_names(param_names):
         for i in range(len(components_sort)):
             
             if (components_sort[i] == 'log'):
-                latex_name += ('\\' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ' \, ')
+                latex_name += ('\\' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ' \\, ')
             elif (components_sort[i] in ['greek_low', 'greek_up']):
                 latex_name += ('\\' + param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]])
             elif (components_sort[i] in ['digit', 'letter', 'charge']):
                 if (letter_digit_bracket_open == 0):
-                    latex_name += '\mathrm{'
+                    latex_name += '\\mathrm{'
                     letter_digit_bracket_open = 1
                 if (letter_digit_bracket_open == 1):
                     if (N_letter_digit >= 2):
@@ -1273,11 +1323,11 @@ def generate_latex_param_names(param_names):
                     latex_name += '}'
                     bar_bracket_open = 0
                 if (phrase_bracket_open == 0):
-                    latex_name += '_{\mathrm{'
+                    latex_name += '_{\\mathrm{'
                     phrase_bracket_open = 1
                 if (phrase_bracket_open == 1):
                     if (N_phrase >= 2):
-                        latex_name += (param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ', \, ')
+                        latex_name += (param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + ', \\, ')
                     elif (N_phrase == 1):
                         latex_name += (param[idxs_sort[i]:idxs_sort[i]+lens_sort[i]] + '}}')
                         phrase_bracket_open = 0
@@ -1292,7 +1342,7 @@ def generate_latex_param_names(param_names):
     return latex_names
 
 
-def return_quantiles(stats, param, i, quantile = '1 sigma'):
+def return_quantiles(stats, param, i, radius_unit, quantile = '1 sigma'):
     
     ''' Extract the median, +/- N sigma (specified by 'quantile'), string 
         formatter and units for a given free parameter.
@@ -1322,7 +1372,10 @@ def return_quantiles(stats, param, i, quantile = '1 sigma'):
                (round(sig_m, decimal_count) == 0.0)):
             decimal_count += 1
         formatter = '{:.' + str(decimal_count) + 'f}'
-        unit = 'RJ'
+        if (radius_unit == 'R_J'):
+            unit = 'R_J'
+        elif (radius_unit == 'R_E'):
+            unit = 'R_E'
     elif ('log' in param):
         formatter = '{:.2f}'
         unit = ''
@@ -1335,8 +1388,9 @@ def return_quantiles(stats, param, i, quantile = '1 sigma'):
     
 def write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
-                       stats, ln_Z, ln_Z_err, reduced_chi_square, best_fit_params,
-                       wl, R, instruments, datasets):
+                       stats, ln_Z, ln_Z_err, reduced_chi_square, chi_square,
+                       dof, best_fit_params, wl, R, instruments, datasets,
+                       radius_unit):
     ''' 
     Write a file summarising the main results from a POSEIDON retrieval.
         
@@ -1404,13 +1458,27 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
               '\n',
               '-> ln Z = ' + stats_formatter.format(ln_Z) + ' +/- ' + stats_formatter.format(ln_Z_err) + '\n',
               '\n',
-              '#################################\n',
-              '\n',
-              'Best reduced chi-square:\n',
-              '\n',
-              '-> chi^2_min = ' + stats_formatter.format(reduced_chi_square) + '\n',
-              '\n',
               '#################################\n']
+
+    # Add chi^2 statistics
+    if (np.isnan(reduced_chi_square) == False):
+        lines += ['\n',
+                'Best reduced chi-square:\n',
+                '\n',
+                '-> chi^2_red = ' + stats_formatter.format(reduced_chi_square) + '\n',
+                '-> degrees of freedom = ' + str(dof) + '\n',
+                '-> chi^2 = ' + stats_formatter.format(chi_square) + '\n',
+                '\n',
+                '#################################\n']
+    else:
+        lines += ['\n',
+                'Reduced chi-square undefined because N_params >= N_data!\n',
+                '\n',
+                '-> chi^2_red = Undefined\n',
+                '-> degrees of freedom = Undefined\n',
+                '-> chi^2 = ' + stats_formatter.format(chi_square) + '\n',
+                '\n',
+                '#################################\n']
     
     # Add retrieved parameter constraints
     lines += ['\n',
@@ -1423,7 +1491,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '1 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '1 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1439,7 +1508,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '2 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '2 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1455,7 +1525,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '3 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '3 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1471,7 +1542,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '5 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '5 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1488,7 +1560,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         _, _, _, \
-        formatter, unit = return_quantiles(stats, param, i)     # We only need the formatter and unit for the best fit parameters
+        formatter, unit = return_quantiles(stats, param, i, 
+                                           radius_unit)     # We only need the formatter and unit for the best fit parameters
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(best_fit_params[i]) + ' ' + unit + '\n']
@@ -1516,6 +1589,9 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     ydata = data['ydata']
     instruments = data['instruments']
     datasets = data['datasets']
+
+    # Unpack model properties
+    radius_unit = model['radius_unit']
     
     # Load relevant output directory
     output_prefix = retrieval_name + '-'
@@ -1536,7 +1612,14 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     best_fit_params = best_fit['parameters']
     norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
     best_chi_square = -2.0 * (max_likelihood - norm_log)
-    reduced_chi_square = best_chi_square/(len(ydata) - n_params)  
+
+    # Check for N_params >= N_data, for which chi^2_r is undefined
+    if ((len(ydata) - n_params) > 0):
+        dof = (len(ydata) - n_params)  
+        reduced_chi_square = best_chi_square/dof
+    else:
+        dof = np.nan
+        reduced_chi_square = np.nan
 
     # Load relevant results directories
     samples_prefix = '../samples/' + retrieval_name
@@ -1548,8 +1631,9 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     # Write POSEIDON retrieval summary file
     write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
-                       stats, ln_Z, ln_Z_err, reduced_chi_square, best_fit_params,
-                       wl, R, instruments, datasets)
+                       stats, ln_Z, ln_Z_err, reduced_chi_square, best_chi_square,
+                       dof, best_fit_params, wl, R, instruments, datasets,
+                       radius_unit)
     
 
 def mock_missing(name):

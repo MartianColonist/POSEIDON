@@ -18,12 +18,12 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'POSEIDON'
-copyright = '2022, Ryan J. MacDonald'
+copyright = '2023, Ryan J. MacDonald'
 author = 'Ryan J. MacDonald'
 master_doc = 'index'
 
 # The full version, including alpha/beta/rc tags
-release = '2022'
+release = '2023'
 
 
 # -- General configuration ---------------------------------------------------
@@ -57,7 +57,7 @@ source_suffix = '.rst'
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
-html_logo = "_static/POSEIDON_logo_clear.png"
+html_logo = '_static/POSEIDON_logo_clear.png'
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
