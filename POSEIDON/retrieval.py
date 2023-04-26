@@ -60,7 +60,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     disable_atmosphere = model['disable_atmosphere']
 
     # Unpack stellar properties
-    stellar_interp_backend = star['stellar_interp_backend']
+    if star != None:
+        stellar_interp_backend = star['stellar_interp_backend']
 
     # Check that one of the two reference parameters has been provided by the user
     if ((reference_parameter == 'R_p_ref') and (P_ref is None)):
@@ -269,13 +270,15 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     d = planet['system_distance']
 
     # Unpack stellar properties
-    R_s = star['R_s']
+    if star != None:
+        R_s = star['R_s']
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
 
     # Assign PyMultiNest keyword arguments
     n_dims = N_params
+
     
     # Pre-compute normalisation for log-likelihood 
     err_data = data['err_data']
@@ -328,7 +331,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         for i, parameter in enumerate(param_names):
 
             # First deal with all parameters besides mixing ratios 
-            if (parameter not in X_params) or (parameter in ['C_to_O', 'log_Met']):
+            if (parameter not in X_params) or (parameter in ['C_to_O', 'log_Met','Teff','log_gs','log_Kzz']):
 
                 # Uniform priors
                 if (prior_types[parameter] == 'uniform'):
@@ -679,13 +682,20 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                             spectrum_type = ('direct_' + spectrum_type))   # Always Fp (even for secondary eclipse)
 
+            if spectrum_type == 'direct_emission':
+                spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl, 
+                                             spectrum_type = 'direct_emission')
+            
             # For transmission spectra
             else:
                 spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                             spectrum_type, y_p = y_p)
+               
 
             # Reject unphysical spectra (forced to be NaN by function above)
             if (np.any(np.isnan(spectrum))):
+
+                print('Its a unphysical nan! Nooooo')
                 
                 # Assign penalty to likelihood => point ignored in retrieval
                 loglikelihood = -1.0e100
@@ -802,9 +812,15 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         #***** Step 8: evaluate ln(likelihood) ****#
     
-        loglikelihood = (-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq).sum()
+        #loglikelihood = (-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq).sum()
+        loglikelihood = np.nansum(-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq)
         loglikelihood += norm_log
-                    
+
+        #print('ymodel',ymodel)
+        #print('ydata_adjusted',ydata_adjusted)
+        #print('err_eff_sq)',err_eff_sq)
+        #print('norm_log',norm_log)
+        #print(loglikelihood)
         return loglikelihood
     
     # Run PyMultiNest
@@ -835,7 +851,8 @@ def retrieved_samples(planet, star, model, opac, retrieval_name, wl, P,
 
     # Unpack planet and star properties
     R_p = planet['planet_radius']
-    R_s = star['R_s']
+    if star != None:
+        R_s = star['R_s']
 
     # Load relevant output directory
     output_prefix = retrieval_name + '-'

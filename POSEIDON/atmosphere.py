@@ -9,11 +9,14 @@ import scipy.constants as sc
 from scipy.ndimage import gaussian_filter1d as gauss_conv
 from scipy.interpolate import pchip_interpolate
 from numba.core.decorators import jit
+from scipy import interpolate
+from scipy.interpolate import RegularGridInterpolator
 
 from .supported_opac import inactive_species
 from .species_data import masses
 from .utility import prior_index
 from .eq_interpolate import read_logX
+from .cholla_retrieval import read_logX_cholla, read_PT_cholla
 
 
 @jit(nopython = True)
@@ -1582,7 +1585,37 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             else:
                 raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT \nTry PT_profile = \'isotherm\' or Pt_profile = \'gradient\'')
         
-        
+        elif X_profile == 'cholla' and PT_profile == 'cholla':
+            T_eff = PT_state[0]
+            log_gs = log_X_state[0]
+            log_Kzz = log_X_state[1]
+            
+            PT = read_PT_cholla(T_eff,log_gs,log_Kzz)
+            P_cholla = np.array(PT[0])
+            T_cholla = np.array(PT[1])
+
+            if np.min(P) < 1e-4 or np.max(P) > 60:
+                raise Exception('P Grid covers too big a range for Cholla (Pmax = 60, Pmin = 1e-4)')
+
+            # Interpolate T onto actual P array 
+            interp = interpolate.interp1d(P_cholla,T_cholla,fill_value = "extrapolate")
+
+            T = interp(P)
+
+            T = T.reshape((len(P),1,1))
+
+            X_input = np.array(read_logX_cholla(T_eff,log_gs,log_Kzz))
+
+            X_input_new = np.empty((len(X_input),len(P)))
+            
+            for x in range(len(X_input)):
+                interp_2 = interpolate.interp1d((P_cholla), X_input[x],fill_value = "extrapolate")
+                X_input_new[x] = interp_2(P)
+
+            X_param = X_input_new.reshape((len(param_species), len(P), 1, 1))
+
+            #P = P.reshape((1,len(P),1,1))
+
         # Gaussian smooth any profiles with a vertical profile
         for q, species in enumerate(param_species):
             if (species_has_profile[q] == 1):

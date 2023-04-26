@@ -354,19 +354,32 @@ def make_model_data(spectrum, wl, sigma, sensitivity, bin_left, bin_cent,
             
             # Extend convolution beyond bin edge by max(1, 2 PSF std) model grid spaces (std rounded to integer)
             extension = max(1, int(2 * sigma[n]))   
+
+            #print('n',n)
+            #print('spectrum bin left - extension to bright right + extension',spectrum[(bin_left[n]-extension):(bin_right[n]+extension)])
+            #print('extension',extension)
+            #print('bin left',bin_left[n])
+            #print('bin right',bin_right[n])
+            #print('sigma', sigma[n])
             
             # Convolve spectrum with PSF width appropriate for a given bin 
             spectrum_conv = gauss_conv(spectrum[(bin_left[n]-extension):(bin_right[n]+extension)], 
                                        sigma=sigma[n], mode='nearest')
+            
+            #print('convolved spectrum',spectrum_conv)
 
             # Catch a (surprisingly common) error
             if (len(spectrum_conv[extension:-extension]) != len(sensitivity[bin_left[n]:bin_right[n]])):
                 raise Exception("Error: Model wavelength range not wide enough to encompass all data.")
 
             integrand = spectrum_conv[extension:-extension] * sensitivity[bin_left[n]:bin_right[n]]
+
+            #print('integrand',integrand)
         
             # Integrate convolved spectrum over instrument sensitivity function
             data[n] = trapz(integrand, wl[bin_left[n]:bin_right[n]])   
+            #print('data',data[n])
+            #print('norm',norm[n])
             ymodel[n] = data[n]/norm[n]
             
     # For photometric data

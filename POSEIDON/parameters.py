@@ -172,7 +172,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** PT profile parameters *****#
 
         if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
-                            'slope', 'file_read']):
+                            'slope', 'file_read','cholla']):
             raise Exception("Error: unsupported P-T profile.")
 
         # Check profile settings are supported
@@ -267,7 +267,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         
         #***** Mixing ratio parameters *****#
 
-        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'chem_eq']):
+        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'chem_eq','cholla']):
             raise Exception("Error: unsupported mixing ratio profile.")
             
         if X_profile != 'chem_eq':
@@ -488,6 +488,12 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 for species in species_quench:
                     X_params += ['log_P_quench_' + species]
 
+        if X_profile == 'cholla' and PT_profile == 'cholla':
+            X_params = ['log_gs','log_Kzz']
+            PT_params = ['T_eff']
+            params += PT_params
+            N_PT_params = len(PT_params)
+
                 
         N_species_params = len(X_params)   # Store number of mixing ratio parameters
         params += X_params                 # Add mixing ratio parameter names to combined list
@@ -624,6 +630,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                                      N_geometry_params, N_stellar_params, 
                                      N_offset_params, N_error_params])
     
+    
     return params, physical_params, PT_params, X_params, cloud_params, \
            geometry_params, stellar_params, N_params_cumulative
     
@@ -754,6 +761,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_PT = 8
     elif (PT_profile == 'file_read'):   # User provided file
         len_PT = 0
+    elif (PT_profile == 'cholla'):
+        len_PT = 0
     
     # Store length of mixing ratio state arrays
     if (X_profile == 'gradient'):    # MacDonald & Lewis (2022) profile  
@@ -765,6 +774,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
     elif (X_profile == 'file_read'):   # User provided file
         len_X = 0
     elif (X_profile == 'chem_eq'):   # Chemical equilibrium 
+        len_X = 0
+    elif (X_profile == 'cholla'):
         len_X = 0
     
     # Store number of parametrised chemical species in model
@@ -798,6 +809,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             PT_state = PT_in                # Assign 6 parameters defining this profile
         elif (PT_profile == 'slope'):
             PT_state = PT_in                # Assign 8 parameters defining this profile
+        elif (PT_profile == 'cholla'):
+            PT_state = PT_in
                
     # 2D atmosphere
     elif (PT_dim == 2):
@@ -896,6 +909,9 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
     #***** Process mixing ratio parameters into mixing ratio state array *****#
     
     if X_profile != 'chem_eq':
+        
+        if(X_profile == 'cholla'):
+            log_X_state = log_X_in
 
         # 1D atmosphere
         if (X_dim == 1):

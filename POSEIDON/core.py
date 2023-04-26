@@ -454,6 +454,12 @@ def define_model(model_name, bulk_species, param_species,
             raise Exception("Only equilibrium models support quenching. Try X_profile = \'chem_eq\'")
         if (np.any(~np.isin(species_quench, chemical_species)) == True):
             raise Exception("species_quench contains species not included in param_species or bulk_species")
+        
+    # For the sonora cholla set of grids 
+    if (X_profile == 'cholla' and PT_profile == 'cholla'):
+
+        param_species = ['CH4','CO','NH3','N2','H2O']
+        bulk_species = ['H2','He']
 
     # Identify chemical species with active spectral features
     active_species = chemical_species[~np.isin(chemical_species, inactive_species)]
@@ -787,7 +793,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     if (gravity_setting == 'fixed'):
         g_p = planet['planet_gravity']   # For fixed g, load from planet object
     elif (gravity_setting == 'free'):
-        if (log_g is None):
+        if 'log_gs' in param_names:
+            log_g = log_X_params[0]+2
+            g_p = np.power(10.0, log_g)/100 
+        elif (log_g is None):
             raise Exception("Must provide 'log_g' when log_g is a free parameter")
         else:
             g_p = np.power(10.0, log_g)/100   # Convert log cm/s^2 to m/s^2
@@ -2362,6 +2371,12 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         log_g_phot = None
         err_log_g_phot = None
 
+        T_phot = 0
+        err_T_phot = 0
+        log_g_phot = 0
+        err_log_g_phot = 0
+
+
     # Unpack data error bars (not error inflation parameter prior)
     err_data = data['err_data']    
 
@@ -2411,8 +2426,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'C_to_O': [0.3,1.9],
                              'log_Met' : [-0.9,3.9],
                              'log_P_quench_i' : [-7,2],
+                             'T_eff' : [500,1300], 'log_gs' : [1.5,3.49], 'log_Kzz' : [2,7]
                             }    
 
+    
     # Iterate through parameters, ensuring we have a full set of priors
     for parameter in param_names:
 
