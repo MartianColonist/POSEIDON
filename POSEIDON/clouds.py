@@ -188,7 +188,7 @@ def add(eta, xs, Qexts, size_limit=1000000):
     # Adding the new xs, Qext, and refractive indices to the cached arrays 
     all_xs = np.append(all_xs, xs)
     all_Qexts = np.append(all_Qexts, Qexts)
-    # ?? I am honestly not too sure why they do this? Multiply the refractive index y
+    # ??? I am honestly not too sure why they do this? Multiply the refractive index y
     all_etas = np.append(all_etas, np.array([eta] * len(xs)))
 
     # In order to save memory, if there are more than the size limit it deletes some random ones 
@@ -369,6 +369,7 @@ def mie_cloud(P,wl,r,
     # 2) Probability distribution of particle size 
     # 3) Qext, which is given by the LX-MIE algorithm
 
+    # ??? Still not sure about the constant here
     probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
     radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
     geometric_cross_sections = np.pi * radii**2
