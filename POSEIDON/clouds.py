@@ -6,12 +6,13 @@ Functions for calculating clouds.
 
 import numpy as np
 import scipy
+from scipy.interpolate import interp1d
 
 ############################################################################################
 # Where refractive index data is 
 ############################################################################################
 
-#database_path = os.environ.get("POSEIDON_input_data")
+directory = '/Users/elijahmullens/Desktop/Poseidon-temp/input/opacity/refractive_indices/'
 
 ############################################################################################
 # Empty Arrays for Qext (later to be changed to a shared memory array, see chemistry.py)
@@ -317,7 +318,10 @@ def mie_cloud(P,wl,r,
     # DELETE THIS LATER 
     global all_etas, all_xs, all_Qexts
 
-    supported_aerosols = ['SiO2']
+    supported_aerosols = ['SiO2', 'Al2O3', 'CaTiO3', 'CH4', 'Fe2O3', 'Fe2SiO4',
+                          'H2O','hexene','Hibonite','KCl','Mg2SiO4',
+                          'Mg2SiO4poor','MgAl2O4','MgSiO3','MnS',
+                          'Na2S','NaCl','SiO2','tholin','TiO2','ZnS']
 
     #########################
     # Error messages 
@@ -331,9 +335,17 @@ def mie_cloud(P,wl,r,
     #########################
 
     if aerosol in supported_aerosols:
-        ## Load in refractive index w/ wl 
-        eta_array = np.zeros(len(wl))
+        ## Load in refractive index w/ wl. Then interpolate it
+        # This can be made into a saved array as well, for retrievals
+        file_name = directory + aerosol + '_complex.txt'
+        file_as_numpy = np.loadtxt(file_name,skiprows=2).T
+        wavelengths = file_as_numpy[0]
+        interp_reals = interp1d(wavelengths, file_as_numpy[1])
+        interp_complexes = interp1d(wavelengths, file_as_numpy[2])
+        eta_array = interp_reals(wl) + 1j *interp_complexes(wl)
+
     else:
+        # Apply constant eta to entire array 
         eta = complex(r_i_real,r_i_complex)
         eta_array = np.full(len(wl),eta)
 
