@@ -1090,8 +1090,6 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                 kappa_cloud[(P > P_cloud),j,k,:] = kappa_cloud_0
 
                 for q in range(len(wl)):
-                    print(n_aerosol[i,j,k])
-                    print(sigma_Mie[q])
                     kappa_cloud[i,j,k,q] += n_aerosol[i,j,k] * sigma_Mie[q]
           
     return kappa_clear, kappa_cloud
