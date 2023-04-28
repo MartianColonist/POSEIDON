@@ -353,7 +353,7 @@ def define_model(model_name, bulk_species, param_species,
             (Options: isochem / gradient / two-gradients / file_read / chem_eq).
         cloud_model (str):
             Chosen cloud parametrisation 
-            (Options: cloud-free / MacMad17 / Iceberg).
+            (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
             Cloud extinction type to consider 
             (Options: deck / haze / deck_haze).

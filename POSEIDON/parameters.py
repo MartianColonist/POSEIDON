@@ -36,7 +36,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: isochem / gradient / two-gradients / file_read).
         cloud_model (str):
             Chosen cloud parametrisation 
-            (Options: cloud-free / MacMad17 / Iceberg).
+            (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
             Cloud extinction type to consider 
             (Options: deck / haze / deck_haze).
@@ -533,7 +533,22 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 
             if ('haze' not in cloud_type) and ('deck' not in cloud_type):
                 raise Exception("Error: unsupported cloud model.")
-                
+
+        # Mie scattering        
+        elif (cloud_model == 'Mie'):
+
+            cloud_params += ['P_cloud', 'r_m', 'n_max', 'fractional_scale_height']
+
+            if cloud_type == 'specific_aerosol':
+                cloud_params += ['aerosol']
+
+            if cloud_type == 'free':
+                cloud_params += ['r_i_real', 'r_i_complex']
+
+            if (cloud_type not in ['specific_aerosol', 'free']):
+                raise Exception("Error: unsupported cloud type. Supported types : specific_aerosol and free")
+
+        
         else:
             raise Exception("Error: unsupported cloud model.")
             
@@ -1418,6 +1433,9 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             kappa_cloud_0 = 1.0e250
             P_cloud = 100.0   
             f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+    #elif (cloud_model == 'Mie'):
+
             
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma
 

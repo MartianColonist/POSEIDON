@@ -8,6 +8,12 @@ import numpy as np
 import scipy
 
 ############################################################################################
+# Where refractive index data is 
+############################################################################################
+
+#database_path = os.environ.get("POSEIDON_input_data")
+
+############################################################################################
 # Empty Arrays for Qext (later to be changed to a shared memory array, see chemistry.py)
 ############################################################################################
 
@@ -233,8 +239,8 @@ def get_and_update(eta,xs):
 ############################################################################################
 
 def mie_cloud(P,wl,r,
-              P_top, r_m, n_max, f, H,
-              condensate = 'free',
+              P_cloud, r_m, n_max, fractional_scale_height, H,
+              aerosol = 'free',
               r_i_real = 0,
               r_i_complex = 0,
               r_m_std_dev = 0.5,
@@ -243,8 +249,8 @@ def mie_cloud(P,wl,r,
 
 
     '''
-    Calculates the number density n(P) and cross section sigma(wavelength) for a condensate cloud.
-    Condensate clouds are defined as being opaque below P_top. 
+    Calculates the number density n(P) and cross section sigma(wavelength) for a aerosol cloud.
+    aerosol clouds are defined as being opaque below P_cloud. 
     Returns the absorption coefficient kappa = n * cross section
 
     Args:
@@ -258,9 +264,9 @@ def mie_cloud(P,wl,r,
         r (3D np.array of float):
             Radial distant profile (m). (From atmosphere['P'])
 
-        P_top (float) : 
-            Cloud Top Pressure (everything below P_top is opaque). 
-            If cloud coverage is complete, P_top is located at R_p
+        P_cloud (float) : 
+            Cloud Top Pressure (everything below P_cloud is opaque). 
+            If cloud coverage is complete, P_cloud is located at R_p
 
         r_m   (float) : 
             Mean particle size (in m)
@@ -268,27 +274,27 @@ def mie_cloud(P,wl,r,
         n_max (float) : 
             Maximum number density (at the cloud top)
 
-        f (float) :
-            fractional scale height of condensate
+        fractional_scale_height (float) :
+            fractional scale height of aerosol
 
-        H (float) : 
+        H (np.array of float) : 
             gas scale height
 
         -------- Semi- Optional Arguments -------
 
-        condensate (string) :
-            Name of condensate (e.g., 'SiO2')
+        aerosol (string) :
+            Name of aerosol (e.g., 'SiO2')
             If this is left empty or = 'free', the refractive index must be entered / be a free variable
 
         r_i_real (float) :
             Real component of the complex refractive index
-            If condensate = string, the refractive index will be taken from a precomputed list 
+            If aerosol = string, the refractive index will be taken from a precomputed list 
 
         r_i_complex (float) : 
             Imaginary component of the complex refractive index
-            If condensate = string, the refractive index will be taken from a precomputed list 
+            If aerosol = string, the refractive index will be taken from a precomputed list 
 
-        MUST have either a specified condensate OR a r_i_real + r_i_complex
+        MUST have either a specified aerosol OR a r_i_real + r_i_complex
 
         -------- Optional Arguments -------
 
@@ -311,20 +317,20 @@ def mie_cloud(P,wl,r,
     # DELETE THIS LATER 
     global all_etas, all_xs, all_Qexts
 
-    supported_condensates = ['SiO2']
+    supported_aerosols = ['SiO2']
 
     #########################
     # Error messages 
     #########################
 
-    if condensate not in supported_condensates and condensate != 'free':
-        return Exception('Mie scattering does not support precalculated refractives indices of : ', condensate)
+    if aerosol not in supported_aerosols and aerosol != 'free':
+        return Exception('Mie scattering does not support precalculated refractives indices of : ', aerosol)
     
     #########################
     # Load in refractive indices (as function of wavelength)
     #########################
 
-    if condensate in supported_condensates:
+    if aerosol in supported_aerosols:
         ## Load in refractive index w/ wl 
         eta_array = np.zeros(len(wl))
     else:
@@ -338,14 +344,14 @@ def mie_cloud(P,wl,r,
     
     # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
     n = np.empty_like(r)
-    P_top_index = find_nearest(P,P_top)
+    P_cloud_index = find_nearest(P,P_cloud)
     # Find the radius corresponding to the cloud top pressure 
-    cloud_top_height = r[P_top_index]
+    cloud_top_height = r[P_cloud_index]
     # Height above cloud 
-    h = r[P_top_index:] - cloud_top_height
-    # Find number density below and above P_top
-    n[:P_top_index] = n_max
-    n[P_top_index:] = n_max * np.exp(-h/(f*H))
+    h = r[P_cloud_index:] - cloud_top_height
+    # Find number density below and above P_cloud
+    n[:P_cloud_index] = n_max
+    n[P_cloud_index:] = n_max * np.exp(-h/(fractional_scale_height*H))
 
     #########################
     # Caculate the effective cross section of the particles (as a function of wavelength)
@@ -430,9 +436,10 @@ def mie_cloud(P,wl,r,
     # This will need to be reshaped probably 
     # kappa_mie = n[np.newaxis, :, np.newaxis] * eff_cross_section[np.newaxis, np.newaxis, :]
 
-    print(n)
-    print(eff_cross_section)
-    print(len(eff_cross_section))
+    n_cloud = n 
+    sigma_mie = eff_cross_section 
+
+    return n_cloud, sigma_mie
 
 
 
