@@ -41,6 +41,8 @@ from .transmission import TRIDENT
 from .emission import emission_rad_transfer, determine_photosphere_radii, \
                       emission_rad_transfer_GPU, determine_photosphere_radii_GPU
 
+from .clouds import Mie_cloud
+
 from .utility import mock_missing
 
 try:
@@ -329,7 +331,8 @@ def define_model(model_name, bulk_species, param_species,
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
-                 reference_parameter = 'R_p_ref', disable_atmosphere = False):
+                 reference_parameter = 'R_p_ref', disable_atmosphere = False,
+                 aerosol = 'free'):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -415,6 +418,8 @@ def define_model(model_name, bulk_species, param_species,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
+        aerosol (string):
+            If cloud_model = Mie and clod_type = specific_aerosol 
 
     Returns:
         model (dict):
@@ -454,6 +459,10 @@ def define_model(model_name, bulk_species, param_species,
     # Check if cross sections are available for all the chemical species
     if (np.any(~np.isin(active_species, supported_species)) == True):
         raise Exception("A chemical species you selected is not supported.\n")
+    
+    # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
+    if cloud_type == 'specific_aerosol' and aerosol == 'free':
+        raise Exception('Please input a specific aerosol : aerosol = species_name')
 
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
@@ -524,7 +533,7 @@ def define_model(model_name, bulk_species, param_species,
              'sharp_DN_transition': sharp_DN_transition,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
-            }
+             'aerosol': aerosol}
 
     return model
 
@@ -694,7 +703,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_X_params = [], cloud_params = [], geometry_params = [],
                     log_g = None, T_input = [], X_input = [], P_surf = None,
                     P_param_set = 1.0e-2, He_fraction = 0.17, 
-                    N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False):
+                    N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,):
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
     full generality, this function generates 3D pressure-temperature and mixing 
@@ -766,6 +775,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     cloud_dim = model['cloud_dim']
     gravity_setting = model['gravity_setting']
     sharp_DN_transition = model['sharp_DN_transition']
+    aerosol = model['aerosol']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -853,8 +863,14 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     kappa_cloud_0, P_cloud, \
     f_cloud, phi_cloud_0, \
     theta_cloud_0, \
-    a, gamma = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
+    a, gamma, \
+    r_m, n_max, fractional_scale_height, \
+    r_i_real, r_i_complex = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
                                    N_params_cum, TwoD_type)
+    
+    # Temporary H for testing 
+    g = g_p * (R_p_ref / r)**2
+    H = (sc.k * T) / (mu * g)
 
     # Package atmosphere properties
     atmosphere = {'P': P, 'T': T, 'g': g_p, 'n': n, 'r': r, 'r_up': r_up,
@@ -866,7 +882,9 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'dphi': dphi, 'dtheta': dtheta, 'kappa_cloud_0': kappa_cloud_0, 
                   'P_cloud': P_cloud, 'f_cloud': f_cloud, 'phi_cloud_0': phi_cloud_0, 
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
-                  'is_physical': is_physical
+                  'is_physical': is_physical,
+                  'H': H, 'r_m': r_m, 'n_max': n_max, 'fractional_scale_height': fractional_scale_height,
+                  'aerosol': aerosol, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex
                  }
 
     return atmosphere
@@ -1035,6 +1053,14 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     f_cloud = atmosphere['f_cloud']
     phi_cloud_0 = atmosphere['phi_cloud_0']
     theta_cloud_0 = atmosphere['theta_cloud_0']
+    H = atmosphere['H']
+    r_m = atmosphere['r_m']
+    n_max = atmosphere['n_max']
+    fractional_scale_height = atmosphere['fractional_scale_height']
+    aerosol = atmosphere['aerosol']
+    r_i_real = atmosphere['r_i_real']
+    r_i_complex = atmosphere['r_i_complex']
+
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1100,6 +1126,18 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
+
+            if (model['cloud_model'] == 'Mie'):
+                n_aerosol, sigma_Mie = Mie_cloud(P,wl,r,
+                                                P_cloud, r_m, n_max, fractional_scale_height, H,
+                                                aerosol = aerosol,
+                                                r_i_real = r_i_real,
+                                                r_i_complex = r_i_complex,)
+                enable_Mie = True
+            else:
+                n_aerosol = np.array([])
+                sigma_Mie = np.array([])
+                enable_Mie = False
             
             # Calculate extinction coefficients in standard mode
             kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
@@ -1111,7 +1149,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                 ff_stored, bf_stored, enable_haze, 
                                                 enable_deck, enable_surface,
                                                 N_sectors, N_zones, T_fine, 
-                                                log_P_fine, P_surf)
+                                                log_P_fine, P_surf,
+                                                enable_Mie,n_aerosol, sigma_Mie)
 
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):

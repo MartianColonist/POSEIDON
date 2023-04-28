@@ -7,6 +7,7 @@ import h5py
 from mpi4py import MPI
 import scipy.constants as sc
 from numba import cuda, jit
+from .clouds import find_nearest
 import math
 
 from .utility import mock_missing
@@ -936,7 +937,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
                kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
                bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
-               N_zones, T_fine, log_P_fine, P_surf, P_deep = 1000.0):                          # DOES P_DEEP SOLVE BD PROBLEM?!
+               N_zones, T_fine, log_P_fine, P_surf, enable_Mie, n_aerosol, sigma_Mie, P_deep = 1000.0,):                          # DOES P_DEEP SOLVE BD PROBLEM?!
     
     ''' Main function to evaluate extinction coefficients for molecules / atoms,
         Rayleigh scattering, hazes, and clouds for parameter combination
@@ -1081,7 +1082,18 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
 
                 # Set extinction to infinity below surface
                 kappa_clear[(P > P_surf),j,k,:] = 1.0e250
-            
+
+            # If Mie clouds are turned on 
+            if enable_Mie == True:
+                
+                # Pressures below P_cloud are opaque, otherwise they are fuzy 
+                kappa_cloud[(P > P_cloud),j,k,:] = kappa_cloud_0
+
+                for q in range(len(wl)):
+                    print(n_aerosol[i,j,k])
+                    print(sigma_Mie[q])
+                    kappa_cloud[i,j,k,q] += n_aerosol[i,j,k] * sigma_Mie[q]
+          
     return kappa_clear, kappa_cloud
 
 

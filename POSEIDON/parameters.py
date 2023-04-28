@@ -537,10 +537,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         # Mie scattering        
         elif (cloud_model == 'Mie'):
 
-            cloud_params += ['P_cloud', 'r_m', 'n_max', 'fractional_scale_height']
-
-            if cloud_type == 'specific_aerosol':
-                cloud_params += ['aerosol']
+            cloud_params += ['log_P_cloud', 'r_m', 'n_max', 'fractional_scale_height']
 
             if cloud_type == 'free':
                 cloud_params += ['r_i_real', 'r_i_complex']
@@ -1434,10 +1431,61 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             P_cloud = 100.0   
             f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
 
-    #elif (cloud_model == 'Mie'):
+    # Mie clouds 
+    elif (cloud_model == 'Mie'):
+        
+        # No haze in this model
+        a, gamma = 1.0, -4.0   # Dummy values, haze extinction disabled here
 
-            
-    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma
+        # Cloud is opague up to P_cloud, and then follows an exponential distribution for 
+        # number density of aerosols. This is set by n_cloud 
+        kappa_cloud_0 = 1.0e250
+
+        # Cloud 
+        P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+        
+        if (cloud_dim == 1):
+            f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
+
+        elif (cloud_dim == 2):
+            if (TwoD_type == 'E-M'):
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
+                phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
+                theta_0 = -90.0                # Cloud spans full day to night zones
+            if (TwoD_type == 'D-N'):
+                f_cloud, phi_0 = 1.0, -90.0    # Uniform axially, not-uniform along ray
+                theta_0 = clouds_in[np.where(cloud_param_names == 'theta_0')[0][0]]
+        
+        elif (cloud_dim == 3):
+            f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
+            phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
+            theta_0 = clouds_in[np.where(cloud_param_names == 'theta_0')[0][0]]
+             
+        else:   # Set dummy parameter values for angles if cloud dimension not specified 
+            f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+        # Set the Mie parameters 
+        r_m = clouds_in[np.where(cloud_param_names == 'r_m')[0][0]]
+        n_max = clouds_in[np.where(cloud_param_names == 'n_max')[0][0]]
+        fractional_scale_height = clouds_in[np.where(cloud_param_names == 'fractional_scale_height')[0][0]]
+
+        # Cloud type is not passed to this so 
+        try:
+            r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+            r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+        except:
+            r_i_real = 0
+            r_i_complex = 0
+
+    if cloud_model != 'Mie':
+        r_m = 0
+        n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+
+    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, n_max, fractional_scale_height, r_i_real, r_i_complex
+
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

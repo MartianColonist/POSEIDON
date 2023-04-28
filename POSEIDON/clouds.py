@@ -239,7 +239,7 @@ def get_and_update(eta,xs):
 # Main Function
 ############################################################################################
 
-def mie_cloud(P,wl,r,
+def Mie_cloud(P,wl,r,
               P_cloud, r_m, n_max, fractional_scale_height, H,
               aerosol = 'free',
               r_i_real = 0,
@@ -362,8 +362,8 @@ def mie_cloud(P,wl,r,
     # Height above cloud 
     h = r[P_cloud_index:] - cloud_top_height
     # Find number density below and above P_cloud
-    n[:P_cloud_index] = n_max
-    n[P_cloud_index:] = n_max * np.exp(-h/(fractional_scale_height*H))
+    n[:P_cloud_index] = 1.0e250
+    n[P_cloud_index:] = n_max * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
 
     #########################
     # Caculate the effective cross section of the particles (as a function of wavelength)
@@ -400,58 +400,91 @@ def mie_cloud(P,wl,r,
     # Matrix division by adding dimensionality to both the radii and wl arrays 
     # You then flatten it out to just get all possible values 
 
-    dense_xs = 2*np.pi*radii[np.newaxis,:] / wl[:,np.newaxis]
-    dense_xs = dense_xs.flatten()
+    # If aersol = free, then the refractive index is not wavelength dependent 
+    # We can just follow PLATON algorithm 
+    if aerosol == 'free': 
+        dense_xs = 2*np.pi*radii[np.newaxis,:] / wl[:,np.newaxis]
+        dense_xs = dense_xs.flatten()
 
-    # Now we make the histogram 
-    # np.histogram returns both [0] counts in the array and [1] the bin edges
-    # I think this is so that the flatted dense_xs is a coarser array
+        # Now we make the histogram 
+        # np.histogram returns both [0] counts in the array and [1] the bin edges
+        # I think this is so that the flatted dense_xs is a coarser array
 
-    x_hist = np.histogram(dense_xs, bins='auto')[1]
+        x_hist = np.histogram(dense_xs, bins='auto')[1]
 
-    # Now to feed everything into Q_ext
+        # Now to feed everything into Q_ext
 
-    # Ok I am going to walk through this self statement as best as I can 
-    # self in this case is atmosphere_solver, the main body of PLATON (like main.py)
-    # In the preamble, we set self._mie_cache to MieCache()
-    # This intializes MieCache and runs init, which creates the empty arrays for saving cs, Qexts, and etas
-    # This next stage, get_and_update is a function that takes in eta and x_hist
-    # It then tries to see if it can get the cross sections from the cache (see below) and if not
-    # runs get_Qext (the LX_MIE algorithm) and adds it to the cache 
-    # If there exists a close enough point, it just interpolates along the eta axis to get Q.
+        # Ok I am going to walk through this self statement as best as I can 
+        # self in this case is atmosphere_solver, the main body of PLATON (like main.py)
+        # In the preamble, we set self._mie_cache to MieCache()
+        # This intializes MieCache and runs init, which creates the empty arrays for saving cs, Qexts, and etas
+        # This next stage, get_and_update is a function that takes in eta and x_hist
+        # It then tries to see if it can get the cross sections from the cache (see below) and if not
+        # runs get_Qext (the LX_MIE algorithm) and adds it to the cache 
+        # If there exists a close enough point, it just interpolates along the eta axis to get Q.
 
-    ### From Platon 
-    # Every time the value of Qext (m, x) is required, the cache is first consulted. 
-    # If at least one value in the cache has the same m and an x within 5% of the requested x,
-    # we perform linear interpolation on all cache values with the same m and return the interpolated value. 
-    # If no cache value sat- isfies these criteria, we consider this a cache miss. 
-    # Qext is then calculated for all cache misses and added to the cache.
-    ###
+        ### From Platon 
+        # Every time the value of Qext (m, x) is required, the cache is first consulted. 
+        # If at least one value in the cache has the same m and an x within 5% of the requested x,
+        # we perform linear interpolation on all cache values with the same m and return the interpolated value. 
+        # If no cache value sat- isfies these criteria, we consider this a cache miss. 
+        # Qext is then calculated for all cache misses and added to the cache.
+        ###
 
-    Qext_hist = get_and_update(eta, x_hist) 
+        Qext_hist = get_and_update(eta, x_hist) 
 
-    # This next part interpolated the Qext points that were made from the coarse x histogram 
-    # And interpolates them back onto the dense x array 
+        # This next part interpolated the Qext points that were made from the coarse x histogram 
+        # And interpolates them back onto the dense x array 
 
-    # Find the B-spline representation of a 1-D curve.
-    spl = scipy.interpolate.splrep(x_hist, Qext_hist)
-    # Evaluate a B-spline or its derivatives. (returns from the coarse x array to the dense one)
-    Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
-    # Reshapes Qext in array with the first index - lambda and the second index - radius distribution 
-    Qext_intpl = np.reshape(Qext_intpl, (len(wl), len(radii)))
+        # Find the B-spline representation of a 1-D curve.
+        spl = scipy.interpolate.splrep(x_hist, Qext_hist)
+        # Evaluate a B-spline or its derivatives. (returns from the coarse x array to the dense one)
+        Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
+        # Reshapes Qext in array with the first index - lambda and the second index - radius distribution 
+        Qext_intpl = np.reshape(Qext_intpl, (len(wl), len(radii)))
+
+    # If aersol != free, then the refractive index is wavelength dependent 
+    # We have to change up the algorithm a bit by looping through wavelengths 
+    if aerosol != 'free': 
+
+        Qext_intpl_array = []
+
+        # Loop through each wavelength 
+        for m in range(len(wl)):
+            
+            # Take the dense xs, but keep wavelength constant this time around
+            dense_xs = 2*np.pi*radii / wl[m]
+            dense_xs = dense_xs.flatten()
+
+            # Make xs more coarse
+            x_hist = np.histogram(dense_xs, bins='auto')[1]
+
+            # Pull the refractive index for the wavelength we are on 
+            eta = eta_array[m]
+
+            # Get the coarse Qext with the constant eta 
+            Qext_hist = get_and_update(eta, x_hist) 
+
+            # Revert from coarse Qext back to dense Qext 
+            spl = scipy.interpolate.splrep(x_hist, Qext_hist)
+            Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            # Append it to the array that will have all the Qext
+            Qext_intpl_array.append(Qext_intpl)
+
+        # Reshape the mega array so that the first index is wavelngth, second is radius 
+        Qext_intpl = np.reshape(Qext_intpl_array, (len(wl), len(radii)))
+
 
     # Effective Cross section is a trapezoidal integral
     eff_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
 
-    # Kappa = n * eff_cross_section 
-    # Again, I think the indices here are in order to make the matrix multiplication work
-    # This will need to be reshaped probably 
-    # kappa_mie = n[np.newaxis, :, np.newaxis] * eff_cross_section[np.newaxis, np.newaxis, :]
+    # We redefine n and eff_cross_section to be more in line with Poseidon's exisiting language
 
-    n_cloud = n 
-    sigma_mie = eff_cross_section 
+    n_aerosol = n 
+    sigma_Mie = eff_cross_section 
 
-    return n_cloud, sigma_mie
+    return n_aerosol, sigma_Mie
 
 
 

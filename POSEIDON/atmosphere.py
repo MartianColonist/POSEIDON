@@ -765,6 +765,8 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
             Lower layer boundaries (m).    
         dr (3D np.array of float):
             Layer thicknesses (m).
+        H (3D np.array of float):
+            Layer scale height (m). Used in cloud.py 
     
     '''
 
