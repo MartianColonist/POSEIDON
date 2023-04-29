@@ -36,7 +36,7 @@ def find_nearest(array, value):
     return idx
 
 ############################################################################################
-# LX MIE Algorithm
+# LX MIE Algorithm - See https://arxiv.org/abs/1710.04946
 ############################################################################################
 
 def get_iterations_required(xs, c=4.3):
@@ -48,6 +48,8 @@ def get_iterations_required(xs, c=4.3):
 
 def get_An(zs, n):
     # Evaluate A_n(z) for an array of z's using the continued fraction method.
+    # See eq 12 in https://arxiv.org/abs/1710.04946 
+    # An is the logarithmic derivative of Riccati-Bessel functions
     # This is necessary for downward recursion of A_n(z) for lower n's.
     # The algorithm is from http://adsabs.harvard.edu/abs/1976ApOpt..15..668L
     nu = n + 0.5
@@ -270,7 +272,7 @@ def Mie_cloud(P,wl,r,
             If cloud coverage is complete, P_cloud is located at R_p
 
         r_m   (float) : 
-            Mean particle size (in m)
+            Mean particle size (in um)
 
         n_max (float) : 
             Maximum number density (at the cloud top)
@@ -336,17 +338,19 @@ def Mie_cloud(P,wl,r,
 
     if aerosol in supported_aerosols:
         ## Load in refractive index w/ wl. Then interpolate it
-        # This can be made into a saved array as well, for retrievals
+        # $$$ This can be made into a saved array as well, for retrievals (so it doesn't have to be loaded every time)
+        # Complex must be negative
         file_name = directory + aerosol + '_complex.txt'
         file_as_numpy = np.loadtxt(file_name,skiprows=2).T
         wavelengths = file_as_numpy[0]
         interp_reals = interp1d(wavelengths, file_as_numpy[1])
         interp_complexes = interp1d(wavelengths, file_as_numpy[2])
-        eta_array = interp_reals(wl) + 1j *interp_complexes(wl)
+        eta_array = interp_reals(wl) + -1j *interp_complexes(wl)
 
     else:
         # Apply constant eta to entire array 
-        eta = complex(r_i_real,r_i_complex)
+        # complex index must be negative
+        eta = complex(r_i_real,-r_i_complex)
         eta_array = np.full(len(wl),eta)
 
 
@@ -390,7 +394,7 @@ def Mie_cloud(P,wl,r,
     # ??? Still not sure about the constant here
     probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
     radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
-    geometric_cross_sections = np.pi * radii**2
+    geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
 
     # Now to create the array that is fed into Qext (2 pi r / lambda) that isn't refractive index
 
@@ -403,7 +407,7 @@ def Mie_cloud(P,wl,r,
     # If aersol = free, then the refractive index is not wavelength dependent 
     # We can just follow PLATON algorithm 
     if aerosol == 'free': 
-        dense_xs = 2*np.pi*radii[np.newaxis,:] / wl[:,np.newaxis]
+        dense_xs = 2*np.pi*radii[np.newaxis,:] / wl[:,np.newaxis] # here the um crosses out 
         dense_xs = dense_xs.flatten()
 
         # Now we make the histogram 
@@ -443,6 +447,7 @@ def Mie_cloud(P,wl,r,
         # Reshapes Qext in array with the first index - lambda and the second index - radius distribution 
         Qext_intpl = np.reshape(Qext_intpl, (len(wl), len(radii)))
 
+
     # If aersol != free, then the refractive index is wavelength dependent 
     # We have to change up the algorithm a bit by looping through wavelengths 
     if aerosol != 'free': 
@@ -474,10 +479,19 @@ def Mie_cloud(P,wl,r,
 
         # Reshape the mega array so that the first index is wavelngth, second is radius 
         Qext_intpl = np.reshape(Qext_intpl_array, (len(wl), len(radii)))
+        
 
 
     # Effective Cross section is a trapezoidal integral
     eff_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+
+    # Uncomment to see cross sections 
+    #import matplotlib.pyplot as plt 
+    #plt.plot(wl,eff_cross_section)
+    #plt.xlabel('wl')
+    #plt.ylabel('effective cross section')
+    #plt.title('Effective Cross Sections')
+    #plt.show()
 
     # We redefine n and eff_cross_section to be more in line with Poseidon's exisiting language
 
