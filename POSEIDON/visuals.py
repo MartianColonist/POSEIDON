@@ -3542,7 +3542,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 span[q] = _quantile(param_vals_m[:,q], quant)
                 param_min = span[q][0]
                 param_max = span[q][1]
-        
+
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
                                                        param_min, param_max, colour)
@@ -3554,9 +3554,19 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                         verticalalignment='top', transform=ax.transAxes)
                 
             # Plot median and +/- 1σ confidence intervals
-            ax.axvline(median, lw=2, ls="-", alpha=0.7, color='darkgreen')
-            ax.axvline(low1, lw=1, ls="dashed", color='green')
-            ax.axvline(high1, lw=1, ls="dashed", color='green')
+            if (m == 0):
+                ax.axvline(median, lw=2, ls="-", alpha=0.7, color='dimgray')
+                ax.axvline(low1, lw=1, ls="dashed", color='black')
+                ax.axvline(high1, lw=1, ls="dashed", color='black')
+
+            # Plot retrieved parameter value as title
+            if (m == 0):
+                fmt = "{{0:{0}}}".format(title_fmt).format
+                title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
+                title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
+                title = "{0} = {1}".format(param_label, title)
+                title = "{0}".format(title)
+                ax.set_title(title, fontsize = 12)
 
             # Create sub-axis for error bar
       #      newax = plt.gcf().add_axes(ax.get_position(), sharex=ax, frameon=False)
@@ -3588,14 +3598,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
       #          fontsize = 10, horizontalalignment='left', 
       #          verticalalignment='top', transform=ax.transAxes)
 
-        # Plot retrieved parameter value as title
-        if (N_models == 1):
-            fmt = "{{0:{0}}}".format(title_fmt).format
-            title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
-            title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
-            title = "{0} = {1}".format(param_label, title)
-            title = "{0}".format(title)
-            ax.set_title(title, fontsize = 12)
 
         # Add x-axis label
      #   ax.set_xlabel(param_label, fontsize = 16)
