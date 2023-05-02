@@ -31,6 +31,7 @@ all_Qexts = np.array([])
 eta_supported_aerosol_array = np.array([])
 eta_supported_aerosol_array_aerosol = ''
 
+
 ############################################################################################
 # Utility Functions
 ############################################################################################
@@ -136,6 +137,9 @@ def get_Qext(m, xs):
 # Function that tries to find an existing Qext (within 5% marigin error) via interpolation 
 # Or returns a miss 
 # INPUTS : Refractive Indices array, 2 pi r / lambda array
+
+# max_frac_error = 0.05
+
 def get_from_cache(eta, xs, max_frac_error = 0.05):
 
     # DELETE THIS LATER 
@@ -155,6 +159,9 @@ def get_from_cache(eta, xs, max_frac_error = 0.05):
     # if the corresponding elements in xs were inserted before the indices, 
     # the order of a would be preserved.
     # If == len(all_xs), then its above the maximum value in all_xs
+    # Note that this will count the left most point as a miss (if they are exactly equal, its set to index 0 which is a miss)
+
+    # Ok the closest matches doesn't work with a sorted array by xs
     closest_matches = np.searchsorted(all_xs, xs)
 
     # np.logical_or computes the truth value of x1 OR x2 element wise 
@@ -166,8 +173,9 @@ def get_from_cache(eta, xs, max_frac_error = 0.05):
     # all_etas is ordered the same way as all_xs 
     # Pretty much, its a possibility that you can have a particle a specific size but not
     # Have the same refractive index. These statements make those a miss 
+
     closest_matches[closest_matches == len(all_xs)] -= 1
-    in_cache[all_etas[closest_matches] != eta] = False
+    #in_cache[all_etas[closest_matches] != eta] = False
 
     # Computes the fractional error of surviving matches 
     # If the fractional error is greater than some amount (5%), its set to false 
@@ -202,7 +210,8 @@ def add(eta, xs, Qexts, size_limit=1000000):
     all_xs = np.append(all_xs, xs)
     all_Qexts = np.append(all_Qexts, Qexts)
     # ??? I am honestly not too sure why they do this? Multiply the refractive index y
-    all_etas = np.append(all_etas, np.array([eta] * len(xs)))
+    # all_etas = np.append(all_etas, np.array([eta] * len(xs)))
+    all_etas = np.append(all_etas, np.full_like(xs,eta,dtype=np.complex_))
 
     # In order to save memory, if there are more than the size limit it deletes some random ones 
     if len(all_xs) > size_limit:
