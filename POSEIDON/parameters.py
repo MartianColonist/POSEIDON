@@ -537,7 +537,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         # Mie scattering        
         elif (cloud_model == 'Mie'):
 
-            cloud_params += ['log_P_cloud', 'r_m', 'n_max', 'fractional_scale_height']
+            cloud_params += ['log_P_cloud', 'r_m', 'log_n_max', 'fractional_scale_height']
 
             if cloud_type == 'free':
                 cloud_params += ['r_i_real', 'r_i_complex']
@@ -1466,7 +1466,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
         # Set the Mie parameters 
         r_m = clouds_in[np.where(cloud_param_names == 'r_m')[0][0]]
-        n_max = clouds_in[np.where(cloud_param_names == 'n_max')[0][0]]
+        log_n_max = clouds_in[np.where(cloud_param_names == 'log_n_max')[0][0]]
         fractional_scale_height = clouds_in[np.where(cloud_param_names == 'fractional_scale_height')[0][0]]
 
         # Cloud type is not passed to this so 
@@ -1479,12 +1479,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
     if cloud_model != 'Mie':
         r_m = 0
-        n_max = 0
+        log_n_max = 0
         fractional_scale_height = 0
         r_i_real = 0
         r_i_complex = 0
 
-    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, n_max, fractional_scale_height, r_i_real, r_i_complex
+    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, fractional_scale_height, r_i_real, r_i_complex
 
 
 

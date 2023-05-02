@@ -864,7 +864,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     f_cloud, phi_cloud_0, \
     theta_cloud_0, \
     a, gamma, \
-    r_m, n_max, fractional_scale_height, \
+    r_m, log_n_max, fractional_scale_height, \
     r_i_real, r_i_complex = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
                                    N_params_cum, TwoD_type)
     
@@ -883,7 +883,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'P_cloud': P_cloud, 'f_cloud': f_cloud, 'phi_cloud_0': phi_cloud_0, 
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
                   'is_physical': is_physical,
-                  'H': H, 'r_m': r_m, 'n_max': n_max, 'fractional_scale_height': fractional_scale_height,
+                  'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 'fractional_scale_height': fractional_scale_height,
                   'aerosol': aerosol, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex
                  }
 
@@ -1055,7 +1055,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     theta_cloud_0 = atmosphere['theta_cloud_0']
     H = atmosphere['H']
     r_m = atmosphere['r_m']
-    n_max = atmosphere['n_max']
+    log_n_max = atmosphere['log_n_max']
     fractional_scale_height = atmosphere['fractional_scale_height']
     aerosol = atmosphere['aerosol']
     r_i_real = atmosphere['r_i_real']
@@ -1129,7 +1129,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
             if (model['cloud_model'] == 'Mie'):
                 n_aerosol, sigma_Mie = Mie_cloud(P,wl,r,
-                                                P_cloud, r_m, n_max, fractional_scale_height, H,
+                                                P_cloud, r_m, log_n_max, fractional_scale_height, H,
                                                 aerosol = aerosol,
                                                 r_i_real = r_i_real,
                                                 r_i_complex = r_i_complex,)

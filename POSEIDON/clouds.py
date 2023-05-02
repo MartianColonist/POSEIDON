@@ -27,6 +27,10 @@ all_xs = np.array([])
 # All Q_ext values already computed 
 all_Qexts = np.array([])
 
+# Eta array for pre-loaded indices
+eta_supported_aerosol_array = np.array([])
+eta_supported_aerosol_array_aerosol = ''
+
 ############################################################################################
 # Utility Functions
 ############################################################################################
@@ -241,8 +245,19 @@ def get_and_update(eta,xs):
 # Main Function
 ############################################################################################
 
+def get_supported_aerosols():
+    return ['SiO2', 'Al2O3', 'CaTiO3', 'CH4', 'Fe2O3', 'Fe2SiO4',
+                          'H2O','Hexene','Hibonite','KCl','Mg2SiO4',
+                          'Mg2SiO4poor','MgAl2O4','MgSiO3','MnS',
+                          'Na2S','NaCl','SiO2','Tholin','TiO2','ZnS',
+                          'SiO2_amorph','C','Cr','Fe', 'FeS', 'Mg2SiO4_amorph_sol-gel',
+                          'Mg04Fe06SiO3_amorph_glass','Mg05Fe05SiO3_amorph_glass',
+                          'Mg08Fe02SiO3_amorph_glass','Mg08Fe12SiO4_amorph_glass',
+                          'MgFeSiO4_amorph_glass','MgO','MgSiO3_amorph_glass',
+                          'MgSiO3_amorph_sol-gel_complex','SiC','SiO','TiC','TiO2_anatase']
+
 def Mie_cloud(P,wl,r,
-              P_cloud, r_m, n_max, fractional_scale_height, H,
+              P_cloud, r_m, log_n_max, fractional_scale_height, H,
               aerosol = 'free',
               r_i_real = 0,
               r_i_complex = 0,
@@ -274,8 +289,8 @@ def Mie_cloud(P,wl,r,
         r_m   (float) : 
             Mean particle size (in um)
 
-        n_max (float) : 
-            Maximum number density (at the cloud top)
+        log_n_max (float) : 
+            Logorithm of maximum number density (at the cloud top)
 
         fractional_scale_height (float) :
             fractional scale height of aerosol
@@ -318,12 +333,18 @@ def Mie_cloud(P,wl,r,
     '''
 
     # DELETE THIS LATER 
-    global all_etas, all_xs, all_Qexts
+    global all_etas, all_xs, all_Qexts, eta_supported_aerosol_array, eta_supported_aerosol_array_aerosol
 
+    # Up until ZnS is Wakeford, after that is Kitzman 
     supported_aerosols = ['SiO2', 'Al2O3', 'CaTiO3', 'CH4', 'Fe2O3', 'Fe2SiO4',
-                          'H2O','hexene','Hibonite','KCl','Mg2SiO4',
+                          'H2O','Hexene','Hibonite','KCl','Mg2SiO4',
                           'Mg2SiO4poor','MgAl2O4','MgSiO3','MnS',
-                          'Na2S','NaCl','SiO2','tholin','TiO2','ZnS']
+                          'Na2S','NaCl','SiO2','Tholin','TiO2','ZnS',
+                          'SiO2_amorph','C','Cr','Fe', 'FeS', 'Mg2SiO4_amorph_sol-gel',
+                          'Mg04Fe06SiO3_amorph_glass','Mg05Fe05SiO3_amorph_glass',
+                          'Mg08Fe02SiO3_amorph_glass','Mg08Fe12SiO4_amorph_glass',
+                          'MgFeSiO4_amorph_glass','MgO','MgSiO3_amorph_glass',
+                          'MgSiO3_amorph_sol-gel_complex','SiC','SiO','TiC','TiO2_anatase']
 
     #########################
     # Error messages 
@@ -337,16 +358,31 @@ def Mie_cloud(P,wl,r,
     #########################
 
     if aerosol in supported_aerosols:
-        ## Load in refractive index w/ wl. Then interpolate it
-        # $$$ This can be made into a saved array as well, for retrievals (so it doesn't have to be loaded every time)
-        # Complex must be negative
-        file_name = directory + aerosol + '_complex.txt'
-        file_as_numpy = np.loadtxt(file_name,skiprows=2).T
-        wavelengths = file_as_numpy[0]
-        interp_reals = interp1d(wavelengths, file_as_numpy[1])
-        interp_complexes = interp1d(wavelengths, file_as_numpy[2])
-        eta_array = interp_reals(wl) + -1j *interp_complexes(wl)
+        # Check to see if eta_supported-array array is empty (this is so it doesn't have to run twice in a retrieval)
+        # It also might be the case that the aerosol in the model was changed  (i.e. the indices for SiO2 are saved but we changed aerosols) 
+        if len(eta_supported_aerosol_array) == 0 or eta_supported_aerosol_array_aerosol!=aerosol:
+            ## Load in refractive index w/ wl. Then interpolate it
+            # $$$ This can be made into a saved array as well, for retrievals (so it doesn't have to be loaded every time)
+            # Complex must be negative
+            file_name = directory + aerosol + '_complex.txt'
+            file_as_numpy = np.loadtxt(file_name,skiprows=2).T
+            wavelengths = file_as_numpy[0]
+            interp_reals = interp1d(wavelengths, file_as_numpy[1])
+            interp_complexes = interp1d(wavelengths, file_as_numpy[2])
+            eta_array = interp_reals(wl) + -1j *interp_complexes(wl)
 
+            if eta_supported_aerosol_array_aerosol == '':
+                eta_supported_aerosol_array = np.append(eta_supported_aerosol_array,eta_array)
+                eta_supported_aerosol_array_aerosol = aerosol
+            else:
+                eta_supported_aerosol_array = np.array([])
+                eta_supported_aerosol_array = np.append(eta_supported_aerosol_array,eta_array)
+                eta_supported_aerosol_array_aerosol = aerosol
+
+        else:
+            eta_array = eta_supported_aerosol_array
+            
+            
     else:
         # Apply constant eta to entire array 
         # complex index must be negative
@@ -367,7 +403,7 @@ def Mie_cloud(P,wl,r,
     h = r[P_cloud_index:] - cloud_top_height
     # Find number density below and above P_cloud
     n[:P_cloud_index] = 1.0e250
-    n[P_cloud_index:] = n_max * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
+    n[P_cloud_index:] = (10**log_n_max) * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
 
     #########################
     # Caculate the effective cross section of the particles (as a function of wavelength)
@@ -479,11 +515,13 @@ def Mie_cloud(P,wl,r,
 
         # Reshape the mega array so that the first index is wavelngth, second is radius 
         Qext_intpl = np.reshape(Qext_intpl_array, (len(wl), len(radii)))
-        
 
 
     # Effective Cross section is a trapezoidal integral
     eff_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+
+    #np.save('wl',wl,allow_pickle=True)
+    #np.save('poseidon_cross_section',eff_cross_section,allow_pickle=True)
 
     # Uncomment to see cross sections 
     #import matplotlib.pyplot as plt 
