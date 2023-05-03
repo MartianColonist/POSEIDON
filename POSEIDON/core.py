@@ -41,7 +41,7 @@ from .transmission import TRIDENT
 from .emission import emission_rad_transfer, determine_photosphere_radii, \
                       emission_rad_transfer_GPU, determine_photosphere_radii_GPU
 
-from .clouds import Mie_cloud
+from .clouds_test import Mie_cloud
 
 from .utility import mock_missing
 
