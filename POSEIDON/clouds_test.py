@@ -304,6 +304,28 @@ def get_and_update(eta,xs):
 
     return Qexts_eta
 
+############################################################################################
+# Main Cloud Functions
+############################################################################################
+
+def get_supported_aerosols():
+    return ['SiO2', 'Al2O3', 'CaTiO3', 'CH4', 'Fe2O3', 'Fe2SiO4',
+                          'H2O','Hexene','Hibonite','KCl','Mg2SiO4',
+                          'Mg2SiO4poor','MgAl2O4','MgSiO3','MnS',
+                          'Na2S','NaCl','SiO2','Tholin','TiO2','ZnS',
+                          'SiO2_amorph','C','Cr','Fe', 'FeS', 'Mg2SiO4_amorph_sol-gel',
+                          'Mg04Fe06SiO3_amorph_glass','Mg05Fe05SiO3_amorph_glass',
+                          'Mg08Fe02SiO3_amorph_glass','Mg08Fe12SiO4_amorph_glass',
+                          'MgFeSiO4_amorph_glass','MgO','MgSiO3_amorph_glass',
+                          'MgSiO3_amorph_sol-gel_complex','SiC','SiO','TiC','TiO2_anatase']
+
+def get_supported_aerosol_wl_range(aerosol):
+    file_name = directory + aerosol + '_complex.txt'
+    file_as_numpy = np.loadtxt(file_name,skiprows=2).T
+    wavelengths = file_as_numpy[0]
+    print('---', aerosol,'---')
+    print('Minumum wavelength:', min(wavelengths), 'um')
+    print('Maximum wavelength:', max(wavelengths), 'um')
 
 def Mie_cloud(P,wl,r,
               P_cloud, r_m, log_n_max, fractional_scale_height, H,
@@ -397,7 +419,7 @@ def Mie_cloud(P,wl,r,
                           'Mg04Fe06SiO3_amorph_glass','Mg05Fe05SiO3_amorph_glass',
                           'Mg08Fe02SiO3_amorph_glass','Mg08Fe12SiO4_amorph_glass',
                           'MgFeSiO4_amorph_glass','MgO','MgSiO3_amorph_glass',
-                          'MgSiO3_amorph_sol-gel_complex','SiC','SiO','TiC','TiO2_anatase']
+                          'MgSiO3_amorph_sol-gel','SiC','SiO','TiC','TiO2_anatase']
 
     #########################
     # Error messages 
@@ -438,9 +460,13 @@ def Mie_cloud(P,wl,r,
                 eta_supported_aerosol_array = np.append(eta_supported_aerosol_array,eta_array)
                 eta_supported_aerosol_array_aerosol = aerosol
             else:
+                # Reset all the arrays if its a new aerosol
                 eta_supported_aerosol_array = np.array([])
                 eta_supported_aerosol_array = np.append(eta_supported_aerosol_array,eta_array)
                 eta_supported_aerosol_array_aerosol = aerosol
+                all_etas = []
+                all_xs = []
+                all_Qexts = []
 
         else:
             eta_array = eta_supported_aerosol_array
