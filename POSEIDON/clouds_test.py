@@ -459,7 +459,7 @@ def Mie_cloud(P,wl,r,
             if eta_supported_aerosol_array_aerosol == '':
                 eta_supported_aerosol_array = np.append(eta_supported_aerosol_array,eta_array)
                 eta_supported_aerosol_array_aerosol = aerosol
-            else:
+            elif eta_supported_aerosol_array_aerosol != aerosol:
                 # Reset all the arrays if its a new aerosol
                 eta_supported_aerosol_array = np.array([])
                 eta_supported_aerosol_array = np.append(eta_supported_aerosol_array,eta_array)
