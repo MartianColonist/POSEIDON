@@ -30,3 +30,13 @@ supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2',
 
 # Species treated as spectrally inactive (in standard cross section treatment)
 inactive_species = np.array(['H2', 'He', 'H', 'e-', 'H-'])  # H- handled separately
+
+supported_aerosols = np.array(['SiO2', 'Al2O3', 'CaTiO3', 'CH4', 'Fe2O3', 'Fe2SiO4',
+                          'H2O','Hexene','Hibonite','KCl','Mg2SiO4',
+                          'Mg2SiO4poor','MgAl2O4','MgSiO3','MnS',
+                          'Na2S','NaCl','SiO2','Tholin','TiO2','ZnS',
+                          'SiO2_amorph','C','Cr','Fe', 'FeS', 'Mg2SiO4_amorph_sol-gel',
+                          'Mg04Fe06SiO3_amorph_glass','Mg05Fe05SiO3_amorph_glass',
+                          'Mg08Fe02SiO3_amorph_glass','Mg08Fe12SiO4_amorph_glass',
+                          'MgFeSiO4_amorph_glass','MgO','MgSiO3_amorph_glass',
+                          'MgSiO3_amorph_sol-gel_complex','SiC','SiO','TiC','TiO2_anatase'])

@@ -1085,9 +1085,10 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
 
             # If Mie clouds are turned on 
             if enable_Mie == True:
-                
-                # Pressures below P_cloud are opaque, otherwise they are fuzy 
-                kappa_cloud[(P > P_cloud),j,k,:] = kappa_cloud_0
+
+                if (enable_deck == 1):
+                    # Pressures below P_cloud are opaque, otherwise they are fuzy 
+                    kappa_cloud[(P > P_cloud),j,k,:] = kappa_cloud_0
 
                 for q in range(len(wl)):
                     kappa_cloud[i,j,k,q] += n_aerosol[i,j,k] * sigma_Mie[q]

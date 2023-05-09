@@ -15,7 +15,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
-                       sharp_DN_transition, reference_parameter, disable_atmosphere):
+                       sharp_DN_transition, reference_parameter, disable_atmosphere,
+                       aerosol):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -95,6 +96,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
+        aerosol (string):
+            Either 'free' or a specific aerosol
 
     Returns:
         params (np.array of str):
@@ -537,14 +540,25 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         # Mie scattering        
         elif (cloud_model == 'Mie'):
 
-            cloud_params += ['log_P_cloud', 'r_m', 'log_n_max', 'fractional_scale_height']
+            if (cloud_type =='fuzzy_deck'):
 
-            if cloud_type == 'free':
-                cloud_params += ['r_i_real', 'r_i_complex']
+                cloud_params += ['log_P_cloud', 'r_m', 'log_n_max', 'fractional_scale_height']
 
-            if (cloud_type not in ['specific_aerosol', 'free']):
-                raise Exception("Error: unsupported cloud type. Supported types : specific_aerosol and free")
+                if (aerosol == 'free'):
+                    cloud_params += ['r_i_real', 'r_i_complex']
 
+                
+            if (cloud_type == 'uniform_X'):
+
+                cloud_params += ['r_m']
+
+                if (aerosol == 'free'):
+                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    cloud_params += ['log_X_Mie']
+
+            if (cloud_type not in ['fuzzy_deck', 'uniform_X']):
+                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck or uniform_X.")
         
         else:
             raise Exception("Error: unsupported cloud model.")
@@ -1440,9 +1454,6 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # Cloud is opague up to P_cloud, and then follows an exponential distribution for 
         # number density of aerosols. This is set by n_cloud 
         kappa_cloud_0 = 1.0e250
-
-        # Cloud 
-        P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
         
         if (cloud_dim == 1):
             f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
@@ -1466,16 +1477,41 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
         # Set the Mie parameters 
         r_m = clouds_in[np.where(cloud_param_names == 'r_m')[0][0]]
-        log_n_max = clouds_in[np.where(cloud_param_names == 'log_n_max')[0][0]]
-        fractional_scale_height = clouds_in[np.where(cloud_param_names == 'fractional_scale_height')[0][0]]
+        
+        # If its a fuzzy_deck model
+        if ('log_n_max' in cloud_param_names):
 
-        # Cloud type is not passed to this so 
-        try:
-            r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
-            r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
-        except:
-            r_i_real = 0
-            r_i_complex = 0
+            P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+            log_n_max = clouds_in[np.where(cloud_param_names == 'log_n_max')[0][0]]
+            fractional_scale_height = clouds_in[np.where(cloud_param_names == 'fractional_scale_height')[0][0]]
+
+             # See if its a free aerosol retrieval or not 
+            if ('r_i_real' in cloud_param_names):
+                r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+                r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+            else:
+                r_i_real = 0
+                r_i_complex = 0
+
+            log_X_Mie = 100
+        
+        # See if its a uniform_haze model 
+        if ('log_X_Mie' in cloud_param_names):
+                    
+            log_X_Mie = clouds_in[np.where(cloud_param_names == 'log_X_Mie')[0][0]]
+
+             # See if its a free aerosol retrieval or not 
+            if ('r_i_real' in cloud_param_names):
+                r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+                r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+            else:
+                r_i_real = 0
+                r_i_complex = 0
+
+            log_n_max = 0
+            fractional_scale_height = 0
+            P_cloud = 100
+    
 
     if cloud_model != 'Mie':
         r_m = 0
@@ -1483,8 +1519,10 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         fractional_scale_height = 0
         r_i_real = 0
         r_i_complex = 0
+        log_X_Mie = 100
+        P_cloud = 100
 
-    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, fractional_scale_height, r_i_real, r_i_complex
+    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, fractional_scale_height, r_i_real, r_i_complex, log_X_Mie
 
 
 

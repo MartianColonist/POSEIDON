@@ -328,10 +328,11 @@ def get_supported_aerosol_wl_range(aerosol):
     print('Maximum wavelength:', max(wavelengths), 'um')
 
 def Mie_cloud(P,wl,r,
-              P_cloud, r_m, log_n_max, fractional_scale_height, H,
+              P_cloud, r_m, log_n_max, fractional_scale_height, H, n,
               aerosol = 'free',
               r_i_real = 0,
               r_i_complex = 0,
+              log_X_Mie = 100,
               r_m_std_dev = 0.5,
               z_max = 5,
               num_integral_points = 100,
@@ -370,6 +371,9 @@ def Mie_cloud(P,wl,r,
         H (np.array of float) : 
             gas scale height
 
+        n (np.array of float) :
+            total number density array 
+
         -------- Semi- Optional Arguments -------
 
         aerosol (string) :
@@ -383,6 +387,9 @@ def Mie_cloud(P,wl,r,
         r_i_complex (float) : 
             Imaginary component of the complex refractive index
             If aerosol = string, the refractive index will be taken from a precomputed list 
+
+        log_X_Mie (float) : 
+            Mixing ratio for a mie aerosol (either specified or free, only for uniform haze models)
 
         MUST have either a specified aerosol OR a r_i_real + r_i_complex
 
@@ -483,16 +490,23 @@ def Mie_cloud(P,wl,r,
     # Calculate the number density above the cloud top
     #########################
     
-    # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-    n = np.empty_like(r)
-    P_cloud_index = find_nearest(P,P_cloud)
-    # Find the radius corresponding to the cloud top pressure 
-    cloud_top_height = r[P_cloud_index]
-    # Height above cloud 
-    h = r[P_cloud_index:] - cloud_top_height
-    # Find number density below and above P_cloud
-    n[:P_cloud_index] = 1.0e250
-    n[P_cloud_index:] = (10**log_n_max) * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
+    # Fuzzy Deck Model 
+    if fractional_scale_height != 0:
+        # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+        n_aerosol = np.empty_like(r)
+        P_cloud_index = find_nearest(P,P_cloud)
+        # Find the radius corresponding to the cloud top pressure 
+        cloud_top_height = r[P_cloud_index]
+        # Height above cloud 
+        h = r[P_cloud_index:] - cloud_top_height
+        # Find number density below and above P_cloud
+        n_aerosol[:P_cloud_index] = 1.0e250
+        n_aerosol[P_cloud_index:] = (10**log_n_max) * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
+
+    # Uniform Haze
+    else:
+        n_aerosol = np.empty_like(r)
+        n_aerosol = (n)*np.power(10,log_X_Mie)
 
     #########################
     # Caculate the effective cross section of the particles (as a function of wavelength)
@@ -627,7 +641,6 @@ def Mie_cloud(P,wl,r,
 
     # We redefine n and eff_cross_section to be more in line with Poseidon's exisiting language
 
-    n_aerosol = n 
     sigma_Mie = eff_cross_section
 
      

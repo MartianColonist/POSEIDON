@@ -29,7 +29,7 @@ from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
                      open_pymsg_grid
 from .supported_opac import supported_species, supported_cia, inactive_species, \
-                            supported_chem_eq_species
+                            supported_chem_eq_species, supported_aerosols
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
@@ -461,8 +461,8 @@ def define_model(model_name, bulk_species, param_species,
         raise Exception("A chemical species you selected is not supported.\n")
     
     # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
-    if cloud_type == 'specific_aerosol' and aerosol == 'free':
-        raise Exception('Please input a specific aerosol : aerosol = species_name')
+    if (np.any(~np.isin(aerosol, supported_aerosols)) == True) and aerosol != 'free':
+        raise Exception('Please input a specific aerosol (check supported_opac.py) or aerosol = \'free\'.')
 
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
@@ -503,7 +503,7 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere)
+                                      reference_parameter, disable_atmosphere, aerosol)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -865,7 +865,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     theta_cloud_0, \
     a, gamma, \
     r_m, log_n_max, fractional_scale_height, \
-    r_i_real, r_i_complex = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
+    r_i_real, r_i_complex, log_X_Mie = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
                                    N_params_cum, TwoD_type)
     
     # Temporary H for testing 
@@ -884,7 +884,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
                   'is_physical': is_physical,
                   'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 'fractional_scale_height': fractional_scale_height,
-                  'aerosol': aerosol, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex
+                  'aerosol': aerosol, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie
                  }
 
     return atmosphere
@@ -1060,6 +1060,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     aerosol = atmosphere['aerosol']
     r_i_real = atmosphere['r_i_real']
     r_i_complex = atmosphere['r_i_complex']
+    log_X_Mie = atmosphere['log_X_Mie']
 
 
     # Check if haze enabled in the cloud model
@@ -1129,10 +1130,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
             if (model['cloud_model'] == 'Mie'):
                 n_aerosol, sigma_Mie = Mie_cloud(P,wl,r,
-                                                P_cloud, r_m, log_n_max, fractional_scale_height, H,
+                                                P_cloud, r_m, log_n_max, fractional_scale_height, H, n,
                                                 aerosol = aerosol,
                                                 r_i_real = r_i_real,
-                                                r_i_complex = r_i_complex,)
+                                                r_i_complex = r_i_complex,
+                                                log_X_Mie = log_X_Mie)
                 enable_Mie = True
             else:
                 n_aerosol = np.array([])
