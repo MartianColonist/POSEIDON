@@ -66,6 +66,49 @@ def wl_grid_constant_R(wl_min, wl_max, R):
     
     return wl
 
+def save_and_clear_Qext(
+              aerosol = 'free',
+              r_i_real = 0,
+              r_i_complex = 0):
+    
+    if aerosol == 'free':
+
+        title_string = '_r_i_real_' + str(r_i_real) + '_r_i_complex_' + str(r_i_complex)'
+        Qext_title = 'all_Qexts' + title_string 
+        xs_title = 'all_xs' + title_string
+        eta_title = 'all_etas' + title_string
+        wl_Mie_title = 'wl_Mie' + title_string
+
+        np.save(Qext_title, all_Qexts, allow_pickle = True)
+        np.save(xs_title, all_xs, allow_pickle = True)
+        np.save(eta_title, all_etas, allow_pickle = True)
+        np.save(wl_Mie_title, wl_Mie, allow_pickle = True)
+
+        all_etas = []
+        all_xs = []
+        all_Qexts = []
+        wl_Mie = []
+
+    else:
+        title_string = '_' + aerosol + '_wl_min_' + str(np.min(wl_Mie)) + '_wl_max_' + str(np.max(wl_Mie))
+        Qext_title = 'all_Qexts' + title_string 
+        xs_title = 'all_xs' + title_string
+        eta_title = 'all_etas' + title_string
+        wl_Mie_title = 'wl_Mie' + title_string
+
+        np.save(Qext_title, all_Qexts, allow_pickle = True)
+        np.save(xs_title, all_xs, allow_pickle = True)
+        np.save(eta_title, all_etas, allow_pickle = True)
+        np.save(wl_Mie_title, wl_Mie, allow_pickle = True)
+
+        all_etas = []
+        all_xs = []
+        all_Qexts = []
+        wl_Mie = []
+
+
+
+
 ############################################################################################
 # LX MIE Algorithm - See https://arxiv.org/abs/1710.04946
 ############################################################################################
@@ -447,7 +490,11 @@ def Mie_cloud(P,wl,r,
         wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
 
     # If its a new wl array 
-    if 
+    if  wl[0] != wl_min or wl[-1] != wl_max:
+        wl_min = wl[0]
+        wl_max = wl[-1]
+        wl_Mie = []
+        wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
 
     #########################
     # Load in refractive indices (as function of wavelength)
