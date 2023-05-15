@@ -542,7 +542,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
             if (cloud_type =='fuzzy_deck'):
 
-                cloud_params += ['log_P_cloud', 'r_m', 'log_n_max', 'fractional_scale_height']
+                cloud_params += ['log_P_cloud', 'log_r_m', 'log_n_max', 'fractional_scale_height']
 
                 if (aerosol == 'free'):
                     cloud_params += ['r_i_real', 'r_i_complex']
@@ -550,7 +550,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 
             if (cloud_type == 'uniform_X'):
 
-                cloud_params += ['r_m']
+                cloud_params += ['log_r_m']
 
                 if (aerosol == 'free'):
                     cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
@@ -1476,7 +1476,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
 
         # Set the Mie parameters 
-        r_m = clouds_in[np.where(cloud_param_names == 'r_m')[0][0]]
+        r_m =np.float_power(10.0, clouds_in[np.where(cloud_param_names == 'log_r_m')[0][0]])
         
         # If its a fuzzy_deck model
         if ('log_n_max' in cloud_param_names):

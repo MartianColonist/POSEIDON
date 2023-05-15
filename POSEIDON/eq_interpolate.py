@@ -6,17 +6,17 @@ from scipy.interpolate import RegularGridInterpolator
 print("Reading in database for equilibrium chemistry model...")
 
 # Find the directory where the user downloaded the POSEIDON opacity data
-database_path = os.environ.get("POSEIDON_input_data")
-if database_path == None:
-    raise Exception("POSEIDON cannot locate the database for equilibrium chemistry.\n"
-                    "Please set the 'POSEIDON_input_data' variable in " +
-                    "your .bashrc or .bash_profile to point to the " +
-                    "directory containing the POSEIDON opacity database.")
-database = h5py.File(database_path+'eq_database.hdf5', 'r')
-temperature_gird = np.array(database['Info'+'/T grid'])
-pressure_grid = np.array(database['Info'+'/P grid'])
-metallicity_grid = np.array(database['Info'+'/M/H grid'])
-c_o_grid = np.array(database['Info'+'/C/O grid'])
+#database_path = os.environ.get("POSEIDON_input_data")
+#if database_path == None:
+#    raise Exception("POSEIDON cannot locate the database for equilibrium chemistry.\n"
+#                    "Please set the 'POSEIDON_input_data' variable in " +
+#                    "your .bashrc or .bash_profile to point to the " +
+#                    "directory containing the POSEIDON opacity database.")
+#database = h5py.File(database_path+'eq_database.hdf5', 'r')
+#temperature_gird = np.array(database['Info'+'/T grid'])
+#pressure_grid = np.array(database['Info'+'/P grid'])
+#metallicity_grid = np.array(database['Info'+'/M/H grid'])
+#c_o_grid = np.array(database['Info'+'/C/O grid'])
 
 def print_grid_info():
     print("Temperature grid: "+str(temperature_gird))

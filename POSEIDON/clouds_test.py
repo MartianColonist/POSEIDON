@@ -440,10 +440,14 @@ def Mie_cloud(P,wl,r,
     # Set up wl_mie (a wl array with R = 1000)
     #########################
 
+    # Initialize wl_Mie
     if len(wl_Mie) == 0:
         wl_min = wl[0]
         wl_max = wl[-1]
         wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
+
+    # If its a new wl array 
+    if 
 
     #########################
     # Load in refractive indices (as function of wavelength)
@@ -506,7 +510,7 @@ def Mie_cloud(P,wl,r,
     # Uniform Haze
     else:
         n_aerosol = np.empty_like(r)
-        n_aerosol = (n)*np.power(10,log_X_Mie)
+        n_aerosol = (n)*np.float_power(10,log_X_Mie)
 
     #########################
     # Caculate the effective cross section of the particles (as a function of wavelength)
