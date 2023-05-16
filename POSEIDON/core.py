@@ -1137,8 +1137,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                 log_X_Mie = log_X_Mie)
                 enable_Mie = True
             else:
-                n_aerosol = np.array([])
-                sigma_Mie = np.array([])
+                n_aerosol = np.empty_like(r)
+                sigma_Mie = np.empty_like(wl)
                 enable_Mie = False
             
             # Calculate extinction coefficients in standard mode
