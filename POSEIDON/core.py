@@ -28,8 +28,8 @@ from .constants import R_J, R_E
 from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
                      open_pymsg_grid
-from .supported_opac import supported_species, supported_cia, inactive_species, \
-                            fastchem_supported_species
+from .supported_chemicals import supported_species, supported_cia, inactive_species, \
+                                 fastchem_supported_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \

@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter1d as gauss_conv
 from scipy.interpolate import pchip_interpolate
 from numba.core.decorators import jit
 
-from .supported_opac import inactive_species
+from .supported_chemicals import inactive_species
 from .species_data import masses
 from .utility import prior_index
 from .chemistry import interpolate_log_X_grid

@@ -10,7 +10,7 @@ from mpi4py import MPI
 from scipy.interpolate import RegularGridInterpolator
 
 from .utility import shared_memory_array
-from .supported_opac import fastchem_supported_species
+from .supported_chemicals import fastchem_supported_species
 
 def load_chemistry_grid(chemical_species, grid = 'fastchem', 
                         comm = MPI.COMM_WORLD, rank = 0):
