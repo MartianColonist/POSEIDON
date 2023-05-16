@@ -1,4 +1,7 @@
-# Functions related to atmospheric retrieval
+'''
+Functions related to atmospheric retrieval.
+
+'''
 
 import numpy as np
 import time
