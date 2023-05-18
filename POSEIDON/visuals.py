@@ -2260,6 +2260,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
+    elif (legend_location == 'outside right'):
+        fig.set_size_inches(12, 8.0) 
 
     if (ax == None):
         ax1 = plt.gca()
@@ -2410,6 +2412,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                             ncol = 1, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
+
+    elif legend_location == 'outside right':
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))
+        
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
                             ncol = 1, frameon=False)    # Legend settings

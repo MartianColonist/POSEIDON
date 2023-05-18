@@ -332,7 +332,7 @@ def define_model(model_name, bulk_species, param_species,
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
                  reference_parameter = 'R_p_ref', disable_atmosphere = False,
-                 aerosol = 'free'):
+                 aerosol_species = ['free']):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -461,8 +461,8 @@ def define_model(model_name, bulk_species, param_species,
         raise Exception("A chemical species you selected is not supported.\n")
     
     # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
-    if (np.any(~np.isin(aerosol, supported_aerosols)) == True) and aerosol != 'free':
-        raise Exception('Please input a specific aerosol (check supported_opac.py) or aerosol = \'free\'.')
+    if (np.any(~np.isin(aerosol_species, supported_aerosols)) == True) and aerosol_species != ['free']:
+        raise Exception('Please input supported aerosols (check supported_opac.py) or aerosol = [\'free\'].')
 
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
@@ -503,7 +503,7 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere, aerosol)
+                                      reference_parameter, disable_atmosphere, aerosol_species)
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -533,7 +533,7 @@ def define_model(model_name, bulk_species, param_species,
              'sharp_DN_transition': sharp_DN_transition,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
-             'aerosol': aerosol}
+             'aerosol_species': aerosol_species}
 
     return model
 
@@ -775,7 +775,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     cloud_dim = model['cloud_dim']
     gravity_setting = model['gravity_setting']
     sharp_DN_transition = model['sharp_DN_transition']
-    aerosol = model['aerosol']
+    aerosol_species = model['aerosol_species']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -884,7 +884,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
                   'is_physical': is_physical,
                   'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 'fractional_scale_height': fractional_scale_height,
-                  'aerosol': aerosol, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie
+                  'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie
                  }
 
     return atmosphere
@@ -1057,7 +1057,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     r_m = atmosphere['r_m']
     log_n_max = atmosphere['log_n_max']
     fractional_scale_height = atmosphere['fractional_scale_height']
-    aerosol = atmosphere['aerosol']
+    aerosol_species = atmosphere['aerosol_species']
     r_i_real = atmosphere['r_i_real']
     r_i_complex = atmosphere['r_i_complex']
     log_X_Mie = atmosphere['log_X_Mie']
@@ -1129,17 +1129,45 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         if (device == 'cpu'):
 
             if (model['cloud_model'] == 'Mie'):
-                n_aerosol, sigma_Mie = Mie_cloud(P,wl,r,
-                                                P_cloud, r_m, log_n_max, fractional_scale_height, H, n,
-                                                aerosol = aerosol,
-                                                r_i_real = r_i_real,
-                                                r_i_complex = r_i_complex,
-                                                log_X_Mie = log_X_Mie)
+
+                n_aerosol_array = []
+                sigma_Mie_array = []
+
+                # If its a fuzzy deck run
+                if log_X_Mie == []:
+                    for aerosol in range(len(aerosol_species)):
+                        n_aerosol, sigma_Mie = Mie_cloud(P,wl,r,
+                                                        P_cloud, r_m[aerosol], log_n_max, fractional_scale_height, H, n,
+                                                        aerosol = aerosol_species[aerosol],
+                                                        r_i_real = r_i_real,
+                                                        r_i_complex = r_i_complex)
+                        n_aerosol_array.append(n_aerosol)
+                        sigma_Mie_array.append(sigma_Mie)
+                        
+                
+                else:
+                    for aerosol in range(len(aerosol_species)):
+                        n_aerosol, sigma_Mie = Mie_cloud(P,wl,r,
+                                                        P_cloud, r_m[aerosol], log_n_max, fractional_scale_height, H, n,
+                                                        aerosol = aerosol_species[aerosol],
+                                                        r_i_real = r_i_real,
+                                                        r_i_complex = r_i_complex,
+                                                        log_X_Mie = log_X_Mie[aerosol])
+                        n_aerosol_array.append(n_aerosol)
+                        sigma_Mie_array.append(sigma_Mie)
+                        
                 enable_Mie = True
+            
             else:
-                n_aerosol = np.empty_like(r)
-                sigma_Mie = np.empty_like(wl)
+                n_aerosol_array = []
+                sigma_Mie_array = []
+
+                for n in range(len(aerosol_species)):
+                    n_aerosol_array.append(np.empty_like(r))
+                    sigma_Mie.append(np.empty_like(wl))
+
                 enable_Mie = False
+
             
             # Calculate extinction coefficients in standard mode
             kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
@@ -1152,7 +1180,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                 enable_deck, enable_surface,
                                                 N_sectors, N_zones, T_fine, 
                                                 log_P_fine, P_surf,
-                                                enable_Mie,n_aerosol, sigma_Mie)
+                                                enable_Mie, n_aerosol_array, sigma_Mie_array)
 
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):

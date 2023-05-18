@@ -496,18 +496,15 @@ def Mie_cloud(P,wl,r,
             # Else, just load in the prexisting one
             if aerosol not in interp_aerosols:
                 title = '/Users/elijahmullens/Desktop/sigma_Mie_'+aerosol+'.npy'
-                cross_sections = np.load(title,allow_pickle = True)
-                wavelengths = cross_sections[0]
-                sigma_mie = cross_sections[1]
-                r_m_array = 10**np.linspace(-3,1,100)
-                interp = RegularGridInterpolator((r_m_array, wavelengths), sigma_mie, bounds_error=False, fill_value=None)
+                sigma_Mie = np.load(title,allow_pickle = True)
+                wavelengths = wl_grid_constant_R(0.2, 30, R_Mie)
+                r_m_array = 10**np.linspace(-3,1,1000)
+                interp = RegularGridInterpolator((r_m_array, wavelengths), sigma_Mie, bounds_error=False, fill_value=None)
 
                 interp_aerosols.append(aerosol)
                 interp_saved.append(interp)
 
             else:
-                print(interp_aerosols)
-                print(interp_saved)
                 interp = interp_saved[interp_aerosols.index(aerosol)]
                 
             sigma_Mie = interp((r_m,wl))
@@ -797,3 +794,108 @@ def precompute_cross_sections_aerosol():
     np.save('/Users/elijahmullens/Desktop/R_M_database', r_m_array, allow_pickle = True)
     np.save('/Users/elijahmullens/Desktop/WL_MIE_database', wl_Mie, allow_pickle = True)
     np.save(title,sigma_Mie_all,allow_pickle = True)
+
+def precompute_cross_sections_one_aerosol(aerosol):
+
+    global all_etas, all_xs, all_Qexts
+
+
+    r_m_std_dev = 0.5
+    z_max = 5
+    num_integral_points = 100
+    R_Mie = 1000
+
+    sigma_Mie_all = []
+    wl_Mie = []
+
+    wl_min = 0.2
+    wl_max = 30
+    wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
+
+    r_m_array = 10**np.linspace(-3,1,1000)
+
+
+    print(aerosol)
+
+    effective_cross_section_array = []
+
+    #########################
+    # Load in refractive indices (as function of wavelength)
+    #########################
+    file_name = directory + aerosol + '_complex.txt'
+    file_as_numpy = np.loadtxt(file_name,skiprows=2).T
+
+    wavelengths = file_as_numpy[0]
+    
+    interp_reals = interp1d(wavelengths, file_as_numpy[1])
+    interp_complexes = interp1d(wavelengths, file_as_numpy[2])
+    eta_array = interp_reals(wl_Mie) + -1j *interp_complexes(wl_Mie)
+
+    counter = 0
+
+    for r_m in r_m_array:
+
+        #########################
+        # Caculate the effective cross section of the particles (as a function of wavelength)
+        #########################
+
+        if counter % 10 == 0:
+            print(r_m)
+
+        if counter % 250 == 0:
+            all_etas = []
+            all_xs = []
+            all_Qexts = []
+
+        eff_cross_sections = np.zeros(len(wl_Mie))
+
+        z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
+        z = np.append(z[::-1], -z)
+
+        probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
+        radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
+        geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
+
+        if aerosol != 'free': 
+
+            Qext_intpl_array = []
+
+            # Loop through each wavelength 
+            for m in range(len(wl_Mie)):
+                
+                # Take the dense xs, but keep wavelength constant this time around
+                dense_xs = 2*np.pi*radii / wl_Mie[m]
+                dense_xs = dense_xs.flatten()
+
+                # Make xs more coarse
+                x_hist = np.histogram(dense_xs, bins='auto')[1]
+
+                # Pull the refractive index for the wavelength we are on 
+                eta = eta_array[m]
+
+                # Get the coarse Qext with the constant eta 
+                Qext_hist = get_and_update(eta, x_hist) 
+
+                # Revert from coarse Qext back to dense Qext 
+                spl = scipy.interpolate.splrep(x_hist, Qext_hist)
+                Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+                # Append it to the array that will have all the Qext
+                Qext_intpl_array.append(Qext_intpl)
+
+            # Reshape the mega array so that the first index is wavelngth, second is radius 
+            Qext_intpl = np.reshape(Qext_intpl_array, (len(wl_Mie), len(radii)))
+
+        # Effective Cross section is a trapezoidal integral
+        eff_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+
+        effective_cross_section_array.append(eff_cross_section)
+
+        counter += 1
+
+    title = './sigma_Mie_' + aerosol
+    np.save(title,effective_cross_section_array,allow_pickle = True)
+    sigma_Mie_all.append(effective_cross_section_array)
+    all_etas = []
+    all_xs = []
+    all_Qexts = []
