@@ -106,7 +106,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
         I_phot_grid, I_het_grid = precompute_stellar_spectra(wl, star, prior_types, 
                                                              prior_ranges, stellar_contam,
                                                              stellar_T_step, stellar_log_g_step,
-                                                             stellar_interp_backend)
+                                                             stellar_interp_backend,
+                                                             comm)
 
     # No stellar grid precomputation needed for models with uniform star
     else:
