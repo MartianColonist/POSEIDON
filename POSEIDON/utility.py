@@ -10,6 +10,7 @@ import pymultinest
 from numba import jit, cuda
 from spectres import spectres
 from scipy.interpolate import interp1d as Interp
+from mpi4py import MPI
 
 
 def create_directories(base_dir, planet_name):
@@ -296,6 +297,47 @@ def size_profile(arr):
     '''
     
     print("%d Mb" % ((arr.size * arr.itemsize)/1048576.0))
+
+
+def get_id_within_node(comm, rank):
+
+    nodename =  MPI.Get_processor_name()
+    nodelist = comm.allgather(nodename)
+
+    process_id = len([i for i in nodelist[:rank] if i==nodename]) 
+
+    return process_id
+
+
+def shared_memory_array(rank, comm, shape):
+    ''' 
+    Creates a numpy array shared in memory across multiple cores.
+    
+    Adapted from :
+    https://stackoverflow.com/questions/32485122/shared-memory-in-mpi4py
+    
+    '''
+    
+    # Create a shared array of size given by product of each dimension
+    size = np.prod(shape)
+    itemsize = MPI.DOUBLE.Get_size() 
+
+    if (rank == 0): 
+        nbytes = size * itemsize   # Array memory allocated for first process
+    else:  
+        nbytes = 0   # No memory storage on other processes
+        
+    # On rank 0, create the shared block
+    # On other ranks, get a handle to it (known as a window in MPI speak)
+    new_comm = MPI.Comm.Split(comm)
+    win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
+ 
+    # Create a numpy array whose data points to the shared memory
+    buf, itemsize = win.Shared_query(0) 
+    assert itemsize == MPI.DOUBLE.Get_size() 
+    array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
+    
+    return array
 
 
 def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half', 

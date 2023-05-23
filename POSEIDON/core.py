@@ -29,7 +29,7 @@ from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
                      open_pymsg_grid
 from .supported_opac import supported_species, supported_cia, inactive_species, \
-                            supported_chem_eq_species, supported_aerosols
+                            supported_chem_eq_species, aerosol_supported_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
@@ -41,7 +41,8 @@ from .transmission import TRIDENT
 from .emission import emission_rad_transfer, determine_photosphere_radii, \
                       emission_rad_transfer_GPU, determine_photosphere_radii_GPU
 
-from .clouds_test import Mie_cloud
+from .clouds_aerosols import Mie_cloud, load_aerosol_grid
+from .clouds_LX_MIE import Mie_cloud_free
 
 from .utility import mock_missing
 
@@ -461,7 +462,7 @@ def define_model(model_name, bulk_species, param_species,
         raise Exception("A chemical species you selected is not supported.\n")
     
     # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
-    if (np.any(~np.isin(aerosol_species, supported_aerosols)) == True) and aerosol_species != ['free']:
+    if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True) and aerosol_species != ['free']:
         raise Exception('Please input supported aerosols (check supported_opac.py) or aerosol = [\'free\'].')
 
     # Create list of collisionally-induced absorption (CIA) pairs
@@ -504,6 +505,13 @@ def define_model(model_name, bulk_species, param_species,
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
                                       reference_parameter, disable_atmosphere, aerosol_species)
+    
+    # If cloud_model = Mie, load in the cross section 
+    if cloud_model == 'Mie' and aerosol_species != ['free']:
+        aerosol_grid = load_aerosol_grid(aerosol_species)
+    else:
+        aerosol_grid = None
+        
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -533,7 +541,8 @@ def define_model(model_name, bulk_species, param_species,
              'sharp_DN_transition': sharp_DN_transition,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
-             'aerosol_species': aerosol_species}
+             'aerosol_species': aerosol_species,
+             'aerosol_grid': aerosol_grid}
 
     return model
 
@@ -1130,45 +1139,61 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
             if (model['cloud_model'] == 'Mie'):
 
-                n_aerosol_array = []
-                sigma_Mie_array = []
+                aerosol_grid = model['aerosol_grid']
 
                 # If its a fuzzy deck run
-                if log_X_Mie == []:
-                    for aerosol in range(len(aerosol_species)):
-                        n_aerosol, sigma_Mie = Mie_cloud(P,wl,r,
-                                                        P_cloud, r_m[aerosol], log_n_max, fractional_scale_height, H, n,
-                                                        aerosol = aerosol_species[aerosol],
-                                                        r_i_real = r_i_real,
-                                                        r_i_complex = r_i_complex)
-                        n_aerosol_array.append(n_aerosol)
-                        sigma_Mie_array.append(sigma_Mie)
-                        
-                
-                else:
-                    for aerosol in range(len(aerosol_species)):
-                        n_aerosol, sigma_Mie = Mie_cloud(P,wl,r,
-                                                        P_cloud, r_m[aerosol], log_n_max, fractional_scale_height, H, n,
-                                                        aerosol = aerosol_species[aerosol],
-                                                        r_i_real = r_i_real,
-                                                        r_i_complex = r_i_complex,
-                                                        log_X_Mie = log_X_Mie[aerosol])
-                        n_aerosol_array.append(n_aerosol)
-                        sigma_Mie_array.append(sigma_Mie)
-                        
+                if (model['cloud_type'] == 'fuzzy_deck'):
+
+                    if (aerosol_species == ['free']):
+                        n_aerosol_array, sigma_Mie_array = Mie_cloud_free(P,wl,r, H, n,
+                                                                            r_m,
+                                                                            r_i_real,
+                                                                            r_i_complex,
+                                                                            P_cloud = P_cloud,
+                                                                            log_n_max = log_n_max, 
+                                                                            fractional_scale_height = fractional_scale_height,)
+
+                    else : 
+                        n_aerosol_array, sigma_Mie_array = Mie_cloud(P,wl,r, H, n,
+                                                                    r_m, 
+                                                                    aerosol_species,
+                                                                    cloud_type = model['cloud_type'],
+                                                                    aerosol_grid = aerosol_grid,
+                                                                    P_cloud = P_cloud,
+                                                                    log_n_max = log_n_max, 
+                                                                    fractional_scale_height = fractional_scale_height,)
+                          
+                # If its a uniform X run
+                elif( model['cloud_type'] == 'uniform_X'):
+
+                    if (aerosol_species == ['free']):
+                        n_aerosol_array, sigma_Mie_array = Mie_cloud_free(P,wl,r, H, n,
+                                                                            r_m,
+                                                                            r_i_real,
+                                                                            r_i_complex,
+                                                                            log_X_Mie = log_X_Mie)
+
+                    else : 
+                        n_aerosol_array, sigma_Mie_array = Mie_cloud(P,wl,r, H, n,
+                                                                    r_m, 
+                                                                    aerosol_species,
+                                                                    cloud_type = model['cloud_type'],
+                                                                    aerosol_grid = aerosol_grid,
+                                                                    log_X_Mie = log_X_Mie)
+  
                 enable_Mie = True
             
             else:
+                # Generate empty arrays so numba doesn't break
                 n_aerosol_array = []
                 sigma_Mie_array = []
 
                 for n in range(len(aerosol_species)):
                     n_aerosol_array.append(np.empty_like(r))
-                    sigma_Mie.append(np.empty_like(wl))
+                    sigma_Mie_array.append(np.empty_like(wl))
 
                 enable_Mie = False
 
-            
             # Calculate extinction coefficients in standard mode
             kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
                                                 CIA_pairs, ff_pairs, bf_species,

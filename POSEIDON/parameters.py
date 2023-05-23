@@ -542,26 +542,29 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
             if (cloud_type =='fuzzy_deck'):
 
-                cloud_params += ['log_P_cloud', 'log_r_m', 'log_n_max', 'fractional_scale_height']
+                cloud_params += ['log_P_cloud']
 
                 if (aerosol_species == ['free']):
+                    cloud_params += ['log_r_m', 'log_n_max', 'f']
                     cloud_params += ['r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_n_max_' + aerosol]
+                        cloud_params += ['f_' + aerosol]
 
                 
-            if (cloud_type == 'uniform_X'):
+            elif (cloud_type == 'uniform_X'):
 
                 if (aerosol_species == ['free']):
                     cloud_params += ['log_r_m']
                     cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
                 else:
                     for aerosol in aerosol_species:
-                        
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_X_' + aerosol]
 
-                # for aerosol in aerosol_species:
-
-            if (cloud_type not in ['fuzzy_deck', 'uniform_X']):
+            elif (cloud_type not in ['fuzzy_deck', 'uniform_X']):
                 raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck or uniform_X.")
         
         else:
@@ -1482,12 +1485,13 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # Set the Mie parameters 
         
         # If its a fuzzy_deck model
-        if ('log_n_max' in cloud_param_names):
+        if ('log_P_cloud' in cloud_param_names):
 
             r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
             P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
-            log_n_max = clouds_in[np.where(cloud_param_names == 'log_n_max')[0][0]]
-            fractional_scale_height = clouds_in[np.where(cloud_param_names == 'fractional_scale_height')[0][0]]
+
+            log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
+            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
 
              # See if its a free aerosol retrieval or not 
             if ('r_i_real' in cloud_param_names):
@@ -1501,19 +1505,16 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         
         # See if its a uniform_haze model 
         else:
-
              # See if its a free aerosol retrieval or not 
             if ('r_i_real' in cloud_param_names):
                 # Finds the strings that contain log_r_m and applies the power to them
                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
-
                 r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
                 r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
             else:
                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
-
                 r_i_real = 0
                 r_i_complex = 0
 

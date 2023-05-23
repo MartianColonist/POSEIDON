@@ -1504,6 +1504,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures)
+    elif (legend_location == 'outside right'):
+        fig.set_size_inches(12, 8.0) 
     else:
         raise Exception("Unsupported Figure shape - please use 'default' or 'wide'")
     
@@ -1651,6 +1653,9 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                             ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
+    elif legend_location == 'outside right':
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
                             ncol = n_columns, frameon = False)    # Legend settings
@@ -1864,6 +1869,9 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
+    elif (legend_location == 'outside right'):
+        fig.set_size_inches(12, 8.0) 
+
     
     ax1 = plt.gca()
     
@@ -1938,6 +1946,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     
     legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
                         ncol = 1, frameon = True)    # Legend settings
+    
+    if legend_location == 'outside right':
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))
     
     frame = legend.get_frame()
     frame.set_facecolor('0.90') 
