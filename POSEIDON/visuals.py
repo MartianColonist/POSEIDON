@@ -816,9 +816,14 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
 
     # Find minimum and maximum mixing ratios in atmosphere
     if (log_X_min == None):
-        log_X_min = np.floor(np.min(log_X)) - 1.0
+        log_X_min = -1
+        for q, species in enumerate(plot_species):
+            log_X_min = min(log_X_min, (np.floor(np.min(log_X[chemical_species == species,:,0,0][0])) - 1.0))
+
     if (log_X_max == None):
-        log_X_max = min((np.ceil(np.max(log_X)) + 1.0), 0.0)
+        log_X_max = -10
+        for q, species in enumerate(plot_species):
+            log_X_max = max(log_X_max, (min((np.ceil(np.max(log_X[chemical_species == species,:,0,0][0])) + 1.0), 0.0)))
     
     # When range is small, extend axes +/- 1 dex either side
     if (log_X_min == log_X_max):
