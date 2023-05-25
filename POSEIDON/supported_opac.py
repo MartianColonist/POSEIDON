@@ -33,5 +33,5 @@ inactive_species = np.array(['H2', 'He', 'H', 'e-', 'H-'])  # H- handled separat
 
 # Aerosol Supported Species
 aerosol_supported_species = np.array(['H2O','KCl','MgO','Tholin','Fe','Mg2SiO4_amorph_sol_gel',
-                                      'MgSiO3','Ch4','Fe2O3','SiO2_amorph','SiO2'])
+                                      'MgSiO3','Ch4','Fe2O3','SiO2_amorph','SiO2', 'Na2S', 'NaCl'])
 

@@ -462,8 +462,8 @@ def define_model(model_name, bulk_species, param_species,
         raise Exception("A chemical species you selected is not supported.\n")
     
     # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
-    if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True) and aerosol_species != ['free']:
-        raise Exception('Please input supported aerosols (check supported_opac.py) or aerosol = [\'free\'].')
+    if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True) and aerosol_species != ['free'] and aerosol_species != ['file_read']:
+        raise Exception('Please input supported aerosols (check supported_opac.py) or aerosol = [\'free\'] or [\'file_read\'].')
 
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
@@ -507,7 +507,7 @@ def define_model(model_name, bulk_species, param_species,
                                       reference_parameter, disable_atmosphere, aerosol_species)
     
     # If cloud_model = Mie, load in the cross section 
-    if cloud_model == 'Mie' and aerosol_species != ['free']:
+    if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
         aerosol_grid = load_aerosol_grid(aerosol_species)
     else:
         aerosol_grid = None
@@ -1144,7 +1144,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 # If its a fuzzy deck run
                 if (model['cloud_type'] == 'fuzzy_deck'):
 
-                    if (aerosol_species == ['free']):
+                    if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
                         n_aerosol_array, sigma_Mie_array = Mie_cloud_free(P,wl,r, H, n,
                                                                             r_m,
                                                                             r_i_real,
@@ -1166,7 +1166,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 # If its a uniform X run
                 elif( model['cloud_type'] == 'uniform_X'):
 
-                    if (aerosol_species == ['free']):
+                    if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
                         n_aerosol_array, sigma_Mie_array = Mie_cloud_free(P,wl,r, H, n,
                                                                             r_m,
                                                                             r_i_real,
@@ -1856,6 +1856,7 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
     else:
         return spectrum
 
+
 def compute_spectrum_p(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
                      disable_continuum = False, suppress_print = False,
@@ -2254,6 +2255,7 @@ def compute_spectrum_p(planet, star, model, atmosphere, opac, wl,
 
     return spectrum
 
+
 def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
               wl_unit = 'micron', bin_width = 'half', spectrum_unit = '(Rp/Rs)^2', 
               skiprows = None):
@@ -2490,11 +2492,12 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                                        np.log10(100.0*np.max(err_data**2))],
                              'C_to_O': [0.3,1.9],
                              'log_Met' : [-0.9,3.9],
-                             'r_m': [0.1,100],         # WILL SPAN LOG SPACE
+                             'log_r_m': [-3,1],       
                              'log_n_max': [5.0,20.0],  
                              'fractional_scale_height': [0.1,1], 
                              'r_i_real': [0,10],
-                             'r_i_complex': [1e-6,100], # WILL SPAN LOG SPACE
+                             'r_i_complex': [1e-6,100], 
+                             'log_X_Mie' : [-30,-1]
                             }   
 
     # Iterate through parameters, ensuring we have a full set of priors

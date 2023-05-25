@@ -544,7 +544,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
                 cloud_params += ['log_P_cloud']
 
-                if (aerosol_species == ['free']):
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
                     cloud_params += ['log_r_m', 'log_n_max', 'f']
                     cloud_params += ['r_i_real', 'r_i_complex']
                 else:
@@ -556,7 +556,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 
             elif (cloud_type == 'uniform_X'):
 
-                if (aerosol_species == ['free']):
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
                     cloud_params += ['log_r_m']
                     cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
                 else:
@@ -1454,6 +1454,9 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
     # Mie clouds 
     elif (cloud_model == 'Mie'):
+
+        # Turn clouds_in into an array 
+        clouds_in = np.asarray(clouds_in)
         
         # No haze in this model
         a, gamma = 1.0, -4.0   # Dummy values, haze extinction disabled here
@@ -1486,14 +1489,19 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         
         # If its a fuzzy_deck model
         if ('log_P_cloud' in cloud_param_names):
+            
+            try:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+                log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
+                fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+            except:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+                log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
+                fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
 
-            r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
-            P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
-
-            log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
-            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
-
-             # See if its a free aerosol retrieval or not 
+             # See if its a free or file_read aerosol retrieval or not 
             if ('r_i_real' in cloud_param_names):
                 r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
                 r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
@@ -1505,13 +1513,20 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         
         # See if its a uniform_haze model 
         else:
-             # See if its a free aerosol retrieval or not 
+             # See if its a free for file_read aerosol retrieval or not 
             if ('r_i_real' in cloud_param_names):
-                # Finds the strings that contain log_r_m and applies the power to them
-                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
-                log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
-                r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
-                r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+                # The try except is here because file_read makes everything into a numpy file
+                # So you have to add an extra [0] to get the indexing to work correctly 
+                try:
+                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                    log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                    r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+                    r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+                except:
+                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                    log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
+                    r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+                    r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
             else:
                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
@@ -1533,7 +1548,6 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         P_cloud = 100
 
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, fractional_scale_height, r_i_real, r_i_complex, log_X_Mie
-
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

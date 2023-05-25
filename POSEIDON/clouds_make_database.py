@@ -63,6 +63,110 @@ def wl_grid_constant_R(wl_min, wl_max, R):
     
     return wl
 
+
+def load_refractive_indices_from_file(wl,file_name):
+
+    '''
+    Loads in the refractive indices from a text file (2 rows skipped, columns : wl n k)
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+
+        file_name (string):
+            File name (with directory included)
+    
+    Returns:
+        r_i_real (np.array of float)
+            Array with the loaded in real indices interpolated onto wl_Mie
+
+        r_i_complex (np.array of float)
+            Array with the loaded in imaginary indices interpolated onto wl_Mie
+
+    '''
+
+    wl_min = np.min(wl)
+    wl_max = np.max(wl)
+    wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
+
+    file_as_numpy = np.loadtxt(file_name,skiprows=2).T
+    wavelengths = file_as_numpy[0]
+    real_indices = file_as_numpy[1]
+    imaginary_indices = file_as_numpy[2]
+
+    interp_reals = interp1d(wavelengths, file_as_numpy[1])
+    interp_complexes = interp1d(wavelengths, file_as_numpy[2])
+
+    return interp_reals(wl_Mie), interp_complexes(wl_Mie)
+
+
+def plot_refractive_indices_from_file(wl, file_name):
+
+    '''
+    Plots the refractive indices from a txt file (2 rows skipped, columns : wl n k)
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+
+        file_name (string):
+            File name (with directory included)
+
+    '''
+
+    real_indices, imaginary_indices = load_refractive_indices_from_file(wl,file_name)
+    wl_min = np.min(wl)
+    wl_max = np.max(wl)
+    wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
+
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig.set_size_inches(10, 6)
+    suptitle = 'Refractive Indices for ' + file_name.split('/')[-1][:-4]
+    fig.suptitle(suptitle)
+    ax1.plot(wl_Mie, real_indices)
+    ax2.plot(wl_Mie, imaginary_indices)
+
+    ax1.set_xlabel('Wavelength (um)')
+    ax2.set_xlabel('Wavelength (um)')
+    ax1.set_ylabel('Real Indices')
+    ax2.set_ylabel('Imaginary Indices')
+
+    plt.show()
+
+
+def plot_effective_cross_section_from_file(wl, r_m, file_name):
+
+    '''
+    Plots the effective cross sections from a txt file (2 rows skipped, columns : wl n k)
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+
+        r_m (float):
+            Mean particle size (um)
+
+        file_name (string):
+            File name (with directory included)
+
+    '''
+
+    r_i_real, r_i_complex = load_refractive_indices_from_file(wl,file_name)
+    wl_min = np.min(wl)
+    wl_max = np.max(wl)
+    wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
+    eff_cross_section = precompute_cross_sections_from_indices(wl_Mie,r_i_real,r_i_complex, r_m)
+
+    plt.figure(figsize=(10,6))
+    label = 'r_m ' + str(r_m) + ' (um)'
+    plt.plot(wl_Mie, eff_cross_section, label = label)
+    title = 'Effective Cross Sections ' + file_name.split('/')[1][:-4]
+    plt.title(title)
+    plt.ylabel('Effective Cross Section')
+    plt.xlabel('Wavelength (um)')
+    plt.show()
+
+
 ############################################################################################
 # LX MIE Algorithm - See https://arxiv.org/abs/1710.04946
 ############################################################################################
@@ -355,7 +459,8 @@ def precompute_cross_sections_one_aerosol(aerosol):
     # Load in refractive indices (as function of wavelength)
     #########################
     try :
-        file_name = input_file_path + '/refractive_indices/' + aerosol + '_complex.txt'
+        file_name = input_file_path + 'refractive_indices/' + aerosol + '_complex.txt'
+        print('Loading in : ', file_name)
         file_as_numpy = np.loadtxt(file_name,skiprows=2).T
     except :
         raise Exception('Please put the txt file of the lab data in input/refractive_indices with the naming convention aerosol + _complex.txt')
@@ -442,6 +547,92 @@ def precompute_cross_sections_one_aerosol(aerosol):
     all_Qexts = []
     print('Remember to update aerosol_supported_species in supported_opac.py!')
 
+# Allows the user to make one set of cross sections from an input array of imaginary and real indices 
+def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indices_array, r_m):
+
+    '''
+    Calculates and returns the effective cross section from an input wl grid, real and imaginary indices array 
+    And the particle size in um 
+
+    Allows the user to directly quirey the LX_MIE algorithm with their refractive index data 
+
+    INPUTS 
+
+    wl (np.array of float):
+        Model wavelength grid (μm).
+
+    real_indices_array (np.array of float):
+        Real indices 
+    
+    imaginary_indices_array (np.array of float):
+        Imaginary indices 
+
+    r_m
+    '''
+        
+    global all_etas, all_xs, all_Qexts
+
+    # Constants that for the Qext Claculation
+    r_m_std_dev = 0.5
+    z_max = 5
+    num_integral_points = 100
+
+    # Initialize the wl 
+
+    wavelengths = wl
+    
+    eta_array = real_indices_array + -1j * imaginary_indices_array
+
+
+    #########################
+    # Caculate the effective cross section of the particles (as a function of wavelength)
+    #########################
+
+    eff_cross_sections = np.zeros(len(wavelengths))
+
+    z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
+    z = np.append(z[::-1], -z)
+
+    probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
+    radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
+    geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
+
+    Qext_intpl_array = []
+
+    # Loop through each wavelength 
+    for m in range(len(wavelengths)):
+        
+        # Take the dense xs, but keep wavelength constant this time around
+        dense_xs = 2*np.pi*radii / wavelengths[m]
+        dense_xs = dense_xs.flatten()
+
+        # Make xs more coarse
+        x_hist = np.histogram(dense_xs, bins='auto')[1]
+
+        # Pull the refractive index for the wavelength we are on 
+        eta = eta_array[m]
+
+        # Get the coarse Qext with the constant eta 
+        Qext_hist = get_and_update(eta, x_hist) 
+
+        # Revert from coarse Qext back to dense Qext 
+        spl = scipy.interpolate.splrep(x_hist, Qext_hist)
+        Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+        # Append it to the array that will have all the Qext
+        Qext_intpl_array.append(Qext_intpl)
+
+    # Reshape the mega array so that the first index is wavelngth, second is radius 
+    Qext_intpl = np.reshape(Qext_intpl_array, (len(wavelengths), len(radii)))
+
+    # Effective Cross section is a trapezoidal integral
+    eff_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+
+    all_etas = []
+    all_xs = []
+    all_Qexts = []
+
+    return eff_cross_section
 
 # Reformulate database
 def make_aerosol_database():
@@ -461,17 +652,28 @@ def make_aerosol_database():
                         "POSEIDON input folder.")
 
     # Load in the aerosol list
-    mydir = input_file_path + "/refractive_indices"
+    mydir = input_file_path + "refractive_indices/"
     file_list = glob.glob(mydir + "*.npy")
+
+    print('---------------------')
+    print('Loading in .npy files from')
+    print(mydir)
+    print('---------------------')
 
     aerosol_list = []
 
     # Getting a string for each aerosol in the folder 
     for file in file_list:
-        file = file[12:]
+        file_split = file.split('/')
+        file = file_split[-1]
+        file = file[10:]
         file = file[:-4]
         
         aerosol_list.append(file)
+
+    print('---------------------')
+    print('Generating database from the following aerosols')
+    print('---------------------')
 
     # Wavelength and r_m array used to generate the npy files
     R_Mie = 1000
@@ -481,7 +683,7 @@ def make_aerosol_database():
     # Create the dictionary for aerosols and load in all npy files
     aerosols_dict = {}
     for i in range(len(aerosol_list)):
-        title = input_file_path + '/refractive_indices/sigma_Mie_'+aerosol_list[i]+'.npy'
+        title = file_list[i]
         sigma_Mie = np.load(title,allow_pickle = True)
         aerosols_dict[aerosol_list[i]] = sigma_Mie
 
@@ -499,10 +701,15 @@ def make_aerosol_database():
     h2.attrs["Units"] = "um"
 
     for i in range(len(aerosol_list)):
-        g = database.create_group(aerosol_list[i])
         print(aerosol_list[i])
+        g = database.create_group(aerosol_list[i])
         g1 = g.create_dataset('sigma_Mie', data=aerosols_dict[aerosol_list[i]], compression='gzip', dtype='float32', shuffle=True)
         g1.attrs["Varaible"] = "Effective Cross Section"
         g1.attrs["Units"] = "um^2"
+
+    print('---------------------')
+    print('Saving new aerosol database as')
+    print(input_file_path + 'aerosol_database.hdf5')
+    print('---------------------')
 
     database.close()

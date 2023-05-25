@@ -78,6 +78,7 @@ def plot_effective_cross_section_aerosol(aerosol, wl, r_m):
     sigma_Mie = interp((r_m,wl))
     label = 'r_m (um) : ' + str(r_m)
     title = aerosol + ' Effective Cross Section'
+    plt.figure(figsize=(10,6))
     plt.plot(wl,sigma_Mie, label = label)
     plt.legend()
     plt.title(title)
@@ -111,6 +112,7 @@ def plot_aerosol_number_denstiy_fuzzy_deck(atmosphere,log_P_cloud,log_n_max,frac
     title = ('Number Density of Aerosol above Cloud Deck\n log_P_cloud: ' + str(log_P_cloud) + 
              ' log_n_max: ' + str(log_n_max) + ' f: ' + str(fractional_scale_height))
     fig, ax = plt.subplots()
+    fig.set_size_inches(10, 6)
     ax.plot(np.log10(n_aerosol.T[0][0])[P_cloud_index:],np.log10(P)[P_cloud_index:])
     ax.axhspan(log_P_cloud, np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
     ax.invert_yaxis()
@@ -164,6 +166,8 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
                         "your .bashrc or .bash_profile to point to the " +
                         "POSEIDON input folder.")
     
+    aerosol_species = np.array(aerosol_species)
+    
     # Open chemistry grid HDF5 file
     database = h5py.File(input_file_path  + grid + '_database.hdf5', 'r')
 
@@ -180,7 +184,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     # Create array to store the log mixing ratios from the grid 
     sigma_Mie_grid = shared_memory_array(rank, comm, (N_species, r_m_num, wl_num))
     
-    # Only first core needs to load the mixing ratios into shared memory
+    # Only first core needs to load the aerosols into shared memory
     if (rank == 0):
 
         # Add each aerosol species to mixing ratio array
