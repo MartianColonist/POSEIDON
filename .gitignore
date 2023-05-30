@@ -17,3 +17,4 @@ run/
 POSEIDON_output/
 POSEIDON/reference_data/observations/WASP-121b/aligned_C_arrays.npz
 CC_output/
+POSEIDON/reference_data/observations/WASP-76b/

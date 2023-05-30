@@ -549,7 +549,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         if method == 'sysrem':
             data_raw = data['data_raw']
-            if data['uncertainties'] == None:
+            if 'uncertainties' not in data.keys():
                 uncertainties = fit_uncertainties(data_raw, NPC=5)
                 data['uncertainties'] = uncertainties
             uncertainties = data['uncertainties']
