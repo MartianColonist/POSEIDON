@@ -20,11 +20,31 @@ POSEIDON's official features currently include:
 
 Beta features:
 
+* Chemical equilibrium retrievals.
 * Emission spectra modelling and retrievals for 1D, cloud-free atmospheres without scattering.
 
 The initial public release of POSEIDON contains a range of tutorials on 
 generating forward models and a tutorial on running atmospheric retrievals.
 Tutorials on multidimensional retrievals will be added soon.
+
+
+New in POSEIDON v1.1:
+------------------------------------
+
+To use these new features, you will need to re-download the POSEIDON input data.
+See the installation instructions.
+
+* Chemical equilibrium models and retrievals, demonstrated in two new tutorials.
+* JWST proposal tutorial (PandExo + retrieving simulated JWST data).  
+* Bayesian model comparison demonstration in first retrieval tutorial.
+* Improved stellar contamination retrieval capabilities (e.g. spots + faculae).
+
+See the POSEIDON `Release Notes 
+<https://github.com/MartianColonist/POSEIDON/releases>`_ on GitHub for more details.
+
+
+License:
+------------------------------------
 
 POSEIDON is available under the BSD 3-Clause License. If you use POSEIDON,
 please cite `MacDonald & Madhusudhan (2017) 
@@ -34,6 +54,13 @@ Additionally, if you make use of the multidimensional transmission spectra
 modelling capabilities, we would appreciate a citation for the TRIDENT methods
 paper: `MacDonald & Lewis (2022) 
 <https://ui.adsabs.harvard.edu/abs/2021arXiv211105862M/abstract>`_.
+
+
+Contributor Hall of Fame:
+------------------------------------
+
+Ryan MacDonald, Ruizhe Wang, Elijah Mullens
+
 
 .. toctree::
    :maxdepth: 1
