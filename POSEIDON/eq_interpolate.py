@@ -3,7 +3,7 @@ import h5py
 import os
 from scipy.interpolate import RegularGridInterpolator
 
-print("Reading in database for equilibrium chemistry model...")
+#print("Reading in database for equilibrium chemistry model...")
 
 # Find the directory where the user downloaded the POSEIDON opacity data
 #database_path = os.environ.get("POSEIDON_input_data")

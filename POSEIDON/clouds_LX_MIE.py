@@ -241,6 +241,40 @@ def get_Qext(m, xs):
     Qext *= 2/xs**2
     return Qext
 
+# Ok so we want g and w = Qscat/Qext
+
+def get_extinctions(m, xs):
+    # Builds upon the algorithm from Kitzmann & Heng 2017 to compute Qext(x) for an array
+    # of x's and refractive index m.  This algorithm is stable and does not
+    # lead to numerical overflows.  Paper: https://arxiv.org/abs/1710.04946
+    
+    # This new function includes Q_scat, single scattering albedo w, and 
+
+    xs = np.array(xs)
+    num_iterations = get_iterations_required(xs) 
+    max_iter = max(max(num_iterations) , 1)
+    
+    A_mx = get_As(max_iter, m * xs)
+    A_x = get_As(max_iter, xs)
+    Qext = np.zeros(len(xs))
+
+    curr_B = 1.0/(1 + 1j * (np.cos(xs) + xs*np.sin(xs))/(np.sin(xs) - xs*np.cos(xs)))
+    curr_C = -1.0/xs + 1.0/(1.0/xs  + 1.0j)
+    
+    for i in range(1, max_iter):
+        cond = num_iterations > i
+        if i > 1:
+            curr_C[cond] = -i/xs[cond] + 1.0/(i/xs[cond] - curr_C[cond])
+            curr_B[cond] = curr_B[cond] * (curr_C[cond] + i/xs[cond])/(A_x[i][cond] + i/xs[cond])
+            
+        an = curr_B[cond] * (A_mx[i][cond]/m - A_x[i][cond])/(A_mx[i][cond]/m - curr_C[cond])
+        bn = curr_B[cond] * (A_mx[i][cond]*m - A_x[i][cond])/(A_mx[i][cond]*m - curr_C[cond])
+        
+        Qext[cond] += (2*i + 1) * (an + bn).real
+        
+    Qext *= 2/xs**2
+    return Qext
+
 ############################################################################################
 # Auxiliary Functions (Retrieving and updating cached arrays)
 ############################################################################################

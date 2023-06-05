@@ -318,11 +318,11 @@ def get_supported_aerosols():
                           'H2O','Hexene','Hibonite','KCl','Mg2SiO4',
                           'Mg2SiO4poor','MgAl2O4','MgSiO3','MnS',
                           'Na2S','NaCl','SiO2','Tholin','TiO2','ZnS',
-                          'SiO2_amorph','C','Cr','Fe', 'FeS', 'Mg2SiO4_amorph_sol-gel',
+                          'SiO2_amorph','C','Cr','Fe', 'FeS', 'Mg2SiO4_amorph_sol_gel',
                           'Mg04Fe06SiO3_amorph_glass','Mg05Fe05SiO3_amorph_glass',
                           'Mg08Fe02SiO3_amorph_glass','Mg08Fe12SiO4_amorph_glass',
                           'MgFeSiO4_amorph_glass','MgO','MgSiO3_amorph_glass',
-                          'MgSiO3_amorph_sol-gel_complex','SiC','SiO','TiC','TiO2_anatase']
+                          'MgSiO3_amorph_sol_gel_complex','SiC','SiO','TiC','TiO2_anatase']
 
 def get_supported_aerosol_wl_range(aerosol):
     file_name = directory + aerosol + '_complex.txt'
@@ -427,11 +427,11 @@ def Mie_cloud(P,wl,r,
                           'H2O','Hexene','Hibonite','KCl','Mg2SiO4',
                           'Mg2SiO4poor','MgAl2O4','MgSiO3','MnS',
                           'Na2S','NaCl','Tholin','TiO2','ZnS',
-                          'SiO2_amorph','C','Cr','Fe', 'FeS', 'Mg2SiO4_amorph_sol-gel',
+                          'SiO2_amorph','C','Cr','Fe', 'FeS', 'Mg2SiO4_amorph_sol_gel',
                           'Mg04Fe06SiO3_amorph_glass','Mg05Fe05SiO3_amorph_glass',
                           'Mg08Fe02SiO3_amorph_glass','Mg08Fe12SiO4_amorph_glass',
                           'MgFeSiO4_amorph_glass','MgO','MgSiO3_amorph_glass',
-                          'MgSiO3_amorph_sol-gel','SiC','SiO','TiC','TiO2_anatase']
+                          'MgSiO3_amorph_sol_gel','SiC','SiO','TiC','TiO2_anatase']
 
     #########################
     # Error messages 
@@ -495,7 +495,7 @@ def Mie_cloud(P,wl,r,
             # If an interp object has not been made for the aerosol being queried, make one and add to the saved list 
             # Else, just load in the prexisting one
             if aerosol not in interp_aerosols:
-                title = '/Users/elijahmullens/Desktop/sigma_Mie_'+aerosol+'.npy'
+                title = '/Users/elijahmullens/Desktop/Poseidon-Temp/input/refractive_indices/sigma_Mie_'+aerosol+'.npy'
                 sigma_Mie = np.load(title,allow_pickle = True)
                 wavelengths = wl_grid_constant_R(0.2, 30, R_Mie)
                 r_m_array = 10**np.linspace(-3,1,1000)
@@ -682,6 +682,7 @@ def Mie_cloud(P,wl,r,
     # We redefine n and eff_cross_section to be more in line with Poseidon's exisiting language
 
     sigma_Mie = eff_cross_section
+
 
     return n_aerosol, sigma_Mie
 
