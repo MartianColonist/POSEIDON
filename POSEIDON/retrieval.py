@@ -565,7 +565,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 
                 uncertainties[i] = uncertainty_norm
                 data_norm[i] = order_norm
-            residuals, Us = fast_filter(data_norm, uncertainties, iter=15)
+            residuals, Us = fast_filter(data_norm, uncertainties, Niter=15)
 
             Bs = np.zeros((Ndet, Nphi, Nphi))
 

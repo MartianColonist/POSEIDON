@@ -31,15 +31,15 @@ from POSEIDON.core import define_model, wl_grid_constant_R
 from POSEIDON.utility import read_high_res_data
 #***** Define model *****#
 
-model_name = 'High-res retrieval'  # Model name used for plots, output files etc.
+model_name = 'Fe Ca+ Na K Li retrieval'  # Model name used for plots, output files etc.
 
 bulk_species = ['H2', 'He']         # H2 + He comprises the bulk atmosphere
-# param_species = ['Mg', 'Fe', 'Ti']
-param_species = ['Fe']
+param_species = ['Fe', 'Ca+', 'Na', 'K', 'Li']
+# param_species = ['Na']
 
 method = 'sysrem'
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
-high_res_params = ['a', 'b', 'K_p', 'V_sys', 'W_conv', 'dPhi']
+high_res_params = ['a', 'b', 'K_p', 'V_sys', 'W_conv']
 
 # Create the model object
 # model = define_model(model_name, bulk_species, param_species, 
@@ -69,8 +69,7 @@ data_dir = './reference_data/observations/WASP-76b'
 
 data = read_high_res_data(data_dir, method='sysrem', spectrum_type='transmission')
 data['V_sin_i'] = 1.48
-data['uncertainties'] = None
-# data['uncertainties'] = pickle.load(open(data_dir+'/uncertainties.pic', 'rb'))
+data['uncertainties'] = pickle.load(open(data_dir+'/uncertainties.pic', 'rb'))
 data_raw = data['data_raw']
 data_raw[data_raw < 0] = 0
 data['data_raw'] = data_raw
@@ -86,9 +85,9 @@ prior_types = {}
 prior_types['T_ref'] = 'uniform'
 prior_types['T'] = 'uniform'
 prior_types['R_p_ref'] = 'uniform'
-prior_types['log_Ti'] = 'uniform'
+prior_types['log_Na'] = 'uniform'
 prior_types['log_Fe'] = 'uniform'
-prior_types['log_Mg'] = 'uniform'
+prior_types['log_Ca'] = 'uniform'
 prior_types['a1'] = 'uniform'
 prior_types['a2'] = 'uniform'
 prior_types['log_P1'] = 'uniform'
@@ -108,19 +107,19 @@ prior_ranges = {}
 prior_ranges['T_ref'] = [1500, 4000]
 prior_ranges['T'] = [1500, 4000]
 prior_ranges['R_p_ref'] = [0.5*R_p, 2*R_p]
-prior_ranges['log_Ti'] = [-15, 0]
+prior_ranges['log_Na'] = [-15, 0]
 prior_ranges['log_Fe'] = [-15, 0]
-prior_ranges['log_Mg'] = [-15, 0]
+prior_ranges['log_Ca'] = [-15, 0]
 prior_ranges['a1'] = [0.02, 1]
 prior_ranges['a2'] = [0.02, 1]
 prior_ranges['log_P1'] = [-5.5, 2.5]
 prior_ranges['log_P2'] = [-5.5, 2.5]
 prior_ranges['log_P3'] = [-2, 2]
-prior_ranges['K_p'] = [170, 230]
-prior_ranges['V_sys'] = [-10, 10]
-prior_ranges['a'] = [0.1, 10]
-prior_ranges['b'] = [0.1, 10]
-prior_ranges['dPhi'] = [-0.01, 0.01]
+prior_ranges['K_p'] = [150, 230]
+prior_ranges['V_sys'] = [-20, 20]
+prior_ranges['a'] = [0.05, 10]
+prior_ranges['b'] = [0.1, 2]
+prior_ranges['dPhi'] = [-0.1, 0.1]
 prior_ranges['W_conv'] = [1, 50]
 
 # Create prior object for retrieval
@@ -135,7 +134,7 @@ import numpy as np
 opacity_treatment = 'opacity_sampling'
 
 # Define fine temperature grid (K)
-T_fine_min = 2000     # 400 K lower limit suffices for a typical hot Jupiter
+T_fine_min = 1500     # 400 K lower limit suffices for a typical hot Jupiter
 T_fine_max = 4500    # 2000 K upper limit suffices for a typical hot Jupiter
 T_fine_step = 20     # 20 K steps are a good tradeoff between accuracy and RAM
 
@@ -172,7 +171,7 @@ P_ref = 1e-5   # Reference pressure (bar)
 
 run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
                 spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
-                N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.05)
+                N_live = 800, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.05)
 
 
 # %% [markdown]
