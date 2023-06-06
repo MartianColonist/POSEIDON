@@ -3,16 +3,16 @@ Functions for calculating atmospheric temperature, mixing ratio, and other profi
 
 '''
 
-
 import numpy as np
 import scipy.constants as sc
 from scipy.ndimage import gaussian_filter1d as gauss_conv
 from scipy.interpolate import pchip_interpolate
 from numba.core.decorators import jit
 
-from .supported_opac import inactive_species
+from .supported_chemicals import inactive_species
 from .species_data import masses
 from .utility import prior_index
+from .chemistry import interpolate_log_X_grid
 
 
 @jit(nopython = True)
@@ -1249,7 +1249,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              active_species, CIA_pairs, ff_pairs, bf_species, N_sectors, 
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
              He_fraction, T_input, X_input, P_param_set, 
-             constant_gravity = False):
+             constant_gravity = False, chemistry_grid = None):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1323,6 +1323,9 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             defined (P_param_set = 1.0e-6 corresponds to that paper's choice).
         constant_gravity (bool):
             If True, disable inverse square law gravity (only for testing).
+        chemistry_grid (dict):
+            For models with a pre-computed chemistry grid only, this dictionary
+            is produced in chemistry.py.
     
     Returns:
         T (3D np.array of float):
@@ -1463,6 +1466,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         
         # Gaussian smooth P-T profile
         T = T_rough   # No need to Gaussian smooth a user profile
+    
 
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
@@ -1491,6 +1495,33 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                                                     param_species, species_has_profile, 
                                                     alpha, beta, phi, theta) 
 
+        # Read in equilibrium mixing ratio profiles 
+        elif (X_profile == 'chem_eq'):
+
+            if (chemistry_grid == None):
+                raise Exception("Error: no chemistry grid loaded for an equilibrium model")
+
+            # Unpack C/O and Metallicity 
+            C_to_O = log_X_state[0]
+            log_Met = log_X_state[1]
+
+            if PT_profile == 'isotherm':
+
+                log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
+                                                     param_species, return_dict = False)
+                X_input = 10**log_X_input
+                X_param = X_input
+
+            elif PT_profile == 'gradient':
+
+                log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
+                                                     param_species, return_dict = False)
+                X_input = 10**log_X_input
+                X_param = X_input
+                
+            else:
+                raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT (for now)')
+
         # Gaussian smooth any profiles with a vertical profile
         for q, species in enumerate(param_species):
             if (species_has_profile[q] == 1):
@@ -1500,6 +1531,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # Add bulk mixing ratios to form full mixing ratio array
         X = add_bulk_component(P, X_param, N_species, N_sectors, N_zones, 
                                bulk_species, He_fraction)
+
     
     # Check if any mixing ratios are negative (i.e. trace species sum to > 1, so bulk < 0)
     if (np.any(X[0,:,:,:] < 0.0)): 

@@ -2,6 +2,7 @@ docs/_build/
 docs/_build/html
 docs/content/future
 docs/content/notebooks/POSEIDON_output
+docs/content/notebooks/data
 tests/POSEIDON_output
 __pycache__
 .DS_Store

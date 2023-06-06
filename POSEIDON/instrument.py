@@ -206,7 +206,18 @@ def init_instrument(wl, wl_data, half_width, instrument):
         if (instrument == 'JWST_NIRSpec_Prism'): # Catch common misspelling of PRISM
             instrument = 'JWST_NIRSpec_PRISM'
         if ('NRS' in instrument):                # If G395H split into detectors, use common sensitivity function
-            instrument = 'JWST_NIRSpec_G395H'
+            if ('G395H' in instrument):
+                instrument = 'JWST_NIRSpec_G395H'
+            elif ('G395M' in instrument):
+                instrument = 'JWST_NIRSpec_G395M'
+            elif ('G235H' in instrument):
+                instrument = 'JWST_NIRSpec_G235H'
+            elif ('G235M' in instrument):
+                instrument = 'JWST_NIRSpec_G235M'
+            elif ('G140H' in instrument):
+                instrument = 'JWST_NIRSpec_G140H'
+            elif ('G140M' in instrument):
+                instrument = 'JWST_NIRSpec_G140M'
         sens_file = inst_dir + '/JWST/' + instrument + '_sensitivity.dat'
     
     # If instrument does not have a known sensitivity function, just use a top hat

@@ -19,8 +19,8 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        os: [ubuntu-latest]
-        python-version: ['3.9'] 
+        os: [ubuntu-latest, macos-latest]
+        python-version: ['3.9', '3.10'] 
     steps:
     - uses: actions/checkout@v3
 
@@ -62,7 +62,9 @@ jobs:
       if: steps.restore_cache.outputs.cache-hit != 'true'
       run: |
         mkdir -p inputs/opacity
+        mkdir -p inputs/chemistry_grids
         wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
+        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1J7URZFp4YJoKM88qXxnxzZhXaMLlCV-F' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1J7URZFp4YJoKM88qXxnxzZhXaMLlCV-F" -O inputs/chemistry_grids/fastchem_database.hdf5 && rm -rf /tmp/cookies.txt
         wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C" -O inputs/stellar_grids.zip && rm -rf /tmp/cookies.txt
 
     - name: Extract input files
@@ -71,7 +73,7 @@ jobs:
 
     - name: Set environment variables
       run: |
-        echo "POSEIDON_input_data=$GITHUB_WORKSPACE/inputs/opacity/" >> $GITHUB_ENV
+        echo "POSEIDON_input_data=$GITHUB_WORKSPACE/inputs/" >> $GITHUB_ENV
         echo "PYSYN_CDBS=$GITHUB_WORKSPACE/inputs/stellar_grids/" >> $GITHUB_ENV
 
     - name: Run tests

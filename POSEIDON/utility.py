@@ -7,6 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 import pymultinest
+from mpi4py import MPI
 from numba import jit, cuda
 from spectres import spectres
 from scipy.interpolate import interp1d as Interp
@@ -222,6 +223,10 @@ def closest_index(value, grid_start, grid_end, N_grid):
 
     '''
 
+    # Single value grids only have one element, so return 0
+    if (N_grid == 1):
+        return 0
+
     # Set to lower boundary
     if (value < grid_start): 
         return 0
@@ -292,6 +297,47 @@ def size_profile(arr):
     '''
     
     print("%d Mb" % ((arr.size * arr.itemsize)/1048576.0))
+
+
+def get_id_within_node(comm, rank):
+
+    nodename =  MPI.Get_processor_name()
+    nodelist = comm.allgather(nodename)
+
+    process_id = len([i for i in nodelist[:rank] if i==nodename]) 
+
+    return process_id
+
+
+def shared_memory_array(rank, comm, shape):
+    ''' 
+    Creates a numpy array shared in memory across multiple cores.
+    
+    Adapted from :
+    https://stackoverflow.com/questions/32485122/shared-memory-in-mpi4py
+    
+    '''
+    
+    # Create a shared array of size given by product of each dimension
+    size = np.prod(shape)
+    itemsize = MPI.DOUBLE.Get_size() 
+
+    if (rank == 0): 
+        nbytes = size * itemsize   # Array memory allocated for first process
+    else:  
+        nbytes = 0   # No memory storage on other processes
+        
+    # On rank 0, create the shared block
+    # On other ranks, get a handle to it (known as a window in MPI speak)
+    new_comm = MPI.Comm.Split(comm)
+    win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
+ 
+    # Create a numpy array whose data points to the shared memory
+    buf, itemsize = win.Shared_query(0) 
+    assert itemsize == MPI.DOUBLE.Get_size() 
+    array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
+    
+    return array
 
 
 def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half', 
@@ -888,8 +934,11 @@ def round_sig_figs(value, sig_figs):
     ''' Round a quantity to a specified number of significant figures.
     
     '''
-    
-    return round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
+
+    if (value == 0.0):
+        return 0.0
+    else:
+        return round(value, sig_figs - int(np.floor(np.log10(abs(value)))) - 1)
     
 
 def confidence_intervals(sample_draws, array, length, integer=False):
@@ -1040,8 +1089,8 @@ def generate_latex_param_names(param_names):
                          'Phi', 'Chi', 'Psi', 'Omega']
     
     # Define key parameters used in subscripts of parameter names
-    phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 'Night', 
-               'cloud', 'rel', '0', 'het', 'phot', 'p']
+    phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 
+               'Night', 'cloud', 'rel', '0', 'het', 'phot', 'fac', 'spot', 'surf', 'p']
     
     # Initialise output array
     latex_names = []
@@ -1241,7 +1290,7 @@ def generate_latex_param_names(param_names):
     return latex_names
 
 
-def return_quantiles(stats, param, i, quantile = '1 sigma'):
+def return_quantiles(stats, param, i, radius_unit, quantile = '1 sigma'):
     
     ''' Extract the median, +/- N sigma (specified by 'quantile'), string 
         formatter and units for a given free parameter.
@@ -1271,7 +1320,10 @@ def return_quantiles(stats, param, i, quantile = '1 sigma'):
                (round(sig_m, decimal_count) == 0.0)):
             decimal_count += 1
         formatter = '{:.' + str(decimal_count) + 'f}'
-        unit = 'RJ'
+        if (radius_unit == 'R_J'):
+            unit = 'R_J'
+        elif (radius_unit == 'R_E'):
+            unit = 'R_E'
     elif ('log' in param):
         formatter = '{:.2f}'
         unit = ''
@@ -1285,7 +1337,8 @@ def return_quantiles(stats, param, i, quantile = '1 sigma'):
 def write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
                        stats, ln_Z, ln_Z_err, reduced_chi_square, chi_square,
-                       dof, best_fit_params, wl, R, instruments, datasets):
+                       dof, best_fit_params, wl, R, instruments, datasets,
+                       radius_unit):
     ''' 
     Write a file summarising the main results from a POSEIDON retrieval.
         
@@ -1386,7 +1439,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '1 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '1 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1402,7 +1456,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '2 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '2 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1418,7 +1473,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '3 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '3 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1434,7 +1490,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, quantile = '5 sigma')
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  quantile = '5 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(centre) + ' (+' + formatter.format(sig_p) + 
@@ -1451,7 +1508,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         _, _, _, \
-        formatter, unit = return_quantiles(stats, param, i)     # We only need the formatter and unit for the best fit parameters
+        formatter, unit = return_quantiles(stats, param, i, 
+                                           radius_unit)     # We only need the formatter and unit for the best fit parameters
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(best_fit_params[i]) + ' ' + unit + '\n']
@@ -1479,6 +1537,9 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     ydata = data['ydata']
     instruments = data['instruments']
     datasets = data['datasets']
+
+    # Unpack model properties
+    radius_unit = model['radius_unit']
     
     # Load relevant output directory
     output_prefix = retrieval_name + '-'
@@ -1519,7 +1580,8 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
                        stats, ln_Z, ln_Z_err, reduced_chi_square, best_chi_square,
-                       dof, best_fit_params, wl, R, instruments, datasets)
+                       dof, best_fit_params, wl, R, instruments, datasets,
+                       radius_unit)
     
 
 def mock_missing(name):
