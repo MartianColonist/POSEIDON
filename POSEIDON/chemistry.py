@@ -10,7 +10,8 @@ from mpi4py import MPI
 from scipy.interpolate import RegularGridInterpolator
 
 from .utility import shared_memory_array
-from .supported_opac import fastchem_supported_species
+from .supported_chemicals import supported_species, fastchem_supported_species
+
 
 def load_chemistry_grid(chemical_species, grid = 'fastchem', 
                         comm = MPI.COMM_WORLD, rank = 0):
@@ -54,7 +55,21 @@ def load_chemistry_grid(chemical_species, grid = 'fastchem',
                         "Please set the 'POSEIDON_input_data' variable in " +
                         "your .bashrc or .bash_profile to point to the " +
                         "POSEIDON input folder.")
-    
+
+    # Load list of chemical species supported by both the fastchem grid and POSEIDON
+    supported_chem_eq_species = np.intersect1d(supported_species, 
+                                                fastchem_supported_species)
+        
+    # If chemical_species = ['all'] then default to all species
+    if ('all' in chemical_species):
+        chemical_species = supported_chem_eq_species
+
+    # Check all user-specified species are compatible with the fastchem grid
+    else:
+        if (np.any(~np.isin(chemical_species, supported_chem_eq_species)) == True):
+            raise Exception("A chemical species you selected is not supported " +
+                            "for equilibrium chemistry models.\n")
+            
     # Open chemistry grid HDF5 file
     database = h5py.File(input_file_path + '/chemistry_grids/' + grid + '_database.hdf5', 'r')
 

@@ -3,7 +3,6 @@ Supported chemical species in the current version of POSEIDON.
 
 '''
 
-
 import numpy as np
 
 # Chemical species with cross sections included in opacity database
@@ -24,7 +23,6 @@ fastchem_supported_species = np.array(['H2O', 'CO2', 'OH', 'SO', 'C2H2',
                                        'MgH', 'N2', 'Na', 'NO', 'NO2',
                                        'OCS', 'PH3', 'SH', 'SiH', 'SO2',
                                        'TiH', 'TiO', 'VO'])
-
 
 # Collision-Induced Absorption (CIA) pairs included in opacity database
 supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2', 

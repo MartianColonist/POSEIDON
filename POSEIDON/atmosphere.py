@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter1d as gauss_conv
 from scipy.interpolate import pchip_interpolate
 from numba.core.decorators import jit
 
-from .supported_opac import inactive_species
+from .supported_chemicals import inactive_species
 from .species_data import masses
 from .utility import prior_index
 from .chemistry import interpolate_log_X_grid
@@ -1507,20 +1507,18 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
 
             if PT_profile == 'isotherm':
 
-                # UPDATE ARGUMENTS TO INTERPOLATE FUNCTION HERE, THEN LOAD CHEMISTRY_GRID INTO MEMORY AT BEGINNING OF RETRIEVAL
+                log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
+                                                     param_species, return_dict = False)
+                X_input = 10**log_X_input
+                X_param = X_input
+
+            elif PT_profile == 'gradient':
 
                 log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
                                                      param_species, return_dict = False)
                 X_input = 10**log_X_input
-         #       X_param = X_input.reshape((len(param_species), len(P), 1, 1))
                 X_param = X_input
-            elif PT_profile == 'gradient':
-          #      T_grid = T.T[0][0]    # tea.tea is the most British code ever
-                log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
-                                                     param_species, return_dict = False)
-                X_input = 10**log_X_input
-         #       X_param = X_input.reshape((len(param_species), len(P), 1, 1))
-                X_param = X_input
+                
             else:
                 raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT (for now)')
 
