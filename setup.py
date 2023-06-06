@@ -21,7 +21,7 @@ setup(
                         'h5py',
                         'numba',
                         'pandas',
-                        'mpi4py<=3.1.3',
+                        'mpi4py',
                         'pysynphot',
                         'pymultinest',
                         'spectres',
