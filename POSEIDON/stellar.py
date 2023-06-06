@@ -9,8 +9,9 @@ from numba.core.decorators import jit
 from spectres import spectres
 import scipy.constants as sc
 import pysynphot as psyn
+from mpi4py import MPI
 
-from .utility import mock_missing
+from .utility import mock_missing, shared_memory_array
 
 try:
     import pymsg as pymsg
@@ -193,9 +194,7 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g):
 
     # Interpolate stellar grid to obtain stellar flux (also handles wl interpolation)
     F_s = specgrid.flux(x, wl_edges*10000)   # PyMSG expects Angstroms
-
-    # UPDATE CONVERSION FACTOR AFTER GRID FIXED
-    F_s = np.array(F_s) * 1e-1   # Convert flux from erg/s/cm^2/A to W/m^2/m
+    F_s = np.array(F_s) * 1e7   # Convert flux from erg/s/cm^2/A to W/m^2/m
 
     # Calculate average specific intensity
     I_grid = F_s / np.pi    # W/m^2/sr/m
@@ -204,6 +203,263 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g):
 
 
 def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
+                               stellar_contam, T_step_interp = 20,
+                               log_g_step_interp = 0.10, 
+                               interp_backend = 'pysynphot',
+                               comm = MPI.COMM_WORLD):
+    '''
+    Precompute a grid of stellar spectra across a range of T_eff and log g.
+
+    Args:
+        wl_out (np.array of float):
+            Wavelength grid on which to output the stellar spectra (μm).
+        star (dict):
+            Collection of stellar properties used by POSEIDON.
+        prior_types (dict):
+            User-provided dictionary containing the prior type for each 
+            free parameter in the retrieval model.
+        prior_ranges (dict):
+            User-provided dictionary containing numbers defining the prior range
+            for each free parameter in the retrieval model.
+        stellar_contam (str):
+            Chosen prescription for modelling unocculted stellar contamination
+            (Options: one_spot / one_spot_free_log_g / two_spots).
+        stellar_grid (str):
+            Desired stellar model grid
+            (Options: cbk04 / phoenix).
+        T_step_interp (float):
+            Temperature step for stellar grid interpolation (uniform priors only).
+        log_g_step_interp (float):
+            log g step for stellar grid interpolation (uniform priors only).
+        interp_backend (str):
+            Stellar grid interpolation package for POSEIDON to use.
+            (Options: pysynphot / pymsg).
+        comm (MPI communicator):
+            Communicator used to allocate shared memory on multiple cores.
+    
+    Returns:
+        T_phot_grid (np.array of float):
+            Photosphere temperatures corresponding to computed stellar spectra (K).
+        T_het_grid (np.array of float):
+            Heterogeneity temperatures corresponding to computed stellar spectra (K).
+        log_g_phot_grid (np.array of float):
+            Photosphere log g corresponding to computed stellar spectra (log10(cm/s^2)).
+        log_g_het_grid (np.array of float):
+            Heterogeneity log g corresponding to computed stellar spectra (log10(cm/s^2)).
+        I_phot_out (3D np.array of float):
+            Stellar photosphere intensity as a function of T_phot, log_g_phot, 
+            and wl (W/m^2/sr/m).
+        I_het_out (3D np.array of float):
+            Stellar heterogeneity intensity as a function of T_het, log_g_het, 
+            and wl (W/m^2/sr/m).
+
+    '''
+
+    # Find MPI rank and size
+    rank = comm.Get_rank()    # Core number
+    size = comm.Get_size()    # Number of cores
+
+    # Unpack stellar properties
+    Met_phot = star['Met']
+    log_g_phot = star['log_g']
+    stellar_grid = star['stellar_grid']
+
+    if (interp_backend not in ['pysynphot', 'pymsg']):
+        raise Exception("Error: supported stellar grid interpolater backends are " +
+                        "'pysynphot' or 'pymsg'.")
+    
+    # If using PyMSG, load spectral grid
+    if (interp_backend == 'pymsg'):
+        specgrid = open_pymsg_grid(stellar_grid)
+    
+    #***** Find photosphere grid ranges *****#
+
+    # Set range for T_phot according to whether prior is uniform or Gaussian
+    if (prior_types['T_phot'] == 'uniform'):
+
+        T_phot_min = prior_ranges['T_phot'][0]
+        T_phot_max = prior_ranges['T_phot'][1]
+        T_phot_step = T_step_interp                # Default interpolation step of 20 K
+
+    elif (prior_types['T_phot'] == 'gaussian'):
+
+        # Unpack Gaussian prior mean and std
+        T_phot_mean = prior_ranges['T_phot'][0]  # Mean
+        err_T_phot = prior_ranges['T_phot'][1]   # Standard deviation
+
+        T_phot_min = T_phot_mean - (5.0 * err_T_phot)  # 5 sigma below mean
+        T_phot_max = T_phot_mean + (5.0 * err_T_phot)  # 5 sigma above mean
+        T_phot_step = err_T_phot/5.0                   # Interpolation step of 0.2 sigma
+
+    # Find number of spectra needed to span desired range (rounding up)
+    N_spec_T_phot = np.ceil((T_phot_max - T_phot_min)/T_phot_step).astype(np.int64) + 1
+
+    # Specify starting and ending grid points
+    T_start = T_phot_min                      
+    T_end = T_phot_min + ((N_spec_T_phot-1) * T_phot_step)   # Slightly > T_max if T_step doesn't divide exactly
+
+    # Initialise photosphere temperature array
+    T_phot_grid = np.linspace(T_start, T_end, N_spec_T_phot)
+
+    # For free log g, we also need to interpolate over a range of stellar log g
+    if ('free_log_g' in stellar_contam):
+
+        # Set range for log_g_phot according to whether prior is uniform or Gaussian
+        if (prior_types['log_g_phot'] == 'uniform'):
+
+            log_g_phot_min = prior_ranges['log_g_phot'][0]
+            log_g_phot_max = prior_ranges['log_g_phot'][1]
+            log_g_phot_step = log_g_step_interp               # Default interpolation step of 0.1
+
+        elif (prior_types['log_g_phot'] == 'gaussian'):
+
+            # Unpack Gaussian prior mean and std
+            log_g_phot_mean = prior_ranges['log_g_phot'][0]   # Mean
+            err_log_g_phot = prior_ranges['log_g_phot'][1]    # Standard deviation
+
+            log_g_phot_min = log_g_phot_mean - (5.0 * err_log_g_phot)  # 5 sigma below mean
+            log_g_phot_max = log_g_phot_mean + (5.0 * err_log_g_phot)  # 5 sigma above mean
+            log_g_phot_step = err_log_g_phot/2.0                       # Interpolation step of 0.5 sigma
+
+        # Find number of spectra needed to span desired range (rounding up)
+        N_spec_log_g_phot = np.ceil((log_g_phot_max - log_g_phot_min)/log_g_phot_step).astype(np.int64) + 1
+
+        # Specify starting and ending grid points
+        log_g_start = log_g_phot_min                      
+        log_g_end = log_g_phot_min + ((N_spec_log_g_phot-1) * log_g_phot_step)   # Slightly > log_g_max if log_g_step doesn't divide exactly 
+        
+        # Initialise photosphere log_g array
+        log_g_phot_grid = np.linspace(log_g_start, log_g_end, N_spec_log_g_phot)
+
+    # If log g fixed, we only need a single log g
+    else:
+        log_g_phot_grid = np.array([log_g_phot])
+        N_spec_log_g_phot = 1
+
+    #***** Interpolate photosphere spectra *****#
+    
+    # Initialise output photosphere spectra array
+    I_phot_out = shared_memory_array(rank, comm, (N_spec_T_phot, N_spec_log_g_phot, len(wl_out)))
+
+    # Calculate chunk size and offsets for each process
+    chunk_size = N_spec_T_phot // size     # Parallelise over T_phot
+    offset = rank * chunk_size
+
+    # Handle remainder for the final core
+    if (rank == (size - 1)):
+        chunk_size += N_spec_T_phot % size  
+
+    # Interpolate and store stellar intensities
+    for i in range(offset, offset + chunk_size):
+        for j in range(N_spec_log_g_phot):
+        
+            # Load interpolated stellar spectrum from model grid
+            if (interp_backend == 'pysynphot'):
+                I_phot_out[i,j,:] = load_stellar_pysynphot(wl_out, T_phot_grid[i], 
+                                                           Met_phot, log_g_phot_grid[j], 
+                                                           stellar_grid)
+            elif (interp_backend == 'pymsg'):
+                I_phot_out[i,j,:] = load_stellar_pymsg(wl_out, specgrid, T_phot_grid[i], 
+                                                       Met_phot, log_g_phot_grid[j])
+
+    #***** Find heterogeneity grid ranges *****#
+
+    if ('one_spot' in stellar_contam):
+
+        T_het_min = prior_ranges['T_het'][0]
+        T_het_max = prior_ranges['T_het'][1]
+
+    elif ('two_spots' in stellar_contam):
+
+        T_spot_min = prior_ranges['T_spot'][0]
+        T_spot_max = prior_ranges['T_spot'][1]
+        T_fac_min = prior_ranges['T_fac'][0]
+        T_fac_max = prior_ranges['T_fac'][1]
+
+        T_het_min = min(T_spot_min, T_fac_min)
+        T_het_max = max(T_spot_max, T_fac_max)
+        
+    T_het_step = T_step_interp    # Default interpolation step of 20 K
+
+    # Find number of spectra needed to span desired range (rounding up)
+    N_spec_T_het = np.ceil((T_het_max - T_het_min)/T_het_step).astype(np.int64) + 1
+
+    # Specify starting and ending grid points
+    T_start = T_het_min                      
+    T_end = T_het_min + ((N_spec_T_het-1) * T_het_step)   # Slightly > T_max if T_step doesn't divide exactly
+
+    # Initialise heterogeneity temperature array
+    T_het_grid = np.linspace(T_start, T_end, N_spec_T_het)
+
+    # For free log g, we also need to interpolate over a range of stellar log g
+    if ('free_log_g' in stellar_contam):
+
+        if ('one_spot' in stellar_contam):
+
+            log_g_het_min = prior_ranges['log_g_het'][0]
+            log_g_het_max = prior_ranges['log_g_het'][1]
+
+        elif ('two_spots' in stellar_contam):
+
+            log_g_spot_min = prior_ranges['log_g_spot'][0]
+            log_g_spot_max = prior_ranges['log_g_spot'][1]
+            log_g_fac_min = prior_ranges['log_g_fac'][0]
+            log_g_fac_max = prior_ranges['log_g_fac'][1]
+
+            log_g_het_min = min(log_g_spot_min, log_g_fac_min)
+            log_g_het_max = max(log_g_spot_max, log_g_fac_max)
+            
+        log_g_het_step = log_g_step_interp    # Default interpolation step of 0.1
+
+        # Find number of spectra needed to span desired range (rounding up)
+        N_spec_log_g_het = np.ceil((log_g_het_max - log_g_het_min)/log_g_het_step).astype(np.int64) + 1
+
+        # Specify starting and ending grid points
+        log_g_start = log_g_het_min                      
+        log_g_end = log_g_het_min + ((N_spec_log_g_het-1) * log_g_het_step)   # Slightly > log_g_max if log_g_step doesn't divide exactly 
+        
+        # Initialise heterogeneity log_g array
+        log_g_het_grid = np.linspace(log_g_start, log_g_end, N_spec_log_g_het)
+
+    # If log g fixed, we only need a single log g
+    else:
+        log_g_het_grid = np.array([log_g_phot])
+        N_spec_log_g_het = 1
+
+    #***** Interpolate heterogeneity spectra *****#
+    
+    # Initialise output heterogeneity spectra array
+    I_het_out = shared_memory_array(rank, comm, (N_spec_T_het, N_spec_log_g_het, len(wl_out)))
+
+    # Calculate chunk size and offsets for each process
+    chunk_size = N_spec_T_het // size     # Parallelise over T_het
+    offset = rank * chunk_size
+
+    # Handle remainder for the final core
+    if (rank == (size - 1)):
+        chunk_size += N_spec_T_het % size  
+
+    # Interpolate and store stellar intensities
+    for i in range(offset, offset + chunk_size):
+        for j in range(N_spec_log_g_het):
+        
+            # Load interpolated stellar spectrum from model grid
+            if (interp_backend == 'pysynphot'):
+                I_het_out[i,j,:] = load_stellar_pysynphot(wl_out, T_het_grid[i], 
+                                                          Met_phot, log_g_het_grid[j], 
+                                                          stellar_grid)
+            elif (interp_backend == 'pymsg'):
+                I_het_out[i,j,:] = load_stellar_pymsg(wl_out, specgrid, T_het_grid[i], 
+                                                      Met_phot, log_g_het_grid[j])
+                
+    # Force cores to wait for all to finish loops 
+    comm.Barrier()
+
+    return T_phot_grid, T_het_grid, log_g_phot_grid, log_g_het_grid, \
+           I_phot_out, I_het_out
+
+
+def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
                                stellar_contam, T_step_interp = 20,
                                log_g_step_interp = 0.10, 
                                interp_backend = 'pysynphot'):
