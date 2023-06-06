@@ -1105,76 +1105,68 @@ def Z_to_sigma(ln_Z1, ln_Z2):
     return B, sigma   
 
 
-def Bayesian_model_comparison(model_feature, base_name_1, base_name_2, 
-                              planet_name, err_data, n_params, n_removed,
-                              provide_min_chi_square = True):
-    
-    ''' Conduct Bayesian model comparison between the outputs of two
-        (nested) retrievals. This function outputs the Bayes factor and
-        equivalent sigma significance for two models.
+def Bayesian_model_comparison(planet_name, model_1, model_2,
+                              ln_Z_format = '{:.2f}', B_format = '{:.2e}',
+                              ln_B_format = '{:.2f}', sigma_format = '{:.1f}'):
+    '''    
+    Conduct Bayesian model comparison between the outputs of two retrievals. 
+    This function outputs the Bayes factor and equivalent sigma significance 
+    comparing the two models.
         
     '''
+
+    # Unpack model properties
+    model_1_name = model_1['model_name']
+    model_2_name = model_2['model_name']
+    n_params_1 = len(model_1['param_names'])
+    n_params_2 = len(model_2['param_names'])
+
+    # Access directory containing raw MultiNest files
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/MultiNest_raw/'
+
+    # Change directory into MultiNest result file folder
+    os.chdir(output_dir)
+
+    # Load relevant output directory
+    model_1_prefix = model_1_name + '-'
+    model_2_prefix = model_2_name + '-'
     
-    # Find file locations for each retrieval
-    base_name_present = ('../../output/retrievals/' + planet_name + 
-                         '/MultiNest_raw/' + base_name_1)
-    base_name_absent = ('../../output/retrievals/' + planet_name + 
-                         '/MultiNest_raw/' + base_name_2)
+    # Run PyMultiNest analyser
+    analyzer_1 = pymultinest.Analyzer(n_params_1, outputfiles_basename = model_1_prefix,
+                                      verbose = False)
+    analyzer_2 = pymultinest.Analyzer(n_params_2, outputfiles_basename = model_2_prefix,
+                                      verbose = False)  
+
+    # Extract Bayesian evidence of each model
+    stats_1 = analyzer_1.get_stats()
+    stats_2 = analyzer_2.get_stats()
     
-    # Compute the likelihood normalisation for this dataset 
-    N_data = len(err_data)
-    norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+    ln_Z_1 = stats_1['nested sampling global log-evidence']
+    ln_Z_2 = stats_2['nested sampling global log-evidence']
+    ln_Z_1_err = stats_1['nested sampling global log-evidence error']
+    ln_Z_2_err = stats_2['nested sampling global log-evidence error']
 
-    # Open the retrieval outputs
-    retrieval_present = pymultinest.Analyzer(n_params = n_params, 
-                                             outputfiles_basename = base_name_present)
-    retrieval_absent = pymultinest.Analyzer(n_params = (n_params - n_removed), 
-                                             outputfiles_basename = base_name_absent)
-    
-    # Load the stats summaries
-    s_present = retrieval_present.get_stats()
-    s_absent = retrieval_absent.get_stats()
+    # Compute Bayes factor and equivalent sigma significance
+    Bayes_factor, n_sigma = Z_to_sigma(ln_Z_1, ln_Z_2)
 
-    # Extract Bayesian evidences of models with and without the feature   
-    ln_Z_present = s_present['global evidence']
-    ln_Z_absent = s_absent['global evidence']
-    
-    print("Evidence with " + model_feature + " = " + str(ln_Z_present))
-    print("Evidence without " + model_feature + " = " + str(ln_Z_absent))
+    print("Bayesian evidences:\n")
+    print("Model " + model_1_name + ": ln Z = " + ln_Z_format.format(ln_Z_1) +
+          " +/- " + ln_Z_format.format(ln_Z_1_err))
+    print("Model " + model_2_name + ": ln Z = " + ln_Z_format.format(ln_Z_2) +
+          " +/- " + ln_Z_format.format(ln_Z_2_err) + "\n")
 
-    # Compute Bayes factor and equivalent sigma
-    Bayes_factor, n_sigma = Z_to_sigma(ln_Z_present, ln_Z_absent)
-    
-    print("ln(Bayes) of " + model_feature + " = " + str(np.log(Bayes_factor)))
-    print("Sigma significance of " + model_feature + " = " + str(n_sigma))
+    print("Bayes factor:\n")
+    print("B = " + B_format.format(Bayes_factor))
+    print("ln B = " + ln_B_format.format(np.log(Bayes_factor)) + "\n")
 
-    if (n_sigma < 3.0):
-        print("No Detection of " + model_feature)
-        
-    if (n_sigma >= 3.0):
-        print("Detection of " + model_feature + "!")
+    if (Bayes_factor > 1):
+        print("'Equivalent' detection significance:\n")
+        print(sigma_format.format(n_sigma) + " σ\n")
+    else:
+        print("No detection of the reference model, model " + model_2_name + 
+              " is preferred.\n")
 
-    # Calculate minimum reduced chi-square of each model
-    if (provide_min_chi_square == True):
-        
-        # Find bet-fitting parameter combinations
-        best_fit_present = retrieval_present.get_best_fit()
-        best_fit_absent = retrieval_absent.get_best_fit()
-
-        # Find maximum corresponding likelihoods
-        max_likelihood_present = best_fit_present['log_likelihood']
-        max_likelihood_absent = best_fit_absent['log_likelihood']
-
-        # Compute corresponding minimum chi-square
-        min_chi_square_present = -2.0 * (max_likelihood_present - norm_log)
-        min_chi_square_absent = -2.0 * (max_likelihood_absent - norm_log)
-
-        # Calculate reduced chi-squares of the models
-        reduced_chi_square_present = min_chi_square_present/(N_data - n_params)
-        reduced_chi_square_absent = min_chi_square_absent/(N_data - (n_params - n_removed))
-        
-        print("Minimum reduced Chi-square with " + model_feature + " = " + str(reduced_chi_square_present))
-        print("Minimum reduced Chi-square no " + model_feature + " = " + str(reduced_chi_square_absent))
+    # Change directory back to directory where user's python script is located
+    os.chdir('../../../../')
     
     return
-                                
