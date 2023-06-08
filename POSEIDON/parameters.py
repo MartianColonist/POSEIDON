@@ -15,7 +15,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        TwoD_type, TwoD_param_scheme, species_EM_gradient, 
                        species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
-                       sharp_DN_transition, reference_parameter, disable_atmosphere):
+                       sharp_DN_transition, reference_parameter, disable_atmosphere,
+                       aerosol_species):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -36,7 +37,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: isochem / gradient / two-gradients / file_read).
         cloud_model (str):
             Chosen cloud parametrisation 
-            (Options: cloud-free / MacMad17 / Iceberg).
+            (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
             Cloud extinction type to consider 
             (Options: deck / haze / deck_haze).
@@ -95,6 +96,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
+        aerosol (string):
+            Either 'free' or a specific aerosol
 
     Returns:
         params (np.array of str):
@@ -533,7 +536,37 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 
             if ('haze' not in cloud_type) and ('deck' not in cloud_type):
                 raise Exception("Error: unsupported cloud model.")
+
+        # Mie scattering        
+        elif (cloud_model == 'Mie'):
+
+            if (cloud_type =='fuzzy_deck'):
+
+                cloud_params += ['log_P_cloud']
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    cloud_params += ['log_r_m', 'log_n_max', 'f']
+                    cloud_params += ['r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_n_max_' + aerosol]
+                        cloud_params += ['f_' + aerosol]
+
                 
+            elif (cloud_type == 'uniform_X'):
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    cloud_params += ['log_r_m']
+                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+
+            elif (cloud_type not in ['fuzzy_deck', 'uniform_X']):
+                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck or uniform_X.")
+        
         else:
             raise Exception("Error: unsupported cloud model.")
             
@@ -1418,8 +1451,103 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             kappa_cloud_0 = 1.0e250
             P_cloud = 100.0   
             f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+    # Mie clouds 
+    elif (cloud_model == 'Mie'):
+
+        # Turn clouds_in into an array 
+        clouds_in = np.asarray(clouds_in)
+        
+        # No haze in this model
+        a, gamma = 1.0, -4.0   # Dummy values, haze extinction disabled here
+
+        # Cloud is opague up to P_cloud, and then follows an exponential distribution for 
+        # number density of aerosols. This is set by n_cloud 
+        kappa_cloud_0 = 1.0e250
+        
+        if (cloud_dim == 1):
+            f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
+
+        elif (cloud_dim == 2):
+            if (TwoD_type == 'E-M'):
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
+                phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
+                theta_0 = -90.0                # Cloud spans full day to night zones
+            if (TwoD_type == 'D-N'):
+                f_cloud, phi_0 = 1.0, -90.0    # Uniform axially, not-uniform along ray
+                theta_0 = clouds_in[np.where(cloud_param_names == 'theta_0')[0][0]]
+        
+        elif (cloud_dim == 3):
+            f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
+            phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
+            theta_0 = clouds_in[np.where(cloud_param_names == 'theta_0')[0][0]]
+             
+        else:   # Set dummy parameter values for angles if cloud dimension not specified 
+            f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+        # Set the Mie parameters 
+        
+        # If its a fuzzy_deck model
+        if ('log_P_cloud' in cloud_param_names):
             
-    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma
+            try:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+                log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
+                fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+            except:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+                log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
+                fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+
+             # See if its a free or file_read aerosol retrieval or not 
+            if ('r_i_real' in cloud_param_names):
+                r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+                r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+            else:
+                r_i_real = 0
+                r_i_complex = 0
+
+            log_X_Mie = 100
+        
+        # See if its a uniform_haze model 
+        else:
+             # See if its a free for file_read aerosol retrieval or not 
+            if ('r_i_real' in cloud_param_names):
+                # The try except is here because file_read makes everything into a numpy file
+                # So you have to add an extra [0] to get the indexing to work correctly 
+                try:
+                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                    log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                    r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+                    r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+                except:
+                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                    log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
+                    r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+                    r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+            else:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                r_i_real = 0
+                r_i_complex = 0
+
+            log_n_max = 0
+            fractional_scale_height = 0
+            P_cloud = 100
+    
+
+    if cloud_model != 'Mie':
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+        P_cloud = 100
+
+    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, fractional_scale_height, r_i_real, r_i_complex, log_X_Mie
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

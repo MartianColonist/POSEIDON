@@ -29,7 +29,7 @@ from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
                      open_pymsg_grid
 from .supported_chemicals import supported_species, supported_cia, inactive_species, \
-                                 fastchem_supported_species
+                                 fastchem_supported_species, aerosol_supported_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
@@ -40,6 +40,9 @@ from .instrument import init_instrument
 from .transmission import TRIDENT
 from .emission import emission_rad_transfer, determine_photosphere_radii, \
                       emission_rad_transfer_GPU, determine_photosphere_radii_GPU
+
+from .clouds_aerosols import Mie_cloud, load_aerosol_grid
+from .clouds_LX_MIE import Mie_cloud_free
 
 from .utility import mock_missing
 
@@ -329,7 +332,8 @@ def define_model(model_name, bulk_species, param_species,
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
-                 reference_parameter = 'R_p_ref', disable_atmosphere = False):
+                 reference_parameter = 'R_p_ref', disable_atmosphere = False,
+                 aerosol_species = ['free']):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -353,7 +357,7 @@ def define_model(model_name, bulk_species, param_species,
             (Options: isochem / gradient / two-gradients / file_read / chem_eq).
         cloud_model (str):
             Chosen cloud parametrisation 
-            (Options: cloud-free / MacMad17 / Iceberg).
+            (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
             Cloud extinction type to consider 
             (Options: deck / haze / deck_haze).
@@ -415,6 +419,8 @@ def define_model(model_name, bulk_species, param_species,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
+        aerosol (string):
+            If cloud_model = Mie and clod_type = specific_aerosol 
 
     Returns:
         model (dict):
@@ -455,6 +461,10 @@ def define_model(model_name, bulk_species, param_species,
     # Check if cross sections are available for all the chemical species
     if (np.any(~np.isin(active_species, supported_species)) == True):
         raise Exception("A chemical species you selected is not supported.\n")
+    
+    # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
+    if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True) and aerosol_species != ['free'] and aerosol_species != ['file_read']:
+        raise Exception('Please input supported aerosols (check supported_opac.py) or aerosol = [\'free\'] or [\'file_read\'].')
 
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
@@ -495,7 +505,14 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere)
+                                      reference_parameter, disable_atmosphere, aerosol_species)
+    
+    # If cloud_model = Mie, load in the cross section 
+    if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
+        aerosol_grid = load_aerosol_grid(aerosol_species)
+    else:
+        aerosol_grid = None
+        
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -525,7 +542,8 @@ def define_model(model_name, bulk_species, param_species,
              'sharp_DN_transition': sharp_DN_transition,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
-            }
+             'aerosol_species': aerosol_species,
+             'aerosol_grid': aerosol_grid}
 
     return model
 
@@ -775,6 +793,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     cloud_dim = model['cloud_dim']
     gravity_setting = model['gravity_setting']
     sharp_DN_transition = model['sharp_DN_transition']
+    aerosol_species = model['aerosol_species']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -863,8 +882,14 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     kappa_cloud_0, P_cloud, \
     f_cloud, phi_cloud_0, \
     theta_cloud_0, \
-    a, gamma = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
+    a, gamma, \
+    r_m, log_n_max, fractional_scale_height, \
+    r_i_real, r_i_complex, log_X_Mie = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
                                    N_params_cum, TwoD_type)
+    
+    # Temporary H for testing 
+    g = g_p * (R_p_ref / r)**2
+    H = (sc.k * T) / (mu * g)
 
     # Package atmosphere properties
     atmosphere = {'P': P, 'T': T, 'g': g_p, 'n': n, 'r': r, 'r_up': r_up,
@@ -876,7 +901,9 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'dphi': dphi, 'dtheta': dtheta, 'kappa_cloud_0': kappa_cloud_0, 
                   'P_cloud': P_cloud, 'f_cloud': f_cloud, 'phi_cloud_0': phi_cloud_0, 
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
-                  'is_physical': is_physical
+                  'is_physical': is_physical,
+                  'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 'fractional_scale_height': fractional_scale_height,
+                  'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie
                  }
 
     return atmosphere
@@ -1045,6 +1072,15 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     f_cloud = atmosphere['f_cloud']
     phi_cloud_0 = atmosphere['phi_cloud_0']
     theta_cloud_0 = atmosphere['theta_cloud_0']
+    H = atmosphere['H']
+    r_m = atmosphere['r_m']
+    log_n_max = atmosphere['log_n_max']
+    fractional_scale_height = atmosphere['fractional_scale_height']
+    aerosol_species = atmosphere['aerosol_species']
+    r_i_real = atmosphere['r_i_real']
+    r_i_complex = atmosphere['r_i_complex']
+    log_X_Mie = atmosphere['log_X_Mie']
+
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1110,7 +1146,64 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
+
+            if (model['cloud_model'] == 'Mie'):
+
+                aerosol_grid = model['aerosol_grid']
+
+                # If its a fuzzy deck run
+                if (model['cloud_type'] == 'fuzzy_deck'):
+
+                    if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                        n_aerosol_array, sigma_Mie_array = Mie_cloud_free(P,wl,r, H, n,
+                                                                            r_m,
+                                                                            r_i_real,
+                                                                            r_i_complex,
+                                                                            P_cloud = P_cloud,
+                                                                            log_n_max = log_n_max, 
+                                                                            fractional_scale_height = fractional_scale_height,)
+
+                    else : 
+                        n_aerosol_array, sigma_Mie_array = Mie_cloud(P,wl,r, H, n,
+                                                                    r_m, 
+                                                                    aerosol_species,
+                                                                    cloud_type = model['cloud_type'],
+                                                                    aerosol_grid = aerosol_grid,
+                                                                    P_cloud = P_cloud,
+                                                                    log_n_max = log_n_max, 
+                                                                    fractional_scale_height = fractional_scale_height,)
+                          
+                # If its a uniform X run
+                elif( model['cloud_type'] == 'uniform_X'):
+
+                    if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                        n_aerosol_array, sigma_Mie_array = Mie_cloud_free(P,wl,r, H, n,
+                                                                            r_m,
+                                                                            r_i_real,
+                                                                            r_i_complex,
+                                                                            log_X_Mie = log_X_Mie)
+
+                    else : 
+                        n_aerosol_array, sigma_Mie_array = Mie_cloud(P,wl,r, H, n,
+                                                                    r_m, 
+                                                                    aerosol_species,
+                                                                    cloud_type = model['cloud_type'],
+                                                                    aerosol_grid = aerosol_grid,
+                                                                    log_X_Mie = log_X_Mie)
+  
+                enable_Mie = True
             
+            else:
+                # Generate empty arrays so numba doesn't break
+                n_aerosol_array = []
+                sigma_Mie_array = []
+
+                for n in range(len(aerosol_species)):
+                    n_aerosol_array.append(np.empty_like(r))
+                    sigma_Mie_array.append(np.empty_like(wl))
+
+                enable_Mie = False
+
             # Calculate extinction coefficients in standard mode
             kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
                                                 CIA_pairs, ff_pairs, bf_species,
@@ -1121,7 +1214,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                 ff_stored, bf_stored, enable_haze, 
                                                 enable_deck, enable_surface,
                                                 N_sectors, N_zones, T_fine, 
-                                                log_P_fine, P_surf)
+                                                log_P_fine, P_surf,
+                                                enable_Mie, n_aerosol_array, sigma_Mie_array)
 
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):
@@ -2405,8 +2499,14 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
                                        np.log10(100.0*np.max(err_data**2))],
                              'C_to_O': [0.3,1.9],
-                             'log_Met' : [-0.9,3.9]
-                            }    
+                             'log_Met' : [-0.9,3.9],
+                             'log_r_m': [-3,1],       
+                             'log_n_max': [5.0,20.0],  
+                             'fractional_scale_height': [0.1,1], 
+                             'r_i_real': [0,10],
+                             'r_i_complex': [1e-6,100], 
+                             'log_X_Mie' : [-30,-1]
+                            }   
 
     # Iterate through parameters, ensuring we have a full set of priors
     for parameter in param_names:

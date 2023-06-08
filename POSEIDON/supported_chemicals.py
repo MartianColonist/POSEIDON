@@ -31,3 +31,7 @@ supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2',
 
 # Species treated as spectrally inactive (in standard cross section treatment)
 inactive_species = np.array(['H2', 'He', 'H', 'e-', 'H-'])  # H- handled separately
+
+# Aerosol Supported Species
+aerosol_supported_species = np.array(['H2O','KCl','MgO','Tholin','Fe','Mg2SiO4_amorph_sol_gel',
+                                      'MgSiO3','CH4','Fe2O3','SiO2_amorph','SiO2', 'Na2S', 'NaCl',])

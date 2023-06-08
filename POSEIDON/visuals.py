@@ -1353,8 +1353,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Quick validity checks for plotting
         if (N_datasets == 0):
             raise Exception("Must provide at least one dataset to plot!")
-        if (N_datasets > 6):
-            raise Exception("Max number of concurrent datasets to plot is 6.")
+        if (N_datasets > 7):
+            raise Exception("Max number of concurrent datasets to plot is 7.")
         if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
             raise Exception("Number of colours does not match number of datasets.")
         if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1366,19 +1366,19 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             
         # Define colours for plotted spectra (default or user choice)
         if (data_colour_list == []):   # If user did not specify a custom colour list
-            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black']
+            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black']
         else:
             data_colours = data_colour_list
 
         # Define data marker symbols (default or user choice)
         if (data_marker_list == []):   # If user did not specify a custom colour list
-            data_markers = ['o', 's', 'D', '*', 'X', 'p']
+            data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p']
         else:
             data_markers = data_marker_list
 
         # Define data marker sizes (default or user choice)
         if (data_marker_size_list == []):   # If user did not specify a custom colour list
-            data_markers_size = [3, 3, 3, 3, 3, 3]
+            data_markers_size = [3, 3, 3, 3, 3, 3, 3]
         else:
             data_markers_size = data_marker_size_list
         
@@ -1509,6 +1509,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures)
+    elif (legend_location == 'outside right'):
+        fig.set_size_inches(12, 8.0) 
     else:
         raise Exception("Unsupported Figure shape - please use 'default' or 'wide'")
     
@@ -1656,6 +1658,9 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                             ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
+    elif legend_location == 'outside right':
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
                             ncol = n_columns, frameon = False)    # Legend settings
@@ -1764,8 +1769,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Quick validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 6):
-        raise Exception("Max number of concurrent datasets to plot is 6.")
+    if (N_datasets > 7):
+        raise Exception("Max number of concurrent datasets to plot is 7.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1777,19 +1782,19 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black']
+        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black']
     else:
         colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X', 'p','p']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3]
+        data_markers_size = [3, 3, 3, 3, 3, 3,3]
     else:
         data_markers_size = data_marker_size_list
        
@@ -1869,6 +1874,9 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
+    elif (legend_location == 'outside right'):
+        fig.set_size_inches(12, 8.0) 
+
     
     ax1 = plt.gca()
     
@@ -1943,6 +1951,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     
     legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
                         ncol = 1, frameon = True)    # Legend settings
+    
+    if legend_location == 'outside right':
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))
     
     frame = legend.get_frame()
     frame.set_facecolor('0.90') 
@@ -2113,8 +2125,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick data validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 6):
-        raise Exception("Max number of concurrent datasets to plot is 6.")
+    if (N_datasets > 7):
+        raise Exception("Max number of concurrent datasets to plot is 7.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -2128,19 +2140,19 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'black']
+        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'black', 'black']
     else:
         data_colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3]
+        data_markers_size = [3, 3, 3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
                 
@@ -2265,6 +2277,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
+    elif (legend_location == 'outside right'):
+        fig.set_size_inches(12, 8.0) 
 
     if (ax == None):
         ax1 = plt.gca()
@@ -2415,6 +2429,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                             ncol = 1, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
+
+    elif legend_location == 'outside right':
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))
+        
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
                             ncol = 1, frameon=False)    # Legend settings
