@@ -691,7 +691,7 @@ def make_aerosol_database():
         aerosols_dict[aerosol_list[i]] = sigma_Mie
 
     # Initialize and generate new data_base 
-    database = h5py.File(input_file_path + '/aerosol_database.hdf5', 'w')
+    database = h5py.File(input_file_path + 'opacity/aerosol_database.hdf5', 'w')
 
     h = database.create_group('Info')
     h1 = h.create_dataset('Wavelength grid', data=wavelengths, compression='gzip', dtype='float64', shuffle=True)
@@ -712,7 +712,7 @@ def make_aerosol_database():
 
     print('---------------------')
     print('Saving new aerosol database as')
-    print(input_file_path + 'aerosol_database.hdf5')
+    print(input_file_path + 'opacity/aerosol_database.hdf5')
     print('---------------------')
 
     database.close()
