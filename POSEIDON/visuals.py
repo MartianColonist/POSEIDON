@@ -1053,7 +1053,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     elif (legend_location == 'lower left'):
         legend.set_bbox_to_anchor([0.02, 0.02], transform=None)
     elif (legend_location == 'lower right'):
-        legend.set_bbox_to_anchor([0.98, 0.98], transform=None)
+        legend.set_bbox_to_anchor([0.98, 0.02], transform=None)
     
     fig.set_size_inches(9.0, 9.0)
 
