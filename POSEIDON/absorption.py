@@ -941,7 +941,6 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             
     return sigma_stored, cia_stored, Rayleigh_stored, eta_stored, ff_stored, bf_stored
 
-
 @jit(nopython = True)
 def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species,
                n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 

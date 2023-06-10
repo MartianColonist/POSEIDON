@@ -32,7 +32,7 @@ from .supported_chemicals import supported_species, supported_cia, inactive_spec
                                  fastchem_supported_species, aerosol_supported_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
-from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
+from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
                         extinction_LBL, extinction_GPU, extinction_spectrum_contribution, extinction_spectrum_pressure_contribution
 from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
@@ -1172,6 +1172,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                                     P_cloud = P_cloud,
                                                                     log_n_max = log_n_max, 
                                                                     fractional_scale_height = fractional_scale_height,)
+                        
                           
                 # If its a uniform X run
                 elif( model['cloud_type'] == 'uniform_X'):
@@ -1197,13 +1198,15 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 # Generate empty arrays so numba doesn't break
                 n_aerosol_array = []
                 sigma_Mie_array = []
+                    
+                n_aerosol_array.append(np.zeros_like(r))
+                sigma_Mie_array.append(np.zeros_like(wl))
 
-                for n in range(len(aerosol_species)):
-                    n_aerosol_array.append(np.empty_like(r))
-                    sigma_Mie_array.append(np.empty_like(wl))
+                n_aerosol_array = np.array(n_aerosol_array)
+                sigma_Mie_array = np.array(sigma_Mie_array)
 
                 enable_Mie = False
-
+            
             # Calculate extinction coefficients in standard mode
             kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
                                                 CIA_pairs, ff_pairs, bf_species,
@@ -1216,6 +1219,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                 N_sectors, N_zones, T_fine, 
                                                 log_P_fine, P_surf,
                                                 enable_Mie, n_aerosol_array, sigma_Mie_array)
+            
 
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):
