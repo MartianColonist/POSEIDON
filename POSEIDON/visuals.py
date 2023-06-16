@@ -1297,8 +1297,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     
     '''
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth']):
         plot_type = 'transmission'
+    elif (y_unit in ['Rp/Rs', 'Rp/R*', '(Rp/Rs)', '(Rp/R*)']):
+        plot_type = 'planet_star_radius_ratio'
     elif (y_unit in ['time_average_transit_depth']):
         plot_type = 'time_average_transmission'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
@@ -1497,8 +1499,13 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
-    ymajorFormatter = ScalarFormatter(useMathText=True, useOffset=False)
-    ymajorFormatter.set_powerlimits((0,0))
+
+    if ((plot_type == 'planet_star_radius_ratio') or (y_min_plt > 0.10)):
+        ymajorFormatter = ScalarFormatter(useMathText=False)
+    else:
+        ymajorFormatter = ScalarFormatter(useMathText=True)
+        ymajorFormatter.set_powerlimits((0,0))
+
     yminorLocator = MultipleLocator(yminor_spacing)
 
     # Generate figure and axes
@@ -1621,7 +1628,12 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
-        ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        if (y_min_plt < 0.10):
+            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        else:
+            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+    elif (plot_type == 'planet_star_radius_ratio'):
+        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
     elif (plot_type == 'time_average_transmission'):
         ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
     elif (plot_type == 'emission'):
@@ -1737,8 +1749,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Create output directories (if not already present)
     create_directories(base_dir, planet_name)
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth']):
         plot_type = 'transmission'
+    elif (y_unit in ['Rp/Rs', 'Rp/R*', '(Rp/Rs)', '(Rp/R*)']):
+        plot_type = 'planet_star_radius_ratio'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
@@ -1857,8 +1871,13 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
-    ymajorFormatter = ScalarFormatter(useMathText=True)
-    ymajorFormatter.set_powerlimits((0,0))
+
+    if ((plot_type == 'planet_star_radius_ratio') or (y_min_plt > 0.10)):
+        ymajorFormatter = ScalarFormatter(useMathText=False)
+    else:
+        ymajorFormatter = ScalarFormatter(useMathText=True)
+        ymajorFormatter.set_powerlimits((0,0))
+
     yminorLocator = MultipleLocator(yminor_spacing)
 
     # Generate figure and axes
@@ -1920,7 +1939,12 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
-        ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        if (y_min_plt < 0.10):
+            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        else:
+            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+    elif (plot_type == 'planet_star_radius_ratio'):
+        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
     elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
     elif (plot_type == 'direct_emission'):
@@ -2059,8 +2083,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     
     '''
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth']):
         plot_type = 'transmission'
+    elif (y_unit in ['Rp/Rs', 'Rp/R*', '(Rp/Rs)', '(Rp/R*)']):
+        plot_type = 'planet_star_radius_ratio'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
@@ -2253,8 +2279,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
-    ymajorFormatter = ScalarFormatter(useMathText=True, useOffset=False)
-    ymajorFormatter.set_powerlimits((0,0))
+
+    if ((plot_type == 'planet_star_radius_ratio') or (y_min_plt > 0.10)):
+        ymajorFormatter = ScalarFormatter(useMathText=False)
+    else:
+        ymajorFormatter = ScalarFormatter(useMathText=True)
+        ymajorFormatter.set_powerlimits((0,0))
+
     yminorLocator = MultipleLocator(yminor_spacing)
 
     # Generate figure and axes
@@ -2388,7 +2419,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
-        ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        if (y_min_plt < 0.10):
+            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        else:
+            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+    elif (plot_type == 'planet_star_radius_ratio'):
+        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
     elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
     elif (plot_type == 'direct_emission'):
