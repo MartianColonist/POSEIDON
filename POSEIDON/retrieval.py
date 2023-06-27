@@ -15,7 +15,7 @@ from scipy.special import erfcinv
 from scipy.special import lambertw as W
 from scipy.constants import parsec
 
-from .constants import R_J, R_E
+from .constants import R_J, R_E, M_J, M_E
 
 from .parameters import split_params
 from .instrument import bin_spectrum_to_data
@@ -244,6 +244,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
 
     # Unpack model properties
     radius_unit = model['radius_unit']
+    mass_unit = model['mass_unit']
     distance_unit = model['distance_unit']
     N_params_cum = model['N_params_cum']
     surface = model['surface']
@@ -303,6 +304,19 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         else:
             R_p_ref = R_p_ref_set
 
+        # Unpack planet mass if set as a free parameter
+        if ('M_p' in physical_param_names):
+            M_p = physical_params[np.where(physical_param_names == 'M_p')[0][0]]
+
+            # Convert normalised mass drawn by MultiNest back into SI
+            if (mass_unit == 'M_J'):
+                M_p *= M_J
+            elif (mass_unit == 'M_E'):
+                M_p *= M_E
+
+        else:
+            M_p = None
+
         # Unpack log(gravity) if set as a free parameter
         if ('log_g' in physical_param_names):
             log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
@@ -333,7 +347,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
 
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
-                                     log_g, T_input, X_input, P_surf, P_param_set,
+                                     log_g, M_p, T_input, X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN, 
                                      constant_gravity, chemistry_grid)
 

@@ -24,7 +24,7 @@ from mpi4py import MPI
 from spectres import spectres
 from scipy.constants import parsec
 
-from .constants import R_J, R_E
+from .constants import R_J, R_E, M_J, M_E
 from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
                      open_pymsg_grid
@@ -322,9 +322,10 @@ def define_model(model_name, bulk_species, param_species,
                  object_type = 'transiting', PT_profile = 'isotherm', 
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
                  cloud_type = 'deck', opaque_Iceberg = False,
-                 gravity_setting = 'fixed', stellar_contam = None, 
+                 gravity_setting = 'fixed', mass_setting = 'fixed',
+                 stellar_contam = None, 
                  offsets_applied = None, error_inflation = None, 
-                 radius_unit = 'R_J', distance_unit = 'pc',
+                 radius_unit = 'R_J', mass_unit = 'M_J', distance_unit = 'pc',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
@@ -362,6 +363,9 @@ def define_model(model_name, bulk_species, param_species,
         gravity_setting (str):
             Whether log_g is fixed or a free parameter.
             (Options: fixed / free).
+        mass_setting (str):
+            Whether the planetary mass is fixed or a free parameter.
+            (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots / 
@@ -375,6 +379,9 @@ def define_model(model_name, bulk_species, param_species,
         radius_unit (str)
             Planet radius unit used to report retrieval results
             (Options: R_J / R_E)
+        mass_unit (str)
+            Planet mass unit used to report retrieval results
+            (Options: M_J / M_E)
         distance_unit (str):
             Distance to system unit used to report retrieval results
             (Options: pc)
@@ -489,7 +496,7 @@ def define_model(model_name, bulk_species, param_species,
     stellar_param_names, \
     N_params_cum = assign_free_params(param_species, object_type, PT_profile,
                                       X_profile, cloud_model, cloud_type, 
-                                      gravity_setting, stellar_contam, 
+                                      gravity_setting, mass_setting, stellar_contam, 
                                       offsets_applied, error_inflation, PT_dim, 
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
@@ -502,12 +509,13 @@ def define_model(model_name, bulk_species, param_species,
              'Atmosphere_dimension': Atmosphere_dimension,
              'PT_profile': PT_profile, 'X_profile': X_profile,
              'cloud_model': cloud_model, 'cloud_type': cloud_type,
-             'gravity_setting': gravity_setting, 
+             'gravity_setting': gravity_setting, 'mass_setting': mass_setting,
              'chemical_species': chemical_species, 'bulk_species': bulk_species,
              'active_species': active_species, 'CIA_pairs': CIA_pairs,
              'ff_pairs': ff_pairs, 'bf_species': bf_species,
              'param_species': param_species, 
-             'radius_unit': radius_unit, 'distance_unit': distance_unit,
+             'radius_unit': radius_unit, 'mass_unit': mass_unit,
+             'distance_unit': distance_unit,
              'species_EM_gradient': species_EM_gradient,
              'species_DN_gradient': species_DN_gradient,
              'species_vert_gradient': species_vert_gradient,
@@ -697,8 +705,8 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
 
 def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_X_params = [], cloud_params = [], geometry_params = [],
-                    log_g = None, T_input = [], X_input = [], P_surf = None,
-                    P_param_set = 1.0e-2, He_fraction = 0.17, 
+                    log_g = None, M_p = None, T_input = [], X_input = [], 
+                    P_surf = None, P_param_set = 1.0e-2, He_fraction = 0.17, 
                     N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
                     chemistry_grid = None):
     '''
@@ -728,6 +736,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             Terminator opening angle parameters.
         log_g (float):
             Gravitational field of planet - only needed for free log_g parameter.
+        M_p (float):
+            Planet mass - only needed for free M_p parameter.
         T_input (np.array of float):
             Temperature profile (only if provided directly by the user).
         X_input (2D np.array of float):
@@ -774,19 +784,27 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     cloud_model = model['cloud_model']
     cloud_dim = model['cloud_dim']
     gravity_setting = model['gravity_setting']
+    mass_setting = model['mass_setting']
     sharp_DN_transition = model['sharp_DN_transition']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
 
     # Load planet gravity
-    if (gravity_setting == 'fixed'):
+    if ((gravity_setting == 'fixed') and (mass_setting == 'fixed')):
         g_p = planet['planet_gravity']   # For fixed g, load from planet object
-    elif (gravity_setting == 'free'):
+    elif ((gravity_setting == 'fixed') and (mass_setting == 'free')):
+        if (M_p is None):
+            raise Exception("Must provide 'M_p' when M_p is a free parameter")
+        else: 
+            g_p = (sc.G * M_p) / (R_p**2)   # Calculate gravity from mass
+    elif ((gravity_setting == 'free') and (mass_setting == 'fixed')):
         if (log_g is None):
             raise Exception("Must provide 'log_g' when log_g is a free parameter")
         else:
             g_p = np.power(10.0, log_g)/100   # Convert log cm/s^2 to m/s^2
+    else:
+        raise Exception("Invalid gravity / mass setting")
 
     # Unpack lists of chemical species in this model
     chemical_species = model['chemical_species']
@@ -2340,11 +2358,13 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     X_param_names = model['X_param_names']
     PT_profile = model['PT_profile']
     radius_unit = model['radius_unit']
+    mass_unit = model['mass_unit']
     distance_unit = model['distance_unit']
     Atmosphere_dimension = model['Atmosphere_dimension']
     
     # Unpack planet and star properties
     R_p = planet['planet_radius']
+    M_p = planet['planet_mass']
     T_eq = planet['planet_T_eq']
 
     if (star != None):
@@ -2369,6 +2389,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     if ('R_p_ref' in prior_ranges):
         prior_ranges['R_p_ref'] = [prior_ranges['R_p_ref'][0]/R_p_norm,
                                    prior_ranges['R_p_ref'][1]/R_p_norm]
+        
+    # Normalise retrieved planet mass parameter into Jupiter or Earth masses
+    if (mass_unit == 'M_J'):
+        M_p_norm = M_J
+    elif (mass_unit == 'M_E'):
+        M_p_norm = M_E
+    if ('M_p' in prior_ranges):
+        prior_ranges['M_p'] = [prior_ranges['M_p'][0]/M_p_norm,
+                               prior_ranges['M_p'][1]/M_p_norm]
 
     # Normalise retrieved system distance parameter into parsecs
     if (distance_unit == 'pc'):
@@ -2379,6 +2408,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
 
     # Set default priors (used if user doesn't specify one or more priors)
     prior_ranges_defaults = {'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
+                             'M_p': [0.50*M_p/M_p_norm, 1.50*M_p/M_p_norm],
                              'log_g': [2.0, 5.0], 'T': [400, 3000], 
                              'Delta_T': [0, 1000], 'Grad_T': [-200, 0],
                              'T_mid': [400, 3000], 'T_high': [400, 3000], 
