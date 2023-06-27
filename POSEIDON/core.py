@@ -323,7 +323,7 @@ def define_model(model_name, bulk_species, param_species,
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
                  cloud_type = 'deck', opaque_Iceberg = False,
                  gravity_setting = 'fixed', mass_setting = 'fixed',
-                 stellar_contam = None, 
+                 stellar_contam = None, nightside_contam = False,
                  offsets_applied = None, error_inflation = None, 
                  radius_unit = 'R_J', mass_unit = 'M_J', distance_unit = 'pc',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
@@ -370,6 +370,9 @@ def define_model(model_name, bulk_species, param_species,
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots / 
              two_spots_free_log_g).
+        nightside_contam (bool):
+            If True, include the impact of nightside thermal emission on a 
+            transmission spectrum (nightside contamination).   
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
             (Options: single_dataset).
@@ -519,7 +522,7 @@ def define_model(model_name, bulk_species, param_species,
              'species_EM_gradient': species_EM_gradient,
              'species_DN_gradient': species_DN_gradient,
              'species_vert_gradient': species_vert_gradient,
-             'stellar_contam': stellar_contam, 
+             'stellar_contam': stellar_contam, 'nightside_contam': nightside_contam, 
              'offsets_applied': offsets_applied, 
              'error_inflation': error_inflation, 'param_names': param_names,
              'physical_param_names': physical_param_names, 

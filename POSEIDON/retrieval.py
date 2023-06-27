@@ -249,6 +249,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     N_params_cum = model['N_params_cum']
     surface = model['surface']
     stellar_contam = model['stellar_contam']
+    nightside_contam = model['nightside_contam']
     disable_atmosphere = model['disable_atmosphere']
 
     # Unpack planet and star properties
@@ -441,8 +442,24 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             # Apply multiplicative stellar contamination to spectrum
             spectrum = epsilon * spectrum
 
+    #***** Step 5: nightside contamination *****#
+    
+    # Nightside contamination is only relevant for transmission spectra
+    if ('transmission' in spectrum_type):
+
+        if (nightside_contam == True):
+
+            # Calculate nightside thermal emission spectrum
+            Fp_Fs_night = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                           spectrum_type = 'nightside_emission')
             
-    #***** Step 5: convolve spectrum with instrument PSF and bin to data resolution ****#
+            # Compute wavelength-dependent nightside contamination factor
+            psi = (1.0 / (1.0 + Fp_Fs_night))
+
+            # Apply multiplicative nightside contamination to spectrum
+            spectrum = psi * spectrum
+            
+    #***** Step 6: convolve spectrum with instrument PSF and bin to data resolution ****#
 
     if ('transmission' in spectrum_type):
         ymodel = bin_spectrum_to_data(spectrum, wl, data)
