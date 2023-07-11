@@ -2989,7 +2989,7 @@ def plot_stellar_flux(flux, wl, wl_min = None, wl_max = None, flux_min = None,
     return fig
 
 
-def plot_histogram(nbins, vals, colour, ax, shrink_factor):
+def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array):
     
   #  weights = np.ones_like(vals)/float(len(vals))
     
@@ -3000,8 +3000,10 @@ def plot_histogram(nbins, vals, colour, ax, shrink_factor):
     # Plot histogram border
     x,w,patches = ax.hist(vals, bins=nbins, histtype='stepfilled', lw = 0.8, 
                           facecolor='None', density=True, stacked=True)
+    
+    x_max = np.max(x_max_array)
         
-    ax.set_ylim(0, (1.1+shrink_factor)*x.max())
+    ax.set_ylim(0, (1.1+shrink_factor)*x_max)
     
     low3, low2, low1, median, high1, high2, high3 = confidence_intervals(len(vals), vals, 0)
     
@@ -3009,10 +3011,10 @@ def plot_histogram(nbins, vals, colour, ax, shrink_factor):
 
 
 def plot_parameter_panel(ax, param_vals, N_bins, param, 
-                         param_min, param_max, colour):
+                         param_min, param_max, colour, x_max_array):
     
     # Plot histogram
-    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0)
+    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array)
 
     # Adjust x-axis extent
     ax.set_xlim(param_min, param_max)
@@ -3070,6 +3072,31 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         else:
             title_fmt = '.2f'
 
+        # Find the maximum x to set the y off of 
+        x_max_array = []
+        for m in range(N_models):
+            param_vals_m = param_vals[m]
+            
+            if (N_models == 1):
+                colour = parameter_colour_list[q]   # Each species has a different colour
+            else:
+                colour = retrieval_colour_list[m]   # Each retrieval has a different colour
+
+            # Set minimum and maximum mixing ratio plot limits
+            try:
+                param_min, param_max = span[q]
+            except:
+                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+                span[q] = _quantile(param_vals_m[:,q], quant)
+                param_min = span[q][0]
+                param_max = span[q][1]
+
+            x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
+                                alpha=0.4, edgecolor='None', density=True, stacked=True)
+            
+            
+            x_max_array.append(x.max())
+
         # For each retrieval
         for m in range(N_models):
 
@@ -3091,7 +3118,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
-                                                       param_min, param_max, colour)
+                                                       param_min, param_max, colour, x_max_array = x_max_array)
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
