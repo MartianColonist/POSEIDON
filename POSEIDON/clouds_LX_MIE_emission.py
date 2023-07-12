@@ -7,6 +7,9 @@ import scipy
 from scipy.interpolate import interp1d, RegularGridInterpolator
 import matplotlib.pyplot as plt
 
+from .core import wl_grid_constant_R
+
+
 ############################################################################################
 # Empty Arrays for Qext calculations
 ############################################################################################
@@ -40,34 +43,6 @@ def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
-# I have to copy this into the py file because otherwise it causes a circular import
-def wl_grid_constant_R(wl_min, wl_max, R):
-    '''
-    Create a wavelength array with constant spectral resolution (R = wl/dwl).
-
-    Args:
-        wl_min (float):
-            Minimum wavelength of grid (μm).
-        wl_max (float): 
-            Maximum wavelength of grid (μm).
-        R (int or float):
-            Spectral resolution of desired wavelength grid.
-    
-    Returns:
-        wl (np.array of float):
-            Model wavelength grid (μm).
-
-    '''
-
-    # Constant R -> uniform in log(wl)
-    delta_log_wl = 1.0/R
-    N_wl = (np.log(wl_max) - np.log(wl_min)) / delta_log_wl
-    N_wl = np.around(N_wl).astype(np.int64)
-    log_wl = np.linspace(np.log(wl_min), np.log(wl_max), N_wl)    
-
-    wl = np.exp(log_wl)
-    
-    return wl
 
 # Plot the cross section for a specific aersol in the database (for testing)
 def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
