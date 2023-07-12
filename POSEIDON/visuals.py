@@ -1225,7 +1225,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  data_marker_size_list = [], text_annotations = [],
                  annotation_pos = [], wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
-                 legend_box = True, ax = None, save_fig = True):
+                 legend_box = True, ax = None, save_fig = True,
+                 show_data_bin_width = True):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -1290,6 +1291,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Matplotlib axis provided externally.
         save_fig (bool, optional):
             If True, saves a PDF in the POSEIDON output folder.
+        show_data_bin_width (bool, optional):
+            Flag indicating whether to plot x bin widths for data points.
 
     Returns:
         fig (matplotlib figure object):
@@ -1601,13 +1604,22 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             bin_size_i = bin_size[idx_start:idx_end]
 
             # Plot dataset
-            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
-                                               xerr = bin_size_i, marker = data_markers[i], 
-                                               markersize = data_markers_size[i], 
-                                               capsize = 2, ls = 'none', elinewidth = 0.8, 
-                                               color = data_colours[i], alpha = 0.8,
-                                               ecolor = 'black', label = label_i,
-                                               zorder = 100)
+            if (show_data_bin_width == True):
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                                   xerr=bin_size_i, marker=data_markers[i], 
+                                                   markersize=data_markers_size[i], 
+                                                   capsize = 2, ls = 'none', elinewidth = 0.8, 
+                                                   color=data_colours[i], alpha = 0.8,
+                                                   ecolor = 'black', label=label_i,
+                                                   zorder = 100)
+            else:
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                                   marker=data_markers[i], 
+                                                   markersize=data_markers_size[i], 
+                                                   capsize=2, ls='none', elinewidth=0.8, 
+                                                   color=data_colours[i], alpha = 0.8,
+                                                   ecolor = 'black', label=label_i,
+                                                   zorder = 100)
 
             [markers.set_alpha(1.0)]
 
@@ -1698,7 +1710,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
               plt_label = None, data_colour_list = [], data_labels = [], 
               data_marker_list = [], data_marker_size_list = [],
               wl_axis = 'log', figure_shape = 'default', 
-              legend_location = 'upper right'):
+              legend_location = 'upper right', legend_box = False,
+              show_data_bin_width = True):
     ''' 
     Plot a collection of datasets. This function can plot transmission or 
     emission datasets, according to the user's choice of 'y_unit'.
@@ -1737,6 +1750,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
             'lower left', 'lower right').
+        legend_box (bool, optional):
+            Flag indicating whether to plot a box surrounding the figure legend.
+        show_data_bin_width (bool, optional):
+            Flag indicating whether to plot x bin widths for data points.
 
     Returns:
         fig (matplotlib figure object):
@@ -1922,12 +1939,20 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         bin_size_i = bin_size[idx_start:idx_end]
 
         # Plot dataset
-        markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                            xerr=bin_size_i, marker=data_markers[i], 
-                                            markersize=data_markers_size[i], 
-                                            capsize=2, ls='none', elinewidth=0.8, 
-                                            color=colours[i], alpha = 0.8,
-                                            ecolor = 'black', label=label_i)
+        if (show_data_bin_width == True):
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                               xerr=bin_size_i, marker=data_markers[i], 
+                                               markersize=data_markers_size[i], 
+                                               capsize=2, ls='none', elinewidth=0.8, 
+                                               color=colours[i], alpha = 0.8,
+                                               ecolor = 'black', label=label_i)
+        else:
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                               marker=data_markers[i], 
+                                               markersize=data_markers_size[i], 
+                                               capsize=2, ls='none', elinewidth=0.8, 
+                                               color=colours[i], alpha = 0.8,
+                                               ecolor = 'black', label=label_i)
 
         [markers.set_alpha(1.0)]
             
@@ -1964,17 +1989,21 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
-    
-    legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
-                        ncol = 1, frameon = True)    # Legend settings
-    
-    frame = legend.get_frame()
-    frame.set_facecolor('0.90') 
-        
-    for legline in legend.legendHandles:
-        legline.set_linewidth(1.0)
+
+    # Add box around legend
+    if (legend_box == True):
+        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon = True)    # Legend settings
+        frame = legend.get_frame()
+        frame.set_facecolor('0.90') 
+    else:
+        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False)    # Legend settings
     
     plt.tight_layout()
+   
+    for legline in legend.legendHandles:
+        legline.set_linewidth(1.0)
 
     # Write figure to file
     if (plt_label == None):
@@ -2001,7 +2030,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            annotation_pos = [],
                            wl_axis = 'log', figure_shape = 'default',
                            legend_location = 'upper right', legend_box = False,
-                           ax = None, save_fig = True):
+                           ax = None, save_fig = True,
+                           show_data_bin_width = True):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -2076,6 +2106,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             Matplotlib axis provided externally.
         save_fig (bool, optional):
             If True, saves a PDF in the POSEIDON output folder.
+        show_data_bin_width (bool, optional):
+            Flag indicating whether to plot x bin widths for data points.
 
     Returns:
         fig (matplotlib figure object):
@@ -2392,13 +2424,22 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         bin_size_i = bin_size[idx_start:idx_end]
 
         # Plot dataset
-        markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                           xerr=bin_size_i, marker=data_markers[i], 
-                                           markersize=data_markers_size[i], 
-                                           capsize=2, ls='none', elinewidth=0.8, 
-                                           color=data_colours[i], alpha = 0.8,
-                                           ecolor = 'black', label=label_i,
-                                           zorder = 100)
+        if (show_data_bin_width == True):
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                               xerr=bin_size_i, marker=data_markers[i], 
+                                               markersize=data_markers_size[i], 
+                                               capsize=2, ls='none', elinewidth=0.8, 
+                                               color=data_colours[i], alpha = 0.8,
+                                               ecolor = 'black', label=label_i,
+                                               zorder = 100)
+        else:
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                               marker=data_markers[i], 
+                                               markersize=data_markers_size[i], 
+                                               capsize=2, ls='none', elinewidth=0.8, 
+                                               color=data_colours[i], alpha = 0.8,
+                                               ecolor = 'black', label=label_i,
+                                               zorder = 100)
 
         [markers.set_alpha(1.0)]
 
