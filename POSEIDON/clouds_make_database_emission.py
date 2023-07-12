@@ -163,7 +163,7 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     plt.figure(figsize=(10,6))
     label = 'r_m ' + str(r_m) + ' (um)'
     plt.plot(wl_Mie, eff_ext_cross_section, label = label)
-    title = 'Effective Extinction (Scattering + Absorption) Cross Sections ' + file_name.split('/')[1][:-4]
+    title = 'Effective Extinction (Scattering + Absorption) Cross Sections ' + file_name.split('/')[1][:-4] + '\n'
     plt.title(title)
     plt.ylabel('Effective Cross Section')
     plt.xlabel('Wavelength (um)')
@@ -173,7 +173,7 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     plt.figure(figsize=(10,6))
     label = 'r_m ' + str(r_m) + ' (um)'
     plt.plot(wl_Mie, eff_scat_cross_section, label = label)
-    title = 'Effective Scattering Cross Sections ' + file_name.split('/')[1][:-4]
+    title = 'Effective Scattering Cross Sections ' + file_name.split('/')[1][:-4]+ '\n'
     plt.title(title)
     plt.ylabel('Effective Cross Section')
     plt.xlabel('Wavelength (um)')
@@ -183,7 +183,7 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     plt.figure(figsize=(10,6))
     label = 'r_m ' + str(r_m) + ' (um)'
     plt.plot(wl_Mie, eff_abs_cross_section, label = label)
-    title = 'Effective Absorption Cross Sections ' + file_name.split('/')[1][:-4]
+    title = 'Effective Absorption Cross Sections ' + file_name.split('/')[1][:-4]+ '\n'
     plt.title(title)
     plt.ylabel('Effective Cross Section')
     plt.xlabel('Wavelength (um)')
@@ -193,7 +193,7 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     plt.figure(figsize=(10,6))
     label = 'r_m ' + str(r_m) + ' (um)'
     plt.plot(wl_Mie, eff_back_cross_section, label = label)
-    title = 'Effective Back-Scattering Cross Sections ' + file_name.split('/')[1][:-4]
+    title = 'Effective Back-Scattering Cross Sections ' + file_name.split('/')[1][:-4]+ '\n'
     plt.title(title)
     plt.ylabel('Effective Cross Section')
     plt.xlabel('Wavelength (um)')
@@ -203,7 +203,7 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     plt.figure(figsize=(10,6))
     label = 'r_m ' + str(r_m) + ' (um)'
     plt.plot(wl_Mie, eff_w, label = label)
-    title = 'Single Scattering Albedo ' + file_name.split('/')[1][:-4] + '\n0 (black, completely absorbing) to 1 (white, completely scattering)'
+    title = 'Single Scattering Albedo ' + file_name.split('/')[1][:-4] + '\n0 (black, completely absorbing) to 1 (white, completely scattering)'+ '\n'
     plt.title(title)
     plt.ylabel('SSA')
     plt.xlabel('Wavelength (um)')
@@ -213,7 +213,7 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     plt.figure(figsize=(10,6))
     label = 'r_m ' + str(r_m) + ' (um)'
     plt.plot(wl_Mie, eff_g, label = label)
-    title = 'Asymmetry Parameter ' + file_name.split('/')[1][:-4] + '\n0 (completely back scattering) and +1 (total forward scattering) '
+    title = 'Asymmetry Parameter ' + file_name.split('/')[1][:-4] + '\n0 (completely back scattering) and +1 (total forward scattering) '+ '\n'
     plt.title(title)
     plt.ylabel('g')
     plt.xlabel('Wavelength (um)')

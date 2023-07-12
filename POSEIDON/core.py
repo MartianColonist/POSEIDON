@@ -42,7 +42,7 @@ from .emission import emission_rad_transfer, determine_photosphere_radii, \
                       emission_rad_transfer_GPU, determine_photosphere_radii_GPU
 
 from .clouds_aerosols import Mie_cloud, load_aerosol_grid
-from .clouds_LX_MIE_emission import Mie_cloud_free
+from .clouds_LX_MIE import Mie_cloud_free
 
 from .utility import mock_missing
 
