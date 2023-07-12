@@ -573,6 +573,10 @@ def wl_grid_constant_R(wl_min, wl_max, R):
     log_wl = np.linspace(np.log(wl_min), np.log(wl_max), N_wl)    
 
     wl = np.exp(log_wl)
+
+    # Fix for numerical rounding error
+    wl[0] = wl_min
+    wl[-1] = wl_max
     
     return wl
 
