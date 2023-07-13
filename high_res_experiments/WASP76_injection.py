@@ -33,7 +33,7 @@ from POSEIDON.utility import read_high_res_data
 
 # ***** Define model *****#
 
-model_name = "Na Injection Test"  # Model name used for plots, output files etc.
+model_name = "Fe-3 Injection Test"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 param_species = ["Fe"]
@@ -75,10 +75,6 @@ star = create_star(R_s, T_s, log_g_s, Met_s, stellar_grid="phoenix")
 data_dir = "/home/ruizhew/POSEIDON/high_res_experiments/data/WASP-76b-injection-Fe-3/"
 
 data = read_high_res_data(data_dir, method="sysrem", spectrum_type="transmission")
-data["uncertainties"] = pickle.load(open(data_dir + "/uncertainties.pic", "rb"))
-data_raw = data["data_raw"]
-data_raw[data_raw < 0] = 0
-data["data_raw"] = data_raw
 # %%
 from POSEIDON.core import set_priors
 

@@ -42,9 +42,7 @@ def get_rot_kernel(V_sin_i, wl, W_conv):
     return rot_ker
 
 
-def loglikelihood_PCA(
-    V_sys, K_p, dPhi, cs_p, cs_s, wl_grid, data_arr, data_scale, V_bary, Phi
-):
+def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, data):
     """
     Perform the loglikelihood calculation using Principal Component Analysis (PCA).
     Nord: number of spectral order.
@@ -82,57 +80,60 @@ def loglikelihood_PCA(
             Loglikelihood value.
     """
 
-    Nord, Nphi, Npix = data_arr.shape
+    data_arr = data["data_arr"]
+    data_scale = data["data_scale"]
+    V_bary = data["V_bary"]
+    phi = data["phi"]
+    wl_grid = data["wl_grid"]
 
-    I = np.ones(Npix)
-    N = Npix
+    N_order, N_phi, N_wl = data_arr.shape
 
     # Time-resolved total radial velocity
-    RV_p = (
-        V_sys + V_bary + K_p * np.sin(2 * np.pi * (Phi + dPhi))
-    )  # V_sys is an additive term around zero
+    RV_p = V_sys + V_bary + K_p * np.sin(2 * np.pi * (phi + d_phi))
+    # V_sys is an additive term around zero
     dl_p = RV_p * 1e3 / constants.c  # delta lambda, for shifting
-    # RV_s = 0 # Velocity of the star is very small compared to planet's velocity and it's already be corrected
-    K_s = 0.3229 * 1.0
-    RV_s = (V_sys + V_bary - K_s * np.sin(2 * np.pi * Phi)) * 0
+
+    # K_s = 0.3229
+    # RV_s = V_sys + V_bary - K_s * np.sin(2 * np.pi * phi)
+    RV_s = 0  # Velocity of the star is very small compared to planet's velocity and it's already be corrected
     dl_s = RV_s * 1e3 / constants.c  # delta lambda, for shifting
 
-    loglikelihood = 0
+    loglikelihood_sum = 0
 
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
-    for j in range(Nord):  # Nord = 44 This takes 2.2 seconds to complete
-        wl_slice = wl_grid[j,].copy()  # Cropped wavelengths
-        Fp_Fs = np.zeros((Nphi, Npix))  # "shifted" model spectra array at each phase
-        for i in range(Nphi):  # This for loop takes 0.025 seconds Nphi = 79
+    for j in range(N_order):  # Nord = 44 This takes 2.2 seconds to complete
+        wl_slice = wl_grid[j].copy()  # Cropped wavelengths
+        F_p_F_s = np.zeros((N_phi, N_wl))  # "shifted" model spectra array at each phase
+        for i in range(N_phi):  # This for loop takes 0.025 seconds Nphi = 79
             wl_shifted_p = wl_slice * (1.0 - dl_p[i])
-            Fp = interpolate.splev(wl_shifted_p, cs_p, der=0)
+            F_p = np.interp(wl_shifted_p, wl, planet_spectrum)
             wl_shifted_s = wl_slice * (1.0 - dl_s[i])
-            Fs = interpolate.splev(wl_shifted_s, cs_s, der=0)
-            Fp_Fs[i, :] = Fp / Fs
+            F_s = np.interp(wl_shifted_s, wl, star_spectrum)
+            F_p_F_s[i, :] = F_p / F_s
 
-        model_injected = (1 + Fp_Fs) * data_scale[j, :]
+        model_injected = (1 + F_p_F_s) * data_scale[j, :]
 
         svd = TruncatedSVD(n_components=4, n_iter=4, random_state=42).fit(
             model_injected
         )
-        model_injected_PCs_removed = model_injected - (
+        models_filtered = model_injected - (
             svd.transform(model_injected) @ svd.components_
         )  # 0.008 s
         # svd.transform gives data matrix in reduced dimension (79, 5). svd.components gives the first n_components right singular vectors (5, N_wl)
         # Original data minus PCA-ed data is equivalent to doing np.linalg.svd, setting first n_components components to zero.
 
-        for i in range(Nphi):  # This loop takes 0.001 second
-            gVec = model_injected_PCs_removed[i]
-            gVec -= gVec.dot(I) / Npix  # mean subtracting here...
-            sg2 = gVec.dot(gVec) / Npix
-            fVec = data_arr[j, i]  # already mean-subtracted
-            sf2 = fVec.dot(fVec) / Npix
-            R = fVec.dot(gVec) / Npix  # cross-covariance
-            loglikelihood += (
-                -0.5 * N * np.log(sf2 + sg2 - 2.0 * R)
+        for i in range(N_phi):  # This loop takes 0.001 second
+            model_filtered = models_filtered[i] * a
+            model_filtered -= model_filtered.mean()  # mean subtracting here...
+            m2 = model_filtered.dot(model_filtered)
+            planet_signal = data_arr[j, i]  # already mean-subtracted
+            f2 = planet_signal.dot(planet_signal)
+            R = model_filtered.dot(planet_signal)  # cross-covariance
+            loglikelihood_sum += (
+                -0.5 * N_wl * np.log((m2 + f2 - 2.0 * R) / N_wl)
             )  # Equation 9 in paper
 
-    return loglikelihood
+    return loglikelihood_sum
 
 
 def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, spectrum, data):
@@ -211,13 +212,13 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, spectrum, data):
         )  # "shifted" model spectra array at each phase
 
         for j in range(N_phi):
-            wl_shifted_p = wl_slice * (1.0 - delta_lambda[j])
+            wl_shifted = wl_slice * (1.0 - delta_lambda[j])
             # wl_shifted_p = wl_slice * np.sqrt((1.0 - dl_p[j]) / (1 + dl_p[j]))
-            Fp = np.interp(wl_shifted_p, wl, spectrum)
+            F_p = np.interp(wl_shifted, wl, spectrum)
 
             # Fp = interpolate.splev(wl_shifted_p, cs_p, der=0) # linear interpolation, einsum
             models_shifted[j] = ((1 - transit_weight[j])) / max_transit_depth * (
-                -Fp
+                -F_p
             ) + 1
 
         # divide by the median over wavelength to mimic blaze correction
@@ -324,9 +325,7 @@ def loglikelihood_high_res(
     else:
         b = model.get("b")  # Set a definite value or in case we want to null b
 
-    if method is "PCA" and spectrum_type is "emission":
-        data_scale = data["data_scale"]
-        data_arr = data["data_arr"]
+    if method is "pca" and spectrum_type is "emission":
         # instrument profile convolution
         R_instrument = model["R_instrument"]
         R = model["R"]
@@ -343,13 +342,12 @@ def loglikelihood_high_res(
             -0.5 * (xker / sigma) ** 2.0
         )  # instrumental broadening kernel; not understand
         yker /= yker.sum()
-        F_p_conv = np.convolve(F_p_rot, yker, mode="same") * a
-        cs_p = interpolate.splrep(
-            wl, F_p_conv, s=0.0
+        F_p_conv = np.convolve(F_p_rot, yker, mode="same")
+        F_s_conv = np.convolve(
+            F_s_obs, yker, mode="same"
         )  # no need to times (R)^2 because F_p, F_s are already observed value on Earth
-        F_s_conv = np.convolve(F_s_obs, yker, mode="same")
-        cs_s = interpolate.splrep(wl, F_s_conv, s=0.0)
-        return loglikelihood_PCA(V_sys, K_p, d_phi, cs_p, cs_s, data)  # TODO: fix PCA
+
+        return loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, F_p_conv, F_s_conv, data)
 
     elif method is "sysrem" and spectrum_type is "transmission":
         if W_conv is not None:
