@@ -47,7 +47,7 @@ N_jobs = -1  # Change how many cores to use here.
 
 
 def get_coordinate_list(x_values, y_values):
-    y, x = np.meshgrid(y_values, x_values)
+    x, y = np.meshgrid(x_values, y_values)
     coordinates = np.dstack([x, y]).reshape(-1, 2)
     return [tuple(coord) for coord in coordinates]
 
@@ -238,6 +238,6 @@ if __name__ == "__main__":
         CCF_array[coord[0], coord[1]] = results[i][1]
 
     pickle.dump(
-        [loglikelihood_array, CCF_array],
+        [K_p_arr, V_sys_arr, loglikelihood_array, CCF_array],
         open(output_path + "/cross_correlation_results.pic", "wb"),
     )

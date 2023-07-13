@@ -5,19 +5,19 @@ import pickle
 
 # ***** Define stellar properties *****#
 
-R_s = 1.756 * R_Sun  # Stellar radius (m)
-T_s = 6250  # Stellar effective temperature (K)
-Met_s = 0.23  # Stellar metallicity [log10(Fe/H_star / Fe/H_solar)]
-log_g_s = 4.13  # Stellar log surface gravity (log10(cm/s^2) by convention)
 
+R_s = 1.21 * R_Sun  # Stellar radius (m)
+T_s = 5605.0  # Stellar effective temperature (K)
+Met_s = -0.04  # Stellar metallicity [log10(Fe/H_star / Fe/H_solar)]
+log_g_s = 4.56  # Stellar log surface gravity (log10(cm/s^2) by convention)
 # ***** Define planet properties *****#
 
-planet_name = "WASP-76b"  # Planet name used for plots, output files etc.
+planet_name = "WASP-77Ab"  # Planet name used for plots, output files etc.
 
-R_p = 1.830 * R_J  # Planetary radius (m)
-M_p = 0.92 * M_J  # Mass of planet (kg)
-g_p = 10 ** (2.83 - 2)  # Gravitational field of planet (m/s^2)
-T_eq = 2182  # Equilibrium temperature (K)
+R_p = 1.21 * R_J  # Planetary radius (m)
+M_p = 0.07 * M_J  # Mass of planet (kg)
+g_p = 4.3712  # Gravitational field of planet (m/s^2)
+T_eq = 1043.8  # Equilibrium temperature (K)
 
 # Create the planet object
 planet = create_planet(planet_name, R_p, mass=M_p, gravity=g_p, T_eq=T_eq)
@@ -33,16 +33,14 @@ from POSEIDON.utility import read_high_res_data
 
 # ***** Define model *****#
 
-model_name = "Fe retrieval"  # Model name used for plots, output files etc.
+model_name = "H2O, CO retrieval"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-# param_species = ["Fe", "Ca+", "Na", "K", "Li"]
-param_species = ["Fe"]
-# param_species = ["Na"]
+param_species = ["H2O", "CO"]  # H2O, CO as in Brogi & Line
 
-method = "sysrem"
+method = "pca"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
-high_res_params = ["a", "b", "K_p", "V_sys", "W_conv"]
+high_res_params = ["a", "K_p", "V_sys"]
 
 # Create the model object
 # model = define_model(model_name, bulk_species, param_species,
@@ -53,30 +51,32 @@ model = define_model(
     model_name,
     bulk_species,
     param_species,
-    PT_profile="isotherm",
+    PT_profile="Madhu",
     high_res_params=high_res_params,
-)  # gradient
-
-# model["b"] = 0.95
+)
 
 # Check the free parameters defining this model
 print("Free parameters: " + str(model["param_names"]))
 
 # ***** Wavelength grid *****#
 
-wl_min = 0.37  # Minimum wavelength (um)
-wl_max = 1.05  # Maximum wavelength (um)
+wl_min = 1.3  # Minimum wavelength (um)
+wl_max = 2.6  # Maximum wavelength (um)
 R = 250000  # Spectral resolution of grid
 
-# wl = wl_grid_line_by_line(wl_min, wl_max)
+model["R"] = R
+model["R_instrument"] = 66000  # Resolution of instrument
+
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 # Create the stellar object
 star = create_star(R_s, T_s, log_g_s, Met_s, stellar_grid="phoenix")
+F_s = star["F_star"]
+wl_s = star["wl_star"]
 
-data_dir = "./data/WASP-76b/"
+data_dir = "./data/WASP-77Ab/"
 
-data = read_high_res_data(data_dir, method="sysrem", spectrum_type="transmission")
+data = read_high_res_data(data_dir, method="pca", spectrum_type="emission")
 # %%
 from POSEIDON.core import set_priors
 
@@ -90,7 +90,8 @@ prior_types["T_ref"] = "uniform"
 prior_types["T"] = "uniform"
 prior_types["T_deep"] = "uniform"
 prior_types["T_high"] = "uniform"
-prior_types["R_p_ref"] = "gaussian"
+# prior_types["R_p_ref"] = "gaussian"
+prior_types["R_p_ref"] = "uniform"
 prior_types["log_Na"] = "uniform"
 prior_types["log_K"] = "uniform"
 prior_types["log_Li"] = "uniform"
@@ -116,7 +117,8 @@ prior_ranges["T_ref"] = [1500, 4000]
 prior_ranges["T"] = [1500, 4000]
 prior_ranges["T_deep"] = [1500, 4000]
 prior_ranges["T_high"] = [1500, 4000]
-prior_ranges["R_p_ref"] = [1.83 * R_J, 0.05 * R_J]
+# prior_ranges["R_p_ref"] = [1.83 * R_J, 0.05 * R_J]
+prior_ranges["R_p_ref"] = [0.5 * R_p, 1.5 * R_p]
 prior_ranges["log_Na"] = [-15, 0]
 prior_ranges["log_Fe"] = [-15, 0]
 prior_ranges["log_Ca+"] = [-15, 0]
@@ -124,9 +126,9 @@ prior_ranges["log_Li"] = [-15, 0]
 prior_ranges["log_K"] = [-15, 0]
 prior_ranges["a1"] = [0.02, 1]
 prior_ranges["a2"] = [0.02, 1]
-prior_ranges["log_P1"] = [-8, 2]
-prior_ranges["log_P2"] = [-8, 2]
-prior_ranges["log_P3"] = [-3, 2]
+prior_ranges["log_P1"] = [-5, 2]
+prior_ranges["log_P2"] = [-5, 2]
+prior_ranges["log_P3"] = [-2, 2]
 prior_ranges["K_p"] = [150, 230]
 prior_ranges["V_sys"] = [-20, 20]
 prior_ranges["a"] = [0.01, 100]
@@ -146,15 +148,15 @@ import numpy as np
 opacity_treatment = "opacity_sampling"
 
 # Define fine temperature grid (K)
-T_fine_min = 1500  # 400 K lower limit suffices for a typical hot Jupiter
-T_fine_max = 4500  # 2000 K upper limit suffices for a typical hot Jupiter
+T_fine_min = 500  # 400 K lower limit suffices for a typical hot Jupiter
+T_fine_max = 3000  # 2000 K upper limit suffices for a typical hot Jupiter
 T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 
 T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
 # Define fine pressure grid (log10(P/bar))
-log_P_fine_min = -8.0  # 1 ubar is the lowest pressure in the opacity database
-log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
+log_P_fine_min = -6.0  # 1 ubar is the lowest pressure in the opacity database
+log_P_fine_max = 2.5  # 100 bar is the highest pressure in the opacity database
 log_P_fine_step = 0.2  # 0.2 dex steps are a good tradeoff between accuracy and RAM
 
 log_P_fine = np.arange(
@@ -164,21 +166,20 @@ log_P_fine = np.arange(
 # Now we can pre-interpolate the sampled opacities (may take up to a minute)
 opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
-# %%
-from POSEIDON.retrieval import run_retrieval
-
 # ***** Specify fixed atmospheric settings for retrieval *****#
-
-# Atmospheric pressure grid
-P_min = 1e-8  # 0.1 ubar
+# Specify the pressure grid of the atmosphere
+P_min = 1.0e-5  # 0.1 ubar
 P_max = 100  # 100 bar
 N_layers = 100  # 100 layers
 
-# Let's space the layers uniformly in log-pressure
+# We'll space the layers uniformly in log-pressure
 P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
 # Specify the reference pressure and radius
 P_ref = 1e-2  # Reference pressure (bar)
+
+# %%
+from POSEIDON.retrieval import run_retrieval
 
 # ***** Run atmospheric retrieval *****#
 
@@ -193,13 +194,13 @@ run_retrieval(
     P,
     P_ref,
     R=R,
-    spectrum_type="transmission",
+    spectrum_type="emission",
     sampling_algorithm="MultiNest",
     N_live=400,
     verbose=True,
     N_output_samples=1000,
     resume=False,
-    ev_tol=0.05,
+    ev_tol=0.5,
 )
 
 

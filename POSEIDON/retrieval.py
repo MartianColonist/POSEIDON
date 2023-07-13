@@ -1189,9 +1189,9 @@ def PyMultiNest_retrieval(
 
         if high_res:
             return loglikelihood_high_res(
-                F_s_obs,
                 wl,
-                spectrum,
+                spectrum,  # planet spectrum
+                F_s_obs,  # star spectrum
                 data,
                 model,
                 high_res_params,
@@ -1268,8 +1268,8 @@ def PyMultiNest_retrieval(
         return loglikelihood
 
     # Run PyMultiNest
-    pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs, max_iter=8000)
-    # pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
+    # pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs, max_iter=8000)
+    pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
 
 
 def retrieved_samples(
