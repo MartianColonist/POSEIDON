@@ -1085,7 +1085,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     r_i_complex = atmosphere['r_i_complex']
     log_X_Mie = atmosphere['log_X_Mie']
 
-
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
         enable_haze = 1
@@ -1155,46 +1154,46 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
                 aerosol_grid = model['aerosol_grid']
 
+                wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
+
                 # If its a fuzzy deck run
                 if (model['cloud_type'] == 'fuzzy_deck'):
 
                     if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
-                        n_aerosol_array, sigma_Mie_array = Mie_cloud_free(P,wl,r, H, n,
-                                                                            r_m,
-                                                                            r_i_real,
-                                                                            r_i_complex,
-                                                                            P_cloud = P_cloud,
-                                                                            log_n_max = log_n_max, 
-                                                                            fractional_scale_height = fractional_scale_height,)
+                        n_aerosol_array, \
+                        sigma_Mie_array = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                         r_m, r_i_real, r_i_complex,
+                                                         P_cloud = P_cloud,
+                                                         log_n_max = log_n_max, 
+                                                         fractional_scale_height = fractional_scale_height,)
 
                     else : 
-                        n_aerosol_array, sigma_Mie_array = Mie_cloud(P,wl,r, H, n,
-                                                                    r_m, 
-                                                                    aerosol_species,
-                                                                    cloud_type = model['cloud_type'],
-                                                                    aerosol_grid = aerosol_grid,
-                                                                    P_cloud = P_cloud,
-                                                                    log_n_max = log_n_max, 
-                                                                    fractional_scale_height = fractional_scale_height,)
+                        n_aerosol_array, \
+                        sigma_Mie_array = Mie_cloud(P, wl, r, H, n,
+                                                    r_m, aerosol_species,
+                                                    cloud_type = model['cloud_type'],
+                                                    aerosol_grid = aerosol_grid,
+                                                    P_cloud = P_cloud,
+                                                    log_n_max = log_n_max, 
+                                                    fractional_scale_height = fractional_scale_height,)
                         
                           
                 # If its a uniform X run
                 elif( model['cloud_type'] == 'uniform_X'):
 
                     if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
-                        n_aerosol_array, sigma_Mie_array = Mie_cloud_free(P,wl,r, H, n,
-                                                                            r_m,
-                                                                            r_i_real,
-                                                                            r_i_complex,
-                                                                            log_X_Mie = log_X_Mie)
+                        n_aerosol_array, \
+                        sigma_Mie_array = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                         r_m, r_i_real, r_i_complex,
+                                                         log_X_Mie = log_X_Mie)
 
                     else : 
-                        n_aerosol_array, sigma_Mie_array = Mie_cloud(P,wl,r, H, n,
-                                                                    r_m, 
-                                                                    aerosol_species,
-                                                                    cloud_type = model['cloud_type'],
-                                                                    aerosol_grid = aerosol_grid,
-                                                                    log_X_Mie = log_X_Mie)
+                        n_aerosol_array, \
+                        sigma_Mie_array = Mie_cloud(P, wl, r, H, n,
+                                                    r_m, aerosol_species,
+                                                    cloud_type = model['cloud_type'],
+                                                    aerosol_grid = aerosol_grid,
+                                                    log_X_Mie = log_X_Mie)
   
                 enable_Mie = True
             
@@ -1213,16 +1212,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             
             # Calculate extinction coefficients in standard mode
             kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
-                                                CIA_pairs, ff_pairs, bf_species,
-                                                n, T, P, wl, X, X_active, X_CIA, 
-                                                X_ff, X_bf, a, gamma, P_cloud, 
-                                                kappa_cloud_0, sigma_stored, 
-                                                CIA_stored, Rayleigh_stored, 
-                                                ff_stored, bf_stored, enable_haze, 
-                                                enable_deck, enable_surface,
-                                                N_sectors, N_zones, T_fine, 
-                                                log_P_fine, P_surf,
-                                                enable_Mie, n_aerosol_array, sigma_Mie_array)
+                                                  CIA_pairs, ff_pairs, bf_species,
+                                                  n, T, P, wl, X, X_active, X_CIA, 
+                                                  X_ff, X_bf, a, gamma, P_cloud, 
+                                                  kappa_cloud_0, sigma_stored, 
+                                                  CIA_stored, Rayleigh_stored, 
+                                                  ff_stored, bf_stored, enable_haze, 
+                                                  enable_deck, enable_surface,
+                                                  N_sectors, N_zones, T_fine, 
+                                                  log_P_fine, P_surf,
+                                                  enable_Mie, n_aerosol_array, sigma_Mie_array)
             
 
         # Running POSEIDON on the GPU

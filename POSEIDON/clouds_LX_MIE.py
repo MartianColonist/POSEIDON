@@ -7,7 +7,6 @@ import scipy
 from scipy.interpolate import interp1d, RegularGridInterpolator
 import matplotlib.pyplot as plt
 
-from .core import wl_grid_constant_R
 
 
 ############################################################################################
@@ -24,7 +23,7 @@ all_xs = []
 all_Qexts = []
 
 # Wavelength Array for Mie Calculations, default resolution = 1000
-wl_Mie = np.array([])
+wl_Mie_empty = np.array([])
 
 # Free or file_read switch
 # This is just a saved variable that acts like a kill switch if the model is 
@@ -41,7 +40,7 @@ def find_nearest(array, value):
     return idx
 
 # Plot the cross section for a specific aersol in the database (for testing)
-def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
+def plot_effective_cross_section_free(wl, wl_Mie, r_m, r_i_real, r_i_complex):
 
     # For documentation, see Mie_cloud_free
 
@@ -50,9 +49,9 @@ def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
     num_integral_points = 100
     R_Mie = 1000
 
-    wl_min = wl[0]
-    wl_max = wl[-1]
-    wl_Mie = wl_grid_constant_R(wl_min, wl_max, R_Mie)
+  #  wl_min = wl[0]
+  #  wl_max = wl[-1]
+  #  wl_Mie = wl_grid_constant_R(wl_min, wl_max, R_Mie)
     
     eta = complex(r_i_real,-r_i_complex)
     eta_array = np.full(len(wl_Mie),eta)
@@ -401,18 +400,10 @@ def get_and_update(eta,xs):
 # Main Cloud Functions
 ############################################################################################
 
-def Mie_cloud_free(P,wl,r, H, n,
-              r_m,
-              r_i_real,
-              r_i_complex,
-              P_cloud = 0,
-              log_n_max = 0, 
-              fractional_scale_height = 0,
-              log_X_Mie = 0,
-              r_m_std_dev = 0.5,
-              z_max = 5,
-              num_integral_points = 100,
-              R_Mie = 1000):
+def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
+                   P_cloud = 0, log_n_max = 0, fractional_scale_height = 0,
+                   log_X_Mie = 0, r_m_std_dev = 0.5, z_max = 5,
+                   num_integral_points = 100):
 
 
     '''
@@ -485,7 +476,7 @@ def Mie_cloud_free(P,wl,r, H, n,
     '''
 
     # DELETE THIS LATER 
-    global all_etas, all_xs, all_Qexts, wl_Mie, free_or_file
+    global all_etas, all_xs, all_Qexts, wl_Mie_empty, free_or_file
 
 
     #########################
@@ -496,15 +487,15 @@ def Mie_cloud_free(P,wl,r, H, n,
     wl_max = wl[-1]
 
     # Initialize wl_Mie
-    if len(wl_Mie) == 0:
-        wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
+    if len(wl_Mie_empty) == 0:
+        wl_Mie = np.append(wl_Mie_empty, wl_Mie_in)
 
     # If its a new wl array 
     if  wl[0] != wl_min or wl[-1] != wl_max:
         wl_min = wl[0]
         wl_max = wl[-1]
         wl_Mie = []
-        wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
+        wl_Mie = np.append(wl_Mie, wl_Mie_in)
 
     #########################
     # Calculate the number density above the cloud top or apply a uniform haze
