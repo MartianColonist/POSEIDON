@@ -485,12 +485,10 @@ def read_high_res_data(data_dir, method="sysrem", spectrum_type="transmission"):
         "high_res": True,
     }
     if method == "pca" and spectrum_type == "emission":
-        wl_grid, data_arr = pickle.load(open(data_dir + "/PCA_matrix.pic", "rb"))
-        wl_grid, data_scale = pickle.load(
-            open(data_dir + "/data_to_scale_with.pic", "rb")
-        )
+        wl_grid, data_arr = pickle.load(open(data_dir + "/data_arr.pic", "rb"))
+        wl_grid, data_scale = pickle.load(open(data_dir + "/data_scale.pic", "rb"))
         V_bary = pickle.load(
-            open(data_dir + "/rvel.pic", "rb")
+            open(data_dir + "/V_bary.pic", "rb")
         )  # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
         data["wl_grid"] = wl_grid
         data["data_arr"] = data_arr
