@@ -93,13 +93,14 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
     # V_sys is an additive term around zero
     dl_p = RV_p * 1e3 / constants.c  # delta lambda, for shifting
 
-    # K_s = 0.3229
-    # RV_s = V_sys + V_bary - K_s * np.sin(2 * np.pi * phi)
-    RV_s = 0  # Velocity of the star is very small compared to planet's velocity and it's already be corrected
+    K_s = 0.3229
+    RV_s = (
+        V_sys + V_bary - K_s * np.sin(2 * np.pi * phi)
+    ) * 0  # Velocity of the star is very small compared to planet's velocity and it's already be corrected
     dl_s = RV_s * 1e3 / constants.c  # delta lambda, for shifting
 
     loglikelihood_sum = 0
-
+    CCF_sum = 0
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
     for j in range(N_order):  # Nord = 44 This takes 2.2 seconds to complete
         wl_slice = wl_grid[j].copy()  # Cropped wavelengths
@@ -129,11 +130,13 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
             planet_signal = data_arr[j, i]  # already mean-subtracted
             f2 = planet_signal.dot(planet_signal)
             R = model_filtered.dot(planet_signal)  # cross-covariance
+            CCF = R / np.sqrt(m2 * f2)  # cross-correlation
+            CCF_sum += CCF
             loglikelihood_sum += (
                 -0.5 * N_wl * np.log((m2 + f2 - 2.0 * R) / N_wl)
             )  # Equation 9 in paper
 
-    return loglikelihood_sum
+    return loglikelihood_sum, CCF_sum
 
 
 def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, spectrum, data):
@@ -266,7 +269,13 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, spectrum, data):
 
 
 def loglikelihood_high_res(
-    F_s_obs, wl, spectrum, data, model, high_res_params, high_res_param_names
+    star_spectrum,
+    wl,
+    planet_spectrum,
+    data,
+    model,
+    high_res_params,
+    high_res_param_names,
 ):
     """
     Return the loglikelihood given the observed flux, Keplerian velocity, and centered system velocity.
@@ -332,7 +341,7 @@ def loglikelihood_high_res(
         V_sin_i = data["V_sin_i"]
         rot_kernel = get_rot_kernel(V_sin_i, wl, W_conv)
         F_p_rot = np.convolve(
-            spectrum, rot_kernel, mode="same"
+            planet_spectrum, rot_kernel, mode="same"
         )  # calibrate for planetary rotation
         xker = np.arange(-20, 21)
         sigma = (R / R_instrument) / (
@@ -344,17 +353,19 @@ def loglikelihood_high_res(
         yker /= yker.sum()
         F_p_conv = np.convolve(F_p_rot, yker, mode="same")
         F_s_conv = np.convolve(
-            F_s_obs, yker, mode="same"
+            star_spectrum, yker, mode="same"
         )  # no need to times (R)^2 because F_p, F_s are already observed value on Earth
-
-        return loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, F_p_conv, F_s_conv, data)
+        loglikelihood, _ = loglikelihood_PCA(
+            V_sys, K_p, d_phi, a, wl, F_p_conv, F_s_conv, data
+        )
+        return loglikelihood
 
     elif method is "sysrem" and spectrum_type is "transmission":
         if W_conv is not None:
             # np.convolve use smaller kernel. Apply filter to the spectrum. And multiply by scale factor a.
-            spectrum = gaussian_filter1d(spectrum, W_conv)
+            planet_spectrum = gaussian_filter1d(planet_spectrum, W_conv)
         loglikelihood, _ = loglikelihood_sysrem(
-            V_sys, K_p, d_phi, a, b, wl, spectrum, data
+            V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data
         )
         return loglikelihood
     else:
