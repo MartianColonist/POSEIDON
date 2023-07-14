@@ -42,7 +42,7 @@ from .emission import emission_rad_transfer, determine_photosphere_radii, \
                       emission_rad_transfer_GPU, determine_photosphere_radii_GPU
 
 from .clouds_aerosols import Mie_cloud, load_aerosol_grid
-from .clouds_LX_MIE import Mie_cloud_free
+from .clouds_LX_MIE_emission import Mie_cloud_free
 
 from .utility import mock_missing
 
@@ -333,7 +333,7 @@ def define_model(model_name, bulk_species, param_species,
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
                  reference_parameter = 'R_p_ref', disable_atmosphere = False,
-                 aerosol_species = ['free']):
+                 aerosol_species = ['free'], scattering = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -420,7 +420,9 @@ def define_model(model_name, bulk_species, param_species,
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
         aerosol (string):
-            If cloud_model = Mie and clod_type = specific_aerosol 
+            If cloud_model = Mie and cloud_type = specific_aerosol 
+        scattering (bool):
+            If True, uses a two-stream multiple scattering model.
 
     Returns:
         model (dict):
@@ -543,7 +545,8 @@ def define_model(model_name, bulk_species, param_species,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
              'aerosol_species': aerosol_species,
-             'aerosol_grid': aerosol_grid}
+             'aerosol_grid': aerosol_grid,
+             'scattering' : scattering}
 
     return model
 
@@ -1026,6 +1029,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     PT_dim = model['PT_dim']
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
+    scattering = model['scattering']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1161,7 +1165,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
                     if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
                         n_aerosol_array, \
-                        sigma_Mie_array = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                        sigma_ext_cld_array, \
+                        g_cld_array, \
+                        w_cld_array, \
+                         = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
                                                          r_m, r_i_real, r_i_complex,
                                                          P_cloud = P_cloud,
                                                          log_n_max = log_n_max, 
@@ -1314,7 +1321,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             zone_idx = 0
 
         # Use atmospheric properties from dayside/nightside
-        kappa = kappa_clear[:,0,zone_idx,:]  # Only consider one region for 1D models
+        #kappa = kappa_clear[:,0,zone_idx,:]  # Only consider one region for 1D models
+        kappa_tot = kappa_clear[:,0,zone_idx,:] + kappa_cloud[:,0,zone_idx,:] # Only consider one region for 1D models
         dz = dr[:,0,zone_idx]   # Only consider one region for 1D/2D models
         T = T[:,0,zone_idx]     # Only consider one region for 1D/2D models
 

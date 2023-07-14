@@ -433,8 +433,24 @@ def Mie_cloud(P,wl,r, H, n,
         aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol', 
                         comm = MPI.COMM_WORLD, rank = 0)
 
-    sigma_Mie_array = interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m, 
-                               aerosol_species, return_dict = False)
+    sigma_Mie_interp_dict = interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m, 
+                               aerosol_species, return_dict = True)
+    
+
+    # To work with Numba
+    n_aerosol_array = []
+    n_aerosol_array.append(n_aerosol)
+
+    sigma_ext = sigma_Mie_interp_dict['']
+
+    sigma_ext_cld_array = []
+    sigma_ext_cld_array.append(sigma_ext)
+
+    g_cld_array = []
+    g_cld_array.append(eff_g)
+
+    w_cld_array = []
+    w_cld_array.append(eff_w)
 
 
-    return n_aerosol_array, sigma_Mie_array
+    return n_aerosol_array, sigma_ext_cld_array, g_cld_array, w_cld_array

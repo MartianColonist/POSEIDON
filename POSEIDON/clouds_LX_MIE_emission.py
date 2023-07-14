@@ -858,14 +858,20 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
     print('================================')
 
     # We redefine n and eff_cross_section to be more in line with Poseidon's exisiting language
-    sigma_Mie = eff_ext
+    sigma_ext = eff_ext
 
     # To work with Numba
     n_aerosol_array = []
     n_aerosol_array.append(n_aerosol)
 
-    sigma_Mie_array = []
-    sigma_Mie_array.append(sigma_Mie)
+    sigma_ext_cld_array = []
+    sigma_ext_cld_array.append(sigma_ext)
+
+    g_cld_array = []
+    g_cld_array.append(eff_g)
+
+    w_cld_array = []
+    w_cld_array.append(eff_w)
 
 
-    return n_aerosol_array, sigma_Mie_array
+    return n_aerosol_array, sigma_ext_cld_array, g_cld_array, w_cld_array
