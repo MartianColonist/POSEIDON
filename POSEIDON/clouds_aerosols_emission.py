@@ -311,7 +311,8 @@ def Mie_cloud(P,wl,r, H, n,
               P_cloud = 0,
               log_n_max = 0, 
               fractional_scale_height = 0,
-              log_X_Mie = 0,):
+              log_X_Mie = 0,
+              P_cloud_bottom = 0):
 
 
     '''
@@ -368,6 +369,14 @@ def Mie_cloud(P,wl,r, H, n,
         log_X_Mie (array of float) : 
             Mixing ratio for a mie aerosol (either specified or free, only for uniform haze models)
 
+        Slab Arguments 
+
+        P_cloud (float) : 
+            Cloud Top Pressure (everything between P_cloud and P_cloud_bottom is uniform X). 
+
+        P_cloud_bottom (array of float) : 
+            Pressure of the bottom of the slab 
+
         -------- Optional Arguments -------
 
         r_m_std_dev (float) :
@@ -418,6 +427,19 @@ def Mie_cloud(P,wl,r, H, n,
             n_aerosol[:P_cloud_index] = 1.0e250
             n_aerosol[P_cloud_index:] = (10**log_n_max[q]) * np.exp(-h/(fractional_scale_height[q]*H[P_cloud_index:]))
             n_aerosol_array.append(n_aerosol)
+
+        # Slab Model 
+        elif (cloud_type == 'slab'):
+            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+            # This needs to be a loop eventaully
+            n_aerosol = np.empty_like(r)
+            P_cloud_index_top = find_nearest(P,P_cloud)
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+
+            n_aerosol = np.empty_like(r)
+            n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n)*np.float_power(10,log_X_Mie[q])
+            n_aerosol_array.append(n_aerosol)
+
         # Uniform X Model 
         else:
             n_aerosol = np.empty_like(r)

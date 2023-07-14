@@ -468,7 +468,7 @@ def get_and_update(eta,xs):
 
 def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
                    P_cloud = 0, log_n_max = 0, fractional_scale_height = 0,
-                   log_X_Mie = 0, r_m_std_dev = 0.5, z_max = 5,
+                   log_X_Mie = 0, P_cloud_bottom = -100, r_m_std_dev = 0.5, z_max = 5,
                    num_integral_points = 100):
     '''
     Calculates the number density n(P) and cross section sigma(wavelength) for a aerosol cloud.
@@ -517,6 +517,14 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
             Mixing ratio for a mie aerosol (either specified or free, only for uniform haze models)
 
         MUST have either a specified aerosol OR a r_i_real + r_i_complex
+
+        Slab Arguments 
+
+        P_cloud (float) : 
+            Cloud Top Pressure (everything between P_cloud and P_cloud_bottom is uniform X). 
+
+        P_cloud_bottom (array of float) : 
+            Pressure of the bottom of the slab 
 
         -------- Optional Arguments -------
 
@@ -578,6 +586,16 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
         # Find number density below and above P_cloud
         n_aerosol[:P_cloud_index] = 1.0e250
         n_aerosol[P_cloud_index:] = (10**log_n_max) * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
+
+    # Slab Model 
+    elif (P_cloud_bottom != -100):
+        # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+        n_aerosol = np.empty_like(r)
+        P_cloud_index_top = find_nearest(P,P_cloud)
+        P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+
+        n_aerosol = np.zeros_like(r)
+        n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie)
 
     # Uniform Haze
     else:
@@ -819,43 +837,6 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
 
     interp = interp1d(wl_Mie, eff_w)
     eff_w = interp(wl)
-
-    print('================================')
-    print('This print statement is from clouds_LX_Mie_emission.py')
-    print('This is to test and make sure that things are working.')
-    
-    plt.figure(figsize=(10,6))
-    label = 'r_m ' + str(r_m) + ' (um)'
-    plt.plot(wl, eff_ext, label = label)
-    title = 'Effective Extinction (Scattering + Absorption) Cross Sections' 
-    plt.title(title)
-    plt.ylabel('Effective Cross Section')
-    plt.xlabel('Wavelength (um)')
-    plt.legend()
-    plt.show()
-
-    plt.figure(figsize=(10,6))
-    label = 'r_m ' + str(r_m) + ' (um)'
-    plt.plot(wl_Mie, eff_g, label = label)
-    title = 'Asymmetry Parameter\n0 (completely back scattering) and +1 (total forward scattering) '
-    plt.title(title)
-    plt.ylabel('g')
-    plt.xlabel('Wavelength (um)')
-    plt.legend()
-    plt.show()
-
-    plt.figure(figsize=(10,6))
-    label = 'r_m ' + str(r_m) + ' (um)'
-    plt.plot(wl_Mie, eff_w, label = label)
-    title = 'Single Scattering Albedo\n0 (black, completely absorbing) to 1 (white, completely scattering)'
-    plt.title(title)
-    plt.ylabel('w')
-    plt.xlabel('Wavelength (um)')
-    plt.legend()
-    plt.show()
-
-    print('Thanks for your patience! Make sure to set clouds_LX_Mie.py back in core.py for transmission')
-    print('================================')
 
     # We redefine n and eff_cross_section to be more in line with Poseidon's exisiting language
     sigma_ext = eff_ext

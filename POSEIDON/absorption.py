@@ -1067,7 +1067,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                                 
                         # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
                         kappa_Ray[i,j,k,l] += n_q * Rayleigh_stored[q,l]
-        
+
             # If haze is enabled in this model  
             if (enable_haze == 1):
                 
@@ -1102,8 +1102,9 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                     kappa_cloud[(P > P_cloud),j,k,:] = kappa_cloud_0
 
                 for aerosol in range(len(n_aerosol_array)):
-                    for q in range(len(wl)):
-                        kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
+                    for i in range(i_bot,N_layers):
+                        for q in range(len(wl)):
+                            kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
           
     return kappa_gas, kappa_Ray, kappa_cloud
 

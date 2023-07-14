@@ -553,6 +553,20 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                         cloud_params += ['log_n_max_' + aerosol]
                         cloud_params += ['f_' + aerosol]
 
+            elif (cloud_type == 'slab'):
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    cloud_params += ['log_P_cloud']
+                    cloud_params += ['Delta_log_P_cloud']
+                    cloud_params += ['log_r_m']
+                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_P_cloud_' + aerosol]
+                        cloud_params += ['Delta_log_P_cloud_' + aerosol]
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+
                 
             elif (cloud_type == 'uniform_X'):
 
@@ -564,8 +578,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_X_' + aerosol]
 
-            elif (cloud_type not in ['fuzzy_deck', 'uniform_X']):
-                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck or uniform_X.")
+            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab']):
+                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, or slab.")
         
         else:
             raise Exception("Error: unsupported cloud model.")
@@ -1488,7 +1502,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # Set the Mie parameters 
         
         # If its a fuzzy_deck model
-        if ('log_P_cloud' in cloud_param_names):
+        if ('log_P_cloud' in cloud_param_names) and ('Delta_log_P_cloud' not in cloud_param_names):
             
             try:
                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
@@ -1510,9 +1524,36 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                 r_i_complex = 0
 
             log_X_Mie = 100
+            P_slab_bottom = -100 
+
+        # If its a slab model
+        if ('log_P_cloud' in cloud_param_names) and ('Delta_log_P_cloud' in cloud_param_names):
+            
+            try:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+                P_slab_bottom = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]] + clouds_in[np.where(cloud_param_names == 'Delta_log_P_cloud')[0][0]])
+            except:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
+                P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+                P_slab_bottom = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]] + clouds_in[np.where(cloud_param_names == 'Delta_log_P_cloud')[0][0]])
+
+             # See if its a free or file_read aerosol retrieval or not 
+            if ('r_i_real' in cloud_param_names):
+                r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+                r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+            else:
+                r_i_real = 0
+                r_i_complex = 0
+
+            log_n_max = 0
+            fractional_scale_height = 0
         
         # See if its a uniform_haze model 
         else:
+
              # See if its a free for file_read aerosol retrieval or not 
             if ('r_i_real' in cloud_param_names):
                 # The try except is here because file_read makes everything into a numpy file
@@ -1536,6 +1577,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             log_n_max = 0
             fractional_scale_height = 0
             P_cloud = 100
+            P_slab_bottom = -100
     
 
     if cloud_model != 'Mie':
@@ -1547,7 +1589,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         log_X_Mie = []
         P_cloud = 100
 
-    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, fractional_scale_height, r_i_real, r_i_complex, log_X_Mie
+    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

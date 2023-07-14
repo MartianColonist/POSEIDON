@@ -891,8 +891,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     theta_cloud_0, \
     a, gamma, \
     r_m, log_n_max, fractional_scale_height, \
-    r_i_real, r_i_complex, log_X_Mie = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
-                                   N_params_cum, TwoD_type)
+    r_i_real, r_i_complex, log_X_Mie, P_cloud_bottom = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
+                                                                           N_params_cum, TwoD_type)
     
     # Temporary H for testing 
     g = g_p * (R_p_ref / r)**2
@@ -910,7 +910,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
                   'is_physical': is_physical,
                   'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 'fractional_scale_height': fractional_scale_height,
-                  'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie
+                  'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie,
+                  'P_cloud_bottom' : P_cloud_bottom
                  }
 
     return atmosphere
@@ -1088,6 +1089,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     r_i_real = atmosphere['r_i_real']
     r_i_complex = atmosphere['r_i_complex']
     log_X_Mie = atmosphere['log_X_Mie']
+    P_cloud_bottom = atmosphere['P_cloud_bottom']
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1180,7 +1182,28 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      P_cloud = P_cloud,
                                                      log_n_max = log_n_max, 
                                                      fractional_scale_height = fractional_scale_height)
-                        
+
+                # If its a slab
+                elif (model['cloud_type'] == 'slab'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                        r_m, r_i_real, r_i_complex,
+                                                        log_X_Mie = log_X_Mie,
+                                                        P_cloud = P_cloud,
+                                                        P_cloud_bottom = P_cloud_bottom)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                    r_m, aerosol_species,
+                                                    cloud_type = model['cloud_type'],
+                                                    aerosol_grid = aerosol_grid,
+                                                    log_X_Mie = log_X_Mie,
+                                                    P_cloud = P_cloud,
+                                                    P_cloud_bottom = P_cloud_bottom)
+                            
                           
                 # If its a uniform X run
                 elif (model['cloud_type'] == 'uniform_X'):
@@ -1228,6 +1251,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                            N_sectors, N_zones, T_fine, 
                                                            log_P_fine, P_surf, enable_Mie, 
                                                            n_aerosol, sigma_ext_cloud)
+            
+            
             
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):
