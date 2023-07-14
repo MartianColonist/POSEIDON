@@ -976,7 +976,8 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
     N_layers = len(P)  # Number of layers
     
     # Define extinction coefficient arrays
-    kappa_clear = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_gas = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_Ray = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     
     # Fine temperature grid (for pre-interpolating opacities)    
@@ -1018,7 +1019,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                     for l in range(N_wl):
                         
                         # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
+                        kappa_gas[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
                         
                 # For each free-free absorption pair
                 for q in range(N_ff_pairs): 
@@ -1031,7 +1032,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                     for l in range(N_wl):
                         
                         # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
+                        kappa_gas[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
                         
                 # For each source of bound-free absorption (photodissociation)
                 for q in range(N_bf_species): 
@@ -1042,7 +1043,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                     for l in range(N_wl):
                         
                         # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                        kappa_gas[i,j,k,l] += n_q * bf_stored[q,l]
                 
                 # For each molecular / atomic species with active absorption features
                 for q in range(N_species_active): 
@@ -1053,7 +1054,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                     for l in range(N_wl):
                         
                         # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
+                        kappa_gas[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
                     
                 # For each molecular / atomic species
                 for q in range(N_species):  
@@ -1064,7 +1065,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                     for l in range(N_wl):
                                 
                         # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+                        kappa_Ray[i,j,k,l] += n_q * Rayleigh_stored[q,l]
         
             # If haze is enabled in this model  
             if (enable_haze == 1):
@@ -1090,24 +1091,24 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
             if (enable_surface == 1):
 
                 # Set extinction to infinity below surface
-                kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+                kappa_gas[(P > P_surf),j,k,:] = 1.0e250
 
             # If Mie clouds are turned on 
             if enable_Mie == True:
 
                 if (enable_deck == 1):
-                    # Pressures below P_cloud are opaque, otherwise they are fuzy 
+                    # Pressures below P_cloud are opaque, otherwise they are fuzzy 
                     kappa_cloud[(P > P_cloud),j,k,:] = kappa_cloud_0
 
                 for aerosol in range(len(n_aerosol_array)):
                     for q in range(len(wl)):
                         kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
           
-    return kappa_clear, kappa_cloud
+    return kappa_gas, kappa_Ray, kappa_cloud
 
 
 @cuda.jit
-def extinction_GPU(kappa_clear, kappa_cloud, i_bot, N_species, N_species_active, 
+def extinction_GPU(kappa_gas, kappa_Ray, kappa_cloud, i_bot, N_species, N_species_active, 
                    N_cia_pairs, N_ff_pairs, N_bf_species, n, T, P, wl, X, X_active, 
                    X_cia, X_ff, X_bf, a, gamma, P_cloud, kappa_cloud_0, sigma_stored, 
                    cia_stored, Rayleigh_stored, ff_stored, bf_stored, enable_haze,
@@ -1167,7 +1168,7 @@ def extinction_GPU(kappa_clear, kappa_cloud, i_bot, N_species, N_species_active,
                     for l in range(thread, N_wl, stride):
                         
                         # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
+                        kappa_gas[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
                         
                 # For each free-free absorption pair
                 for q in range(N_ff_pairs): 
@@ -1180,7 +1181,7 @@ def extinction_GPU(kappa_clear, kappa_cloud, i_bot, N_species, N_species_active,
                     for l in range(thread, N_wl, stride):
                         
                         # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
+                        kappa_gas[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
                         
                 # For each source of bound-free absorption (photodissociation)
                 for q in range(N_bf_species): 
@@ -1191,7 +1192,7 @@ def extinction_GPU(kappa_clear, kappa_cloud, i_bot, N_species, N_species_active,
                     for l in range(thread, N_wl, stride):
                         
                         # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                        kappa_gas[i,j,k,l] += n_q * bf_stored[q,l]
                 
                 # For each molecular / atomic species with active absorption features
                 for q in range(N_species_active): 
@@ -1202,7 +1203,7 @@ def extinction_GPU(kappa_clear, kappa_cloud, i_bot, N_species, N_species_active,
                     for l in range(thread, N_wl, stride):
                         
                         # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
+                        kappa_gas[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
                     
                 # For each molecular / atomic species
                 for q in range(N_species):  
@@ -1213,7 +1214,7 @@ def extinction_GPU(kappa_clear, kappa_cloud, i_bot, N_species, N_species_active,
                     for l in range(thread, N_wl, stride):
                                 
                         # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+                        kappa_Ray[i,j,k,l] += n_q * Rayleigh_stored[q,l]
         
             # If haze is enabled in this model  
             if (enable_haze == 1):
@@ -1256,7 +1257,7 @@ def extinction_GPU(kappa_clear, kappa_cloud, i_bot, N_species, N_species_active,
 
                         # Set extinction to infinity below surface
                         if P[i] > P_surf:
-                            kappa_clear[i,j,k,l] = 1.0e250
+                            kappa_gas[i,j,k,l] = 1.0e250
 
 
 #***** Special optimised functions for line-by-line case *****#
@@ -1508,8 +1509,8 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                       a, gamma, P_cloud, kappa_cloud_0, N_species, N_species_active,
                       N_cia_pairs, N_ff_pairs, N_bf_species, sigma_interp,
                       cia_interp, Rayleigh_stored, ff_stored, bf_stored, 
-                      enable_haze, enable_deck, enable_surface, kappa_clear, 
-                      kappa_cloud, P_surf, disable_continuum):
+                      enable_haze, enable_deck, enable_surface, kappa_gas,
+                      kappa_Ray, kappa_cloud, P_surf, disable_continuum):
     
     ''' Computes extinction coefficients for given sector and zone. 
         Special function optimised for line-by-line case.
@@ -1541,7 +1542,7 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                 for l in range(N_wl):
                         
                     # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
-                    kappa_clear[i,j,k,l] += n_n_cia * cia_interp[q,i,l]
+                    kappa_gas[i,j,k,l] += n_n_cia * cia_interp[q,i,l]
 
             # For each molecular / atomic species
             for q in range(N_species):  
@@ -1552,7 +1553,7 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                 for l in range(N_wl):
                                 
                     # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
-                    kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+                    kappa_Ray[i,j,k,l] += n_q * Rayleigh_stored[q,l]
                 
         # For each free-free absorption pair
         for q in range(N_ff_pairs): 
@@ -1565,7 +1566,7 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
             for l in range(N_wl):
                     
                 # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
-                kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q,i,l]
+                kappa_gas[i,j,k,l] += n_n_ff * ff_stored[q,i,l]
                     
         # For each source of bound-free absorption (photodissociation)
         for q in range(N_bf_species): 
@@ -1576,7 +1577,7 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
             for l in range(N_wl):
                     
                 # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
-                kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                kappa_gas[i,j,k,l] += n_q * bf_stored[q,l]
             
         # For each molecular / atomic species with active absorption features
         for q in range(N_species_active): 
@@ -1587,7 +1588,7 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
             for l in range(N_wl):
                     
                 # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
-                kappa_clear[i,j,k,l] += n_q * sigma_interp[q,i,l]
+                kappa_gas[i,j,k,l] += n_q * sigma_interp[q,i,l]
     
     # If haze is enabled in this model  
     if (enable_haze == 1):
@@ -1613,7 +1614,7 @@ def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
     if (enable_surface == 1):
 
         # Set extinction to infinity below surface
-        kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+        kappa_gas[(P > P_surf),j,k,:] = 1.0e250
 
     
 def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs, 
@@ -1657,7 +1658,8 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
     N_wl = len(wl_model)    # Number of wavelengths on model grid
     
     # Define extinction coefficient arrays
-    kappa_clear = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_gas = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_Ray = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
 
     # Find the directory where the user downloaded the POSEIDON opacity data
@@ -1804,12 +1806,12 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                               N_species_active, N_cia_pairs, N_ff_pairs, N_bf_species, 
                               sigma_interp, cia_interp, Rayleigh_stored, ff_stored, 
                               bf_stored, enable_haze, enable_deck, enable_surface,
-                              kappa_clear, kappa_cloud, P_surf, disable_continuum)
+                              kappa_gas, kappa_Ray, kappa_cloud, P_surf, disable_continuum)
 
     if (suppress_print == False):
         print("Finished producing extinction coefficients")
             
-    return kappa_clear, kappa_cloud
+    return kappa_gas, kappa_Ray, kappa_cloud
 
 # Elijah New Functions 
     
@@ -1893,7 +1895,8 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
     N_layers = len(P)  # Number of layers
     
     # Define extinction coefficient arrays
-    kappa_clear = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_gas = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_Ray = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     
     # Fine temperature grid (for pre-interpolating opacities)    
@@ -1944,7 +1947,7 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
                     for l in range(N_wl):
                         
                         # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
+                        kappa_gas[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
                         
                 # For each free-free absorption pair
                 for q in range(N_ff_pairs): 
@@ -1957,7 +1960,7 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
                     for l in range(N_wl):
                         
                         # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
+                        kappa_gas[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
                         
                 # For each source of bound-free absorption (photodissociation)
                 for q in range(N_bf_species): 
@@ -1968,7 +1971,7 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
                     for l in range(N_wl):
                         
                         # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                        kappa_gas[i,j,k,l] += n_q * bf_stored[q,l]
                 
                 # For each molecular / atomic species with active absorption features
 
@@ -1989,7 +1992,7 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
                     for l in range(N_wl):
                         
                         # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
+                        kappa_gas[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
                     
                 # For each molecular / atomic species
                 for q in range(N_species):  
@@ -2013,7 +2016,7 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
                     for l in range(N_wl):
                                 
                         # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
-                        kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+                        kappa_Ray[i,j,k,l] += n_q * Rayleigh_stored[q,l]
         
             # If haze is enabled in this model  
             if (enable_haze == 1):
@@ -2039,9 +2042,9 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
             if (enable_surface == 1):
 
                 # Set extinction to infinity below surface
-                kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+                kappa_gas[(P > P_surf),j,k,:] = 1.0e250
             
-    return kappa_clear, kappa_cloud
+    return kappa_gas, kappa_Ray, kappa_cloud
 
 
 @jit(nopython = True)
@@ -2125,7 +2128,8 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
     N_layers = len(P)  # Number of layers
     
     # Define extinction coefficient arrays
-    kappa_clear = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_gas = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+    kappa_Ray = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     
     # Fine temperature grid (for pre-interpolating opacities)    
@@ -2173,7 +2177,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                             
                             # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
+                            kappa_gas[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
                             
                     # For each free-free absorption pair
                     for q in range(N_ff_pairs): 
@@ -2186,7 +2190,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                             
                             # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
+                            kappa_gas[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
                             
                     # For each source of bound-free absorption (photodissociation)
                     for q in range(N_bf_species): 
@@ -2197,7 +2201,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                             
                             # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                            kappa_gas[i,j,k,l] += n_q * bf_stored[q,l]
                     
                     # For each molecular / atomic species with active absorption features
 
@@ -2214,7 +2218,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                             
                             # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
+                            kappa_gas[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
                         
                     # For each molecular / atomic species
                     for q in range(N_species):  
@@ -2229,7 +2233,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                                     
                             # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+                            kappa_Ray[i,j,k,l] += n_q * Rayleigh_stored[q,l]
             
                 # If haze is enabled in this model  
                 if (enable_haze == 1):
@@ -2255,7 +2259,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                 if (enable_surface == 1):
 
                     # Set extinction to infinity below surface
-                    kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+                    kappa_gas[(P > P_surf),j,k,:] = 1.0e250
 
     else:
         # For each terminator sector (terminator plane)
@@ -2289,7 +2293,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                             
                             # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
+                            kappa_gas[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
                             
                     # For each free-free absorption pair
                     for q in range(N_ff_pairs): 
@@ -2302,7 +2306,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                             
                             # Add free-free to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
+                            kappa_gas[i,j,k,l] += n_n_ff * ff_stored[q, idx_T_fine, l]
                             
                     # For each source of bound-free absorption (photodissociation)
                     for q in range(N_bf_species): 
@@ -2313,7 +2317,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                             
                             # Add bound-free to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_q * bf_stored[q,l]
+                            kappa_gas[i,j,k,l] += n_q * bf_stored[q,l]
                     
                     # For each molecular / atomic species with active absorption features
 
@@ -2330,7 +2334,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                             
                             # Add chemical opacity to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
+                            kappa_gas[i,j,k,l] += n_q * sigma_stored[q, idx_P_fine, idx_T_fine, l]
                         
                     # For each molecular / atomic species
                     for q in range(N_species):  
@@ -2344,7 +2348,7 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                         for l in range(N_wl):
                                     
                             # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
-                            kappa_clear[i,j,k,l] += n_q * Rayleigh_stored[q,l]
+                            kappa_Ray[i,j,k,l] += n_q * Rayleigh_stored[q,l]
             
                 # If haze is enabled in this model  
                 if (enable_haze == 1):
@@ -2370,6 +2374,6 @@ def extinction_spectrum_pressure_contribution(chemical_species, active_species, 
                 if (enable_surface == 1):
 
                     # Set extinction to infinity below surface
-                    kappa_clear[(P > P_surf),j,k,:] = 1.0e250
+                    kappa_gas[(P > P_surf),j,k,:] = 1.0e250
             
-    return kappa_clear, kappa_cloud
+    return kappa_gas, kappa_Ray, kappa_cloud

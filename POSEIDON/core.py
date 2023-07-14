@@ -1127,15 +1127,15 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         Rayleigh_stored = opac['Rayleigh_stored']
 
         # Calculate extinction coefficients in line-by-line mode        
-        kappa_clear, kappa_cloud = extinction_LBL(chemical_species, active_species, 
-                                                  CIA_pairs, ff_pairs, bf_species, 
-                                                  n, T, P, wl, X, X_active, X_CIA, 
-                                                  X_ff, X_bf, a, gamma, P_cloud,
-                                                  kappa_cloud_0, Rayleigh_stored, 
-                                                  enable_haze, enable_deck,
-                                                  enable_surface, N_sectors, 
-                                                  N_zones, P_surf, opacity_database, 
-                                                  disable_continuum, suppress_print)
+        kappa_gas, kappa_Ray, kappa_cloud = extinction_LBL(chemical_species, active_species, 
+                                                           CIA_pairs, ff_pairs, bf_species, 
+                                                           n, T, P, wl, X, X_active, X_CIA, 
+                                                           X_ff, X_bf, a, gamma, P_cloud,
+                                                           kappa_cloud_0, Rayleigh_stored, 
+                                                           enable_haze, enable_deck,
+                                                           enable_surface, N_sectors, 
+                                                           N_zones, P_surf, opacity_database, 
+                                                           disable_continuum, suppress_print)
         
     # If using opacity sampling, we can use pre-interpolated cross sections
     elif (opac['opacity_treatment'] == 'opacity_sampling'):
@@ -1164,15 +1164,12 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 if (model['cloud_type'] == 'fuzzy_deck'):
 
                     if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
-                        n_aerosol_array, \
-                        sigma_ext_cld_array, \
-                        g_cld_array, \
-                        w_cld_array, \
-                         = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                         r_m, r_i_real, r_i_complex,
-                                                         P_cloud = P_cloud,
-                                                         log_n_max = log_n_max, 
-                                                         fractional_scale_height = fractional_scale_height,)
+                        n_aerosol_array, sigma_ext_cld_array, \
+                        g_cld_array, w_cld_array = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                                  r_m, r_i_real, r_i_complex,
+                                                                  P_cloud = P_cloud,
+                                                                  log_n_max = log_n_max, 
+                                                                  fractional_scale_height = fractional_scale_height)
 
                     else : 
                         n_aerosol_array, \
@@ -1182,7 +1179,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                     aerosol_grid = aerosol_grid,
                                                     P_cloud = P_cloud,
                                                     log_n_max = log_n_max, 
-                                                    fractional_scale_height = fractional_scale_height,)
+                                                    fractional_scale_height = fractional_scale_height)
                         
                           
                 # If its a uniform X run
@@ -1218,17 +1215,17 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 enable_Mie = False
             
             # Calculate extinction coefficients in standard mode
-            kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
-                                                  CIA_pairs, ff_pairs, bf_species,
-                                                  n, T, P, wl, X, X_active, X_CIA, 
-                                                  X_ff, X_bf, a, gamma, P_cloud, 
-                                                  kappa_cloud_0, sigma_stored, 
-                                                  CIA_stored, Rayleigh_stored, 
-                                                  ff_stored, bf_stored, enable_haze, 
-                                                  enable_deck, enable_surface,
-                                                  N_sectors, N_zones, T_fine, 
-                                                  log_P_fine, P_surf,
-                                                  enable_Mie, n_aerosol_array, sigma_Mie_array)
+            kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
+                                                           CIA_pairs, ff_pairs, bf_species,
+                                                           n, T, P, wl, X, X_active, X_CIA, 
+                                                           X_ff, X_bf, a, gamma, P_cloud, 
+                                                           kappa_cloud_0, sigma_stored, 
+                                                           CIA_stored, Rayleigh_stored, 
+                                                           ff_stored, bf_stored, enable_haze, 
+                                                           enable_deck, enable_surface,
+                                                           N_sectors, N_zones, T_fine, 
+                                                           log_P_fine, P_surf, enable_Mie, 
+                                                           n_aerosol_array, sigma_Mie_array)
             
 
         # Running POSEIDON on the GPU
@@ -1238,7 +1235,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             N_layers = len(P)  # Number of layers
 
             # Define extinction coefficient arrays explicitly on GPU
-            kappa_clear = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+            kappa_gas = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+            kappa_Ray = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
             kappa_cloud = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
 
             # Find index of deep pressure below which atmosphere is opaque
@@ -1254,16 +1252,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             N_bf_species = len(bf_species)           # Number of bound-free species included
         
             # Calculate extinction coefficients in standard mode
-            extinction_GPU[block, thread](kappa_clear, kappa_cloud, i_bot, N_species, 
-                                          N_species_active, N_cia_pairs, N_ff_pairs, 
-                                          N_bf_species, n, T, P, wl, X, X_active, 
-                                          X_CIA, X_ff, X_bf, a, gamma, P_cloud, 
-                                          kappa_cloud_0, sigma_stored, 
-                                          CIA_stored, Rayleigh_stored, 
-                                          ff_stored, bf_stored, enable_haze, 
-                                          enable_deck, enable_surface,
-                                          N_sectors, N_zones, T_fine, 
-                                          log_P_fine, P_surf, P_deep)
+            extinction_GPU[block, thread](kappa_gas, kappa_Ray, kappa_cloud, i_bot, 
+                                          N_species, N_species_active, N_cia_pairs, 
+                                          N_ff_pairs, N_bf_species, n, T, P, wl, 
+                                          X, X_active, X_CIA, X_ff, X_bf, a, 
+                                          gamma, P_cloud, kappa_cloud_0, 
+                                          sigma_stored, CIA_stored, 
+                                          Rayleigh_stored, ff_stored, bf_stored, 
+                                          enable_haze, enable_deck,
+                                          enable_surface, N_sectors, N_zones, 
+                                          T_fine, log_P_fine, P_surf, P_deep)
 
     # Generate transmission spectrum        
     if (spectrum_type == 'transmission'):
@@ -1272,9 +1270,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             raise Exception("GPU transmission spectra not yet supported.")
 
         # Call the core TRIDENT routine to compute the transmission spectrum
-        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
-                           enable_deck, enable_haze, b_p, y_p[0], R_s, f_cloud,
-                           phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray), 
+                           kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
+                           R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                           theta_edge)
 
     # Generate time-averaged transmission spectrum 
     elif (spectrum_type == 'transmission_time_average'):
@@ -1290,9 +1289,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         for i in range(0, (N_y//2 + 1)):   
 
             # Call TRIDENT at the given time step
-            spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
-                               enable_deck, enable_haze, b_p, y_p[i], R_s, f_cloud,
-                               phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+            spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray),
+                               kappa_cloud, enable_deck, enable_haze, b_p, y_p[i], 
+                               R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                               theta_edge)
 
             # At mid-transit, only have one spectrum to store
             if (i == N_y//2):
@@ -1320,24 +1320,25 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         else:
             zone_idx = 0
 
-        # Use atmospheric properties from dayside/nightside
-        #kappa = kappa_clear[:,0,zone_idx,:]  # Only consider one region for 1D models
-        kappa_tot = kappa_clear[:,0,zone_idx,:] + kappa_cloud[:,0,zone_idx,:] # Only consider one region for 1D models
-        dz = dr[:,0,zone_idx]   # Only consider one region for 1D/2D models
-        T = T[:,0,zone_idx]     # Only consider one region for 1D/2D models
+        # Use atmospheric properties from dayside/nightside (only consider one region for 1D emission models)
+        kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                     kappa_cloud[:,0,zone_idx,:])
+        dz = dr[:,0,zone_idx]   # Only consider one region for 1D emission models
+        T = T[:,0,zone_idx]     # Only consider one region for 1D emission models
 
         # Compute planet flux (on CPU or GPU)
         if (device == 'cpu'):
-            F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_rad_transfer(T, dz, wl, kappa_tot, Gauss_quad)
         elif (device == 'gpu'):
-            F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa_tot, Gauss_quad)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
             
             # Running POSEIDON on the CPU
             if (device == 'cpu'):
-                R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]), wl, photosphere_tau = 2/3)
+                R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]),
+                                                      wl, photosphere_tau = 2/3)
             
             # Running POSEIDON on the GPU
             elif (device == 'gpu'):
