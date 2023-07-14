@@ -41,7 +41,7 @@ from .transmission import TRIDENT
 from .emission import emission_rad_transfer, determine_photosphere_radii, \
                       emission_rad_transfer_GPU, determine_photosphere_radii_GPU
 
-from .clouds_aerosols import Mie_cloud, load_aerosol_grid
+from .clouds_aerosols_emission import Mie_cloud, load_aerosol_grid
 from .clouds_LX_MIE_emission import Mie_cloud_free
 
 from .utility import mock_missing
@@ -1172,8 +1172,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                                   fractional_scale_height = fractional_scale_height)
 
                     else : 
-                        n_aerosol_array, \
-                        sigma_Mie_array = Mie_cloud(P, wl, r, H, n,
+                        n_aerosol_array, sigma_ext_cld_array, \
+                        g_cld_array, w_cld_array = Mie_cloud(P, wl, r, H, n,
                                                     r_m, aerosol_species,
                                                     cloud_type = model['cloud_type'],
                                                     aerosol_grid = aerosol_grid,
@@ -1186,14 +1186,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 elif( model['cloud_type'] == 'uniform_X'):
 
                     if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
-                        n_aerosol_array, \
-                        sigma_Mie_array = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+
+                        n_aerosol_array, sigma_ext_cld_array, \
+                        g_cld_array, w_cld_array = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
                                                          r_m, r_i_real, r_i_complex,
                                                          log_X_Mie = log_X_Mie)
 
                     else : 
-                        n_aerosol_array, \
-                        sigma_Mie_array = Mie_cloud(P, wl, r, H, n,
+
+                        n_aerosol_array, sigma_ext_cld_array, \
+                        g_cld_array, w_cld_array = Mie_cloud(P, wl, r, H, n,
                                                     r_m, aerosol_species,
                                                     cloud_type = model['cloud_type'],
                                                     aerosol_grid = aerosol_grid,
@@ -1204,13 +1206,13 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             else:
                 # Generate empty arrays so numba doesn't break
                 n_aerosol_array = []
-                sigma_Mie_array = []
+                sigma_ext_cld_array = []
                     
                 n_aerosol_array.append(np.zeros_like(r))
-                sigma_Mie_array.append(np.zeros_like(wl))
+                sigma_ext_cld_array.append(np.zeros_like(wl))
 
                 n_aerosol_array = np.array(n_aerosol_array)
-                sigma_Mie_array = np.array(sigma_Mie_array)
+                sigma_ext_cld_array = np.array(sigma_ext_cld_array)
 
                 enable_Mie = False
             
@@ -1225,7 +1227,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                            enable_deck, enable_surface,
                                                            N_sectors, N_zones, T_fine, 
                                                            log_P_fine, P_surf, enable_Mie, 
-                                                           n_aerosol_array, sigma_Mie_array)
+                                                           n_aerosol_array, sigma_ext_cld_array)
             
 
         # Running POSEIDON on the GPU
