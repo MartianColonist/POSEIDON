@@ -1394,8 +1394,17 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # Set dummy parameter values, not used when cloud-free
         kappa_cloud_0 = 1.0e250
         P_cloud = 100.0
+        P_slab_bottom = 100.0
         a, gamma = 1.0, -4.0  
         f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
 
     # Patchy cloud model from MacDonald & Madhusudhan (2017)
     if (cloud_model == 'MacMad17'):
@@ -1414,6 +1423,8 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
         else:
             P_cloud = 100.0   # Set to 100 bar for models without a cloud deck
+
+        P_slab_bottom = 100.0  # Not used for this model
             
         # If cloud model has patchy gaps
         if (cloud_dim != 1):
@@ -1426,6 +1437,14 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                 f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0  # 1D uniform cloud
             else:
                 f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0   # Dummy values, not used when cloud-free
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
          
     # 3D patchy cloud model from MacDonald & Lewis (2022)
     elif (cloud_model == 'Iceberg'):
@@ -1466,6 +1485,16 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             P_cloud = 100.0   
             f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
 
+        P_slab_bottom = 100.0  # Not used for this model
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+
     # Mie clouds 
     elif (cloud_model == 'Mie'):
 
@@ -1475,7 +1504,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # No haze in this model
         a, gamma = 1.0, -4.0   # Dummy values, haze extinction disabled here
 
-        # Cloud is opague up to P_cloud, and then follows an exponential distribution for 
+        # Cloud is opaque up to P_cloud, and then follows an exponential distribution for 
         # number density of aerosols. This is set by n_cloud 
         kappa_cloud_0 = 1.0e250
         
@@ -1501,7 +1530,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
         # Set the Mie parameters 
         
-        # If its a fuzzy_deck model
+        # If the cloud is a fuzzy_deck model
         if ('log_P_cloud' in cloud_param_names) and ('Delta_log_P_cloud' not in cloud_param_names):
             
             try:
@@ -1524,21 +1553,21 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                 r_i_complex = 0
 
             log_X_Mie = 100
-            P_slab_bottom = -100 
-
-        # If its a slab model
+            P_slab_bottom = 100.0 # Not used for this model
+ 
+        # If the cloud is a slab model
         if ('log_P_cloud' in cloud_param_names) and ('Delta_log_P_cloud' in cloud_param_names):
             
             try:
                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
                 P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
-                P_slab_bottom = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]] + clouds_in[np.where(cloud_param_names == 'Delta_log_P_cloud')[0][0]])
+                P_slab_bottom = np.power(10.0, (clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]] + clouds_in[np.where(cloud_param_names == 'Delta_log_P_cloud')[0][0]]))
             except:
                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
                 P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
-                P_slab_bottom = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]] + clouds_in[np.where(cloud_param_names == 'Delta_log_P_cloud')[0][0]])
+                P_slab_bottom = np.power(10.0, (clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]] + clouds_in[np.where(cloud_param_names == 'Delta_log_P_cloud')[0][0]]))
 
              # See if its a free or file_read aerosol retrieval or not 
             if ('r_i_real' in cloud_param_names):
@@ -1551,7 +1580,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             log_n_max = 0
             fractional_scale_height = 0
         
-        # See if its a uniform_haze model 
+        # If the aerosol is a uniform_haze model 
         else:
 
              # See if its a free for file_read aerosol retrieval or not 
@@ -1576,20 +1605,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
             log_n_max = 0
             fractional_scale_height = 0
-            P_cloud = 100
-            P_slab_bottom = -100
+            P_cloud = 100.0
+            P_slab_bottom = 100.0
     
-
-    if cloud_model != 'Mie':
-        r_m = []
-        log_n_max = 0
-        fractional_scale_height = 0
-        r_i_real = 0
-        r_i_complex = 0
-        log_X_Mie = []
-        P_cloud = 100
-
-    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom
+    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
+           fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

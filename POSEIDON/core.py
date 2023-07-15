@@ -1104,6 +1104,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     else:
         enable_deck = 0
 
+    if ('Mie' in model['cloud_model']):
+        enable_Mie = 1
+    else:
+        enable_Mie = 0
+
     # Check if a surface is enabled
     if (P_surf != None):
         enable_surface = 1
@@ -1222,23 +1227,21 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      cloud_type = model['cloud_type'],
                                                      aerosol_grid = aerosol_grid,
                                                      log_X_Mie = log_X_Mie)
-  
-                enable_Mie = True
             
             else:
 
                 # Generate empty arrays so the dark god numba is satisfied
-                n_aerosol = np.zeros_like(r).astype(np.float64)
-                sigma_ext_cloud = np.zeros_like(wl).astype(np.float64)
-
-            #    n_aerosol = []
-            #    sigma_ext_cloud = []
+                n_aerosol = []
+                sigma_ext_cloud = []
                     
-           #     n_aerosol.append(np.zeros_like(r))
-           #     sigma_ext_cloud.append(np.zeros_like(wl))
+                n_aerosol.append(np.zeros_like(r))
+                sigma_ext_cloud.append(np.zeros_like(wl))
 
-            #    n_aerosol = np.array(n_aerosol)
-            #    sigma_ext_cloud = np.array(sigma_ext_cloud)
+                n_aerosol = np.array(n_aerosol)
+                sigma_ext_cloud = np.array(sigma_ext_cloud)
+
+                w_cloud = np.zeros_like(wl)
+                g_cloud = np.zeros_like(wl)
 
             # Calculate extinction coefficients in standard mode
             kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
@@ -1860,9 +1863,9 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
 
         # Compute planet flux (on CPU or GPU)
         if (device == 'cpu'):
-            F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_single_stream(T, dz, wl, kappa, Gauss_quad)
         elif (device == 'gpu'):
-            F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa, Gauss_quad)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -2262,9 +2265,9 @@ def compute_spectrum_p(planet, star, model, atmosphere, opac, wl,
 
         # Compute planet flux (on CPU or GPU)
         if (device == 'cpu'):
-            F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_single_stream(T, dz, wl, kappa, Gauss_quad)
         elif (device == 'gpu'):
-            F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa, Gauss_quad)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
