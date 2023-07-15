@@ -1358,6 +1358,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
                      kappa_cloud[:,0,zone_idx,:])
 
+        # Store differential extinction optical depth across each layer
+        dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
+
         # Without scattering, compute single steam radiative transfer
         if (scattering == False):
 
@@ -1370,14 +1373,14 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         elif (scattering == True):
 
             # Calculate combined single scattering albedo
-            w_tot = (0.99999 * kappa_Ray + (kappa_cloud * w_cloud))/kappa_tot
+            w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
 
             # Calculate combined scattering asymmetry parameter
-            g_tot = ((w_cloud * kappa_cloud) / ((w_cloud * kappa_cloud) + kappa_Ray)) * g_cloud
+            g_tot = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
 
             # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
-            F_p, dtau = emission_Toon(np.flip(P), np.flip(T), np.flip(dz), wl, 
-                                      np.flip(kappa_tot, axis=0), 
+            F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
+                                      np.flip(dtau_tot, axis=0), 
                                       np.flip(w_tot, axis=0), 
                                       np.flip(g_tot, axis=0))
             

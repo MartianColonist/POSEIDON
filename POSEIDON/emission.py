@@ -480,10 +480,10 @@ def tri_diag_solve(l, a, b, c, d):
 
 
 @jit(nopython=True, cache=True)
-def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot, 
+def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot, 
                   hard_surface = 0, tridiagonal = 0, 
                   Gauss_quad = 5, numt = 1):
-    """
+    '''
     This function uses the source function method, which is outlined here : 
     https://agupubs.onlinelibrary.wiley.com/doi/pdf/10.1029/JD094iD13p16287
     
@@ -537,7 +537,7 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
     numpy.ndarray
         Thermal flux in CGS units (erg/cm3/s) in a matrix that is 
         numg x numt x nwno
-    """
+    '''
 
     N_wl = len(wl)
     N_layer = len(P)
@@ -582,9 +582,6 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
     # Store hemispheric mean prefactor
     mu1 = 0.5  # From Table 1 Toon
 
-    # Store differential extinction optical depth across each layer
-    dtau = kappa_tot * dz
-
   #  dtau = np.flip(dtau, axis=0)
   #  T_level = np.flip(T_level)
   #  P_level = np.flip(P_level)
@@ -594,7 +591,7 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
 
     # Calculate functions of black bodies appearing in Toon+1989 equations 
     b0 = all_b[0:-1,:]
-    b1 = (all_b[1:,:] - b0) / dtau # Eqn 26, Toon+1989
+    b1 = (all_b[1:,:] - b0) / dtau_tot # Eqn 26, Toon+1989
 
     # Hemispheric mean parameters from Table 1 of Toon+1989 
     g1 = 2.0 - (w_tot * (1 + g_tot))
@@ -616,13 +613,14 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
     #in 3d cases where we no long assume azimuthal symmetry, we divide out 
     #by 2pi when we multiply out the weights as seen in disco.compress_thermal 
 
-    c_plus_down = 2*np.pi*mu1*(b0 + b1 * dtau + b1 * g1_plus_g2) 
-    c_minus_down = 2*np.pi*mu1*(b0 + b1 * dtau - b1 * g1_plus_g2)
+    c_plus_down = 2*np.pi*mu1*(b0 + b1 * dtau_tot + b1 * g1_plus_g2) 
+    c_minus_down = 2*np.pi*mu1*(b0 + b1 * dtau_tot - b1 * g1_plus_g2)
 
     #calculate exponential terms needed for the tridiagonal rotated layered method
-    exptrm = lamda*dtau
+    exptrm = lamda*dtau_tot
+
     #save from overflow 
-    exptrm = slice_gt (exptrm, 35.0) 
+    exptrm = slice_gt(exptrm, 35.0) 
 
     exptrm_positive = np.exp(exptrm) 
     exptrm_minus = 1.0/exptrm_positive
@@ -633,7 +631,7 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
     #layer we create this "fake" boundary condition
     #we imagine that the atmosphere continues up at an isothermal T and that 
     #there is optical depth from above the top to infinity 
-    tau_top = dtau[0,:]*P_level[0]/(P_level[1]-P_level[0]) #tried this.. no luck*exp(-1)# #tautop=dtau[0]*np.exp(-1)
+    tau_top = dtau_tot[0,:]*P_level[0]/(P_level[1]-P_level[0]) #tried this.. no luck*exp(-1)# #tautop=dtau[0]*np.exp(-1)
     b_top = (1.0 - np.exp(-tau_top / mu1 )) * all_b[0,:] * np.pi #  Btop=(1.-np.exp(-tautop/ubari))*B[0]
     #print('hard_surface=',hard_surface)
     if hard_surface:
@@ -645,7 +643,7 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
     if tridiagonal==0:
         A, B, C, D = setup_tri_diag(N_layer, N_wl,  c_plus_up, c_minus_up, 
                                     c_plus_down, c_minus_down, b_top, b_surface, 
-                                    surf_reflect, gamma, dtau, exptrm_positive,  exptrm_minus) 
+                                    surf_reflect, gamma, dtau_tot, exptrm_positive,  exptrm_minus) 
     #else:
     #   A_, B_, C_, D_, E_, F_ = setup_pent_diag(nlayer,nwno,  c_plus_up, c_minus_up, 
     #                       c_plus_down, c_minus_down, b_top, b_surface, surf_reflect,
@@ -721,8 +719,8 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
 
             int_minus[0,:] =  (1 - np.exp(-tau_top / iubar)) * all_b[0,:] *2*np.pi
             
-            exptrm_angle = np.exp( - dtau / iubar)
-            exptrm_angle_mdpt = np.exp( -0.5 * dtau / iubar) 
+            exptrm_angle = np.exp( - dtau_tot / iubar)
+            exptrm_angle_mdpt = np.exp( -0.5 * dtau_tot / iubar) 
 
             for itop in range(N_layer):
 
@@ -732,13 +730,13 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
                                      (J[itop,:]/(lamda[itop,:]*iubar+1.0))*(exptrm_positive[itop,:]-exptrm_angle[itop,:])+
                                      (K[itop,:]/(lamda[itop,:]*iubar-1.0))*(exptrm_angle[itop,:]-exptrm_minus[itop,:])+
                                      sigma1[itop,:]*(1.-exptrm_angle[itop,:])+
-                                     sigma2[itop,:]*(iubar*exptrm_angle[itop,:]+dtau[itop,:]-iubar) )
+                                     sigma2[itop,:]*(iubar*exptrm_angle[itop,:]+dtau_tot[itop,:]-iubar) )
 
                 int_minus_mdpt[itop,:]=(int_minus[itop,:]*exptrm_angle_mdpt[itop,:]+
                                         (J[itop,:]/(lamda[itop,:]*iubar+1.0))*(exptrm_positive_mdpt[itop,:]-exptrm_angle_mdpt[itop,:])+
                                         (K[itop,:]/(-lamda[itop,:]*iubar+1.0))*(exptrm_minus_mdpt[itop,:]-exptrm_angle_mdpt[itop,:])+
                                         sigma1[itop,:]*(1.-exptrm_angle_mdpt[itop,:])+
-                                        sigma2[itop,:]*(iubar*exptrm_angle_mdpt[itop,:]+0.5*dtau[itop,:]-iubar))
+                                        sigma2[itop,:]*(iubar*exptrm_angle_mdpt[itop,:]+0.5*dtau_tot[itop,:]-iubar))
 
                 ibot=N_layer-1-itop
                 #EQN 55,toon
@@ -746,13 +744,13 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
                                   (G[ibot,:]/(lamda[ibot,:]*iubar-1.0))*(exptrm_positive[ibot,:]*exptrm_angle[ibot,:]-1.0)+
                                   (H[ibot,:]/(lamda[ibot,:]*iubar+1.0))*(1.0-exptrm_minus[ibot,:] * exptrm_angle[ibot,:])+
                                   alpha1[ibot,:]*(1.-exptrm_angle[ibot,:])+
-                                  alpha2[ibot,:]*(iubar-(dtau[ibot,:]+iubar)*exptrm_angle[ibot,:]) )
+                                  alpha2[ibot,:]*(iubar-(dtau_tot[ibot,:]+iubar)*exptrm_angle[ibot,:]) )
 
                 int_plus_mdpt[ibot,:]=(int_plus[ibot+1,:]*exptrm_angle_mdpt[ibot,:]+
                                        (G[ibot,:]/(lamda[ibot,:]*iubar-1.0))*(exptrm_positive[ibot,:]*exptrm_angle_mdpt[ibot,:]-exptrm_positive_mdpt[ibot,:])-
                                        (H[ibot,:]/(lamda[ibot,:]*iubar+1.0))*(exptrm_minus[ibot,:]*exptrm_angle_mdpt[ibot,:]-exptrm_minus_mdpt[ibot,:])+
                                        alpha1[ibot,:]*(1.-exptrm_angle_mdpt[ibot,:])+
-                                       alpha2[ibot,:]*(iubar+0.5*dtau[ibot,:]-(dtau[ibot,:]+iubar)*exptrm_angle_mdpt[ibot,:])  )
+                                       alpha2[ibot,:]*(iubar+0.5*dtau_tot[ibot,:]-(dtau_tot[ibot,:]+iubar)*exptrm_angle_mdpt[ibot,:])  )
 
             int_at_top[ng,nt,:] = int_plus_mdpt[0,:] #N_level by N_wl 
             #intensity[ng,nt,:,:] = int_plus
@@ -765,4 +763,4 @@ def emission_Toon(P, T, dz, kappa_tot, wl, w_tot, g_tot,
 
         F += (int_at_top[ng,0,:] * gweight[ng]) 
 
-    return F, dtau
+    return F, dtau_tot
