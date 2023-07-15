@@ -38,8 +38,9 @@ from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
 from .instrument import init_instrument
 from .transmission import TRIDENT
-from .emission import emission_rad_transfer, determine_photosphere_radii, \
-                      emission_rad_transfer_GPU, determine_photosphere_radii_GPU
+from .emission import emission_single_stream, determine_photosphere_radii, \
+                      emission_single_stream_GPU, determine_photosphere_radii_GPU, \
+                      emission_Toon
 
 from .clouds_aerosols_emission import Mie_cloud, load_aerosol_grid
 from .clouds_LX_MIE_emission import Mie_cloud_free
@@ -1353,23 +1354,31 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # Compute total extinction (all absorption + scattering sources)
         kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
                      kappa_cloud[:,0,zone_idx,:])
-        
-        # Calculate combined single scattering albedo
-        w_tot = (0.99999 * kappa_Ray + (kappa_cloud * w_cloud))/kappa_tot
 
         # Without scattering, compute single steam radiative transfer
         if (scattering == False):
 
             # Compute planet flux (on CPU or GPU)
             if (device == 'cpu'):
-                F_p, dtau = emission_rad_transfer(T, dz, wl, kappa_tot, Gauss_quad)
+                F_p, dtau = emission_single_stream(T, dz, wl, kappa_tot, Gauss_quad)
             elif (device == 'gpu'):
-                F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa_tot, Gauss_quad)
+                F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
 
         elif (scattering == True):
 
-            # Do something here
-            test_sum = 1+1
+            # Calculate combined single scattering albedo
+            w_tot = (0.99999 * kappa_Ray + (kappa_cloud * w_cloud))/kappa_tot
+
+            # Calculate combined scattering asymmetry parameter
+            g_tot = ((w_cloud * kappa_cloud) / ((w_cloud * kappa_cloud) + kappa_Ray)) * g_cloud
+
+            # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
+            F_p, dtau = emission_Toon(np.flip(P), np.flip(T), np.flip(dz), wl, 
+                                      np.flip(kappa_tot, axis=0), 
+                                      np.flip(w_tot, axis=0), 
+                                      np.flip(g_tot, axis=0))
+            
+            dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
         else:
             raise Exception("Error: Invalid scattering option")
