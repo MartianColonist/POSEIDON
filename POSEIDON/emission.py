@@ -571,7 +571,6 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
         gangle = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
         gweight = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])      
 
-
     # Calculate whatever ubar1 represents from the Gaussian angles
     cos_theta = 1.0
     longitude = np.arcsin((gangle-(cos_theta-1.0)/(cos_theta+1.0))/(2.0/(cos_theta+1)))
@@ -726,17 +725,17 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
 
                 #disbanning this for now because we dont need it in the thermal emission code
                 #EQN 56,toon
-                int_minus[itop+1,:]=(int_minus[itop,:]*exptrm_angle[itop,:]+
-                                     (J[itop,:]/(lamda[itop,:]*iubar+1.0))*(exptrm_positive[itop,:]-exptrm_angle[itop,:])+
-                                     (K[itop,:]/(lamda[itop,:]*iubar-1.0))*(exptrm_angle[itop,:]-exptrm_minus[itop,:])+
-                                     sigma1[itop,:]*(1.-exptrm_angle[itop,:])+
-                                     sigma2[itop,:]*(iubar*exptrm_angle[itop,:]+dtau_tot[itop,:]-iubar) )
+            #    int_minus[itop+1,:]=(int_minus[itop,:]*exptrm_angle[itop,:]+
+            #                         (J[itop,:]/(lamda[itop,:]*iubar+1.0))*(exptrm_positive[itop,:]-exptrm_angle[itop,:])+
+            #                         (K[itop,:]/(lamda[itop,:]*iubar-1.0))*(exptrm_angle[itop,:]-exptrm_minus[itop,:])+
+            #                         sigma1[itop,:]*(1.-exptrm_angle[itop,:])+
+            #                         sigma2[itop,:]*(iubar*exptrm_angle[itop,:]+dtau_tot[itop,:]-iubar) )
 
-                int_minus_mdpt[itop,:]=(int_minus[itop,:]*exptrm_angle_mdpt[itop,:]+
-                                        (J[itop,:]/(lamda[itop,:]*iubar+1.0))*(exptrm_positive_mdpt[itop,:]-exptrm_angle_mdpt[itop,:])+
-                                        (K[itop,:]/(-lamda[itop,:]*iubar+1.0))*(exptrm_minus_mdpt[itop,:]-exptrm_angle_mdpt[itop,:])+
-                                        sigma1[itop,:]*(1.-exptrm_angle_mdpt[itop,:])+
-                                        sigma2[itop,:]*(iubar*exptrm_angle_mdpt[itop,:]+0.5*dtau_tot[itop,:]-iubar))
+            #    int_minus_mdpt[itop,:]=(int_minus[itop,:]*exptrm_angle_mdpt[itop,:]+
+            #                            (J[itop,:]/(lamda[itop,:]*iubar+1.0))*(exptrm_positive_mdpt[itop,:]-exptrm_angle_mdpt[itop,:])+
+            #                            (K[itop,:]/(-lamda[itop,:]*iubar+1.0))*(exptrm_minus_mdpt[itop,:]-exptrm_angle_mdpt[itop,:])+
+            #                            sigma1[itop,:]*(1.-exptrm_angle_mdpt[itop,:])+
+            #                            sigma2[itop,:]*(iubar*exptrm_angle_mdpt[itop,:]+0.5*dtau_tot[itop,:]-iubar))
 
                 ibot=N_layer-1-itop
                 #EQN 55,toon
