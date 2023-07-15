@@ -11,13 +11,11 @@ Met_s = 0.13  # Stellar metallicity [log10(Fe/H_star / Fe/H_solar)]
 log_g_s = 4.24  # Stellar log surface gravity (log10(cm/s^2) by convention)
 
 # Create the stellar object
-star = create_star(
-    R_s, T_s, log_g_s, Met_s, stellar_spectrum=True, stellar_grid="phoenix"
-)
+star = create_star(R_s, T_s, log_g_s, Met_s, stellar_grid="phoenix")
 
 F_s = star["F_star"]
 wl_s = star["wl_star"]
-R_s = star["stellar_radius"]
+R_s = star["R_s"]
 
 # ***** Define planet properties *****#
 
@@ -47,12 +45,13 @@ from POSEIDON.utility import read_high_res_data
 model_name = "High-res retrieval"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["Mg", "Fe", "Ti"]
-# param_species = ['Fe']
+# param_species = ["Mg", "Fe", "Ti"]
+param_species = ["Fe"]
 
 high_res = "sysrem"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
 high_res_params = ["a", "b", "K_p", "V_sys", "W_conv"]
+# high_res_params = ["a", "K_p", "V_sys", "W_conv"]
 
 # Create the model object
 # model = define_model(model_name, bulk_species, param_species,
@@ -64,9 +63,7 @@ model = define_model(
     bulk_species,
     param_species,
     PT_profile="isotherm",
-    high_res=high_res,
     high_res_params=high_res_params,
-    R_p_ref_enabled=False,
 )
 
 # Check the free parameters defining this model
@@ -82,25 +79,8 @@ model["R_instrument"] = 80000
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
-data_path = "./reference_data/observations/WASP-121b"
-
-
-wl_grid, data_raw = pickle.load(open(data_path + "/data_injection.pic", "rb"))
-Phi = pickle.load(open(data_path + "/ph.pic", "rb"))  # Time-resolved phases
-V_bary = pickle.load(
-    open(data_path + "/rvel.pic", "rb")
-)  # Time-resolved Earth-star velocity (V_bary+V_sys) constructed in make_data_cube.py; then V_sys = V_sys_literature + d_V_sys
-
-data_raw[data_raw < 0] = 0
-Ndet, Nphi, Npix = data_raw.shape
-
-data = {}
-data["data_raw"] = data_raw
-data["wl_grid"] = wl_grid
-data["Phi"] = Phi
-data["V_bary"] = V_bary
-# uncertainties = fit_uncertainties(data_raw, NPC=5)
-uncertainties = pickle.load(open(data_path + "/uncertainties_injection.pic", "rb"))
+data_path = "./data/WASP-121b/"
+data = read_high_res_data(data_path)
 # %%
 from POSEIDON.core import set_priors
 
@@ -143,9 +123,9 @@ prior_ranges["a2"] = [0.02, 1]
 prior_ranges["log_P1"] = [-5.5, 2.5]
 prior_ranges["log_P2"] = [-5.5, 2.5]
 prior_ranges["log_P3"] = [-2, 2]
-prior_ranges["K_p"] = [-400, 0]
-prior_ranges["V_sys"] = [-200, 50]
-prior_ranges["a"] = [0.1, 10]
+prior_ranges["K_p"] = [150, 250]
+prior_ranges["V_sys"] = [-25, 25]
+prior_ranges["a"] = [0.01, 100]
 prior_ranges["b"] = [0.1, 10]
 prior_ranges["dPhi"] = [-0.01, 0.01]
 prior_ranges["W_conv"] = [0.1, 50]
@@ -169,8 +149,8 @@ T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
 # Define fine pressure grid (log10(P/bar))
-log_P_fine_min = -6.0  # 1 ubar is the lowest pressure in the opacity database
-log_P_fine_max = 2.5  # 100 bar is the highest pressure in the opacity database
+log_P_fine_min = -9.0  # 1 ubar is the lowest pressure in the opacity database
+log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
 log_P_fine_step = 0.2  # 0.2 dex steps are a good tradeoff between accuracy and RAM
 
 log_P_fine = np.arange(
@@ -186,7 +166,7 @@ from POSEIDON.retrieval import run_retrieval
 # ***** Specify fixed atmospheric settings for retrieval *****#
 
 # Atmospheric pressure grid
-P_min = 1e-12  # 0.1 ubar
+P_min = 1e-9  # 0.1 ubar
 P_max = 100  # 100 bar
 N_layers = 100  # 100 layers
 
@@ -194,13 +174,28 @@ N_layers = 100  # 100 layers
 P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
 # Specify the reference pressure and radius
-P_ref = 1e-5  # Reference pressure (bar)
+P_ref = 1e-2  # Reference pressure (bar)
 
 # ***** Run atmospheric retrieval *****#
 
-# run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R,
-#                 spectrum_type = 'transmission', sampling_algorithm = 'MultiNest',
-#                 N_live = 400, verbose = True, N_output_samples = 1000, resume = False, ev_tol=0.05)
+run_retrieval(
+    planet,
+    star,
+    model,
+    opac,
+    data,
+    priors,
+    wl,
+    P,
+    P_ref,
+    R=R,
+    spectrum_type="transmission",
+    sampling_algorithm="MultiNest",
+    N_live=800,
+    verbose=True,
+    N_output_samples=1000,
+    resume=False,
+)
 
 
 # %% [markdown]
@@ -273,6 +268,4 @@ plot_chem_retrieved(
 )
 # ***** Make corner plot *****#
 
-fig_corner = generate_cornerplot(
-    planet, model, true_vals=[3000, None, -3, None, 4.5, None, -200, -10, 0]
-)
+fig_corner = generate_cornerplot(planet, model)

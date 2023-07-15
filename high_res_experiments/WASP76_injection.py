@@ -42,11 +42,6 @@ method = "sysrem"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
 high_res_params = ["a", "b", "K_p", "V_sys", "W_conv"]
 
-# Create the model object
-# model = define_model(model_name, bulk_species, param_species,
-#                     PT_profile = 'Madhu', high_res = high_res,
-#                     high_res_params = high_res_params, R_p_ref_enabled=False)
-
 model = define_model(
     model_name,
     bulk_species,

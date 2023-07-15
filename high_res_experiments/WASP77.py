@@ -70,13 +70,15 @@ model["R_instrument"] = 66000  # Resolution of instrument
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 # Create the stellar object
-star = create_star(R_s, T_s, log_g_s, Met_s, stellar_grid="phoenix")
+star = create_star(R_s, T_s, log_g_s, Met_s, wl=wl, stellar_grid="phoenix")
 F_s = star["F_star"]
 wl_s = star["wl_star"]
 
 data_dir = "./data/WASP-77Ab/"
 
 data = read_high_res_data(data_dir, method="pca", spectrum_type="emission")
+data["V_sin_i"] = 4.5
+model["W_conv"] = 401
 # %%
 from POSEIDON.core import set_priors
 

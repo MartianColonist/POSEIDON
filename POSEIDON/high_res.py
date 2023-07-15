@@ -230,9 +230,7 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
             F_p = np.interp(wl_shifted, wl, planet_spectrum)
 
             # Fp = interpolate.splev(wl_shifted_p, cs_p, der=0) # linear interpolation, einsum
-            models_shifted[j] = ((1 - transit_weight[j])) / max_transit_depth * (
-                -F_p
-            ) + 1
+            models_shifted[j] = (1 - transit_weight[j]) / max_transit_depth * (-F_p) + 1
 
         # divide by the median over wavelength to mimic blaze correction
         models_shifted = (models_shifted.T / np.median(models_shifted, axis=1)).T
@@ -272,7 +270,7 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
                 CCF_sum += CCF
 
     if b is not None and uncertainties is not None:
-        loglikelihood -= N * np.log(b)
+        loglikelihood_sum -= N * np.log(b)
 
     # loglikelihood -= np.sum(np.log(uncertainties))
     # loglikelihood -= N / 2 * np.log(2*np.pi)          (These two terms are normalization)
@@ -571,7 +569,8 @@ def fit_uncertainties(data_raw, NPC=5):
             )
             return -loglikelihood
 
-        a, b = minimize(fun, [1, 1], method="Nelder-Mead").x
+        a, b = minimize(fun, [0.5, 200], method="Nelder-Mead").x
+        print(a, b)
         best_fit = np.sqrt(a * data_raw[i] + b)
 
         svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(best_fit)
@@ -580,3 +579,44 @@ def fit_uncertainties(data_raw, NPC=5):
         uncertainties[i] = uncertainty
     uncertainties[mask] = 1e7
     return uncertainties
+
+
+def fit_uncertainties_and_remove_outliers(data_raw, NPC=5):
+    uncertainties = np.zeros(data_raw.shape)
+    residuals = np.zeros(data_raw.shape)
+    data_cleaned = data_raw.copy()
+    N_order = len(data_raw)
+    mean = data_raw.mean()
+    std = data_raw.std()
+
+    mask = (data_raw - mean) > 5 * std
+
+    for i in range(N_order):
+        order = data_raw[i]
+        svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(order)
+        PCA_model = svd.transform(order) @ svd.components_
+        residual = order - PCA_model
+        residuals[i] = residual
+        data_cleaned[i][mask[i]] = PCA_model[mask[i]]
+
+    for i in range(N_order):
+
+        def fun(x):
+            a, b = x
+            sigma = np.sqrt(a * data_cleaned[i] + b)
+            loglikelihood = -0.5 * np.sum((residuals[i] / sigma) ** 2) - np.sum(
+                np.log(sigma)
+            )
+            return -loglikelihood
+
+        a, b = minimize(fun, [1, 1], method="Nelder-Mead").x
+
+        best_fit = np.sqrt(a * data_cleaned[i] + b)
+
+        svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(best_fit)
+
+        uncertainty = svd.transform(best_fit) @ svd.components_
+        uncertainties[i] = uncertainty
+
+    # uncertainties[mask] = 1e7
+    return data_cleaned, uncertainties

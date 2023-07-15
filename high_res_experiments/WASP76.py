@@ -66,7 +66,7 @@ print("Free parameters: " + str(model["param_names"]))
 
 wl_min = 0.37  # Minimum wavelength (um)
 wl_max = 1.05  # Maximum wavelength (um)
-R = 250000  # Spectral resolution of grid
+R = 200000  # Spectral resolution of grid
 
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
@@ -199,7 +199,7 @@ run_retrieval(
     verbose=True,
     N_output_samples=1000,
     resume=False,
-    ev_tol=0.05,
+    # ev_tol=0.05,
 )
 
 
