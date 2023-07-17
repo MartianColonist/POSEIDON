@@ -96,9 +96,12 @@ def plot_refractive_indices_from_file(wl, file_name):
     wl_max = np.max(wl)
     wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
 
+    molecule = file_name.split('/')[1][:-4]
+    molecule = molecule.split('_')[0]
+
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_size_inches(10, 6)
-    suptitle = 'Refractive Indices for ' + file_name.split('/')[-1][:-4]
+    suptitle = 'Refractive Indices for ' + molecule
     fig.suptitle(suptitle)
     ax1.plot(wl_Mie, real_indices)
     ax2.plot(wl_Mie, imaginary_indices)
@@ -187,9 +190,21 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     plt.figure(figsize=(10,6))
     label = 'r_m ' + str(r_m) + ' (um)'
     plt.plot(wl_Mie, eff_g, label = label)
-    title = 'Asymmetry Parameter ' + file_name.split('/')[1][:-4] + '\n0 (completely back scattering) and +1 (total forward scattering) '+ '\n'
+    title = 'Asymmetry Parameter ' + file_name.split('/')[1][:-4] + '\n0 (Rayleigh limit) and +1 (total foward scattering limit) '+ '\n'
     plt.title(title)
     plt.ylabel('g')
+    plt.xlabel('Wavelength (um)')
+    plt.legend()
+    plt.show()
+
+    molecule = file_name.split('/')[1][:-4]
+    molecule = molecule.split('_')[0]
+    title = molecule + ' : Normalized $\sigma_{ext}$ , Asymmetry Parameter, and Single Scattering Albedo' + '\n $r_m$ = ' + str(round(r_m, 2)) + ' ($\mu$m)' +  '\n $\omega$ : 0 (black, completely absorbing) to 1 (white, completely scattering)'+ '\n g : 0 (Rayleigh Limit) to 1 (Total Forward Scattering) '+ '\n'
+    plt.figure(figsize=(10,6))
+    plt.plot(wl_Mie, eff_ext_cross_section/np.max(eff_ext_cross_section), label = '$\sigma_{ext}$ = $\sigma_{abs}$ + $\sigma_{scat}$ (Normalized)')
+    plt.plot(wl_Mie, eff_w, label = 'Single Scattering Albedo ($\omega$)')
+    plt.plot(wl_Mie, eff_g, label = 'Asymmetry Parameter (g)')
+    plt.title(title)
     plt.xlabel('Wavelength (um)')
     plt.legend()
     plt.show()

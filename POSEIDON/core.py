@@ -42,7 +42,7 @@ from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon
 
-from .clouds_aerosols_emission import Mie_cloud, load_aerosol_grid
+from .clouds_aerosols import Mie_cloud, load_aerosol_grid
 from .clouds_LX_MIE_emission import Mie_cloud_free
 
 from .utility import mock_missing
@@ -2578,7 +2578,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'fractional_scale_height': [0.1,1], 
                              'r_i_real': [0,10],
                              'r_i_complex': [1e-6,100], 
-                             'log_X_Mie' : [-30,-1]
+                             'log_X_Mie' : [-30,-1],
+                             'Delta_log_P' : [0,9],
                             }   
 
     # Iterate through parameters, ensuring we have a full set of priors

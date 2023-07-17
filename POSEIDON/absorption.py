@@ -1104,7 +1104,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                 for aerosol in range(len(n_aerosol_array)):
                     for i in range(i_bot,N_layers):
                         for q in range(len(wl)):
-                            kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol,i,j,k] * sigma_Mie_array[aerosol,q]
+                            kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
           
     return kappa_gas, kappa_Ray, kappa_cloud
 
