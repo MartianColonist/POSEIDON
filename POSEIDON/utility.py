@@ -337,7 +337,7 @@ def shared_memory_array(rank, comm, shape):
     assert itemsize == MPI.DOUBLE.Get_size() 
     array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
     
-    return array
+    return array, win
 
 
 def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half', 

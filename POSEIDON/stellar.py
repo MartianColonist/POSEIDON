@@ -202,11 +202,11 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g):
     return I_grid
 
 
-def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
+def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                                stellar_contam, T_step_interp = 20,
                                log_g_step_interp = 0.10, 
                                interp_backend = 'pysynphot',
-                               comm = MPI.COMM_WORLD):
+                               ):
     '''
     Precompute a grid of stellar spectra across a range of T_eff and log g.
 
@@ -339,28 +339,42 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
     #***** Interpolate photosphere spectra *****#
     
     # Initialise output photosphere spectra array
-    I_phot_out = shared_memory_array(rank, comm, (N_spec_T_phot, N_spec_log_g_phot, len(wl_out)))
+    I_phot_out, win_phot = shared_memory_array(rank, comm, (N_spec_T_phot, N_spec_log_g_phot, len(wl_out)))
 
     # Calculate chunk size and offsets for each process
-    chunk_size = N_spec_T_phot // size     # Parallelise over T_phot
-    offset = rank * chunk_size
+   # chunk_size = N_spec_T_phot // size     # Parallelise over T_phot
+   # offset = rank * chunk_size
 
     # Handle remainder for the final core
-    if (rank == (size - 1)):
-        chunk_size += N_spec_T_phot % size  
+   # if (rank == (size - 1)):
+   #     chunk_size += N_spec_T_phot % size  
 
-    # Interpolate and store stellar intensities
-    for i in range(offset, offset + chunk_size):
-        for j in range(N_spec_log_g_phot):
-        
-            # Load interpolated stellar spectrum from model grid
-            if (interp_backend == 'pysynphot'):
-                I_phot_out[i,j,:] = load_stellar_pysynphot(wl_out, T_phot_grid[i], 
-                                                           Met_phot, log_g_phot_grid[j], 
-                                                           stellar_grid)
-            elif (interp_backend == 'pymsg'):
-                I_phot_out[i,j,:] = load_stellar_pymsg(wl_out, specgrid, T_phot_grid[i], 
-                                                       Met_phot, log_g_phot_grid[j])
+   # for i in range(offset, offset + chunk_size):
+
+    # Only first core interplates stellar grids into shared memory
+    if (rank == 0):
+
+        # Interpolate and store stellar intensities
+        for i in range(N_spec_T_phot):
+            for j in range(N_spec_log_g_phot):
+            
+                # Load interpolated stellar spectrum from model grid
+                if (interp_backend == 'pysynphot'):
+                    I_phot_local = load_stellar_pysynphot(wl_out, T_phot_grid[i], 
+                                                          Met_phot, log_g_phot_grid[j], 
+                                                          stellar_grid)
+                elif (interp_backend == 'pymsg'):
+                    I_phot_local = load_stellar_pymsg(wl_out, specgrid, T_phot_grid[i], 
+                                                      Met_phot, log_g_phot_grid[j])
+                    
+                # Lock the shared memory window before copying results
+               # win_phot.Lock(rank)
+                
+                # Copy local results to shared memory
+                I_phot_out[i,j,:] = I_phot_local
+                
+                # Unlock the shared memory window
+              #  win_phot.Unlock(rank)
 
     #***** Find heterogeneity grid ranges *****#
 
@@ -429,28 +443,40 @@ def precompute_stellar_spectra(wl_out, star, prior_types, prior_ranges,
     #***** Interpolate heterogeneity spectra *****#
     
     # Initialise output heterogeneity spectra array
-    I_het_out = shared_memory_array(rank, comm, (N_spec_T_het, N_spec_log_g_het, len(wl_out)))
+    I_het_out, win_het = shared_memory_array(rank, comm, (N_spec_T_het, N_spec_log_g_het, len(wl_out)))
 
     # Calculate chunk size and offsets for each process
-    chunk_size = N_spec_T_het // size     # Parallelise over T_het
-    offset = rank * chunk_size
+  #  chunk_size = N_spec_T_het // size     # Parallelise over T_het
+  #  offset = rank * chunk_size
 
     # Handle remainder for the final core
-    if (rank == (size - 1)):
-        chunk_size += N_spec_T_het % size  
+  #  if (rank == (size - 1)):
+  #      chunk_size += N_spec_T_het % size  
 
-    # Interpolate and store stellar intensities
-    for i in range(offset, offset + chunk_size):
-        for j in range(N_spec_log_g_het):
-        
-            # Load interpolated stellar spectrum from model grid
-            if (interp_backend == 'pysynphot'):
-                I_het_out[i,j,:] = load_stellar_pysynphot(wl_out, T_het_grid[i], 
-                                                          Met_phot, log_g_het_grid[j], 
-                                                          stellar_grid)
-            elif (interp_backend == 'pymsg'):
-                I_het_out[i,j,:] = load_stellar_pymsg(wl_out, specgrid, T_het_grid[i], 
-                                                      Met_phot, log_g_het_grid[j])
+    # Only first core interplates stellar grids into shared memory
+    if (rank == 0):
+
+        # Interpolate and store stellar intensities
+        for i in range(N_spec_T_het):
+            for j in range(N_spec_log_g_het):
+            
+                # Load interpolated stellar spectrum from model grid
+                if (interp_backend == 'pysynphot'):
+                    I_het_local = load_stellar_pysynphot(wl_out, T_het_grid[i], 
+                                                         Met_phot, log_g_het_grid[j], 
+                                                         stellar_grid)
+                elif (interp_backend == 'pymsg'):
+                    I_het_local = load_stellar_pymsg(wl_out, specgrid, T_het_grid[i], 
+                                                     Met_phot, log_g_het_grid[j])
+                    
+                # Lock the shared memory window before copying results
+             #   win_het.Lock(rank)
+                
+                # Copy local results to shared memory
+                I_het_out[i,j,:] = I_het_local
+                
+                # Unlock the shared memory window
+              #  win_het.Unlock(rank)
                 
     # Force cores to wait for all to finish loops 
     comm.Barrier()

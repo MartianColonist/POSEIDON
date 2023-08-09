@@ -103,11 +103,10 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
         # Interpolate and store stellar photosphere and heterogeneity spectra
         T_phot_grid, T_het_grid, \
         log_g_phot_grid, log_g_het_grid, \
-        I_phot_grid, I_het_grid = precompute_stellar_spectra(wl, star, prior_types, 
+        I_phot_grid, I_het_grid = precompute_stellar_spectra(comm, wl, star, prior_types, 
                                                              prior_ranges, stellar_contam,
                                                              stellar_T_step, stellar_log_g_step,
-                                                             stellar_interp_backend,
-                                                             comm)
+                                                             stellar_interp_backend)
 
     # No stellar grid precomputation needed for models with uniform star
     else:
