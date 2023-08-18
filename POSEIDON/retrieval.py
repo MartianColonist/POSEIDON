@@ -66,8 +66,9 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     X_profile = model['X_profile']
 
     # Unpack stellar properties
-    R_s = star['R_s']
-    stellar_interp_backend = star['stellar_interp_backend']
+    if (star is not None):
+        R_s = star['R_s']
+        stellar_interp_backend = star['stellar_interp_backend']
 
     # Check that one of the two reference parameters has been provided by the user
     if ((reference_parameter == 'R_p_ref') and (P_ref is None)):
@@ -547,13 +548,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     error_inflation = model['error_inflation']
     offsets_applied = model['offsets_applied']
     stellar_contam = model['stellar_contam']
-
-    # Unpack planet properties
-    R_p = planet['planet_radius']
-    d = planet['system_distance']
-
-    # Unpack stellar properties
-    R_s = star['R_s']
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
