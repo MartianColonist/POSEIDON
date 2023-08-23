@@ -2515,7 +2515,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       TwoD_type = None, plt_label = None, show_profiles = [],
                       PT_labels = [], colour_list = [], log_P_min = None,
                       log_P_max = None, T_min = None, T_max = None,
-                      legend_location = 'lower left'):
+                      legend_location = 'lower left',
+                      ax = None, save_fig = True,):
     '''
     Plot retrieved Pressure-Temperature (P-T) profiles.
     
@@ -2637,15 +2638,19 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
         log_P_max = np.log10(np.max(P))
     
     # create figure
-    fig = plt.figure()  
-    ax = plt.gca()
+    fig = plt.figure()
+
+    if (ax == None):
+        ax1 = plt.gca()
+    else:
+        ax1 = ax
     
     # Assign axis spacing
     xmajorLocator_PT = MultipleLocator(major_spacing)
     xminorLocator_PT = MultipleLocator(minor_spacing)
         
-    ax.xaxis.set_major_locator(xmajorLocator_PT)
-    ax.xaxis.set_minor_locator(xminorLocator_PT)
+    ax1.xaxis.set_major_locator(xmajorLocator_PT)
+    ax1.xaxis.set_minor_locator(xminorLocator_PT)
     
     #***** Plot P-T profiles *****#
     
@@ -2686,43 +2691,44 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                 label_two_sig = ''
 
             # Plot median retrieved spectrum
-            ax.semilogy(T_med, P, lw = 1.5, color = scale_lightness(colours[i], 1.0), 
+            ax1.semilogy(T_med, P, lw = 1.5, color = scale_lightness(colours[i], 1.0), 
                         label = label_med)
             
             # Plot +/- 1σ confidence region
-            ax.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
+            ax1.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
                             facecolor = colours[i], label = label_one_sig)
 
             # Plot +/- 2σ sigma confidence region
-            ax.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
+            ax1.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
                             facecolor = colours[i], label = label_two_sig)
 
         # Plot actual (true) P-T profile
         if (T_true != None):
-            ax.semilogy(T_true, P, lw = 1.5, color = 'crimson', label = 'True')
+            ax1.semilogy(T_true, P, lw = 1.5, color = 'crimson', label = 'True')
 
     # Common plot settings for all profiles
-    ax.invert_yaxis()            
-    ax.set_xlabel(r'Temperature (K)', fontsize = 20)
-    ax.set_xlim(T_min, T_max)
-    ax.set_ylabel(r'Pressure (bar)', fontsize = 20)
-    ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min)) 
+    ax1.invert_yaxis()            
+    ax1.set_xlabel(r'Temperature (K)', fontsize = 20)
+    ax1.set_xlim(T_min, T_max)
+    ax1.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax1.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))
 
-    ax.tick_params(labelsize=12)
+    ax1.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
+    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
 
     # Write figure to file
-    if (plt_label == None):
-        file_name = output_dir + planet_name + '_retrieved_PT.pdf'
-    else:
-        file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_PT.pdf'
+    if (save_fig == True):
+        if (plt_label == None):
+            file_name = output_dir + planet_name + '_retrieved_PT.pdf'
+        else:
+            file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_PT.pdf'
 
-    plt.savefig(file_name, bbox_inches='tight')
+        plt.savefig(file_name, bbox_inches = 'tight')
 
     return fig
 
