@@ -1106,6 +1106,14 @@ def generate_latex_param_names(param_names):
 
         # Temporary fix for aerosol parameter names 
         '$\\log \\, \\mathrm{Na}$'
+        if ('Pbase' in param):
+            string = '$\\log \\, \\mathrm{P_{base}} \\, \\mathrm{SiO_2}$'
+            latex_names += [string]
+            continue
+        if ('log_X_SiO2_base' in param):
+            string = '$\\log \\, \\, \\mathrm{SiO_2} \\, \\mathrm{_{base}}$'
+            latex_names += [string]
+            continue
         if ('r_m' in param):
             if('SiO2' in param):
                 string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{SiO_2}$'
@@ -1122,6 +1130,29 @@ def generate_latex_param_names(param_names):
                 continue
             if('Fe2O3' in param):
                 string = '$\\log \\, \\mathrm{Fe_2O_3}$'
+                latex_names += [string]
+                continue
+        if ('C_to_O' in param):
+            string = '$\\mathrm{C} \\, / \\, \\mathrm{O}$'
+            latex_names += [string]
+            continue
+
+        if ('Delta_log_P_' in param):
+            if('SiO2' in param):
+                string = '$\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{SiO_2}$'
+                latex_names += [string]
+                continue
+            if('Fe2O3' in param):
+                string = '$\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{Fe_2O_3}$'
+                latex_names += [string]
+                continue
+        if ('log_P_cloud_' in param):
+            if('SiO2' in param):
+                string = '$\\log \\, \\mathrm{P_{cloud}} \\, \\mathrm{SiO_2}$'
+                latex_names += [string]
+                continue
+            if('Fe2O3' in param):
+                string = '$\\log \\, \\mathrm{P_{cloud}} \\, \\mathrm{Fe_2O_3}$'
                 latex_names += [string]
                 continue
 

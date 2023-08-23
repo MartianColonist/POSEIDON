@@ -42,7 +42,7 @@ from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon
 
-from .clouds_aerosols import Mie_cloud, load_aerosol_grid
+from .clouds_aerosols_emission import Mie_cloud, load_aerosol_grid
 from .clouds_LX_MIE_emission import Mie_cloud_free
 
 from .utility import mock_missing
@@ -1099,7 +1099,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         enable_haze = 0
 
     # Check if a cloud deck is enabled in the cloud model
-    if ('deck' in model['cloud_type']):
+    # The cloud deck is handled differently for Mie calclations
+    if ('deck' in model['cloud_type'] and 'Mie' not in model['cloud_model']):
         enable_deck = 1
     else:
         enable_deck = 0
@@ -1174,7 +1175,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \
                         g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                          r_m, r_i_real, r_i_complex,
+                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
                                                           P_cloud = P_cloud,
                                                           log_n_max = log_n_max, 
                                                           fractional_scale_height = fractional_scale_height)
@@ -1195,7 +1196,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \
                         g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                        r_m, r_i_real, r_i_complex,
+                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
                                                         log_X_Mie = log_X_Mie,
                                                         P_cloud = P_cloud,
                                                         P_cloud_bottom = P_cloud_bottom)
@@ -1217,7 +1218,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \
                         g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                          r_m, r_i_real, r_i_complex,
+                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
                                                           log_X_Mie = log_X_Mie)
 
                     else: 
@@ -1227,6 +1228,42 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      cloud_type = model['cloud_type'],
                                                      aerosol_grid = aerosol_grid,
                                                      log_X_Mie = log_X_Mie)
+
+                # If its a opaque_deck_plus_slab run 
+                elif (model['cloud_type'] == 'opaque_deck_plus_slab'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
+                                                        log_X_Mie = log_X_Mie,
+                                                        P_cloud = P_cloud,
+                                                        P_cloud_bottom = P_cloud_bottom)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                    r_m, aerosol_species,
+                                                    cloud_type = model['cloud_type'],
+                                                    aerosol_grid = aerosol_grid,
+                                                    log_X_Mie = log_X_Mie,
+                                                    P_cloud = P_cloud,
+                                                    P_cloud_bottom = P_cloud_bottom)
+                        
+                # If its a fuzzy_deck_plus_slab run 
+                elif (model['cloud_type'] == 'fuzzy_deck_plus_slab'):
+
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                     r_m, aerosol_species,
+                                                     cloud_type = model['cloud_type'],
+                                                     aerosol_grid = aerosol_grid,
+                                                     P_cloud = P_cloud,
+                                                     log_n_max = log_n_max, 
+                                                     fractional_scale_height = fractional_scale_height,
+                                                     log_X_Mie = log_X_Mie,
+                                                     P_cloud_bottom = P_cloud_bottom)
+
             
             else:
 
@@ -1586,6 +1623,15 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
     f_cloud = atmosphere['f_cloud']
     phi_cloud_0 = atmosphere['phi_cloud_0']
     theta_cloud_0 = atmosphere['theta_cloud_0']
+    H = atmosphere['H']
+    r_m = atmosphere['r_m']
+    log_n_max = atmosphere['log_n_max']
+    fractional_scale_height = atmosphere['fractional_scale_height']
+    aerosol_species = atmosphere['aerosol_species']
+    r_i_real = atmosphere['r_i_real']
+    r_i_complex = atmosphere['r_i_complex']
+    log_X_Mie = atmosphere['log_X_Mie']
+    P_cloud_bottom = atmosphere['P_cloud_bottom']
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1605,6 +1651,11 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
     else:
         enable_surface = 0
         P_surf = 100.0      # Set surface pressure to 100 bar if not defined
+
+    if ('Mie' in model['cloud_model']):
+        enable_Mie = 1
+    else:
+        enable_Mie = 0
 
     #***** Calculate extinction coefficients *****#
 
@@ -1652,17 +1703,99 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
 
-            # Calculate extinction coefficients in standard mode (to get normal spectrum)
-            kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
-                                                CIA_pairs, ff_pairs, bf_species,
-                                                n, T, P, wl, X, X_active, X_CIA, 
-                                                X_ff, X_bf, a, gamma, P_cloud, 
-                                                kappa_cloud_0, sigma_stored, 
-                                                CIA_stored, Rayleigh_stored, 
-                                                ff_stored, bf_stored, enable_haze, 
-                                                enable_deck, enable_surface,
-                                                N_sectors, N_zones, T_fine, 
-                                                log_P_fine, P_surf)
+            if (model['cloud_model'] == 'Mie'):
+
+                aerosol_grid = model['aerosol_grid']
+
+                wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
+
+                # If its a fuzzy deck run
+                if (model['cloud_type'] == 'fuzzy_deck'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                          r_m, r_i_real, r_i_complex,
+                                                          P_cloud = P_cloud,
+                                                          log_n_max = log_n_max, 
+                                                          fractional_scale_height = fractional_scale_height)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                     r_m, aerosol_species,
+                                                     cloud_type = model['cloud_type'],
+                                                     aerosol_grid = aerosol_grid,
+                                                     P_cloud = P_cloud,
+                                                     log_n_max = log_n_max, 
+                                                     fractional_scale_height = fractional_scale_height)
+
+                # If its a slab
+                elif (model['cloud_type'] == 'slab'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                        r_m, r_i_real, r_i_complex,
+                                                        log_X_Mie = log_X_Mie,
+                                                        P_cloud = P_cloud,
+                                                        P_cloud_bottom = P_cloud_bottom)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                    r_m, aerosol_species,
+                                                    cloud_type = model['cloud_type'],
+                                                    aerosol_grid = aerosol_grid,
+                                                    log_X_Mie = log_X_Mie,
+                                                    P_cloud = P_cloud,
+                                                    P_cloud_bottom = P_cloud_bottom)
+                            
+                          
+                # If its a uniform X run
+                elif (model['cloud_type'] == 'uniform_X'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                          r_m, r_i_real, r_i_complex,
+                                                          log_X_Mie = log_X_Mie)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                     r_m, aerosol_species,
+                                                     cloud_type = model['cloud_type'],
+                                                     aerosol_grid = aerosol_grid,
+                                                     log_X_Mie = log_X_Mie)
+            
+            else:
+
+                # Generate empty arrays so the dark god numba is satisfied
+                n_aerosol = []
+                sigma_ext_cloud = []
+                    
+                n_aerosol.append(np.zeros_like(r))
+                sigma_ext_cloud.append(np.zeros_like(wl))
+
+                n_aerosol = np.array(n_aerosol)
+                sigma_ext_cloud = np.array(sigma_ext_cloud)
+
+                w_cloud = np.zeros_like(wl)
+                g_cloud = np.zeros_like(wl)
+
+            # Calculate extinction coefficients in standard mode
+            kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
+                                                           CIA_pairs, ff_pairs, bf_species,
+                                                           n, T, P, wl, X, X_active, X_CIA, 
+                                                           X_ff, X_bf, a, gamma, P_cloud, 
+                                                           kappa_cloud_0, sigma_stored, 
+                                                           CIA_stored, Rayleigh_stored, 
+                                                           ff_stored, bf_stored, enable_haze, 
+                                                           enable_deck, enable_surface,
+                                                           N_sectors, N_zones, T_fine, 
+                                                           log_P_fine, P_surf, enable_Mie, 
+                                                           n_aerosol, sigma_ext_cloud)
 
 
             # This is to store the contribution kappas
@@ -1672,7 +1805,7 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
             # If you want to see only the bulk species contribution, this runs first 
             if bulk == True:
 
-                kappa_clear_temp, kappa_cloud_temp = extinction_spectrum_contribution(chemical_species, active_species,
+                kappa_clear_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_spectrum_contribution(chemical_species, active_species,
                                                                                     CIA_pairs, ff_pairs, bf_species,
                                                                                     n, T, P, wl, X, X_active, X_CIA, 
                                                                                     X_ff, X_bf, a, gamma, P_cloud, 
@@ -1694,7 +1827,7 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
 
                 for i in range(len(contribution_molecule_list)):
 
-                    kappa_clear_temp, kappa_cloud_temp = extinction_spectrum_contribution(chemical_species, active_species,
+                    kappa_clear_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_spectrum_contribution(chemical_species, active_species,
                                                         CIA_pairs, ff_pairs, bf_species,
                                                         n, T, P, wl, X, X_active, X_CIA, 
                                                         X_ff, X_bf, a, gamma, P_cloud, 
@@ -1753,10 +1886,12 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
             raise Exception("GPU transmission spectra not yet supported.")
 
        
-       # Calculate normal spectrum 
-        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
-                           enable_deck, enable_haze, b_p, y_p[0], R_s, f_cloud,
-                           phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+        # Call the core TRIDENT routine to compute the transmission spectrum
+        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray), 
+                           kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
+                           R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                           theta_edge)
+
        
         # If you have both contribution molecules and bulk molecules
         if contribution_molecule_list != [] and bulk == True:

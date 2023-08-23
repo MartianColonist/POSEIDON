@@ -102,12 +102,13 @@ def plot_refractive_indices_from_file(wl, file_name):
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_size_inches(10, 6)
     suptitle = 'Refractive Indices for ' + molecule
+    #suptitle = 'Refractive Indices for H$_2$O'
     fig.suptitle(suptitle)
     ax1.plot(wl_Mie, real_indices)
     ax2.plot(wl_Mie, imaginary_indices)
 
-    ax1.set_xlabel('Wavelength (um)')
-    ax2.set_xlabel('Wavelength (um)')
+    ax1.set_xlabel('Wavelength ($\mu$m)')
+    ax2.set_xlabel('Wavelength ($\mu$m)')
     ax1.set_ylabel('Real Indices')
     ax2.set_ylabel('Imaginary Indices')
 
@@ -199,13 +200,13 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
 
     molecule = file_name.split('/')[1][:-4]
     molecule = molecule.split('_')[0]
-    title = molecule + ' : Normalized $\sigma_{ext}$ , Asymmetry Parameter, and Single Scattering Albedo' + '\n $r_m$ = ' + str(round(r_m, 2)) + ' ($\mu$m)' +  '\n $\omega$ : 0 (black, completely absorbing) to 1 (white, completely scattering)'+ '\n g : 0 (Rayleigh Limit) to 1 (Total Forward Scattering) '+ '\n'
+    title = molecule + ' : Normalized $\sigma_{ext}$ , Asymmetry Parameter, and Single Scattering Albedo' + '\n $r_m$ = ' + str(round(r_m, 3)) + ' ($\mu$m)' +  '\n $\omega$ : 0 (black, completely absorbing) to 1 (white, completely scattering)'+ '\n g : 0 (Rayleigh Limit) to 1 (Total Forward Scattering) '+ '\n'
     plt.figure(figsize=(10,6))
     plt.plot(wl_Mie, eff_ext_cross_section/np.max(eff_ext_cross_section), label = '$\sigma_{ext}$ = $\sigma_{abs}$ + $\sigma_{scat}$ (Normalized)')
     plt.plot(wl_Mie, eff_w, label = 'Single Scattering Albedo ($\omega$)')
     plt.plot(wl_Mie, eff_g, label = 'Asymmetry Parameter (g)')
     plt.title(title)
-    plt.xlabel('Wavelength (um)')
+    plt.xlabel('Wavelength ($\mu$m)')
     plt.legend()
     plt.show()
 
@@ -591,6 +592,11 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     wl_max = 30
     wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
 
+    # Default indices for the cross section, g, and w arrays
+    # This only changes if the lab data doesn't span the entire wl range 
+    idx_start = 0
+    idx_end = 5011
+
     r_m_array = 10**np.linspace(-3,1,1000)
 
     # Load in the input file path
@@ -608,16 +614,64 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     try :
         file_name = file_name
         print('Loading in : ', file_name)
-        file_as_numpy = np.loadtxt(file_name,skiprows=2).T
+        try:
+            file_as_numpy = np.loadtxt(file_name, comments = '#').T
+        except:
+            file_as_numpy = np.loadtxt(file_name, skiprows = 2).T
     except :
         raise Exception('Could not load in file. Make sure directory is included in the input')
 
 
     wavelengths = file_as_numpy[0]
 
+    # Truncating wl grid if necessary 
+    # Any values not covered will be set to 0 in the database
     if np.max(wavelengths) < 30 or np.min(wavelengths) > 0.2:
-        raise Exception('Please ensure that the wavelength column spans 0.2 to 30 um')
-    
+
+        print('Wavelength column does not span 0.2 to 30 um')
+
+        # If less than 30 and greater than 0.2
+        if np.max(wavelengths) < 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = np.max(wavelengths)
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start+1:idx_end]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to '+  str(np.max(wl_Mie)))
+
+        # If less than 30 only
+        elif np.max(wavelengths) < 30 and np.min(wavelengths) <= 0.2:
+
+            wl_min = 0.2
+            wl_max = np.max(wavelengths)
+
+            idx_start = 0
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            wl_Mie = wl_Mie[:idx_end]
+            
+            print('Wavelength grid will be truncated to : 0.2 to ' + str(np.max(wl_Mie)))
+
+        # If more than 0.2 only 
+        elif np.max(wavelengths) >= 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = 30
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = 5011
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start:]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to 30')
+
+    # Loading in the refractive indices 
     interp_reals = interp1d(wavelengths, file_as_numpy[1])
     interp_complexes = interp1d(wavelengths, file_as_numpy[2])
     eta_array = interp_reals(wl_Mie) + -1j *interp_complexes(wl_Mie)
@@ -704,21 +758,29 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
         w_intpl = np.reshape(w_intpl_array, (len(wl_Mie), len(radii)))
         g_intpl = np.reshape(g_intpl_array, (len(wl_Mie), len(radii)))
 
+        # Empty arrays to store the following values into 
+        eff_ext_cross_section = np.full(5011, 1e-250)
+        eff_scat_cross_section = np.full(5011, 1e-250)
+        eff_abs_cross_section = np.full(5011, 1e-250)
+        eff_back_cross_section = np.full(5011, 1e-250)
+        eff_w = np.full(5011, 1e-250)
+        eff_g = np.full(5011, 1e-250)
+
         # Effective Cross section is a trapezoidal integral
-        eff_ext_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+        eff_ext_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
 
         # Scattering Cross section 
-        eff_scat_cross_section = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+        eff_scat_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
 
         # Absorption Cross section
-        eff_abs_cross_section = eff_ext_cross_section - eff_scat_cross_section
+        eff_abs_cross_section[idx_start:idx_end] = eff_ext_cross_section[idx_start:idx_end] - eff_scat_cross_section[idx_start:idx_end]
 
         # BackScatter Cross section 
-        eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+        eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
 
         # Effective w and g
-        eff_w = np.median(w_intpl, axis=1)
-        eff_g = np.median(g_intpl, axis=1)
+        eff_w[idx_start:idx_end] = np.median(w_intpl, axis=1)
+        eff_g[idx_start:idx_end] = np.median(g_intpl, axis=1)
 
         # Append everything to arrays to save
         ext_array.append(eff_ext_cross_section)
@@ -939,12 +1001,21 @@ def make_aerosol_database():
     for i in range(len(aerosol_list)):
         title = file_list[i]
         jumbo = np.load(title,allow_pickle = True)
-        eff_ext = jumbo[0]
-        eff_abs = jumbo[1]
-        eff_scat = jumbo[2]
-        eff_back = jumbo[3]
-        eff_g = jumbo[4]
-        eff_w = jumbo[5]
+
+        try:
+            eff_ext = jumbo[0]
+            eff_scat = jumbo[1]
+            eff_abs = jumbo[2]
+            eff_back = jumbo[3]
+            eff_w = jumbo[4]
+            eff_g = jumbo[5]
+        except:
+            eff_ext = jumbo[0][0]
+            eff_scat = jumbo[0][1]
+            eff_abs = jumbo[0][2]
+            eff_back = jumbo[0][3]
+            eff_w = jumbo[0][4]
+            eff_g = jumbo[0][5]
 
         aerosols_dict[aerosol_list[i] + '_ext'] = eff_ext 
         aerosols_dict[aerosol_list[i] + '_abs'] = eff_abs
@@ -967,7 +1038,10 @@ def make_aerosol_database():
     h2.attrs["Units"] = "um"
 
     for i in range(len(aerosol_list)):
+
+        # Print the name to show to user which one is being added 
         print(aerosol_list[i])
+
         g = database.create_group(aerosol_list[i])
         g1 = g.create_dataset('eff_ext', data=aerosols_dict[aerosol_list[i] + '_ext'], compression='gzip', dtype='float32', shuffle=True)
         g1.attrs["Varaible"] = "Effective Extinction Cross Section"

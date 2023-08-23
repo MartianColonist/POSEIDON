@@ -1097,14 +1097,27 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
             # If Mie clouds are turned on 
             if (enable_Mie == 1):
 
-                if (enable_deck == 1):
-                    # Pressures below P_cloud are opaque, otherwise they are fuzzy 
-                    kappa_cloud[(P > P_cloud),j,k,:] = kappa_cloud_0
+                # All deck, slab, aerosol information is stored in the n_aerosol_array
+                # If its an opaque deck, then the length of sigma_Mie_array will be one more than n_aerosol_array
+                # Otherwise, it should be the same 
 
-                for aerosol in range(len(n_aerosol_array)):
-                    for i in range(i_bot,N_layers):
-                        for q in range(len(wl)):
-                            kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
+                # No opaque clouds 
+                if len(n_aerosol_array) == len(sigma_Mie_array):
+                    for aerosol in range(len(n_aerosol_array)):
+                        for i in range(i_bot,N_layers):
+                            for q in range(len(wl)):
+                                kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
+                    
+                # Opaque Deck is the first element in n_aerosol_array
+                else:
+                    for aerosol in range(len(n_aerosol_array)):
+                        if aerosol == 0:
+                            kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
+                        else:
+                            for i in range(i_bot,N_layers):
+                                for q in range(len(wl)):
+                                    kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
+          
           
     return kappa_gas, kappa_Ray, kappa_cloud
 

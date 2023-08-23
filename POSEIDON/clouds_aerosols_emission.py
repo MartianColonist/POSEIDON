@@ -178,7 +178,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
             back_array = back_array.reshape(r_m_num, wl_num)
 
             g_array = np.array(database[species]['eff_g'])
-            g_array = scat_array.reshape(r_m_num, wl_num)
+            g_array = g_array.reshape(r_m_num, wl_num)
 
             w_array = np.array(database[species]['eff_w'])
             w_array = w_array.reshape(r_m_num, wl_num)
@@ -344,7 +344,7 @@ def Mie_cloud(P,wl,r, H, n,
             Array with aerosol species in it 
 
         cloud_type (string):
-            uniform_X or fuzzy_deck
+            uniform_X, fuzzy_deck, slab, opaque_deck_with_slab, fuzzy_deck_with_slab
 
         aerosol_grid (dict) : 
             Precomputed aerosol cross section dictionary 
@@ -411,7 +411,7 @@ def Mie_cloud(P,wl,r, H, n,
     for q in range(len(r_m)):
     
         #########################
-        # Calculate the number density above the cloud top or apply a uniform haze
+        # Calculate the number density above the cloud top, in the slab, or applies a uniform haze
         #########################
         
         # Fuzzy Deck Model 
@@ -431,13 +431,48 @@ def Mie_cloud(P,wl,r, H, n,
         # Slab Model 
         elif (cloud_type == 'slab'):
             # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-            # This needs to be a loop eventaully
             n_aerosol = np.empty_like(r)
-            P_cloud_index_top = find_nearest(P,P_cloud)
-            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+            P_cloud_index_top = find_nearest(P,P_cloud[q])
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q])
 
             n_aerosol = np.empty_like(r)
-            n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n)*np.float_power(10,log_X_Mie[q])
+            n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
+            n_aerosol_array.append(n_aerosol)
+
+        # Combined Models 
+        elif (cloud_type == 'fuzzy_deck_plus_slab'):
+            # The first index will be the fuzzy deck 
+            if q == 0:
+                n_aerosol = np.empty_like(r)
+                P_cloud_index = find_nearest(P,P_cloud[q])
+                cloud_top_height = r[P_cloud_index]
+                h = r[P_cloud_index:] - cloud_top_height
+                n_aerosol[:P_cloud_index] = 1.0e250
+                n_aerosol[P_cloud_index:] = (10**log_n_max[q]) * np.exp(-h/(fractional_scale_height[q]*H[P_cloud_index:]))
+                n_aerosol_array.append(n_aerosol)
+            # Others will be slabs 
+            else:
+                n_aerosol = np.empty_like(r)
+                P_cloud_index_top = find_nearest(P,P_cloud[q])
+                P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q-1]) #Because this is one shorter than the P_cloud array, decks don't have P_bottom
+                n_aerosol = np.empty_like(r)
+                n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q-1]) # same reason
+                n_aerosol_array.append(n_aerosol)
+
+        # For the opaque deck, the opaque deck will be added to the aerosol array even though its not really an aerosol species 
+        elif (cloud_type == 'opaque_deck_plus_slab'):
+                
+            if q == 0:
+                n_aerosol = np.empty_like(r)
+                P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
+                n_aerosol[:P_cloud_index] = 1.0e250
+                n_aerosol_array.append(n_aerosol)
+                
+            n_aerosol = np.empty_like(r)
+            P_cloud_index_top = find_nearest(P,P_cloud[q+1]) # The slab top pressure are next after the deck 
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q]) # Doesn't change
+            n_aerosol = np.empty_like(r)
+            n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
             n_aerosol_array.append(n_aerosol)
 
         # Uniform X Model 

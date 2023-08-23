@@ -466,7 +466,7 @@ def get_and_update(eta,xs):
 # Main Cloud Functions
 ############################################################################################
 
-def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
+def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_type, 
                    P_cloud = 0, log_n_max = 0, fractional_scale_height = 0,
                    log_X_Mie = 0, P_cloud_bottom = -100, r_m_std_dev = 0.5, z_max = 5,
                    num_integral_points = 100):
@@ -494,6 +494,10 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
 
         r_m  (float) : 
             Mean particle sizes (in um)
+
+        cloud_type (string):
+            uniform_X, fuzzy_deck, slab, opaque_deck_with_slab, fuzzy_deck_with_slab
+
 
 
 
@@ -575,7 +579,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
     #########################
     
     # Fuzzy Deck Model 
-    if fractional_scale_height != 0:
+    if cloud_type == 'fuzzy_deck':
         # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
         n_aerosol = np.empty_like(r)
         P_cloud_index = find_nearest(P,P_cloud)
@@ -588,7 +592,8 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
         n_aerosol[P_cloud_index:] = (10**log_n_max) * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
 
     # Slab Model 
-    elif (P_cloud_bottom != -100):
+    # If P_cloud is a float its just the slab, without a deck
+    elif cloud_type == 'slab':
         # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
         n_aerosol = np.empty_like(r)
         P_cloud_index_top = find_nearest(P,P_cloud)
@@ -597,8 +602,22 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
         n_aerosol = np.zeros_like(r)
         n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie)
 
-    # Uniform Haze
-    else:
+    # Opaque Deck + Slabs Model 
+    # In this model, the P_cloud has the deck pressure and the slab pressure. For the others, its a int 
+    elif cloud_type == 'opaque_deck_plus_slab':
+        # Deck First 
+        n_aerosol = np.empty_like(r)
+        P_cloud_index = find_nearest(P,P_cloud[0])
+        n_aerosol[:P_cloud_index] = 1.0e250
+
+        # Slab Next
+        P_cloud_index_top = find_nearest(P,P_cloud[1])
+        P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+        n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie)
+
+
+    # Uniform X
+    elif cloud_type == 'uniform_X':
         n_aerosol = np.empty_like(r)
         n_aerosol = (n)*np.float_power(10,log_X_Mie)
 
@@ -616,7 +635,6 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex,
 
     # Kill switch if the model was switched in the same kernel 
     # I.e. clear out the qext arrays 
-
     if eta != 0:
         # If the saved killswitch is empty, make it not empty
         if free_or_file == '':

@@ -542,13 +542,13 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
             if (cloud_type =='fuzzy_deck'):
 
-                cloud_params += ['log_P_cloud']
-
                 if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    cloud_params += ['log_P_top_deck']
                     cloud_params += ['log_r_m', 'log_n_max', 'f']
                     cloud_params += ['r_i_real', 'r_i_complex']
                 else:
                     for aerosol in aerosol_species:
+                        cloud_params += ['log_P_top_deck_' + aerosol]
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_n_max_' + aerosol]
                         cloud_params += ['f_' + aerosol]
@@ -556,18 +556,53 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             elif (cloud_type == 'slab'):
 
                 if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
-                    cloud_params += ['log_P_cloud']
+                    print('Only one slab can be defined with free or file_read')
+                    cloud_params += ['log_P_top_slab']
                     cloud_params += ['Delta_log_P']
                     cloud_params += ['log_r_m']
                     cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
                 else:
                     for aerosol in aerosol_species:
-                        cloud_params += ['log_P_cloud_' + aerosol]
+                        cloud_params += ['log_P_top_slab_' + aerosol]
                         cloud_params += ['Delta_log_P_' + aerosol]
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_X_' + aerosol]
 
-                
+            elif (cloud_type == 'fuzzy_deck_plus_slab'):
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    raise Exception('Error : Cannot use more than one aerosol species for file_read or free. Add aerosol to database first')
+                else:
+                    print('This mode assumes that the first aerosol in the list is the deck species, rest are slab species')
+                    for index in range(len(aerosol_species)):
+                        aerosol = aerosol_species[index]
+                        if index == 0:
+                            cloud_params += ['log_P_top_deck_' + aerosol]
+                            cloud_params += ['log_r_m_' + aerosol]
+                            cloud_params += ['log_n_max_' + aerosol]
+                            cloud_params += ['f_' + aerosol]
+                        else:
+                            cloud_params += ['log_P_top_slab_' + aerosol]
+                            cloud_params += ['Delta_log_P_' + aerosol]
+                            cloud_params += ['log_r_m_' + aerosol]
+                            cloud_params += ['log_X_' + aerosol]
+
+            elif (cloud_type == 'opaque_deck_plus_slab'):
+
+                cloud_params += ['log_P_top_deck']
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                        print('Only one slab can be defined with free or file_read')
+                        cloud_params += ['log_P_top_slab']
+                        cloud_params += ['Delta_log_P']
+                        cloud_params += ['log_r_m']
+                        cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_P_top_slab_' + aerosol]
+                        cloud_params += ['Delta_log_P_' + aerosol]
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+ 
             elif (cloud_type == 'uniform_X'):
 
                 if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
@@ -578,8 +613,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_X_' + aerosol]
 
-            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab']):
-                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, or slab.")
+            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab']):
+                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab.")
         
         else:
             raise Exception("Error: unsupported cloud model.")
@@ -1530,89 +1565,150 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
         # Set the Mie parameters 
         
-        # If the cloud is a fuzzy_deck or slab model
-        if any("log_P_cloud" in s for s in cloud_param_names):
+        # If the cloud is a fuzzy_deck, slab, fuzzy_deck_plus_slab, or opaque_deck_plus_slab model 
+        # it will contain the string 'log_P_top' in its parameter names 
+        if any("log_P_top" in s for s in cloud_param_names):
 
-            # If the cloud is a slab model
+            # If the cloud is a slab model, a fuzzy_deck_plus_slab, or an opaque_deck_plus_slab model 
+            # It will contain the string 'Delta_log_P' in it 
             if any('Delta_log_P' in s for s in cloud_param_names):
 
-            
-                try:
-                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
-                    log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
-                    P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_cloud')!= -1)[0]])
-                    P_slab_bottom = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_cloud')!= -1)[0]] + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
-                except:
-                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
-                    log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
-                    P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
-                    P_slab_bottom = np.power(10.0, (clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]] + clouds_in[np.where(cloud_param_names == 'Delta_log_P')[0][0]]))
+                # If it is a fuzzy_deck_plus_slab or an opaque_deck_plus_slab 
+                # It will contain the string 'log_P_top_deck' in it 
+                if any ('log_P_top_deck' in s for s in cloud_param_names):
 
-                # See if its a free or file_read aerosol retrieval or not 
-                if ('r_i_real' in cloud_param_names):
-                    r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
-                    r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+                    # If its a fuzzy_deck_plus_slab
+                    # It will contain the string 'log_n_max' in it 
+                    if any ('log_n_max' in s for s in cloud_param_names):
+
+                        # The try except is here because file_read option makes everything into a numpy file
+                        # So you have to add an extra [0] to get the indexing to work correctly 
+                        # Specifically, the file_read option doesn't like the float power line in r_m
+                        try:
+                            # Note one whats going on here 
+                            # np.char.find is finding strings in the cloud param names that have the string 
+                            # And that either returns a list of arrays, or something else, which is why we have the try-except 
+
+                            # Shared parameters, where the first index needs to be the deck species 
+                            # This is why we keep the deck and slab seperate and then join them together
+                            r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                            P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0]])
+                            P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0]])
+                            P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
+
+                            # Deck specific parameters 
+                            log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
+                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+
+                            # Slab specific parameters 
+                            log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                            P_slab_bottom = (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
+                            
+                        except:
+                            r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                            P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0][0]])
+                            P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0][0]])
+                            P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
+
+                            log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
+                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+
+                            log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
+                            P_slab_bottom = (P_slab + clouds_in[np.where(cloud_param_names == 'Delta_log_P')[0][0]])
+                            
+
+                    # Otherwise, it is an opaque_deck_plus_slab
+                    else:
+                        try:
+                            # Shared parameters, where the first index needs to be the deck species 
+                            # This is why we keep the deck and slab seperate and then join them together
+                            r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                            P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0]])
+                            P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0]])
+                            P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
+
+                            # Opaque decks don't have the 'fuzziness' parameters 
+                            log_n_max = 0
+                            fractional_scale_height = 0
+
+                            # Slab specific parameters 
+                            log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                            P_slab_bottom = (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
+                            
+                        except:
+                            r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                            P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0][0]])
+                            P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0][0]])
+                            try:
+                                P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
+                            # Put in because the file_read option doesn't like concatenate for some reason
+                            except:
+                                P_cloud = [P_deck, P_slab]
+
+                            log_n_max = 0
+                            fractional_scale_height = 0
+
+                            log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
+                            P_slab_bottom = (P_slab + clouds_in[np.where(cloud_param_names == 'Delta_log_P')[0][0]])
+                
+                # Otherwise, it is just a slab model 
                 else:
-                    r_i_real = 0
-                    r_i_complex = 0
+                    try:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
+                        P_slab_bottom = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]] + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
+                    except:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
+                        P_slab_bottom = np.power(10.0, (P_cloud + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
 
-
-                log_n_max = 0
-                fractional_scale_height = 0
+                    # Need to set the deck parameters to dummy values to pass into the cloud object 
+                    log_n_max = 0
+                    fractional_scale_height = 0
             
-            # Fuzzy Deck
+            # Otherwise, its just a fuzzy deck with no slabs 
             else:
             
                 try:
                     r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
-                    P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+                    P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
                     log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
                     fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
                 except:
                     r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
-                    P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
+                    P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
                     log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
                     fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
 
-                # See if its a free or file_read aerosol retrieval or not 
-                if ('r_i_real' in cloud_param_names):
-                    r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
-                    r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
-                else:
-                    r_i_real = 0
-                    r_i_complex = 0
-
+                # Need to set the slab parameters to dummy values to pass into the cloud object 
                 log_X_Mie = 100
-                P_slab_bottom = 100.0 # Not used for this model
+                P_slab_bottom = 100.0
  
         
         # If the aerosol is a uniform_haze model 
         else:
-
-             # See if its a free for file_read aerosol retrieval or not 
-            if ('r_i_real' in cloud_param_names):
-                # The try except is here because file_read makes everything into a numpy file
-                # So you have to add an extra [0] to get the indexing to work correctly 
-                try:
-                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
-                    log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
-                    r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
-                    r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
-                except:
-                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
-                    log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
-                    r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
-                    r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
-            else:
+            try:
                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
-                r_i_real = 0
-                r_i_complex = 0
+            except:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
 
+            # If uniform_X, you set the slab and deck parameters to dummy values to pass into the cloud object
             log_n_max = 0
             fractional_scale_height = 0
             P_cloud = 100.0
             P_slab_bottom = 100.0
+
+        # See if its a free or file_read aerosol retrieval or not
+        if ('r_i_real' in cloud_param_names):
+            r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+            r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+        else:
+            r_i_real = 0
+            r_i_complex = 0
     
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
            fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom

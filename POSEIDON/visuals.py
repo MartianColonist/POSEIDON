@@ -1225,7 +1225,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  data_marker_size_list = [], text_annotations = [],
                  annotation_pos = [], wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
-                 legend_box = True, ax = None, save_fig = True):
+                 legend_box = True, ax = None, save_fig = True,
+                 show_errors = True):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -1290,6 +1291,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Matplotlib axis provided externally.
         save_fig (bool, optional):
             If True, saves a PDF in the POSEIDON output folder.
+        show_errors (bool, optional):
+            If true, shows data errors
 
     Returns:
         fig (matplotlib figure object):
@@ -1321,8 +1324,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Quick validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 8):
-        raise Exception("Max number of concurrent spectra to plot is 8.")
+    if (N_spectra > 9):
+        raise Exception("Max number of concurrent spectra to plot is 9.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
@@ -1577,34 +1580,67 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Overplot datapoints
     if (show_data == True):
 
-        for i in range(N_datasets):
-            
-            # If user did not specify dataset labels, use the instrument names
-            if (data_labels == []):
-                label_i = instruments[i]
-            else:
-                label_i = data_labels[i]
-            
-            # Find start and end indices of dataset_i in dataset property arrays
-            idx_start = data_properties['len_data_idx'][i]
-            idx_end = data_properties['len_data_idx'][i+1]
+        if (show_errors == False):
 
-            # Extract the ith dataset
-            wl_data_i = wl_data[idx_start:idx_end]
-            ydata_i = ydata[idx_start:idx_end]
-            err_data_i = err_data[idx_start:idx_end]
-            bin_size_i = bin_size[idx_start:idx_end]
+            for i in range(N_datasets):
+                
+                # If user did not specify dataset labels, use the instrument names
+                if (data_labels == []):
+                    label_i = instruments[i]
+                else:
+                    label_i = data_labels[i]
+                
+                # Find start and end indices of dataset_i in dataset property arrays
+                idx_start = data_properties['len_data_idx'][i]
+                idx_end = data_properties['len_data_idx'][i+1]
 
-            # Plot dataset
-            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
-                                               xerr = bin_size_i, marker = data_markers[i], 
-                                               markersize = data_markers_size[i], 
-                                               capsize = 2, ls = 'none', elinewidth = 0.8, 
-                                               color = data_colours[i], alpha = 0.8,
-                                               ecolor = 'black', label = label_i,
-                                               zorder = 100)
+                # Extract the ith dataset
+                wl_data_i = wl_data[idx_start:idx_end]
+                ydata_i = ydata[idx_start:idx_end]
+                err_data_i = err_data[idx_start:idx_end]
+                bin_size_i = bin_size[idx_start:idx_end]
 
-            [markers.set_alpha(1.0)]
+                # Plot dataset
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                                xerr = bin_size_i, marker = data_markers[i], 
+                                                markersize = data_markers_size[i], 
+                                                capsize = 2, ls = 'none', elinewidth = 0, 
+                                                color = data_colours[i], alpha = 0.8,
+                                                ecolor = 'black', label = label_i,
+                                                zorder = 100)
+
+                [markers.set_alpha(1.0)]
+
+        else:
+
+            for i in range(N_datasets):
+                
+                # If user did not specify dataset labels, use the instrument names
+                if (data_labels == []):
+                    label_i = instruments[i]
+                else:
+                    label_i = data_labels[i]
+                
+                # Find start and end indices of dataset_i in dataset property arrays
+                idx_start = data_properties['len_data_idx'][i]
+                idx_end = data_properties['len_data_idx'][i+1]
+
+                # Extract the ith dataset
+                wl_data_i = wl_data[idx_start:idx_end]
+                ydata_i = ydata[idx_start:idx_end]
+                err_data_i = err_data[idx_start:idx_end]
+                bin_size_i = bin_size[idx_start:idx_end]
+
+                # Plot dataset
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                                xerr = bin_size_i, marker = data_markers[i], 
+                                                markersize = data_markers_size[i], 
+                                                capsize = 2, ls = 'none', elinewidth = 0.8, 
+                                                color = data_colours[i], alpha = 0.8,
+                                                ecolor = 'black', label = label_i,
+                                                zorder = 100)
+
+                [markers.set_alpha(1.0)]
 
     # Plot text annotations
     if (text_annotations != []):
@@ -1989,7 +2025,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            annotation_pos = [],
                            wl_axis = 'log', figure_shape = 'default',
                            legend_location = 'upper right', legend_box = False,
-                           ax = None, save_fig = True):
+                           ax = None, save_fig = True,
+                           sigma_to_plot = 2):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -2064,6 +2101,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             Matplotlib axis provided externally.
         save_fig (bool, optional):
             If True, saves a PDF in the POSEIDON output folder.
+        sigma_to_plot (int:
+            How many sigmas to plot (0,1, or 2)
 
     Returns:
         fig (matplotlib figure object):
@@ -2090,8 +2129,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick spectra validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 3):
-        raise Exception("Max number of concurrent retrieved spectra to plot is 3.")
+    if (N_spectra > 4):
+        raise Exception("Max number of concurrent retrieved spectra to plot is 4.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((binned_colour_list != []) and (N_spectra != len(binned_colour_list))):
@@ -2338,14 +2377,16 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                  label = label_med)
         
         # Plot +/- 1σ confidence region
-        ax1.fill_between(wl_binned, spec_low1_binned, spec_high1_binned,
-                         lw=0.0, alpha=0.5, facecolor=colours[i],  
-                         label = label_one_sig)
+        if sigma_to_plot == 1 or sigma_to_plot == 2:
+            ax1.fill_between(wl_binned, spec_low1_binned, spec_high1_binned,
+                            lw=0.0, alpha=0.5, facecolor=colours[i],  
+                            label = label_one_sig)
 
         # Plot +/- 2σ sigma confidence region
-        ax1.fill_between(wl_binned, spec_low2_binned, spec_high2_binned,
-                         lw=0.0, alpha=0.2, facecolor=colours[i],  
-                         label = label_two_sig)
+        if sigma_to_plot ==2 :
+            ax1.fill_between(wl_binned, spec_low2_binned, spec_high2_binned,
+                            lw=0.0, alpha=0.2, facecolor=colours[i],  
+                            label = label_two_sig)
 
         # Overplot median model, binned to resolution of the observations
         if (show_ymodel == True):
@@ -3056,6 +3097,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     # For each species
     for q in range(len(plot_parameters)):
 
+
         param = plot_parameters[q]
         param_label = param_labels[q]
         
@@ -3075,6 +3117,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         # Find the maximum x to set the y off of 
         x_max_array = []
         for m in range(N_models):
+            
             param_vals_m = param_vals[m]
             
             if (N_models == 1):
@@ -3123,7 +3166,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
                 ax.text(0.10, (0.94 - m*0.10), retrieval_labels[m], color=colour, 
-                        fontsize = 12, horizontalalignment='left', 
+                        fontsize = 10, horizontalalignment='left', 
                         verticalalignment='top', transform=ax.transAxes)
                 
             # Plot median and +/- 1σ confidence intervals
@@ -3139,7 +3182,8 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
                 title = "{0} = {1}".format(param_label, title)
                 title = "{0}".format(title)
-                ax.set_title(title, fontsize = 12)
+                # Change back to 12
+                ax.set_title(title, fontsize = 11)
 
             # Create sub-axis for error bar
       #      newax = plt.gcf().add_axes(ax.get_position(), sharex=ax, frameon=False)
@@ -3157,7 +3201,27 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
       #      newax.tick_params(axis='both', which='major', labelsize=8)
 
             ax.set_yticks([])
+            # CHANGE THIS BACK TO LABEL SIZE 8
             ax.tick_params(axis='both', which='major', labelsize=8)
+
+            if (param == 'T'):
+                xmajorLocator = MultipleLocator(250)
+                xminorLocator = MultipleLocator(250/2)
+                ax.xaxis.set_major_locator(xmajorLocator)
+                ax.xaxis.set_minor_locator(xminorLocator)
+
+            if (param == 'log_r_m_SiO2') or (param == 'log_r_m_Fe2O3'):
+                xmajorLocator = MultipleLocator(1)
+                xminorLocator = MultipleLocator(0.5)
+                ax.xaxis.set_major_locator(xmajorLocator)
+                ax.xaxis.set_minor_locator(xminorLocator)
+
+            if (param == 'log_X_SiO2') or (param == 'log_X_Fe2O3'):
+                xmajorLocator = MultipleLocator(5)
+                xminorLocator = MultipleLocator(2.5)
+                ax.xaxis.set_major_locator(xmajorLocator)
+                ax.xaxis.set_minor_locator(xminorLocator)
+
 
         # Overplot true value
         if (truths != []):
@@ -3195,8 +3259,8 @@ def plot_histograms(planet_name, models, plot_parameters,
     N_models = len(models)
     N_params = len(plot_parameters)
 
-    if (N_models > 3):
-        raise Exception("Max supported number of retrieval models is 3.")
+    if (N_models > 4):
+        raise Exception("Max supported number of retrieval models is 4.")
 
     if (N_models == 1) and (parameter_colour_list == []):
         parameter_colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
@@ -3267,33 +3331,32 @@ def plot_histograms(planet_name, models, plot_parameters,
                         "mixing ratios or element ratios for multidimensional retrievals")
 
             # Create array to store the composition of the atmosphere  
-            log_X_stored = np.zeros(shape=(N_samples, N_species))
-
+            # log_X_stored = np.zeros(shape=(N_samples, N_species))
             # CLoad mixing ratios for atmosphere
-            for i in range(N_samples):
+            #for i in range(N_samples):
 
-                if ('H2' and 'He' in bulk_species):
+             #   if ('H2' and 'He' in bulk_species):
 
                     # Extract mixing ratios from MultiNest samples
-                    _, _, log_X_stored[i,2:], _, _, _, _, _ = split_params(samples[i], 
-                                                                            N_params_cum)
+                    #_, _, log_X_stored[i,2:], _, _, _, _, _ = split_params(samples[i], 
+                    #                                                        N_params_cum)
 
                     # Add H2 and He mixing ratios
-                    X_H2 = (1.0 - np.sum(np.power(10.0, log_X_stored[i,2:])))/(1.0 + He_fraction)
-                    X_He = He_fraction*X_H2
+                    #X_H2 = (1.0 - np.sum(np.power(10.0, log_X_stored[i,2:])))/(1.0 + He_fraction)
+                    #X_He = He_fraction*X_H2
 
-                    log_X_stored[i,0] = np.log10(X_H2)
-                    log_X_stored[i,1] = np.log10(X_He)                                   
+                    #log_X_stored[i,0] = np.log10(X_H2)
+                    #log_X_stored[i,1] = np.log10(X_He)                                   
 
-                else:
+                #else:
 
                     # Extract mixing ratios from MultiNest samples
-                    _, _, log_X_stored[i,1:], _, _, _, _, _ = split_params(samples[i], 
-                                                                            N_params_cum)
+                 #   _, _, log_X_stored[i,1:], _, _, _, _, _ = split_params(samples[i], 
+                 #                                                           N_params_cum)
 
                     # Add bulk mixing ratio
-                    X_0 = 1.0 - np.sum(np.power(10.0, log_X_stored[i,1:]), axis=0)
-                    log_X_stored[i,0] = np.log10(X_0)
+                 #   X_0 = 1.0 - np.sum(np.power(10.0, log_X_stored[i,1:]), axis=0)
+                  #  log_X_stored[i,0] = np.log10(X_0)
 
         # Or load samples in directly from external code
         else:
