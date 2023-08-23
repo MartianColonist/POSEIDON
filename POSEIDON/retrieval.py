@@ -120,12 +120,13 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
 
         # Load stellar spectrum
         F_s = star['F_star']
-        wl_s = star['wl_star']
+        d = planet['system_distance']
+      #  wl_s = star['wl_star']
 
-        if (wl_s != wl):
-            raise Exception("Error: wavelength grid for stellar spectrum does " +
-                            "not match wavelength grid of planet spectrum. " +
-                            "Did you forget to provide 'wl' to create_star?")
+      #  if (wl_s != wl):
+      #      raise Exception("Error: wavelength grid for stellar spectrum does " +
+      #                      "not match wavelength grid of planet spectrum. " +
+      #                      "Did you forget to provide 'wl' to create_star?")
 
         # Distance only used for flux ratios, so set it to 1 since it cancels
         if (d is None):
