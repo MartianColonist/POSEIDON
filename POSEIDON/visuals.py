@@ -3372,10 +3372,11 @@ def plot_histograms(planet_name, models, plot_parameters,
 
             param = plot_parameters[q]
 
-            print(param)
+            # QUICK FIX DO NOT KEEP THIS
+            if param == 'log_P_cloud_SiO2':
+                param = 'log_P_top_slab_SiO2'
 
             param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
-
       #      for j in range(len(chemical_species)):
       #          if (chemical_species[j] in param):
 
