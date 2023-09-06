@@ -1689,7 +1689,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         n_columns = 1
 
     # Add box around legend
-    if (legend_box == True):
+    if (legend_box == True) and (legend_location != 'outside right'):
         legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
                             ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
@@ -3371,6 +3371,8 @@ def plot_histograms(planet_name, models, plot_parameters,
         for q in range(N_params):
 
             param = plot_parameters[q]
+
+            print(param)
 
             param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
 

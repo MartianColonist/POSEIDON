@@ -66,7 +66,22 @@ def load_refractive_indices_from_file(wl,file_name):
     wl_max = np.max(wl)
     wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
 
-    file_as_numpy = np.loadtxt(file_name,skiprows=2).T
+    #########################
+    # Load in refractive indices (as function of wavelength)
+    #########################
+    print('Loading in : ', file_name)
+    try:
+        file_as_numpy = np.loadtxt(file_name, comments = '#').T
+    except:
+        file_as_numpy = np.loadtxt(file_name, skiprows = 2).T
+
+    # If its index, wavelength, n, k we need to do something different. 
+    if len(file_as_numpy) == 4:
+        wavelengths = file_as_numpy[1]
+        real_indices = file_as_numpy[2]
+        imaginary_indices = file_as_numpy[3]
+        file_as_numpy = np.array([wavelengths,real_indices,imaginary_indices])
+
     wavelengths = file_as_numpy[0]
     real_indices = file_as_numpy[1]
     imaginary_indices = file_as_numpy[2]
@@ -618,6 +633,14 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
             file_as_numpy = np.loadtxt(file_name, comments = '#').T
         except:
             file_as_numpy = np.loadtxt(file_name, skiprows = 2).T
+
+        # If its index, wavelength, n, k we need to do something different. 
+        if len(file_as_numpy) == 4:
+            wavelengths = file_as_numpy[1]
+            real_indices = file_as_numpy[2]
+            imaginary_indices = file_as_numpy[3]
+            file_as_numpy = np.array([wavelengths,real_indices,imaginary_indices])
+
     except :
         raise Exception('Could not load in file. Make sure directory is included in the input')
 
