@@ -42,8 +42,7 @@ from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon
 
-from .clouds_aerosols_emission import Mie_cloud, load_aerosol_grid
-from .clouds_LX_MIE_emission import Mie_cloud_free
+from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid
 
 from .utility import mock_missing
 
@@ -326,7 +325,7 @@ def define_model(model_name, bulk_species, param_species,
                  object_type = 'transiting', PT_profile = 'isotherm', 
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
                  cloud_type = 'deck', opaque_Iceberg = False,
-                 gravity_setting = 'fixed', stellar_contam = None, 
+                 gravity_setting = 'fixed', stellar_contam = None, nightside_contam = False, 
                  offsets_applied = None, error_inflation = None, 
                  radius_unit = 'R_J', distance_unit = 'pc',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
@@ -371,6 +370,9 @@ def define_model(model_name, bulk_species, param_species,
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots / 
              two_spots_free_log_g).
+        nightside_contam (bool):
+            If True, include the impact of nightside thermal emission on a 
+            transmission spectrum (nightside contamination).   
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
             (Options: single_dataset).
@@ -531,7 +533,7 @@ def define_model(model_name, bulk_species, param_species,
              'species_EM_gradient': species_EM_gradient,
              'species_DN_gradient': species_DN_gradient,
              'species_vert_gradient': species_vert_gradient,
-             'stellar_contam': stellar_contam, 
+             'stellar_contam': stellar_contam, 'nightside_contam': nightside_contam,
              'offsets_applied': offsets_applied, 
              'error_inflation': error_inflation, 'param_names': param_names,
              'physical_param_names': physical_param_names, 
@@ -1281,6 +1283,12 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 g_cloud = np.zeros_like(wl)
 
             # Calculate extinction coefficients in standard mode
+
+            # Numba will get mad if P_cloud is not an array (because you can have more than one cloud now)
+            # This line just makes sure that P_cloud is an array 
+            if isinstance(P_cloud, np.ndarray) == False:
+                P_cloud = np.array([P_cloud])
+
             kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
                                                            CIA_pairs, ff_pairs, bf_species,
                                                            n, T, P, wl, X, X_active, X_CIA, 

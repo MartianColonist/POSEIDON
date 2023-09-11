@@ -993,6 +993,7 @@ def make_aerosol_database():
     # Load in the aerosol list
     mydir = input_file_path + "opacity/refractive_indices/"
     file_list = glob.glob(mydir + "jumbo*.npy")
+    file_list.sort()
 
     print('---------------------')
     print('Loading in .npy files from')

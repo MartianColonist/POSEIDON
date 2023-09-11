@@ -297,7 +297,6 @@ def get_from_cache(eta, xs, max_frac_error = 0.05):
     result_Qback = np.full(len(xs),np.nan)
     result_g = np.full(len(xs),np.nan)
 
-    # ADD THIS LATER 
     # All_xs will now be sorted by eta
     # Find the all_xs_eta that matches the eta you are on 
     # If eta exists in the eta array already, you can proceed using the following all_xs_eta

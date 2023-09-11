@@ -1585,7 +1585,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                         # So you have to add an extra [0] to get the indexing to work correctly 
                         # Specifically, the file_read option doesn't like the float power line in r_m
                         try:
-                            # Note one whats going on here 
+                            # Note of whats going on here 
                             # np.char.find is finding strings in the cloud param names that have the string 
                             # And that either returns a list of arrays, or something else, which is why we have the try-except 
 
@@ -1643,7 +1643,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                                 P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
                             # Put in because the file_read option doesn't like concatenate for some reason
                             except:
-                                P_cloud = [P_deck, P_slab]
+                                P_cloud = np.array([P_deck, P_slab])
 
                             log_n_max = 0
                             fractional_scale_height = 0

@@ -941,7 +941,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             
     return sigma_stored, cia_stored, Rayleigh_stored, eta_stored, ff_stored, bf_stored
 
-#@jit(nopython = True)
+@jit(nopython = True)
 def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species,
                n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
                kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
@@ -1099,6 +1099,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
 
                 # All deck, slab, aerosol information is stored in the n_aerosol_array
                 # If its an opaque deck, then the length of sigma_Mie_array will be one more than n_aerosol_array
+                # Since the opaque deck is being counted as an extra aerosol 
                 # Otherwise, it should be the same 
 
                 # No opaque clouds 
