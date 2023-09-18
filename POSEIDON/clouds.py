@@ -11,13 +11,47 @@ import matplotlib.pyplot as plt
 from mpi4py import MPI
 import h5py
 import os 
+import glob
 
 from .utility import shared_memory_array
 from .supported_chemicals import aerosol_supported_species
+#from .core import wl_grid_constant_R
 
 ############################################################################################
 # Utility Functions
 ############################################################################################
+
+def wl_grid_constant_R(wl_min, wl_max, R):
+    '''
+    Create a wavelength array with constant spectral resolution (R = wl/dwl).
+
+    Args:
+        wl_min (float):
+            Minimum wavelength of grid (μm).
+        wl_max (float): 
+            Maximum wavelength of grid (μm).
+        R (int or float):
+            Spectral resolution of desired wavelength grid.
+    
+    Returns:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+
+    '''
+
+    # Constant R -> uniform in log(wl)
+    delta_log_wl = 1.0/R
+    N_wl = (np.log(wl_max) - np.log(wl_min)) / delta_log_wl
+    N_wl = np.around(N_wl).astype(np.int64)
+    log_wl = np.linspace(np.log(wl_min), np.log(wl_max), N_wl)    
+
+    wl = np.exp(log_wl)
+
+    # Fix for numerical rounding error
+    wl[0] = wl_min
+    wl[-1] = wl_max
+    
+    return wl
 
 def find_nearest(array, value):
     array = np.asarray(array)
@@ -96,6 +130,780 @@ def plot_aerosol_number_denstiy_fuzzy_deck(atmosphere,log_P_cloud,log_n_max,frac
     ax.set_ylabel('log(P)')
     ax.legend()
     plt.show()
+
+# File read in utility functions 
+def load_refractive_indices_from_file(wl,file_name):
+
+    '''
+    Loads in the refractive indices from a text file (2 rows skipped, columns : wl n k)
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+
+        file_name (string):
+            File name (with directory included)
+    
+    Returns:
+        r_i_real (np.array of float)
+            Array with the loaded in real indices interpolated onto wl_Mie
+
+        r_i_complex (np.array of float)
+            Array with the loaded in imaginary indices interpolated onto wl_Mie
+
+    '''
+
+    wl_min = np.min(wl)
+    wl_max = np.max(wl)
+    wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
+
+    #########################
+    # Load in refractive indices (as function of wavelength)
+    #########################
+    print('Loading in : ', file_name)
+    try:
+        file_as_numpy = np.loadtxt(file_name, comments = '#').T
+    except:
+        file_as_numpy = np.loadtxt(file_name, skiprows = 2).T
+
+    # If its index, wavelength, n, k we need to do something different. 
+    if len(file_as_numpy) == 4:
+        wavelengths = file_as_numpy[1]
+        real_indices = file_as_numpy[2]
+        imaginary_indices = file_as_numpy[3]
+        file_as_numpy = np.array([wavelengths,real_indices,imaginary_indices])
+
+    wavelengths = file_as_numpy[0]
+    real_indices = file_as_numpy[1]
+    imaginary_indices = file_as_numpy[2]
+
+    interp_reals = interp1d(wavelengths, file_as_numpy[1])
+    interp_complexes = interp1d(wavelengths, file_as_numpy[2])
+
+    return interp_reals(wl_Mie), interp_complexes(wl_Mie)
+
+def plot_refractive_indices_from_file(wl, file_name):
+
+    '''
+    Plots the refractive indices from a txt file (2 rows skipped, columns : wl n k)
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+
+        file_name (string):
+            File name (with directory included)
+
+    '''
+
+    real_indices, imaginary_indices = load_refractive_indices_from_file(wl,file_name)
+    wl_min = np.min(wl)
+    wl_max = np.max(wl)
+    wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
+
+    molecule = file_name.split('/')[1][:-4]
+    molecule = molecule.split('_')[0]
+
+    fig, (ax1, ax2) = plt.subplots(1, 2)
+    fig.set_size_inches(10, 6)
+    suptitle = 'Refractive Indices for ' + molecule
+    #suptitle = 'Refractive Indices for H$_2$O'
+    fig.suptitle(suptitle)
+    ax1.plot(wl_Mie, real_indices)
+    ax2.plot(wl_Mie, imaginary_indices)
+
+    ax1.set_xlabel('Wavelength ($\mu$m)')
+    ax2.set_xlabel('Wavelength ($\mu$m)')
+    ax1.set_ylabel('Real Indices')
+    ax2.set_ylabel('Imaginary Indices')
+
+    plt.show()
+
+def plot_effective_cross_section_from_file(wl, r_m, file_name):
+
+    '''
+    Plots the effective cross sections from a txt file (2 rows skipped, columns : wl n k)
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+
+        r_m (float):
+            Mean particle size (um)
+
+        file_name (string):
+            File name (with directory included)
+
+    '''
+
+    r_i_real, r_i_complex = load_refractive_indices_from_file(wl,file_name)
+    wl_min = np.min(wl)
+    wl_max = np.max(wl)
+    wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
+    eff_ext_cross_section, eff_scat_cross_section, eff_abs_cross_section, eff_back_cross_section, eff_w, eff_g = precompute_cross_sections_from_indices(wl_Mie,r_i_real,r_i_complex, r_m)
+
+    plt.figure(figsize=(10,6))
+    label = 'r_m ' + str(r_m) + ' (um)'
+    plt.plot(wl_Mie, eff_ext_cross_section, label = label)
+    title = 'Effective Extinction (Scattering + Absorption) Cross Sections ' + file_name.split('/')[1][:-4] + '\n'
+    plt.title(title)
+    plt.ylabel('Effective Cross Section')
+    plt.xlabel('Wavelength (um)')
+    plt.legend()
+    plt.show()
+
+    plt.figure(figsize=(10,6))
+    label = 'r_m ' + str(r_m) + ' (um)'
+    plt.plot(wl_Mie, eff_scat_cross_section, label = label)
+    title = 'Effective Scattering Cross Sections ' + file_name.split('/')[1][:-4]+ '\n'
+    plt.title(title)
+    plt.ylabel('Effective Cross Section')
+    plt.xlabel('Wavelength (um)')
+    plt.legend()
+    plt.show()
+
+    plt.figure(figsize=(10,6))
+    label = 'r_m ' + str(r_m) + ' (um)'
+    plt.plot(wl_Mie, eff_abs_cross_section, label = label)
+    title = 'Effective Absorption Cross Sections ' + file_name.split('/')[1][:-4]+ '\n'
+    plt.title(title)
+    plt.ylabel('Effective Cross Section')
+    plt.xlabel('Wavelength (um)')
+    plt.legend()
+    plt.show()
+
+    plt.figure(figsize=(10,6))
+    label = 'r_m ' + str(r_m) + ' (um)'
+    plt.plot(wl_Mie, eff_back_cross_section, label = label)
+    title = 'Effective Back-Scattering Cross Sections ' + file_name.split('/')[1][:-4]+ '\n'
+    plt.title(title)
+    plt.ylabel('Effective Cross Section')
+    plt.xlabel('Wavelength (um)')
+    plt.legend()
+    plt.show()
+
+    plt.figure(figsize=(10,6))
+    label = 'r_m ' + str(r_m) + ' (um)'
+    plt.plot(wl_Mie, eff_w, label = label)
+    title = 'Single Scattering Albedo ' + file_name.split('/')[1][:-4] + '\n0 (black, completely absorbing) to 1 (white, completely scattering)'+ '\n'
+    plt.title(title)
+    plt.ylabel('SSA')
+    plt.xlabel('Wavelength (um)')
+    plt.legend()
+    plt.show()
+
+    plt.figure(figsize=(10,6))
+    label = 'r_m ' + str(r_m) + ' (um)'
+    plt.plot(wl_Mie, eff_g, label = label)
+    title = 'Asymmetry Parameter ' + file_name.split('/')[1][:-4] + '\n0 (Rayleigh limit) and +1 (total foward scattering limit) '+ '\n'
+    plt.title(title)
+    plt.ylabel('g')
+    plt.xlabel('Wavelength (um)')
+    plt.legend()
+    plt.show()
+
+    molecule = file_name.split('/')[1][:-4]
+    molecule = molecule.split('_')[0]
+    title = molecule + ' : Normalized $\sigma_{ext}$ , Asymmetry Parameter, and Single Scattering Albedo' + '\n $r_m$ = ' + str(round(r_m, 3)) + ' ($\mu$m)' +  '\n $\omega$ : 0 (black, completely absorbing) to 1 (white, completely scattering)'+ '\n g : 0 (Rayleigh Limit) to 1 (Total Forward Scattering) '+ '\n'
+    plt.figure(figsize=(10,6))
+    plt.plot(wl_Mie, eff_ext_cross_section/np.max(eff_ext_cross_section), label = '$\sigma_{ext}$ = $\sigma_{abs}$ + $\sigma_{scat}$ (Normalized)')
+    plt.plot(wl_Mie, eff_w, label = 'Single Scattering Albedo ($\omega$)')
+    plt.plot(wl_Mie, eff_g, label = 'Asymmetry Parameter (g)')
+    plt.title(title)
+    plt.xlabel('Wavelength ($\mu$m)')
+    plt.legend()
+    plt.show()
+
+# Plot the cross section for a specific aersol in the database (for testing)
+def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
+
+    # For documentation, see Mie_cloud_free
+
+    r_m_std_dev = 0.5
+    z_max = 5
+    num_integral_points = 100
+    R_Mie = 1000
+
+    wl_min = wl[0]
+    wl_max = wl[-1]
+    wl_Mie = wl_grid_constant_R(wl_min, wl_max, R_Mie)
+    
+    eta = complex(r_i_real,-r_i_complex)
+    eta_array = np.full(len(wl_Mie),eta)
+
+
+    eff_cross_sections = np.zeros(len(wl_Mie))
+    z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
+    z = np.append(z[::-1], -z)
+
+    # For the effective cross section integral we need three components 
+    # 1) Geometric cross section
+    # 2) Probability distribution of particle size 
+    # 3) Qext, which is given by the LX-MIE algorithm
+
+    # ??? Still not sure about the constant here
+    probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
+    radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
+    geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
+
+    dense_xs = 2*np.pi*radii[np.newaxis,:] / wl_Mie[:,np.newaxis] # here the um crosses out 
+    dense_xs = dense_xs.flatten()
+
+    x_hist = np.histogram(dense_xs, bins='auto')[1]
+
+    Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
+    w_hist = Qscat_hist/Qext_hist
+
+    spl = scipy.interpolate.splrep(x_hist, Qext_hist)
+    Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+    spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
+    Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+    spl = scipy.interpolate.splrep(x_hist, w_hist)
+    w_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+    spl = scipy.interpolate.splrep(x_hist, Qback_hist)
+    Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+    spl = scipy.interpolate.splrep(x_hist, g_hist)
+    g_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+    Qext_intpl = np.reshape(Qext_intpl, (len(wl_Mie), len(radii)))
+    Qscat_intpl = np.reshape(Qscat_intpl, (len(wl_Mie), len(radii)))
+    Qback_intpl = np.reshape(Qback_intpl, (len(wl_Mie), len(radii)))
+    w_intpl = np.reshape(w_intpl, (len(wl_Mie), len(radii)))
+    g_intpl = np.reshape(g_intpl, (len(wl_Mie), len(radii)))
+
+    # Effective Cross section is a trapezoidal integral
+    eff_ext_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+
+    # Scattering Cross section 
+    eff_scat_cross_section = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+
+    # Absorption Cross section
+    eff_abs_cross_section = eff_ext_cross_section - eff_scat_cross_section
+
+    # BackScatter Cross section 
+    eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+
+    # Effective w and g
+    eff_w = np.median(w_intpl, axis=1)
+    eff_g = np.median(g_intpl, axis=1)
+
+    # Interpolate the eff_cross_section from wl_Mie back to native wl
+    # This can probably be made faster 
+    interp = interp1d(wl_Mie, eff_ext_cross_section)
+    eff_ext = interp(wl)
+
+    # Plot the interpolated effective cross sections
+    label = 'r_m (um) : ' + str(r_m)
+    title = "Index = " + str(r_i_real) + " + " + str(r_i_complex) + "j Effective Cross Section"
+    plt.figure(figsize=(10,6))
+    plt.plot(wl,eff_ext, label = label)
+    plt.legend()
+    plt.xlabel('Wavelengths (um)')
+    plt.ylabel('Effective Cross Section')
+    plt.title(title)
+    plt.show()
+
+    all_etas = []
+    all_xs = []
+    all_Qexts = []
+
+# Plot the number density above the fuzzy deck (for testing)
+def plot_aerosol_number_denstiy_fuzzy_deck(atmosphere,log_P_cloud,log_n_max,fractional_scale_height):
+
+    r = atmosphere['r']
+    H = atmosphere['H']
+    P = atmosphere['P']
+
+    P_cloud = 10**log_P_cloud
+
+    # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+    n_aerosol = np.empty_like(r)
+    P_cloud_index = find_nearest(P,P_cloud)
+    # Find the radius corresponding to the cloud top pressure 
+    cloud_top_height = r[P_cloud_index]
+    # Height above cloud 
+    h = r[P_cloud_index:] - cloud_top_height
+    # Find number density below and above P_cloud
+    n_aerosol[:P_cloud_index] = 1.0e250
+    n_aerosol[P_cloud_index:] = (10**log_n_max) * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
+
+
+    title = ('Number Density of Aerosol above Cloud Deck\n log_P_cloud: ' + str(log_P_cloud) + 
+             ' log_n_max: ' + str(log_n_max) + ' f: ' + str(fractional_scale_height))
+    fig, ax = plt.subplots()
+    fig.set_size_inches(10, 6)
+    ax.plot(np.log10(n_aerosol.T[0][0])[P_cloud_index:],np.log10(P)[P_cloud_index:])
+    ax.axhspan(log_P_cloud, np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
+    ax.invert_yaxis()
+    ax.set_title(title)
+    ax.set_xlabel('log(Number Density)')
+    ax.set_ylabel('log(P)')
+    ax.legend()
+    plt.show()
+
+def plot_clouds(planet,model,atmosphere, colour_list = []):
+
+    # Unpack model 'strings'
+    planet_name = planet['planet_name']
+    model_name = model['model_name']
+    aerosol_species = model['aerosol_species']
+    Atmosphere_dimension = model['Atmosphere_dimension']
+    TwoD_type = model['TwoD_type']
+    cloud_type = model['cloud_type']
+
+    # Global parameters
+    P = atmosphere['P']
+    log_P = np.log10(P)
+    r = atmosphere['r']
+    n = atmosphere['n']
+
+    # Aerosol parameters
+    P_cloud = atmosphere['P_cloud']
+    H = atmosphere['H']
+    r_m = atmosphere['r_m']
+    log_n_max = atmosphere['log_n_max']
+    fractional_scale_height = atmosphere['fractional_scale_height']
+    aerosol_species = np.copy(atmosphere['aerosol_species'])
+    log_X_Mie = atmosphere['log_X_Mie']
+    P_cloud_bottom = atmosphere['P_cloud_bottom']
+
+    # Turn everything into arrays (only matters for file read and free)
+    if isinstance(P_cloud, np.ndarray) == False:
+        P_cloud = np.array([P_cloud])
+    if isinstance(log_n_max, np.ndarray) == False:
+        log_n_max = np.array([log_n_max])
+    if isinstance(fractional_scale_height, np.ndarray) == False:
+        fractional_scale_height = np.array([fractional_scale_height])
+    if isinstance(log_X_Mie, np.ndarray) == False:
+        log_X_Mie = np.array([log_X_Mie])
+    if isinstance(P_cloud_bottom, np.ndarray) == False:
+        P_cloud_bottom = np.array([P_cloud_bottom])
+
+    if aerosol_species[0] == 'free':
+        r_i_real = atmosphere['r_i_real']
+        r_i_complex = atmosphere['r_i_complex']
+        free_string = str(r_i_real) + " + " + str(r_i_complex) + " j"
+
+    # Initialize plot
+    fig, ax = plt.subplots()
+    fig.set_size_inches(10, 6)
+
+    # Define colours for mixing ratio profiles (default or user choice)
+    if (colour_list == []):   # If user did not specify a custom colour list
+        colours = ['orange','royalblue', 'darkgreen', 'magenta', 'crimson', 'darkgrey', 
+                   'black', 'darkorange', 'navy']
+    else:
+        colours = colour_list
+    
+
+    #########################
+    # Calculate the number density above the cloud top or apply a uniform haze
+    #########################
+
+    # Go through all the different cloud models 
+    # Fuzzy Deck Model 
+    if (cloud_type == 'fuzzy_deck'):
+
+        # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+        n_aerosol = np.empty_like(r)
+        P_cloud_index = find_nearest(P,P_cloud)
+        # Find the radius corresponding to the cloud top pressure 
+        cloud_top_height = r[P_cloud_index]
+        # Height above cloud 
+        h = r[P_cloud_index:] - cloud_top_height
+        # Find number density below and above P_cloud
+        n_aerosol[:P_cloud_index] = 1.0e250
+        n_aerosol[P_cloud_index:] = (10**log_n_max[0]) * np.exp(-h/(fractional_scale_height[0]*H[P_cloud_index:]))
+        
+        # Convert to mixing ratio 
+        mixing_ratio = np.log10(n_aerosol.flatten()/n.flatten())
+
+        if aerosol_species[0] == 'free':
+            label = free_string
+        else:
+            label = aerosol_species[0]
+    
+        ax.plot(mixing_ratio[P_cloud_index:], log_P[P_cloud_index:], label = label, color = colours[0])
+        ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
+
+    # Slab Model 
+    elif (cloud_type == 'slab'):
+
+        # Loop through the aerosols, since you can have more than one slab 
+        for q in range(len(aerosol_species)):
+            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+            n_aerosol = np.empty_like(r)
+            P_cloud_index_top = find_nearest(P,P_cloud[q])
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q])
+
+            log_X = log_X_Mie[q]
+
+            if aerosol_species[0] == 'free':
+                label = free_string
+            else:
+                label = aerosol_species[q]
+
+            plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q], linewidth=5.0)
+            ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--')
+            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[q], label = label)
+
+    # Combined Models 
+    elif (cloud_type == 'fuzzy_deck_plus_slab'):
+
+        for q in range(len(aerosol_species)):
+
+            if aerosol_species[0] == 'free':
+                label = free_string
+            else:
+                label = aerosol_species[q]
+
+                # The first index will be the fuzzy deck 
+                if q == 0:
+                    # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+                    n_aerosol = np.empty_like(r)
+                    P_cloud_index = find_nearest(P,P_cloud[q])
+                    # Find the radius corresponding to the cloud top pressure 
+                    cloud_top_height = r[P_cloud_index]
+                    # Height above cloud 
+                    h = r[P_cloud_index:] - cloud_top_height
+                    # Find number density below and above P_cloud
+                    n_aerosol[:P_cloud_index] = 1.0e250
+                    n_aerosol[P_cloud_index:] = (10**log_n_max[0]) * np.exp(-h/(fractional_scale_height[0]*H[P_cloud_index:]))
+                    
+                    # Convert to mixing ratio 
+                    mixing_ratio = np.log10(n_aerosol.flatten()/n.flatten())
+
+                    ax.plot(mixing_ratio[P_cloud_index:], log_P[P_cloud_index:], label = label, color = colours[0], linewidth = 5.0)
+                    ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
+
+                # Others will be slabs 
+                else:
+                    # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+                    n_aerosol = np.empty_like(r)
+                    P_cloud_index_top = find_nearest(P,P_cloud[q])
+                    P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q-1])
+
+                    log_X = log_X_Mie[q-1]
+                    plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q], linewidth=5.0)
+                    ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--')
+                    ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[q], label = label)
+
+
+    # For the opaque deck, the opaque deck will be added to the aerosol array even though its not really an aerosol species 
+    elif (cloud_type == 'opaque_deck_plus_slab'):
+
+        try:
+
+            if aerosol_species[0] == 'free':
+
+                label = free_string
+
+                # Deck First
+                P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
+                ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
+                
+                # Slab Second
+                n_aerosol = np.empty_like(r)
+                P_cloud_index_top = find_nearest(P,P_cloud[1])
+                P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[0])
+
+                log_X = log_X_Mie[0]
+                plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[0], linewidth=5.0)
+                ax.axvline(x = log_X, color = colours[0], linewidth=1.0, linestyle = '--')
+                ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[0], label = label)
+            
+            else:
+
+                for q in range(len(r_m)):
+
+                        if q ==0:
+                            P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
+                            ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
+                        
+                        # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+                        n_aerosol = np.empty_like(r)
+                        P_cloud_index_top = find_nearest(P,P_cloud[q+1])
+                        P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q])
+
+                        log_X = log_X_Mie[q]
+                        plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q], linewidth=5.0)
+                        ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--')
+                        ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[q], label = aerosol_species[q])
+
+        # If its file read or free
+        except:
+
+            # Deck First
+            P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
+            ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
+            
+            # Slab Second
+            n_aerosol = np.empty_like(r)
+            P_cloud_index_top = find_nearest(P,P_cloud[1])
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[0])
+
+            log_X = log_X_Mie[0]
+            plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[0], linewidth=5.0)
+            ax.axvline(x = log_X, color = colours[0], linewidth=1.0, linestyle = '--')
+            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[0], label = aerosol_species[0])
+
+
+    # Uniform X Model 
+    else:
+        for q in range(len(aerosol_species)):
+
+            if aerosol_species[0] == 'free':
+                label = free_string
+            else:
+                label = aerosol_species[q]
+
+            log_X = log_X_Mie[q]
+            ax.axvline(x = log_X, color = colours[q], linewidth=1.0, label = label)
+
+
+    ax.invert_yaxis()
+    ax.set_ylim(log_P[0], log_P[-1])  
+    ax.set_xlim(-30, -1)  
+    ax.set_xlabel('Mixing Ratios (log $X_i$)')
+    ax.set_ylabel('Pressure (log P) (bar)')
+    ax.legend()
+    plt.show()
+
+def contribution_clouds(model, planet, star, wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og):
+
+    from POSEIDON.core import define_model
+    from POSEIDON.core import make_atmosphere
+    from POSEIDON.core import compute_spectrum
+    from POSEIDON.visuals import plot_spectra
+    from POSEIDON.utility import plot_collection
+
+    spectra_array = []
+    spectra_labels = ['Full Spectum','Bulk Species']
+
+    # Real spectrum 
+    model_name = 'Full Spectrum'
+    bulk_species = ['H2','He']
+    species_list = model['param_species']
+    param_species = species_list
+
+    if model['cloud_model'] != 'Mie':
+
+        model_full = define_model(model_name,bulk_species,param_species,
+                                PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
+
+        atmosphere_full = make_atmosphere(planet, model_full, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og)
+
+        spectrum_full = compute_spectrum(planet, star, model_full, atmosphere_full, opac, wl,
+                                        spectrum_type = 'transmission')
+
+    else:
+        aerosol_species = model['aerosol_species']
+
+        model_full = define_model(model_name,bulk_species,param_species,
+                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                        aerosol_species = aerosol_species)
+
+        atmosphere_full = make_atmosphere(planet, model_full, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og)
+
+        spectrum_full = compute_spectrum(planet, star, model_full, atmosphere_full, opac, wl,
+                                        spectrum_type = 'transmission')
+
+    # H + He atmosphere
+    model_name = 'Bulk'
+    param_species = []
+
+    # Model H-H2
+    model_bulk = define_model(model_name,bulk_species,param_species,
+                               PT_profile = model['PT_profile'], X_profile = model['X_profile'])
+
+    log_X_params = np.array([])
+    atmosphere_bulk = make_atmosphere(planet, model_bulk, P, P_ref, R_p_ref, PT_params_og)
+
+    spectrum_bulk = compute_spectrum(planet, star, model_bulk, atmosphere_bulk, opac, wl,
+                                      spectrum_type = 'transmission')
+    
+    spectra_array.append(spectrum_bulk)
+
+
+    # Model Clouds
+    
+    if model['cloud_type'] == 'MacMad17':
+        model_clouds = define_model(model_name,bulk_species,param_species,
+                                PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
+
+        log_X_params = np.array([])
+        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
+
+        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
+                                        spectrum_type = 'transmission')
+        
+        spectra_array.append(spectrum_clouds)
+        spectra_labels.append(model['cloud_type'])
+
+    elif model['cloud_model'] == 'Mie':
+
+        aerosol_species = model['aerosol_species']
+
+        model_clouds = define_model(model_name,bulk_species,param_species,
+                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                        aerosol_species = aerosol_species)
+
+        log_X_params = np.array([])
+        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
+
+        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
+                                        spectrum_type = 'transmission')
+        
+        spectra_array.append(spectrum_clouds)
+        spectra_labels.append(model['cloud_type'])
+
+    # For each chemical species in the model
+
+    for i in range(len(species_list)):
+
+        model_name = 'One-Species'
+        param_species = [species_list[i]]
+
+        model_one_species = define_model(model_name,bulk_species,param_species,
+                                         PT_profile = model['PT_profile'], X_profile = model['X_profile'])
+
+        log_X_params = np.array([log_X_params_og[i]])
+
+        atmosphere_one_species = make_atmosphere(planet, model_one_species, P, P_ref, R_p_ref, PT_params_og, log_X_params)
+
+        spectrum_one_species = compute_spectrum(planet, star, model_one_species, atmosphere_one_species, opac, wl,
+                                        spectrum_type = 'transmission')
+
+        spectra_array.append(spectrum_one_species)
+        spectra_labels.append(species_list[i])
+
+
+    # Plot
+    # Initialize plot collection with the full spectrum
+    spectra = plot_collection(spectrum_full, wl, collection = [])
+
+    # Loop through the contribution spectra 
+    for s in spectra_array:
+        spectra = plot_collection(s, wl, collection = spectra)
+
+    fig = plot_spectra(spectra, planet, R_to_bin = 100,
+                   plt_label = 'Cloud Contribution Plot',
+                   spectra_labels = spectra_labels,
+                   plot_full_res = False)
+
+def vary_one_parameter(model, planet, star, param_name, vary_list,
+                       wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og):
+
+    from POSEIDON.core import define_model
+    from POSEIDON.core import make_atmosphere
+    from POSEIDON.core import compute_spectrum
+    from POSEIDON.visuals import plot_spectra
+    from POSEIDON.utility import plot_collection
+
+    spectra_array = []
+    spectra_labels = []
+
+    # Real spectrum 
+    model_name = 'Vary-One-Thing'
+    bulk_species = ['H2','He']
+    species_list = model['param_species']
+    param_species = species_list
+
+    if model['cloud_model'] != 'Mie':
+
+        model = define_model(model_name,bulk_species,param_species,
+                                PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
+
+    else:
+        aerosol_species = model['aerosol_species']
+
+        model = define_model(model_name,bulk_species,param_species,
+                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                        aerosol_species = aerosol_species)
+
+
+    # Try to find the variable they want to vary 
+
+    if param_name in model['PT_param_names']:
+
+        index = np.argwhere(model['PT_param_names'] == param_name)[0][0]
+
+        for i in range(len(vary_list)):
+
+            PT_params = np.copy(PT_params_og)
+            PT_params[index] = vary_list[i]
+            
+            atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params_og, cloud_params_og)
+
+            spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                      spectrum_type = 'transmission')
+            
+            spectra_array.append(spectrum)
+            label = param_name + ' = ' + str(vary_list[i])
+            spectra_labels.append(label)
+
+    elif param_name in model['X_param_names']:
+
+        index = np.argwhere(model['X_param_names'] == param_name)[0][0]
+
+        for i in range(len(vary_list)):
+
+            log_X_params = np.copy(log_X_params_og)
+            log_X_params[index] = vary_list[i]
+            
+            atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
+
+            spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                      spectrum_type = 'transmission')
+            
+            spectra_array.append(spectrum)
+            label = param_name + ' = ' + str(vary_list[i])
+            spectra_labels.append(label)
+
+    elif param_name in model['cloud_param_names']:
+
+        index = np.argwhere(model['cloud_param_names'] == param_name)[0][0]
+
+        for i in range(len(vary_list)):
+
+            cloud_params = np.copy(cloud_params_og)
+            cloud_params[index] = vary_list[i]
+            
+            atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
+
+            spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                      spectrum_type = 'transmission')
+            
+            spectra_array.append(spectrum)
+            label = param_name + ' = ' + str(vary_list[i])
+            spectra_labels.append(label)
+
+    else:
+        raise(Exception(param_name, ' is not in the param list. Check model[\'param_names\']'))
+
+
+    # Plot
+    for s in range(len(spectra_array)):
+        if s == 0:
+            spectra = plot_collection(spectra_array[s], wl, collection = [])
+        else:
+            spectra = plot_collection(spectra_array[s], wl, collection = spectra)
+
+    label = 'Varying ' + param_name
+    fig = plot_spectra(spectra, planet, R_to_bin = 100,
+                   plt_label = label,
+                   spectra_labels = spectra_labels,
+                   plot_full_res = False)
 
 ############################################################################################
 # Loading Saved Array 
@@ -202,7 +1010,6 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid, 'wl_grid': wl_grid, 'r_m_grid' : r_m_grid}
 
     return aerosol_grid
-
 
 def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array, 
                                aerosol_species, return_dict = True):
@@ -451,18 +1258,18 @@ def Mie_cloud(P,wl,r, H, n,
                 n_aerosol[:P_cloud_index] = 1.0e250
                 n_aerosol[P_cloud_index:] = (10**log_n_max[q]) * np.exp(-h/(fractional_scale_height[q]*H[P_cloud_index:]))
                 n_aerosol_array.append(n_aerosol)
+
             # Others will be slabs 
-            else:
-                n_aerosol = np.empty_like(r)
-                P_cloud_index_top = find_nearest(P,P_cloud[q])
-                P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q-1]) #Because this is one shorter than the P_cloud array, decks don't have P_bottom
-                n_aerosol = np.empty_like(r)
-                n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q-1]) # same reason
-                n_aerosol_array.append(n_aerosol)
+            n_aerosol = np.empty_like(r)
+            P_cloud_index_top = find_nearest(P,P_cloud[q])
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q-1]) #Because this is one shorter than the P_cloud array, decks don't have P_bottom
+            n_aerosol = np.empty_like(r)
+            n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q-1]) # same reason
+            n_aerosol_array.append(n_aerosol)
 
         # For the opaque deck, the opaque deck will be added to the aerosol array even though its not really an aerosol species 
         elif (cloud_type == 'opaque_deck_plus_slab'):
-                
+            
             if q == 0:
                 n_aerosol = np.empty_like(r)
                 P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
@@ -545,322 +1352,6 @@ wl_Mie_empty = np.array([])
 # Switched between free and file_read in the same notebook 
 free_or_file = ''
 
-
-############################################################################################
-# Utility Functions
-############################################################################################
-
-# Plot the cross section for a specific aersol in the database (for testing)
-def plot_effective_cross_section_free(wl, wl_Mie, r_m, r_i_real, r_i_complex):
-
-    # For documentation, see Mie_cloud_free
-
-    r_m_std_dev = 0.5
-    z_max = 5
-    num_integral_points = 100
-    R_Mie = 1000
-
-  #  wl_min = wl[0]
-  #  wl_max = wl[-1]
-  #  wl_Mie = wl_grid_constant_R(wl_min, wl_max, R_Mie)
-    
-    eta = complex(r_i_real,-r_i_complex)
-    eta_array = np.full(len(wl_Mie),eta)
-    eff_cross_sections = np.zeros(len(wl_Mie))
-    z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
-    z = np.append(z[::-1], -z)
-    probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
-    radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
-    geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
-    dense_xs = 2*np.pi*radii[np.newaxis,:] / wl_Mie[:,np.newaxis] # here the um crosses out 
-    dense_xs = dense_xs.flatten()
-    x_hist = np.histogram(dense_xs, bins='auto')[1]
-    Qext_hist = get_and_update(eta, x_hist) 
-    spl = scipy.interpolate.splrep(x_hist, Qext_hist)
-    Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
-    Qext_intpl = np.reshape(Qext_intpl, (len(wl_Mie), len(radii)))
-    eff_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
-    interp_eff_cross_section = interp1d(wl_Mie, eff_cross_section)
-    eff_cross_section = interp_eff_cross_section(wl)
-
-    # Plot the interpolated effective cross sections
-    label = 'r_m (um) : ' + str(r_m)
-    title = "Index = " + str(r_i_real) + " + " + str(r_i_complex) + "j Effective Cross Section"
-    plt.figure(figsize=(10,6))
-    plt.plot(wl,eff_cross_section, label = label)
-    plt.legend()
-    plt.xlabel('Wavelengths (um)')
-    plt.ylabel('Effective Cross Section')
-    plt.title(title)
-    plt.show()
-
-    all_etas = []
-    all_xs = []
-    all_Qexts = []
-
-# Plot the number density above the fuzzy deck (for testing)
-def plot_aerosol_number_denstiy_fuzzy_deck(atmosphere,log_P_cloud,log_n_max,fractional_scale_height):
-
-    r = atmosphere['r']
-    H = atmosphere['H']
-    P = atmosphere['P']
-
-    P_cloud = 10**log_P_cloud
-
-    # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-    n_aerosol = np.empty_like(r)
-    P_cloud_index = find_nearest(P,P_cloud)
-    # Find the radius corresponding to the cloud top pressure 
-    cloud_top_height = r[P_cloud_index]
-    # Height above cloud 
-    h = r[P_cloud_index:] - cloud_top_height
-    # Find number density below and above P_cloud
-    n_aerosol[:P_cloud_index] = 1.0e250
-    n_aerosol[P_cloud_index:] = (10**log_n_max) * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
-
-
-    title = ('Number Density of Aerosol above Cloud Deck\n log_P_cloud: ' + str(log_P_cloud) + 
-             ' log_n_max: ' + str(log_n_max) + ' f: ' + str(fractional_scale_height))
-    fig, ax = plt.subplots()
-    fig.set_size_inches(10, 6)
-    ax.plot(np.log10(n_aerosol.T[0][0])[P_cloud_index:],np.log10(P)[P_cloud_index:])
-    ax.axhspan(log_P_cloud, np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
-    ax.invert_yaxis()
-    ax.set_title(title)
-    ax.set_xlabel('log(Number Density)')
-    ax.set_ylabel('log(P)')
-    ax.legend()
-    plt.show()
-
-
-def plot_clouds(planet,model,atmosphere, colour_list = []):
-
-    # Unpack model 'strings'
-    planet_name = planet['planet_name']
-    model_name = model['model_name']
-    aerosol_species = model['aerosol_species']
-    Atmosphere_dimension = model['Atmosphere_dimension']
-    TwoD_type = model['TwoD_type']
-    cloud_type = model['cloud_type']
-
-    # Global parameters
-    P = atmosphere['P']
-    log_P = np.log10(P)
-    r = atmosphere['r']
-    n = atmosphere['n']
-
-    # Aerosol parameters
-    P_cloud = atmosphere['P_cloud']
-    H = atmosphere['H']
-    r_m = atmosphere['r_m']
-    log_n_max = atmosphere['log_n_max']
-    fractional_scale_height = atmosphere['fractional_scale_height']
-    aerosol_species = np.copy(atmosphere['aerosol_species'])
-    log_X_Mie = atmosphere['log_X_Mie']
-    P_cloud_bottom = atmosphere['P_cloud_bottom']
-
-    # Turn everything into arrays (only matters for file read and free)
-    if isinstance(P_cloud, np.ndarray) == False:
-        P_cloud = np.array([P_cloud])
-    if isinstance(log_n_max, np.ndarray) == False:
-        log_n_max = np.array([log_n_max])
-    if isinstance(fractional_scale_height, np.ndarray) == False:
-        fractional_scale_height = np.array([fractional_scale_height])
-    if isinstance(log_X_Mie, np.ndarray) == False:
-        log_X_Mie = np.array([log_X_Mie])
-    if isinstance(P_cloud_bottom, np.ndarray) == False:
-        P_cloud_bottom = np.array([P_cloud_bottom])
-
-    if aerosol_species[0] == 'free':
-        r_i_real = atmosphere['r_i_real']
-        r_i_complex = atmosphere['r_i_complex']
-        free_string = str(r_i_real) + " + " + str(r_i_complex) + " j"
-
-    # Initialize plot
-    fig, ax = plt.subplots()
-    fig.set_size_inches(10, 6)
-
-    # Define colours for mixing ratio profiles (default or user choice)
-    if (colour_list == []):   # If user did not specify a custom colour list
-        colours = ['orange','royalblue', 'darkgreen', 'magenta', 'crimson', 'darkgrey', 
-                   'black', 'darkorange', 'navy']
-    else:
-        colours = colour_list
-    
-
-    #########################
-    # Calculate the number density above the cloud top or apply a uniform haze
-    #########################
-
-    # Go through all the different cloud models 
-    # Fuzzy Deck Model 
-    if (cloud_type == 'fuzzy_deck'):
-
-        # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-        n_aerosol = np.empty_like(r)
-        P_cloud_index = find_nearest(P,P_cloud)
-        # Find the radius corresponding to the cloud top pressure 
-        cloud_top_height = r[P_cloud_index]
-        # Height above cloud 
-        h = r[P_cloud_index:] - cloud_top_height
-        # Find number density below and above P_cloud
-        n_aerosol[:P_cloud_index] = 1.0e250
-        n_aerosol[P_cloud_index:] = (10**log_n_max[0]) * np.exp(-h/(fractional_scale_height[0]*H[P_cloud_index:]))
-        
-        # Convert to mixing ratio 
-        mixing_ratio = np.log10(n_aerosol.flatten()/n.flatten())
-
-        if aerosol_species[0] == 'free':
-            label = free_string
-        else:
-            label = aerosol_species[0]
-    
-        ax.plot(mixing_ratio[P_cloud_index:], log_P[P_cloud_index:], label = label, color = colours[0])
-        ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
-
-    # Slab Model 
-    elif (cloud_type == 'slab'):
-
-        # Loop through the aerosols, since you can have more than one slab 
-        for q in range(len(aerosol_species)):
-            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-            n_aerosol = np.empty_like(r)
-            P_cloud_index_top = find_nearest(P,P_cloud[q])
-            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q])
-
-            log_X = log_X_Mie[q]
-
-            if aerosol_species[0] == 'free':
-                label = free_string
-            else:
-                label = aerosol_species[q]
-
-            plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q], linewidth=5.0)
-            ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--')
-            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[q], label = label)
-
-    # Combined Models 
-    elif (cloud_type == 'fuzzy_deck_plus_slab'):
-
-        for q in range(len(aerosol_species)):
-
-            if aerosol_species[0] == 'free':
-                label = free_string
-            else:
-                label = aerosol_species[q]
-
-                # The first index will be the fuzzy deck 
-                if q == 0:
-                    # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-                    n_aerosol = np.empty_like(r)
-                    P_cloud_index = find_nearest(P,P_cloud[q])
-                    # Find the radius corresponding to the cloud top pressure 
-                    cloud_top_height = r[P_cloud_index]
-                    # Height above cloud 
-                    h = r[P_cloud_index:] - cloud_top_height
-                    # Find number density below and above P_cloud
-                    n_aerosol[:P_cloud_index] = 1.0e250
-                    n_aerosol[P_cloud_index:] = (10**log_n_max[0]) * np.exp(-h/(fractional_scale_height[0]*H[P_cloud_index:]))
-                    
-                    # Convert to mixing ratio 
-                    mixing_ratio = np.log10(n_aerosol.flatten()/n.flatten())
-
-                    ax.plot(mixing_ratio[P_cloud_index:], log_P[P_cloud_index:], label = label, color = colours[0], linewidth = 5.0)
-                    ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
-
-                # Others will be slabs 
-                else:
-                    # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-                    n_aerosol = np.empty_like(r)
-                    P_cloud_index_top = find_nearest(P,P_cloud[q])
-                    P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q-1])
-
-                    log_X = log_X_Mie[q-1]
-                    plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q], linewidth=5.0)
-                    ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--')
-                    ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[q], label = label)
-
-
-    # For the opaque deck, the opaque deck will be added to the aerosol array even though its not really an aerosol species 
-    elif (cloud_type == 'opaque_deck_plus_slab'):
-
-        try:
-
-            if aerosol_species[0] == 'free':
-
-                label = free_string
-
-                # Deck First
-                P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
-                ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
-                
-                # Slab Second
-                n_aerosol = np.empty_like(r)
-                P_cloud_index_top = find_nearest(P,P_cloud[1])
-                P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[0])
-
-                log_X = log_X_Mie[0]
-                plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[0], linewidth=5.0)
-                ax.axvline(x = log_X, color = colours[0], linewidth=1.0, linestyle = '--')
-                ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[0], label = label)
-            
-            else:
-
-                for q in range(len(r_m)):
-
-                        if q ==0:
-                            P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
-                            ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
-                        
-                        else:
-                            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-                            n_aerosol = np.empty_like(r)
-                            P_cloud_index_top = find_nearest(P,P_cloud[q])
-                            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q])
-
-                            log_X = log_X_Mie[q]
-                            plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q-1], linewidth=5.0)
-                            ax.axvline(x = log_X, color = colours[q-1], linewidth=1.0, linestyle = '--')
-                            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[q-1], label = aerosol_species[q-1])
-
-        # If its file read or free
-        except:
-
-            # Deck First
-            P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
-            ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
-            
-            # Slab Second
-            n_aerosol = np.empty_like(r)
-            P_cloud_index_top = find_nearest(P,P_cloud[1])
-            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[0])
-
-            log_X = log_X_Mie[0]
-            plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[0], linewidth=5.0)
-            ax.axvline(x = log_X, color = colours[0], linewidth=1.0, linestyle = '--')
-            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[0], label = aerosol_species[0])
-
-
-    # Uniform X Model 
-    else:
-        for q in range(len(aerosol_species)):
-
-            if aerosol_species[0] == 'free':
-                label = free_string
-            else:
-                label = aerosol_species[q]
-
-            log_X = log_X_Mie[q]
-            ax.axvline(x = log_X, color = colours[q], linewidth=1.0, label = label)
-
-
-    ax.invert_yaxis()
-    ax.set_ylim(log_P[0], log_P[-1])  
-    ax.set_xlim(-30, -1)  
-    ax.set_xlabel('Mixing Ratios (log $X_i$)')
-    ax.set_ylabel('Pressure (log P) (bar)')
-    ax.legend()
-    plt.show()
 
 ############################################################################################
 # LX MIE Algorithm - See https://arxiv.org/abs/1710.04946
@@ -1288,7 +1779,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     '''
 
     # DELETE THIS LATER 
-    global all_etas, all_xs, all_Qexts, wl_Mie_empty, free_or_file
+    global all_etas, all_xs, all_Qexts, all_Qscats, all_Qbacks, all_gs, wl_Mie_empty, free_or_file
 
 
     #########################
@@ -1379,6 +1870,12 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
             all_etas = []
             all_xs = [] 
             all_Qexts = []
+            all_etas = []
+            all_xs = [] 
+            all_Qexts = []
+            all_Qscats = []
+            all_Qbacks = []
+            all_gs = []
             free_or_file == 'free'
         
     else:
@@ -1390,6 +1887,9 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
             all_etas = []
             all_xs = [] 
             all_Qexts = []
+            all_Qscats = []
+            all_Qbacks = []
+            all_gs = []
             free_or_file == 'file'
 
     #########################

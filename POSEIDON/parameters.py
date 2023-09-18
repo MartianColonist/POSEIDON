@@ -1602,7 +1602,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
                             # Slab specific parameters 
                             log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
-                            P_slab_bottom = (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
+                            P_slab_bottom = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top_slab')!= -1)[0]] + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
                             
                         except:
                             r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
@@ -1614,7 +1614,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                             fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
 
                             log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
-                            P_slab_bottom = (P_slab + clouds_in[np.where(cloud_param_names == 'Delta_log_P')[0][0]])
+                            P_slab_bottom = np.power(10.0, (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
                             
 
                     # Otherwise, it is an opaque_deck_plus_slab
@@ -1633,7 +1633,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
                             # Slab specific parameters 
                             log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
-                            P_slab_bottom = (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
+                            P_slab_bottom = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top_slab')!= -1)[0]] + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
                             
                         except:
                             r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
@@ -1649,7 +1649,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                             fractional_scale_height = 0
 
                             log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
-                            P_slab_bottom = (P_slab + clouds_in[np.where(cloud_param_names == 'Delta_log_P')[0][0]])
+                            P_slab_bottom = np.power(10.0, (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
                 
                 # Otherwise, it is just a slab model 
                 else:
