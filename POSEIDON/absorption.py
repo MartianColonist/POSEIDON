@@ -1113,7 +1113,7 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                 else:
                     for aerosol in range(len(n_aerosol_array)):
                         if aerosol == 0:
-                            kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
+                            kappa_cloud[(P > P_cloud[0]),j,k,:] += 1.0e250
                         else:
                             for i in range(i_bot,N_layers):
                                 for q in range(len(wl)):
