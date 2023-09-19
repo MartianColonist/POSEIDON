@@ -507,7 +507,8 @@ def contribution_clouds_transmission(model, planet, star, wl, opac, P, P_ref, R_
 
     # Model Clouds
     
-    if model['cloud_type'] == 'MacMad17':
+    if model['cloud_model'] == 'MacMad17':
+
         model_clouds = define_model(model_name,bulk_species,param_species,
                                 PT_profile = model['PT_profile'], X_profile = model['X_profile'],
                                 cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
@@ -576,8 +577,6 @@ def contribution_clouds_transmission(model, planet, star, wl, opac, P, P_ref, R_
             
             
             elif model['cloud_type'] == 'fuzzy_deck_plus_slab':
-
-                print('oop')
 
                 f_index = np.where(np.char.find(model['cloud_param_names'], 'f')!= -1)[0]
                 log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]

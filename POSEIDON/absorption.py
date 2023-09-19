@@ -1084,9 +1084,9 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                         
             # If a cloud deck is enabled in this model
             if (enable_deck == 1):
-                
+
                 # Set extinction inside cloud deck
-                kappa_cloud[(P > P_cloud),j,k,:] += kappa_cloud_0
+                kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
 
             # If a surface is enabled in this model
             if (enable_surface == 1):
