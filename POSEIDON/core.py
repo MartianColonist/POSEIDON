@@ -1302,7 +1302,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                            n_aerosol, sigma_ext_cloud)
             
             
-            
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):
 

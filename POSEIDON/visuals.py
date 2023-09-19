@@ -1324,8 +1324,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Quick validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 9):
-        raise Exception("Max number of concurrent spectra to plot is 9.")
+    #if (N_spectra > 9):
+    #    raise Exception("Max number of concurrent spectra to plot is 9.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):

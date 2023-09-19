@@ -33,10 +33,8 @@ supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2',
 inactive_species = np.array(['H2', 'He', 'H', 'e-', 'H-'])  # H- handled separately
 
 # Aerosol Supported Species
-aerosol_supported_species = np.array(['Fe','NaCl','Fe2O3','MgSiO3','Mg2SiO4','Na2S','CH4','KCl','H2O', 'SiO', 'SiO2', 'Tholin', 'Al2O3', 'C', 'CaTiO3', 
-                    'Cr', 'Fe2SiO4', 'FeO', 'FeS', 'FeSiO3', 'Hexene', 'ExoHaze_1000xSolar_300K', 'ExoHaze_1000xSolar_400K', 'Mg4Fe6SiO3_amorph_glass'])
 
-aerosol_support_species = np.array(['Al2O3', 'C', 'CH4', 'CaTiO3', 'Cr', 'ExoHaze_1000xSolar_300K', 'ExoHaze_1000xSolar_400K',
+aerosol_supported_species = np.array(['Al2O3', 'C', 'CH4', 'CaTiO3', 'Cr', 'ExoHaze_1000xSolar_300K', 'ExoHaze_1000xSolar_400K',
                                     'Fe', 'Fe2O3', 'Fe2SiO4', 'FeO', 'FeS', 'FeSiO3', 'H2O', 'Hexene', 'KCl', 'Mg2SiO3', 'Mg2SiO4_Fe_poor',
                                     'Mg4Fe6SiO3_amorph_glass', 'Mg5Fe5SiO3_amorph_glass', 'Mg8Fe12SiO4_amorph_glass', 'Mg8Fe2SiO3_amorph_glass',
                                     'MgAl2O4', 'MgFeSiO3_amorph_glass', 'MgO', 'MgSiO3', 'Na2S', 'NaCl', 'SiO', 'SiO2',
