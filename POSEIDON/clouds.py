@@ -446,7 +446,7 @@ def plot_aerosol_number_denstiy_fuzzy_deck(atmosphere,log_P_cloud,log_n_max,frac
     plt.show()
 
 def contribution_clouds_transmission(model, planet, star, wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og,
-                        show_chemical_species = True):
+                        show_chemical_species = True, put_one_in = True):
 
     from POSEIDON.core import define_model
     from POSEIDON.core import make_atmosphere
@@ -455,8 +455,8 @@ def contribution_clouds_transmission(model, planet, star, wl, opac, P, P_ref, R_
     from POSEIDON.utility import plot_collection
 
     spectra_array = []
-    spectra_labels = ['Full Spectum','Bulk Species']
-    colour_list = ['black', 'dimgray', 'darkturquoise', 'springgreen', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
+    spectra_labels = []
+    colour_list = ['dimgray', 'darkturquoise', 'springgreen', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
 
     # Real spectrum 
     model_name = 'Full Spectrum'
@@ -464,6 +464,8 @@ def contribution_clouds_transmission(model, planet, star, wl, opac, P, P_ref, R_
     species_list = model['param_species']
     param_species = species_list
 
+    # Only if the model has aerosol species do we include them 
+    # Compute the full spectrum that the contribution will build onto 
     if model['cloud_model'] != 'Mie':
 
         model_full = define_model(model_name,bulk_species,param_species,
@@ -487,182 +489,347 @@ def contribution_clouds_transmission(model, planet, star, wl, opac, P, P_ref, R_
 
         spectrum_full = compute_spectrum(planet, star, model_full, atmosphere_full, opac, wl,
                                         spectrum_type = 'transmission')
+        
 
     # H + He atmosphere
-    model_name = 'Bulk'
-    param_species = []
+    # If and only if you are preforming a 'put one in' model will this make sense 
 
-    # Model H-H2
-    model_bulk = define_model(model_name,bulk_species,param_species,
-                               PT_profile = model['PT_profile'], X_profile = model['X_profile'])
+    if put_one_in == True:
 
-    log_X_params = np.array([])
-    atmosphere_bulk = make_atmosphere(planet, model_bulk, P, P_ref, R_p_ref, PT_params_og)
+        model_name = 'Bulk'
+        param_species = []
 
-    spectrum_bulk = compute_spectrum(planet, star, model_bulk, atmosphere_bulk, opac, wl,
-                                      spectrum_type = 'transmission')
-    
-    spectra_array.append(spectrum_bulk)
-
-
-    # Model Clouds
-    
-    if model['cloud_model'] == 'MacMad17':
-
-        model_clouds = define_model(model_name,bulk_species,param_species,
-                                PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
+        # Model H-H2
+        model_bulk = define_model(model_name,bulk_species,param_species,
+                                PT_profile = model['PT_profile'], X_profile = model['X_profile'])
 
         log_X_params = np.array([])
-        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
+        atmosphere_bulk = make_atmosphere(planet, model_bulk, P, P_ref, R_p_ref, PT_params_og)
 
-        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
+        spectrum_bulk = compute_spectrum(planet, star, model_bulk, atmosphere_bulk, opac, wl,
                                         spectrum_type = 'transmission')
         
-        spectra_array.append(spectrum_clouds)
-        spectra_labels.append(model['cloud_type'])
+        spectra_array.append(spectrum_bulk)
+
+        spectra_labels.append('Bulk Species')
+
+
+    # Model Clouds 
+    if model['cloud_model'] == 'MacMad17':
+
+        if put_one_in == True:
+
+            model_clouds = define_model(model_name,bulk_species,param_species,
+                                    PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                    cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
+
+            log_X_params = np.array([])
+            atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
+
+            spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
+                                            spectrum_type = 'transmission')
+            
+            spectra_array.append(spectrum_clouds)
+            spectra_labels.append(model['cloud_type'])
+
+        else:
+
+            model_no_clouds = define_model(model_name,bulk_species,param_species,
+                        PT_profile = model['PT_profile'], X_profile = model['X_profile'])
+
+            atmosphere_no_clouds = make_atmosphere(planet, model_no_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og)
+
+            spectrum_no_clouds = compute_spectrum(planet, star, model_no_clouds, atmosphere_no_clouds, opac, wl,
+                                            spectrum_type = 'transmission')
+            
+            spectra_array.append(spectrum_no_clouds)
+            label = '- ' + model['cloud_type']
+            spectra_labels.append(label)
+
 
     elif model['cloud_model'] == 'Mie':
 
         aerosol_species = model['aerosol_species']
 
-        model_clouds = define_model(model_name,bulk_species,param_species,
-                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                        aerosol_species = aerosol_species)
+        if put_one_in == True:
 
-        log_X_params = np.array([])
-        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
+            model_clouds = define_model(model_name,bulk_species,param_species,
+                            PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                            cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                            aerosol_species = aerosol_species)
 
-        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                        spectrum_type = 'transmission')
-        
-        spectra_array.append(spectrum_clouds)
+            log_X_params = np.array([])
+            atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
 
-        if len(aerosol_species) > 1:
-            label = 'Total Cloud'
-        else:
-            label = aerosol_species[0]
+            spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
+                                            spectrum_type = 'transmission')
+            
+            spectra_array.append(spectrum_clouds)
 
-        spectra_labels.append(label)
+            if len(aerosol_species) > 1:
+                label = 'Total Cloud'
+            else:
+                label = aerosol_species[0]
 
-        if len(aerosol_species) > 1:
+            spectra_labels.append(label)
 
-            if model['cloud_type'] == 'slab' or model['cloud_type'] == 'opaque_deck_plus_slab':
+            if len(aerosol_species) > 1:
 
-                log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
+                if model['cloud_type'] == 'slab' or model['cloud_type'] == 'opaque_deck_plus_slab':
 
-                for n in log_X_indices:
+                    log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
 
+                    for n in log_X_indices:
+
+                        cloud_params = np.copy(cloud_params_og)
+
+                        for m in log_X_indices:
+                            if m != n:
+                                cloud_params[m] = -50
+
+                        model_clouds = define_model(model_name,bulk_species,param_species,
+                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                        aerosol_species = aerosol_species)
+
+                        log_X_params = np.array([])
+                        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params)
+
+                        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
+                                                        spectrum_type = 'transmission')
+                        
+                        spectra_array.append(spectrum_clouds)
+
+                        spectra_labels.append(model['cloud_param_names'][n].split('_')[2])
+                
+                
+                elif model['cloud_type'] == 'fuzzy_deck_plus_slab':
+
+                    f_index = np.where(np.char.find(model['cloud_param_names'], 'f')!= -1)[0]
+                    log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
+
+                    for n in log_X_indices:
+
+                        cloud_params = np.copy(cloud_params_og)
+
+                        # Sets the f parameter close to 0, keeping the opaque slab and getting rid of the fuzziness
+                        cloud_params[f_index] = 0.000001
+
+                        for m in log_X_indices:
+                            if m != n:
+                                cloud_params[m] = -50
+
+                        model_clouds = define_model(model_name,bulk_species,param_species,
+                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                        aerosol_species = aerosol_species)
+
+                        log_X_params = np.array([])
+                        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params)
+
+                        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
+                                                        spectrum_type = 'transmission')
+                        
+                        spectra_array.append(spectrum_clouds)
+
+                        spectra_labels.append(model['cloud_param_names'][n].split('_')[2])
+
+                    # Turn off both except the fuzzy deck 
                     cloud_params = np.copy(cloud_params_og)
-
-                    for m in log_X_indices:
-                        if m != n:
-                            cloud_params[m] = -50
+                    for n in log_X_indices:
+                        cloud_params[n] = -50
 
                     model_clouds = define_model(model_name,bulk_species,param_species,
-                                    PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                    cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                    aerosol_species = aerosol_species)
-
-                    log_X_params = np.array([])
+                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                        aerosol_species = aerosol_species)
+                    
                     atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params)
 
                     spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                                    spectrum_type = 'transmission')
-                    
+                                                        spectrum_type = 'transmission')
+                        
                     spectra_array.append(spectrum_clouds)
+                    
+                    spectra_labels.append(model['cloud_param_names'][f_index][0].split('_')[1])
 
-                    spectra_labels.append(model['cloud_param_names'][n].split('_')[2])
+        else:
+
+            model_no_clouds = define_model(model_name,bulk_species,param_species,
+                PT_profile = model['PT_profile'], X_profile = model['X_profile'])
+
+            atmosphere_no_clouds = make_atmosphere(planet, model_no_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og)
+
+            spectrum_no_clouds = compute_spectrum(planet, star, model_no_clouds, atmosphere_no_clouds, opac, wl,
+                                            spectrum_type = 'transmission')
             
-            
-            elif model['cloud_type'] == 'fuzzy_deck_plus_slab':
+            spectra_array.append(spectrum_no_clouds)
 
-                f_index = np.where(np.char.find(model['cloud_param_names'], 'f')!= -1)[0]
-                log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
+            if len(aerosol_species) > 1:
+                label = '- Total Cloud'
+            else:
+                label = '- ' + aerosol_species[0]
 
-                for n in log_X_indices:
+            spectra_labels.append(label)
 
+            if len(aerosol_species) > 1:
+
+                if model['cloud_type'] == 'slab' or model['cloud_type'] == 'opaque_deck_plus_slab':
+
+                    log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
+
+                    for n in log_X_indices:
+
+                        cloud_params = np.copy(cloud_params_og)
+
+                        for m in log_X_indices:
+                            if m == n:
+                                cloud_params[m] = -50
+
+                        model_clouds = define_model(model_name,bulk_species,param_species,
+                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                        aerosol_species = aerosol_species)
+
+                        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
+
+                        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
+                                                        spectrum_type = 'transmission')
+                        
+                        spectra_array.append(spectrum_clouds)
+
+                        label = '- ' + model['cloud_param_names'][n].split('_')[2]
+                        spectra_labels.append(label)
+                
+                
+                elif model['cloud_type'] == 'fuzzy_deck_plus_slab':
+
+                    f_index = np.where(np.char.find(model['cloud_param_names'], 'f')!= -1)[0]
+                    log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
+
+                    for n in log_X_indices:
+
+                        cloud_params = np.copy(cloud_params_og)
+
+                        for m in log_X_indices:
+                            if m == n:
+                                cloud_params[m] = -50
+
+                        model_clouds = define_model(model_name,bulk_species,param_species,
+                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                        aerosol_species = aerosol_species)
+
+                        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
+
+                        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
+                                                        spectrum_type = 'transmission')
+                        
+                        spectra_array.append(spectrum_clouds)
+
+                        label = '- ' + model['cloud_param_names'][n].split('_')[2]
+                        spectra_labels.append(label)
+
+                    # Turn only the fuzzy deck 
                     cloud_params = np.copy(cloud_params_og)
-
-                    # Sets the f parameter close to 0, keeping the opaque slab and getting rid of the fuzziness
                     cloud_params[f_index] = 0.000001
 
-                    for m in log_X_indices:
-                        if m != n:
-                            cloud_params[m] = -50
-
                     model_clouds = define_model(model_name,bulk_species,param_species,
-                                    PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                    cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                    aerosol_species = aerosol_species)
-
-                    log_X_params = np.array([])
-                    atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params)
+                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                        aerosol_species = aerosol_species)
+                    
+                    atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
 
                     spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                                    spectrum_type = 'transmission')
-                    
+                                                        spectrum_type = 'transmission')
+                        
                     spectra_array.append(spectrum_clouds)
-
-                    spectra_labels.append(model['cloud_param_names'][n].split('_')[2])
-
-                # Turn off both except the fuzzy deck 
-                cloud_params = np.copy(cloud_params_og)
-                for n in log_X_indices:
-                    cloud_params[n] = -50
-
-                model_clouds = define_model(model_name,bulk_species,param_species,
-                                    PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                    cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                    aerosol_species = aerosol_species)
-                
-                atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params)
-
-                spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                                    spectrum_type = 'transmission')
                     
-                spectra_array.append(spectrum_clouds)
-                
-                spectra_labels.append(model['cloud_param_names'][f_index][0].split('_')[1])
-
+                    label = '- '+ model['cloud_param_names'][f_index][0].split('_')[1]
+                    spectra_labels.append(label)
 
     # For each chemical species in the model
     if show_chemical_species == True:
 
-        for i in range(len(species_list)):
+        if put_one_in == True:
 
-            model_name = 'One-Species'
-            param_species = [species_list[i]]
+            for i in range(len(species_list)):
 
-            model_one_species = define_model(model_name,bulk_species,param_species,
-                                            PT_profile = model['PT_profile'], X_profile = model['X_profile'])
+                model_name = 'One-Species'
+                param_species = [species_list[i]]
 
-            log_X_params = np.array([log_X_params_og[0][i]])
+                model_one_species = define_model(model_name,bulk_species,param_species,
+                                                PT_profile = model['PT_profile'], X_profile = model['X_profile'])
 
-            atmosphere_one_species = make_atmosphere(planet, model_one_species, P, P_ref, R_p_ref, PT_params_og, log_X_params)
+                log_X_params = np.array([log_X_params_og[0][i]])
 
-            spectrum_one_species = compute_spectrum(planet, star, model_one_species, atmosphere_one_species, opac, wl,
-                                            spectrum_type = 'transmission')
+                atmosphere_one_species = make_atmosphere(planet, model_one_species, P, P_ref, R_p_ref, PT_params_og, log_X_params)
 
-            spectra_array.append(spectrum_one_species)
-            spectra_labels.append(species_list[i])
+                spectrum_one_species = compute_spectrum(planet, star, model_one_species, atmosphere_one_species, opac, wl,
+                                                spectrum_type = 'transmission')
 
+                spectra_array.append(spectrum_one_species)
+                spectra_labels.append(species_list[i])
+        
+        else:
+
+            for n in range(len(species_list)):
+
+                log_X_params = np.copy(log_X_params_og)
+
+                for m in range(len(log_X_params[0])):
+                    if m == n:
+                        log_X_params[0][m] = -50
+
+                model_name = 'Minus-One-Species'
+
+                if model['cloud_model'] != 'Mie':
+
+                    model_one_species = define_model(model_name,bulk_species,param_species,
+                                                    PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                                    cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
+                    
+                else:
+                    aerosol_species = model['aerosol_species']
+
+                    model_one_species = define_model(model_name,bulk_species,param_species,
+                                PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                aerosol_species = aerosol_species)
+
+
+                atmosphere_one_species = make_atmosphere(planet, model_one_species, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
+
+                spectrum_one_species = compute_spectrum(planet, star, model_one_species, atmosphere_one_species, opac, wl,
+                                                spectrum_type = 'transmission')
+
+                spectra_array.append(spectrum_one_species)
+                label = '- ' + species_list[n]
+                spectra_labels.append(label)
 
     # Plot
     # Initialize plot collection with the full spectrum
-    spectra = plot_collection(spectrum_full, wl, collection = [])
+
+    # To make sure the full spectrum is plotted on top of everything else
+    spectra_array.append(spectrum_full)
+    spectra_labels.append('Full Spectrum')
+
+    spectra = []
 
     # Loop through the contribution spectra 
     for s in spectra_array:
         spectra = plot_collection(s, wl, collection = spectra)
 
+    colour_list = colour_list[:len(spectra_array)-1]
+    colour_list.append('black')
+    
     fig = plot_spectra(spectra, planet, R_to_bin = 100,
                    plt_label = 'Cloud Contribution Plot',
                    spectra_labels = spectra_labels,
                    plot_full_res = False, 
                    save_fig = False,
-                   colour_list = colour_list[:len(spectra_array)+1])
+                   colour_list = colour_list[:len(spectra_array)])
 
 def plot_clouds(planet,model,atmosphere, colour_list = []):
 

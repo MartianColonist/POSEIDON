@@ -34,8 +34,10 @@ inactive_species = np.array(['H2', 'He', 'H', 'e-', 'H-'])  # H- handled separat
 
 # Aerosol Supported Species
 
-aerosol_supported_species = np.array(['Al2O3', 'C', 'CH4', 'CaTiO3', 'Cr', 'ExoHaze_1000xSolar_300K', 'ExoHaze_1000xSolar_400K',
-                                    'Fe', 'Fe2O3', 'Fe2SiO4', 'FeO', 'FeS', 'FeSiO3', 'H2O', 'Hexene', 'KCl', 'Mg2SiO3', 'Mg2SiO4_Fe_poor',
-                                    'Mg4Fe6SiO3_amorph_glass', 'Mg5Fe5SiO3_amorph_glass', 'Mg8Fe12SiO4_amorph_glass', 'Mg8Fe2SiO3_amorph_glass',
-                                    'MgAl2O4', 'MgFeSiO3_amorph_glass', 'MgO', 'MgSiO3', 'Na2S', 'NaCl', 'SiO', 'SiO2',
-                                    'SiO2_amorph', 'Tholin'])
+aerosol_supported_species = np.array(['Al2O3', 'C', 'CH4', 'CaTiO3', 'Cr', 'ExoHaze_1000xSolar_300K', 
+                                      'ExoHaze_1000xSolar_400K','Fe', 'Fe2O3', 'Fe2SiO4', 'FeO', 'FeS',
+                                      'FeSiO3', 'H2O', 'Hexene', 'KCl', 'Mg2SiO4', 'Mg2SiO4_Fe_poor',
+                                      'Mg4Fe6SiO3_amorph_glass', 'Mg5Fe5SiO3_amorph_glass', 'Mg8Fe12SiO4_amorph_glass',
+                                      'Mg8Fe2SiO3_amorph_glass', 'MgAl2O4', 'MgFeSiO4_amorph_glass', 'MgO',
+                                      'MgSiO3', 'MgSiO3_amorph_glass', 'MgSiO3_sol_gel', 'MnS', 'Na2S', 'NaCl', 
+                                      'SiC', 'SiO', 'SiO2', 'SiO2_amorph', 'Tholin', 'TiC', 'TiO2', 'TiO2_anatase', 'ZnS'])
