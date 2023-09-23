@@ -62,14 +62,16 @@ def cross_correlate(coord, K_p_arr, V_sys_arr, wl, spectrum, data):
     print(coord)
     K_p = K_p_arr[coord[0]]
     V_sys = V_sys_arr[coord[1]]
-    loglikelihood, CCF = loglikelihood_sysrem(V_sys, K_p, 0, 4.5, 1, wl, spectrum, data)
+    loglikelihood, CCF = loglikelihood_sysrem(
+        V_sys, K_p, 0, 4.5, None, wl, spectrum, data
+    )
     return (loglikelihood, CCF)
 
 
 # The code below will only be run on one core to get the model spectrum.
 if __name__ == "__main__":
-    data_path = "./data/WASP-76b-old/"
-    output_path = "./CC_output/WASP-76b-old/"
+    data_path = "./data/WASP-76b-MAROON/night_1"
+    output_path = "./CC_output/WASP-76b-MAROON/night_1"
     os.makedirs(output_path, exist_ok=True)
     data = read_high_res_data(data_path, method="sysrem")
     # data["data_raw"] = None
@@ -117,9 +119,9 @@ if __name__ == "__main__":
 
     # ***** Wavelength grid *****#
 
-    wl_min = 0.37  # Minimum wavelength (um)
-    wl_max = 1.05  # Maximum wavelength (um)
-    R = 250000  # Spectral resolution of grid
+    wl_min = 0.48  # Minimum wavelength (um)
+    wl_max = 0.70  # Maximum wavelength (um)
+    R = 1000000  # Spectral resolution of grid
     model["R"] = R
     model["R_instrument"] = 66000  # Resolution of instrument
 
@@ -165,7 +167,7 @@ if __name__ == "__main__":
     P_ref = 1e-2  # Reference pressure (bar)
     R_p_ref = R_p  # Radius at reference pressure
 
-    params = (-5, T_eq)
+    params = (-5, 2500)
     log_Fe, T = params
 
     # Provide a specific set of model parameters for the atmosphere

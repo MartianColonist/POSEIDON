@@ -3,6 +3,7 @@ from POSEIDON.core import create_star, create_planet
 from POSEIDON.constants import R_Sun, R_J, M_J
 import pickle
 
+evaluate = True
 # ***** Define stellar properties *****#
 
 R_s = 1.458 * R_Sun  # Stellar radius (m)
@@ -34,24 +35,25 @@ if planet["system_distance"] is None:
     planet["system_distance"] = 1  # This value only used for flux ratios, so it cancels
 d = planet["system_distance"]
 
-planet["V_sin_i"] = 14.5
-
 # %%
-from POSEIDON.core import define_model, wl_grid_constant_R
+from POSEIDON.core import define_model, wl_grid_constant_R, make_atmosphere
 from POSEIDON.utility import read_high_res_data
 
 # ***** Define model *****#
 
-model_name = "High-res retrieval"  # Model name used for plots, output files etc.
+model_name = (
+    "Fe-3 injection retrieval Madhu"  # Model name used for plots, output files etc.
+)
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 # param_species = ["Mg", "Fe", "Ti"]
+# param_species = ["Fe", "Mg"]
 param_species = ["Fe"]
 
 high_res = "sysrem"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
-high_res_params = ["a", "b", "K_p", "V_sys", "W_conv"]
-# high_res_params = ["a", "K_p", "V_sys", "W_conv"]
+# high_res_params = ["a", "b", "K_p", "V_sys", "W_conv"]
+high_res_params = ["a", "b", "K_p", "V_sys"]
 
 # Create the model object
 # model = define_model(model_name, bulk_species, param_species,
@@ -62,7 +64,7 @@ model = define_model(
     model_name,
     bulk_species,
     param_species,
-    PT_profile="isotherm",
+    PT_profile="Madhu",
     high_res_params=high_res_params,
 )
 
@@ -74,12 +76,11 @@ print("Free parameters: " + str(model["param_names"]))
 wl_min = 0.37  # Minimum wavelength (um)
 wl_max = 0.51  # Maximum wavelength (um)
 R = 250000  # Spectral resolution of grid
-model["R"] = R
-model["R_instrument"] = 80000
+
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
-data_path = "./data/WASP-121b/"
+data_path = "./data/WASP-121b-injection/"
 data = read_high_res_data(data_path)
 # %%
 from POSEIDON.core import set_priors
@@ -92,7 +93,7 @@ prior_types = {}
 # Specify whether priors are linear, Gaussian, etc.
 prior_types["T_ref"] = "uniform"
 prior_types["T"] = "uniform"
-prior_types["R_p_ref"] = "uniform"
+prior_types["R_p_ref"] = "gaussian"
 prior_types["log_Ti"] = "uniform"
 prior_types["log_Fe"] = "uniform"
 prior_types["log_Mg"] = "uniform"
@@ -112,9 +113,9 @@ prior_types["W_conv"] = "uniform"
 prior_ranges = {}
 
 # Specify prior ranges for each free parameter
-prior_ranges["T_ref"] = [2000, 4500]
-prior_ranges["T"] = [2000, 4500]
-prior_ranges["R_p_ref"] = [0.5 * R_p, 2 * R_p]
+prior_ranges["T_ref"] = [400, 4000]
+prior_ranges["T"] = [400, 4000]
+prior_ranges["R_p_ref"] = [R_p, 0.05 * R_J]
 prior_ranges["log_Ti"] = [-15, 0]
 prior_ranges["log_Fe"] = [-15, 0]
 prior_ranges["log_Mg"] = [-15, 0]
@@ -123,10 +124,10 @@ prior_ranges["a2"] = [0.02, 1]
 prior_ranges["log_P1"] = [-5.5, 2.5]
 prior_ranges["log_P2"] = [-5.5, 2.5]
 prior_ranges["log_P3"] = [-2, 2]
-prior_ranges["K_p"] = [150, 250]
-prior_ranges["V_sys"] = [-25, 25]
+prior_ranges["K_p"] = [-300, -100]
+prior_ranges["V_sys"] = [-50, 50]
 prior_ranges["a"] = [0.01, 100]
-prior_ranges["b"] = [0.1, 10]
+prior_ranges["b"] = [0.00001, 10]
 prior_ranges["dPhi"] = [-0.01, 0.01]
 prior_ranges["W_conv"] = [0.1, 50]
 
@@ -142,14 +143,14 @@ import numpy as np
 opacity_treatment = "opacity_sampling"
 
 # Define fine temperature grid (K)
-T_fine_min = 2000  # 400 K lower limit suffices for a typical hot Jupiter
-T_fine_max = 4500  # 2000 K upper limit suffices for a typical hot Jupiter
+T_fine_min = 400  # 400 K lower limit suffices for a typical hot Jupiter
+T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
 T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 
 T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
 # Define fine pressure grid (log10(P/bar))
-log_P_fine_min = -9.0  # 1 ubar is the lowest pressure in the opacity database
+log_P_fine_min = -12.0  # 1 ubar is the lowest pressure in the opacity database
 log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
 log_P_fine_step = 0.2  # 0.2 dex steps are a good tradeoff between accuracy and RAM
 
@@ -157,8 +158,6 @@ log_P_fine = np.arange(
     log_P_fine_min, (log_P_fine_max + log_P_fine_step), log_P_fine_step
 )
 
-# Now we can pre-interpolate the sampled opacities (may take up to a minute)
-opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
 # %%
 from POSEIDON.retrieval import run_retrieval
@@ -166,7 +165,7 @@ from POSEIDON.retrieval import run_retrieval
 # ***** Specify fixed atmospheric settings for retrieval *****#
 
 # Atmospheric pressure grid
-P_min = 1e-9  # 0.1 ubar
+P_min = 1e-12  # 0.1 ubar
 P_max = 100  # 100 bar
 N_layers = 100  # 100 layers
 
@@ -174,28 +173,30 @@ N_layers = 100  # 100 layers
 P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
 # Specify the reference pressure and radius
-P_ref = 1e-2  # Reference pressure (bar)
+P_ref = 1e-5  # Reference pressure (bar)
 
 # ***** Run atmospheric retrieval *****#
-
-run_retrieval(
-    planet,
-    star,
-    model,
-    opac,
-    data,
-    priors,
-    wl,
-    P,
-    P_ref,
-    R=R,
-    spectrum_type="transmission",
-    sampling_algorithm="MultiNest",
-    N_live=800,
-    verbose=True,
-    N_output_samples=1000,
-    resume=False,
-)
+if not evaluate:
+    # Now we can pre-interpolate the sampled opacities (may take up to a minute)
+    opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
+    run_retrieval(
+        planet,
+        star,
+        model,
+        opac,
+        data,
+        priors,
+        wl,
+        P,
+        P_ref,
+        R=R,
+        spectrum_type="transmission",
+        sampling_algorithm="MultiNest",
+        N_live=1600,
+        verbose=True,
+        N_output_samples=4000,
+        resume=True,
+    )
 
 
 # %% [markdown]
@@ -221,6 +222,19 @@ PT_low1 = [(T_low1, P)]
 PT_high1 = [(T_high1, P)]
 PT_high2 = [(T_high2, P)]
 
+
+params = (-6, 0.3, 0.3, -1, -2, 1, 3000)
+log_Fe, a1, a2, log_P1, log_P2, log_P3, T_ref = params
+
+# Provide a specific set of model parameters for the atmosphere
+PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])
+log_X_params = np.array([[log_Fe]])
+
+atmosphere = make_atmosphere(
+    planet, model, P, P_ref, R_p, PT_params, log_X_params, P_param_set=1
+)
+
+
 plot_PT_retrieved(
     planet_name,
     PT_median,
@@ -228,6 +242,7 @@ plot_PT_retrieved(
     PT_low1,
     PT_high1,
     PT_high2,
+    # T_true=atmosphere["T"].reshape(-1),
     T_true=None,
     Atmosphere_dimension=1,
     TwoD_type=None,
@@ -267,5 +282,8 @@ plot_chem_retrieved(
     log_Xs_high2,
 )
 # ***** Make corner plot *****#
-
-fig_corner = generate_cornerplot(planet, model)
+fig_corner = generate_cornerplot(
+    planet,
+    model,
+    true_vals=[R_p / R_J, 0.3, 0.3, -1, -2, 1, 3000, -6, 2, None, -200, -20],
+)

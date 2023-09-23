@@ -33,27 +33,23 @@ from POSEIDON.utility import read_high_res_data
 
 # ***** Define model *****#
 
-model_name = "Fe retrieval"  # Model name used for plots, output files etc.
+model_name = (
+    "Fe, Ca+, Na MAROON retrieval"  # Model name used for plots, output files etc.
+)
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 # param_species = ["Fe", "Ca+", "Na", "K", "Li"]
-param_species = ["Fe"]
-# param_species = ["Na"]
+param_species = ["Fe", "Ca+", "Na"]
 
 method = "sysrem"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
-high_res_params = ["a", "b", "K_p", "V_sys", "W_conv"]
-
-# Create the model object
-# model = define_model(model_name, bulk_species, param_species,
-#                     PT_profile = 'Madhu', high_res = high_res,
-#                     high_res_params = high_res_params, R_p_ref_enabled=False)
+high_res_params = ["a", "K_p", "V_sys", "W_conv"]
 
 model = define_model(
     model_name,
     bulk_species,
     param_species,
-    PT_profile="isotherm",
+    PT_profile="Madhu",
     high_res_params=high_res_params,
 )  # gradient
 
@@ -64,9 +60,9 @@ print("Free parameters: " + str(model["param_names"]))
 
 # ***** Wavelength grid *****#
 
-wl_min = 0.37  # Minimum wavelength (um)
-wl_max = 1.05  # Maximum wavelength (um)
-R = 200000  # Spectral resolution of grid
+wl_min = 0.48  # Minimum wavelength (um)
+wl_max = 0.70  # Maximum wavelength (um)
+R = 250000  # Spectral resolution of grid
 
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
@@ -74,7 +70,7 @@ wl = wl_grid_constant_R(wl_min, wl_max, R)
 # Create the stellar object
 star = create_star(R_s, T_s, log_g_s, Met_s, stellar_grid="phoenix")
 
-data_dir = "./data/WASP-76b/"
+data_dir = "./data/WASP-76b-MAROON/night_1/"
 
 data = read_high_res_data(data_dir, method="sysrem", spectrum_type="transmission")
 # %%
@@ -96,6 +92,8 @@ prior_types["log_K"] = "uniform"
 prior_types["log_Li"] = "uniform"
 prior_types["log_Fe"] = "uniform"
 prior_types["log_Ca+"] = "uniform"
+prior_types["log_VO"] = "uniform"
+prior_types["log_Mg"] = "uniform"
 prior_types["a1"] = "uniform"
 prior_types["a2"] = "uniform"
 prior_types["log_P1"] = "uniform"
@@ -122,13 +120,15 @@ prior_ranges["log_Fe"] = [-15, 0]
 prior_ranges["log_Ca+"] = [-15, 0]
 prior_ranges["log_Li"] = [-15, 0]
 prior_ranges["log_K"] = [-15, 0]
+prior_ranges["log_VO"] = [-15, 0]
+prior_ranges["log_Mg"] = [-15, 0]
 prior_ranges["a1"] = [0.02, 1]
 prior_ranges["a2"] = [0.02, 1]
 prior_ranges["log_P1"] = [-8, 2]
 prior_ranges["log_P2"] = [-8, 2]
 prior_ranges["log_P3"] = [-3, 2]
-prior_ranges["K_p"] = [150, 230]
-prior_ranges["V_sys"] = [-20, 20]
+prior_ranges["K_p"] = [150, 250]
+prior_ranges["V_sys"] = [-100, 100]
 prior_ranges["a"] = [0.01, 100]
 prior_ranges["b"] = [0.01, 100]
 prior_ranges["dPhi"] = [-0.1, 0.1]
@@ -195,10 +195,10 @@ run_retrieval(
     R=R,
     spectrum_type="transmission",
     sampling_algorithm="MultiNest",
-    N_live=400,
+    N_live=800,
     verbose=True,
     N_output_samples=1000,
-    resume=False,
+    resume=True,
     # ev_tol=0.05,
 )
 

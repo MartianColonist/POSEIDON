@@ -803,51 +803,6 @@ def PyMultiNest_retrieval(
         err_data = data["err_data"]
         norm_log_default = (-0.5 * np.log(2.0 * np.pi * err_data * err_data)).sum()
 
-    # else:
-    #     method = data["method"] # Currently support 'pca' and 'sysrem'
-    #     data_dir = data["data_dir"]
-    #     if method == "sysrem":
-    #         data_raw = data["data_raw"]
-    #         if data.get("uncertainties") is None:
-    #             uncertainties = fit_uncertainties(data_raw, NPC=5)
-    #             data["uncertainties"] = uncertainties
-    #             pickle.dump(
-    #                 residuals, open(os.path.join(data_dir, "/residuals.pic"), "wb")
-    #             )
-    #         else:
-    #             uncertainties = data["uncertainties"]
-    #         if data.get("residuals") is None:
-    #             uncertainties = data["uncertainties"]
-    #             Ndet, Nphi, Npix = data_raw.shape
-    #             data_norm = np.zeros(data_raw.shape)
-
-    #             for i in range(len(data_raw)):
-    #                 order = data_raw[i]
-    #                 order_norm = (order.T / np.median(order, axis=1)).T
-
-    #                 uncertainty = uncertainties[i]
-    #                 uncertainty_norm = (uncertainty.T / np.median(order, axis=1)).T
-
-    #                 uncertainties[i] = uncertainty_norm
-    #                 data_norm[i] = order_norm
-    #             residuals, Us = fast_filter(data_norm, uncertainties, Niter=15)
-
-    #             Bs = np.zeros((Ndet, Nphi, Nphi))
-
-    #             for j in range(Ndet):
-    #                 U = Us[j]
-    #                 L = np.diag(1 / np.mean(uncertainties[j], axis=-1))
-    #                 B = U @ np.linalg.pinv(L @ U) @ L
-    #                 Bs[j] = B
-    #             data["Bs"] = Bs
-    #             data["residuals"] = residuals
-    #             pickle.dump(
-    #                 [Bs, residuals], open(os.path.join(data_dir, "residuals.pic"), "wb")
-    #             )
-    #         else:
-    #             Bs = data["Bs"]
-    #             residuals = data["residuals"]
-
     # Create variable governing if a mixing ratio parameter combination lies in
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
     global allowed_simplex  # Needs to be global, as prior function has no return

@@ -146,7 +146,7 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
     return loglikelihood_sum, CCF_sum
 
 
-def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
+def loglikelihood_sysrem(radial_velocity, d_phi, a, b, wl, planet_spectrum, data):
     """
     Perform the loglikelihood calculation using SysRem. Based on N. Gibson 2021.
     N_order: number of spectral order.
@@ -204,10 +204,6 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
     N_order, N_phi, N_wl = residuals.shape
 
     N = residuals.size
-
-    # Time-resolved total radial velocity
-    radial_velocity = V_sys + K_p * np.sin(2 * np.pi * (phi + d_phi))
-    # V_sys is an additive term around zero. Data should be in rest frame of star.
 
     delta_lambda = radial_velocity * 1e3 / constants.c  # delta lambda, for shifting
 
@@ -372,8 +368,11 @@ def loglikelihood_high_res(
         if W_conv is not None:
             # np.convolve use smaller kernel. Apply filter to the spectrum. And multiply by scale factor a.
             planet_spectrum = gaussian_filter1d(planet_spectrum, W_conv)
+        # Time-resolved total radial velocity
+        radial_velocity = V_sys + K_p * np.sin(2 * np.pi * (data["phi"] + d_phi))
+        # V_sys is an additive term around zero. Data should be in rest frame of star.
         loglikelihood, _ = loglikelihood_sysrem(
-            V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data
+            radial_velocity, d_phi, a, b, wl, planet_spectrum, data
         )
         return loglikelihood
     else:
@@ -620,3 +619,91 @@ def fit_uncertainties_and_remove_outliers(data_raw, NPC=5):
 
     # uncertainties[mask] = 1e7
     return data_cleaned, uncertainties
+
+
+def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
+    uncertainties = data["uncertainties"]
+    residuals = data["residuals"]
+    phi = data["phi"]
+    Bs = data["Bs"]
+    wl_grid = data["wl_grid"]
+    transit_weight = data["transit_weight"]
+    max_transit_depth = np.max(1 - transit_weight)
+
+    N_order, N_phi, N_wl = residuals.shape
+    loglikelihood_array_final = np.zeros((len(Kp_arr), len(Vsys_arr)))
+    CCF_array_final = np.zeros((len(Kp_arr), len(Vsys_arr)))
+    for i in range(N_phi):
+        # residual = residuals[:, i, :]
+        # uncertainty = uncertainties[:, i, :]
+        RV_range = np.arange(
+            np.min(Kp_arr * np.sin(2 * np.pi * phi[i])) + np.min(Vsys_arr),
+            np.max(Kp_arr * np.sin(2 * np.pi * phi[i])) + np.max(Vsys_arr) + 1,
+        )
+
+        loglikelihoods = np.zeros_like(RV_range)
+        CCFs = np.zeros_like(RV_range)
+        for j, RV in enumerate(RV_range):
+            # Looping through each order and computing total log-L by summing logLs for each obvservation/order
+            for k in range(N_order):
+                wl_slice = wl_grid[k]  # Cropped wavelengths
+                delta_lambda = RV * 1e3 / constants.c
+                models_shifted = np.zeros(
+                    (N_phi, N_wl)
+                )  # "shifted" model spectra array at each phase
+
+                for l in range(N_phi):
+                    wl_shifted = wl_slice * (1.0 - delta_lambda)
+                    # wl_shifted_p = wl_slice * np.sqrt((1.0 - dl_p[j]) / (1 + dl_p[j]))
+                    F_p = np.interp(wl_shifted, wl, planet_spectrum)
+
+                    # Fp = interpolate.splev(wl_shifted_p, cs_p, der=0) # linear interpolation, einsum
+                    models_shifted[l] = (1 - transit_weight[l]) / max_transit_depth * (
+                        -F_p
+                    ) + 1
+
+                # divide by the median over wavelength to mimic blaze correction
+                models_shifted = (
+                    models_shifted.T / np.median(models_shifted, axis=1)
+                ).T
+
+                B = Bs[k]
+                models_filtered = models_shifted - B @ models_shifted
+
+                # m = models_filtered[i] / uncertainties[k, i] * a
+                # m2 = m.dot(m)
+                # f = residuals[k, i] / uncertainties[k, i]
+                # f2 = f.dot(f)
+                # CCF = f.dot(m)
+                # loglikelihood = -0.5 * (m2 + f2 - 2.0 * CCF) / (b**2)
+                # loglikelihood_sum += loglikelihood
+                # CCF_sum += CCF
+
+                a = 1
+                m = models_filtered[i] / uncertainties[k, i] * a
+                m2 = m.dot(m)
+                f = residuals[k, i] / uncertainties[k, i]
+                f2 = f.dot(f)
+                CCF = f.dot(m)
+                loglikelihood = -N_wl / 2 * np.log((m2 + f2 - 2.0 * CCF) / N_wl)
+                loglikelihoods[j] += loglikelihood
+                CCFs[j] += CCF
+
+        N_Kp = len(Kp_arr)
+        N_Vsys = len(Vsys_arr)
+        loglikelihood_array = np.zeros((N_Kp, N_Vsys))
+        CCF_array = np.zeros((N_Kp, N_Vsys))
+
+        for j, Kp in enumerate(Kp_arr):
+            RV = Kp * np.sin(2 * np.pi * phi[i]) + Vsys_arr
+            loglikelihood_array_final[j] += np.interp(RV, RV_range, loglikelihoods)
+            CCF_array_final[j] += np.interp(RV, RV_range, CCFs)
+
+    cross_correlation_result = [
+        Kp_arr,
+        Vsys_arr,
+        loglikelihood_array_final,
+        CCF_array_final,
+    ]
+
+    return cross_correlation_result

@@ -26,8 +26,8 @@ import time
 from scipy.ndimage import gaussian_filter1d, median_filter
 from POSEIDON.utility import read_high_res_data
 
-K_p = 200
-N_K_p = 50
+K_p = -200
+N_K_p = 100
 d_K_p = 2
 K_p_arr = (
     np.arange(N_K_p) - (N_K_p - 1) // 2
@@ -35,7 +35,7 @@ K_p_arr = (
 # K_p_arr = [92.06 , ..., 191.06, 192.06, 193.06, ..., 291.06]
 
 V_sys = 0
-N_V_sys = 50
+N_V_sys = 100
 d_V_sys = 2
 V_sys_arr = (
     np.arange(N_V_sys) - (N_V_sys - 1) // 2
@@ -56,8 +56,8 @@ y_values = np.arange(N_V_sys)
 
 coordinate_list = get_coordinate_list(x_values, y_values)
 
-data_path = "./data/WASP-121b/"
-output_path = "./CC_output/WASP-121b/"
+data_path = "./data/WASP-121b-injection/"
+output_path = "./CC_output/WASP-121b-injection/"
 # data_path = "./data/WASP-121b/"
 # output_path = "./CC_output/WASP-121b/"
 os.makedirs(output_path, exist_ok=True)
@@ -68,7 +68,9 @@ def cross_correlate(coord, K_p_arr, V_sys_arr, wl, spectrum, data):
     print(coord)
     K_p = K_p_arr[coord[0]]
     V_sys = V_sys_arr[coord[1]]
-    loglikelihood, CCF = loglikelihood_sysrem(V_sys, K_p, 0, 1, 1, wl, spectrum, data)
+    loglikelihood, CCF = loglikelihood_sysrem(
+        V_sys, K_p, 0, 1, None, wl, spectrum, data
+    )
     return (loglikelihood, CCF)
 
 
@@ -131,15 +133,15 @@ if __name__ == "__main__":
     opacity_treatment = "opacity_sampling"
 
     # Define fine temperature grid (K)
-    T_fine_min = 2000  # 400 K lower limit suffices for a typical hot Jupiter
-    T_fine_max = 4500  # 2000 K upper limit suffices for a typical hot Jupiter
+    T_fine_min = 400  # 400 K lower limit suffices for a typical hot Jupiter
+    T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
     T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 
     T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
     # Define fine pressure grid (log10(P/bar))
-    log_P_fine_min = -6.0  # 1 ubar is the lowest pressure in the opacity database
-    log_P_fine_max = 2.5  # 100 bar is the highest pressure in the opacity database
+    log_P_fine_min = -9.0  # 1 ubar is the lowest pressure in the opacity database
+    log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
     log_P_fine_step = 0.2  # 0.2 dex steps are a good tradeoff between accuracy and RAM
 
     log_P_fine = np.arange(
@@ -158,10 +160,10 @@ if __name__ == "__main__":
     P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
     # Specify the reference pressure and radius
-    P_ref = 1e-2  # Reference pressure (bar)
+    P_ref = 1e-5  # Reference pressure (bar)
     R_p_ref = R_p  # Radius at reference pressure
 
-    params = (-3.28, 2, 1, -2.5, -1.5, 1, 3000)
+    params = (-3, 0.3, 0.3, -1, -2, 1, 3000)
     log_Fe, a1, a2, log_P1, log_P2, log_P3, T_ref = params
 
     # Provide a specific set of model parameters for the atmosphere
@@ -188,7 +190,8 @@ if __name__ == "__main__":
         param_species,
         PT_profile="Madhu",
     )
-    params = (2, 1, -2.5, -1.5, 1, 3000)
+
+    params = (0.3, 0.3, -1, -2, 1, 3000)
     a1, a2, log_P1, log_P2, log_P3, T_ref = params
 
     # Provide a specific set of model parameters for the atmosphere
@@ -209,11 +212,7 @@ if __name__ == "__main__":
     results = Parallel(
         n_jobs=N_jobs, max_nbytes=1e7, verbose=10
     )(  # wl, spectrum need to be memory mapped for optimum efficiency
-        delayed(
-            lambda x: cross_correlate(
-                x, K_p_arr, V_sys_arr, wl, 4.5 * (spectrum - continuum), data
-            )
-        )(x)
+        delayed(lambda x: cross_correlate(x, K_p_arr, V_sys_arr, wl, spectrum, data))(x)
         for x in coordinate_list
     )
     time_2 = time.time()

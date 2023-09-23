@@ -33,7 +33,7 @@ from POSEIDON.utility import read_high_res_data
 
 # ***** Define model *****#
 
-model_name = "H2O, CO retrieval"  # Model name used for plots, output files etc.
+model_name = "H2O, CO retrieval 400"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 param_species = ["H2O", "CO"]  # H2O, CO as in Brogi & Line
@@ -150,15 +150,15 @@ import numpy as np
 opacity_treatment = "opacity_sampling"
 
 # Define fine temperature grid (K)
-T_fine_min = 500  # 400 K lower limit suffices for a typical hot Jupiter
-T_fine_max = 3000  # 2000 K upper limit suffices for a typical hot Jupiter
+T_fine_min = 400  # 400 K lower limit suffices for a typical hot Jupiter
+T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
 T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 
 T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
 # Define fine pressure grid (log10(P/bar))
-log_P_fine_min = -6.0  # 1 ubar is the lowest pressure in the opacity database
-log_P_fine_max = 2.5  # 100 bar is the highest pressure in the opacity database
+log_P_fine_min = -5.0  # 1 ubar is the lowest pressure in the opacity database
+log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
 log_P_fine_step = 0.2  # 0.2 dex steps are a good tradeoff between accuracy and RAM
 
 log_P_fine = np.arange(
