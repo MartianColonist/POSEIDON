@@ -76,7 +76,7 @@ star = create_star(R_s, T_s, log_g_s, Met_s, wl=wl, stellar_grid="phoenix")
 F_s = star["F_star"]
 wl_s = star["wl_star"]
 
-data_dir = "./data/WASP-77Ab/"
+data_dir = "./data/WASP-77Ab-injection-6/"
 
 data = read_high_res_data(data_dir, method="pca", spectrum_type="emission")
 data["V_sin_i"] = 4.5
