@@ -27,7 +27,7 @@ from scipy.ndimage import gaussian_filter1d, median_filter
 from POSEIDON.utility import read_high_res_data
 import multiprocessing
 
-K_p = 200  # True value 192.06
+K_p = -200  # True value 192.06
 N_K_p = 100
 d_K_p = 2
 K_p_arr = (
@@ -72,8 +72,8 @@ def cross_correlate(
 
 # The code below will only be run on one core to get the model spectrum.
 if __name__ == "__main__":
-    data_path = "./data/WASP-77Ab/"
-    output_path = "./CC_output/WASP-77Ab/"
+    data_path = "./data/WASP-77Ab-injection-6/"
+    output_path = "./CC_output/WASP-77Ab-injection-6/"
     os.makedirs(output_path, exist_ok=True)
     data = read_high_res_data(data_path, method="pca", spectrum_type="emission")
     data["data_raw"] = None
@@ -107,12 +107,8 @@ if __name__ == "__main__":
     model_name = "High-res retrieval"  # Model name used for plots, output files etc.
 
     bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-    param_species = ["H2O", "CO"]  # H2O, CO as in Brogi & Line
-
-    # Create the model object
-    # model = define_model(model_name, bulk_species, param_species,
-    #                     PT_profile = 'Madhu', high_res = high_res,
-    #                     high_res_params = high_res_params, R_p_ref_enabled=False)
+    # param_species = ["H2O", "CO", "CH4", "CO2"]
+    param_species = ["H2O"]
 
     model = define_model(model_name, bulk_species, param_species, PT_profile="Madhu")
 
@@ -141,15 +137,15 @@ if __name__ == "__main__":
     opacity_treatment = "opacity_sampling"
 
     # Define fine temperature grid (K)
-    T_fine_min = 500  # 400 K lower limit suffices for a typical hot Jupiter
-    T_fine_max = 3000  # 2000 K upper limit suffices for a typical hot Jupiter
+    T_fine_min = 2000  # 400 K lower limit suffices for a typical hot Jupiter
+    T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
     T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 
     T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
     # Define fine pressure grid (log10(P/bar))
-    log_P_fine_min = -6.0  # 1 ubar is the lowest pressure in the opacity database
-    log_P_fine_max = 2.5  # 100 bar is the highest pressure in the opacity database
+    log_P_fine_min = -5.0  # 1 ubar is the lowest pressure in the opacity database
+    log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
     log_P_fine_step = 0.2  # 0.2 dex steps are a good tradeoff between accuracy and RAM
 
     log_P_fine = np.arange(
@@ -160,7 +156,7 @@ if __name__ == "__main__":
     opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
     # Specify the pressure grid of the atmosphere
-    P_min = 1.0e-6  # 0.1 ubar
+    P_min = 1.0e-5  # 0.1 ubar
     P_max = 100  # 100 bar
     N_layers = 100  # 100 layers
 
@@ -168,27 +164,18 @@ if __name__ == "__main__":
     P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
     # Specify the reference pressure and radius
-    P_ref = 1e-2  # Reference pressure (bar)
+    P_ref = 1e-5  # Reference pressure (bar)
     R_p_ref = R_p  # Radius at reference pressure
-
-    params = (
-        -3.93,
-        -3.77,
-        0.38,
-        0.56,
-        0.17,
-        -1.39,
-        0.36,
-        931,
-    )  # Using maxmimum likelihood values from Brogi & Line
-    log_H2O, log_CO, a1, a2, log_P1, log_P2, log_P3, T_deep = params
+    params = (-6, 0.3, 0.3, -1, -2, 1, 3000)
+    # Using maxmimum likelihood values from Brogi & Line
+    log_H2O, a1, a2, log_P1, log_P2, log_P3, T_ref = params
 
     # Provide a specific set of model parameters for the atmosphere
     PT_params = np.array(
-        [a1, a2, log_P1, log_P2, log_P3, T_deep]
+        [a1, a2, log_P1, log_P2, log_P3, T_ref]
     )  # a1, a2, log_P1, log_P2, log_P3, T_deep
     # log_X_params = np.array([[log_H2O, log_CO, log_CH4, log_H2S, log_NH3, log_HCN]])
-    log_X_params = np.array([[log_H2O, log_CO]])
+    log_X_params = np.array([[log_H2O]])
 
     atmosphere = make_atmosphere(
         planet, model, P, P_ref, R_p_ref, PT_params, log_X_params
@@ -239,5 +226,5 @@ if __name__ == "__main__":
 
     pickle.dump(
         [K_p_arr, V_sys_arr, loglikelihood_array, CCF_array],
-        open(output_path + "/cross_correlation_results.pic", "wb"),
+        open(output_path + "/H2O_cross_correlation_results.pic", "wb"),
     )

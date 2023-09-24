@@ -154,7 +154,8 @@ d = planet["system_distance"]
 model_name = "Injection-retrieval-Fe-6"  # Model name used for plots, output files etc.
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 
-for species in ["Fe", "Li", "Mg", "Ti"]:
+# for species in ["Fe", "Li", "Mg", "Ti"]:
+for species in ["Fe"]:
     param_species = [species]
 
     model = define_model(model_name, bulk_species, param_species, PT_profile="isotherm")
@@ -251,8 +252,8 @@ for species in ["Fe", "Li", "Mg", "Ti"]:
     # )
 
     # Passing stellar spectrum, planet spectrum, wavelenght grid to each core, thus saving time for reading the opacity again
-    data_path = f"./data/WASP-121b/"
-    output_path = f"./CC_output/WASP-121b/"
+    data_path = f"./data/WASP-121b-injection-a10/"
+    output_path = f"./CC_output/WASP-121b-injection-a10/"
 
     # data_path = f"./data/WASP-121b-injection/"
     # output_path = f"./CC_output/WASP-121b-injection/"
