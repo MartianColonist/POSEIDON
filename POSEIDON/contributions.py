@@ -446,7 +446,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                                 else:
                                     for i in range(i_bot,N_layers):
                                         for q in range(len(wl)):
-                                            if aerosol == aerosol_species_index - 1:
+                                            if aerosol - 1 == aerosol_species_index:
                                                 kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
                                             else:
                                                 kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* 0
@@ -958,7 +958,6 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
         spectra = plot_collection(spectrum, wl, collection = spectra)
         spectrum_contribution_list_names.insert(0,'Full Spectrum')
-        print(spectrum_contribution_list_names)
 
         # Loop through the contribution spectra 
         for s in spectrum_contribution_list:
