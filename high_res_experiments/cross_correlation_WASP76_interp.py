@@ -45,7 +45,7 @@ V_sys_arr = (
 
 def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
     a = 4.5
-    b = 1
+    b = None
     uncertainties = data["uncertainties"]
     residuals = data["residuals"]
     phi = data["phi"]
@@ -72,6 +72,7 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
     )
 
     RV_range = np.arange(RV_min, RV_max + 1)
+    CCF_array_per_phase = np.zeros((len(phi), len(RV_range)))
     models_shifted = np.zeros((len(RV_range), N_order, N_wl))
     for i, RV in enumerate(RV_range):
         # Looping through each order and computing total log-L by summing logLs for each obvservation/order
@@ -102,11 +103,11 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
                 m = model / uncertainties[k, i] * a
                 m2 = m.dot(m)
                 CCF = f.dot(m)
-                # loglikelihood = -N_wl / 2 * np.log((m2 + f2 - 2.0 * CCF) / N_wl)
-                loglikelihood = -0.5 * (m2 + f2 - 2.0 * CCF) / (b**2)
+                loglikelihood = -N_wl / 2 * np.log((m2 + f2 - 2.0 * CCF) / N_wl)
+                # loglikelihood = -0.5 * (m2 + f2 - 2.0 * CCF) / (b**2)
                 loglikelihoods[j] += loglikelihood
                 CCFs[j] += CCF
-
+        CCF_array_per_phase[i, :] = CCFs
         for j, Kp in enumerate(Kp_arr):
             RV = Kp * np.sin(2 * np.pi * phi[i]) + Vsys_arr
             loglikelihood_array_final[j] += np.interp(RV, RV_range, loglikelihoods)
@@ -115,8 +116,10 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
     cross_correlation_result = [
         Kp_arr,
         Vsys_arr,
+        RV_range,
         loglikelihood_array_final,
         CCF_array_final,
+        CCF_array_per_phase,
     ]
 
     return cross_correlation_result
@@ -151,8 +154,7 @@ d = planet["system_distance"]
 
 model_name = "High-res retrieval"  # Model name used for plots, output files etc.
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-
-for species in ["Fe"]:
+for species in ["Cr", "V", "H", "Fe"]:
     param_species = [species]
 
     model = define_model(model_name, bulk_species, param_species, PT_profile="isotherm")
@@ -164,7 +166,7 @@ for species in ["Fe"]:
 
     wl_min = 0.48  # Minimum wavelength (um) 0.37
     wl_max = 0.70  # Maximum wavelength (um) 1.05
-    R = 1000000  # Spectral resolution of grid
+    R = 250000  # Spectral resolution of grid
     model["R"] = R
     model["R_instrument"] = 66000  # Resolution of instrument
 
@@ -250,8 +252,10 @@ for species in ["Fe"]:
 
     # Passing stellar spectrum, planet spectrum, wavelenght grid to each core, thus saving time for reading the opacity again
     for n in range(1, 2):
-        data_path = f"./data/WASP-76b-MAROON/night_{n}"
-        output_path = f"./CC_output/WASP-76b-MAROON/night_{n}"
+        # data_path = f"./data/WASP-76b-MAROON/night_{n}"
+        # output_path = f"./CC_output/WASP-76b-MAROON/night_{n}"
+        data_path = f"./data/WASP-76b/"
+        output_path = f"./CC_output/WASP-76b/"
 
         # data_path = f"./data/WASP-76b/"
         # output_path = f"./CC_output/WASP-76b/"

@@ -33,14 +33,16 @@ from POSEIDON.utility import read_high_res_data
 
 # ***** Define model *****#
 
-model_name = "H2O, CO retrieval 400"  # Model name used for plots, output files etc.
+model_name = (
+    "H2O, CO retrieval disbale ref 2"  # Model name used for plots, output files etc.
+)
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 param_species = ["H2O", "CO"]  # H2O, CO as in Brogi & Line
 
 method = "pca"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
-high_res_params = ["a", "K_p", "V_sys"]
+high_res_params = ["K_p", "V_sys", "log_a"]
 
 # Create the model object
 # model = define_model(model_name, bulk_species, param_species,
@@ -53,6 +55,7 @@ model = define_model(
     param_species,
     PT_profile="Madhu",
     high_res_params=high_res_params,
+    reference_parameter="None",
 )
 
 # Check the free parameters defining this model
@@ -89,10 +92,6 @@ prior_types = {}
 
 # Specify whether priors are linear, Gaussian, etc.
 prior_types["T_ref"] = "uniform"
-prior_types["T"] = "uniform"
-prior_types["T_deep"] = "uniform"
-prior_types["T_high"] = "uniform"
-# prior_types["R_p_ref"] = "gaussian"
 prior_types["R_p_ref"] = "uniform"
 prior_types["log_Na"] = "uniform"
 prior_types["log_K"] = "uniform"
@@ -106,7 +105,7 @@ prior_types["log_P2"] = "uniform"
 prior_types["log_P3"] = "uniform"
 prior_types["K_p"] = "uniform"
 prior_types["V_sys"] = "uniform"
-prior_types["a"] = "uniform"
+prior_types["log_a"] = "uniform"
 prior_types["b"] = "uniform"
 prior_types["dPhi"] = "uniform"
 prior_types["W_conv"] = "uniform"
@@ -115,11 +114,7 @@ prior_types["W_conv"] = "uniform"
 prior_ranges = {}
 
 # Specify prior ranges for each free parameter
-prior_ranges["T_ref"] = [1500, 4000]
-prior_ranges["T"] = [1500, 4000]
-prior_ranges["T_deep"] = [1500, 4000]
-prior_ranges["T_high"] = [1500, 4000]
-# prior_ranges["R_p_ref"] = [1.83 * R_J, 0.05 * R_J]
+prior_ranges["T_ref"] = [400, 3000]
 prior_ranges["R_p_ref"] = [0.5 * R_p, 1.5 * R_p]
 prior_ranges["log_Na"] = [-15, 0]
 prior_ranges["log_Fe"] = [-15, 0]
@@ -133,7 +128,8 @@ prior_ranges["log_P2"] = [-5, 2]
 prior_ranges["log_P3"] = [-2, 2]
 prior_ranges["K_p"] = [150, 230]
 prior_ranges["V_sys"] = [-20, 20]
-prior_ranges["a"] = [0.01, 100]
+prior_ranges["log_a"] = [-3, 2]
+prior_ranges["a"] = [0.01, 2]
 prior_ranges["b"] = [0.01, 100]
 prior_ranges["dPhi"] = [-0.1, 0.1]
 prior_ranges["W_conv"] = [1, 10]
@@ -178,7 +174,7 @@ N_layers = 100  # 100 layers
 P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
 # Specify the reference pressure and radius
-P_ref = 1e-2  # Reference pressure (bar)
+P_ref = 1e-5  # Reference pressure (bar)
 
 # %%
 from POSEIDON.retrieval import run_retrieval
@@ -195,6 +191,7 @@ run_retrieval(
     wl,
     P,
     P_ref,
+    R_p_ref=R_p,
     R=R,
     spectrum_type="emission",
     sampling_algorithm="MultiNest",
@@ -202,7 +199,6 @@ run_retrieval(
     verbose=True,
     N_output_samples=1000,
     resume=False,
-    ev_tol=0.5,
 )
 
 

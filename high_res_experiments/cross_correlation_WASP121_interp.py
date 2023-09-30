@@ -27,7 +27,7 @@ from scipy.ndimage import gaussian_filter1d, median_filter
 from POSEIDON.utility import read_high_res_data
 import multiprocessing
 
-K_p = -200
+K_p = 250
 N_K_p = 200
 d_K_p = 2
 K_p_arr = (
@@ -36,7 +36,7 @@ K_p_arr = (
 # K_p_arr = [92.06 , ..., 191.06, 192.06, 193.06, ..., 291.06]
 
 V_sys = 0
-N_V_sys = 200
+N_V_sys = 100
 d_V_sys = 2
 V_sys_arr = (
     np.arange(N_V_sys) - (N_V_sys - 1) // 2
@@ -44,8 +44,6 @@ V_sys_arr = (
 
 
 def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
-    a = 10
-    b = 1
     uncertainties = data["uncertainties"]
     residuals = data["residuals"]
     phi = data["phi"]
@@ -93,20 +91,21 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
             f = residuals[k, i] / uncertainties[k, i]
             f2 = f.dot(f)
             for j, RV in enumerate(RV_range):
-                # model = (-models_shifted[j, k]) * (
-                #     1 - transit_weight[i]
-                # ) / max_transit_depth + 1  # change to -model instead?
-                model = -models_shifted[j, k]
+                model = (-models_shifted[j, k]) * (
+                    1 - transit_weight[i]
+                ) / max_transit_depth + 1  # change to -model instead?
+                # model = -models_shifted[j, k]
                 # divide by the median over wavelength to mimic blaze correction
                 # model = model / np.median(model)  # keep or not?
 
-                m = model / uncertainties[k, i] * a
+                m = model / uncertainties[k, i]
                 m2 = m.dot(m)
                 CCF = f.dot(m)
-                # loglikelihood = -N_wl / 2 * np.log((m2 + f2 - 2.0 * CCF) / N_wl)
-                loglikelihood = -0.5 * (m2 + f2 - 2.0 * CCF) / (b**2)
+                loglikelihood = -N_wl / 2 * np.log((m2 + f2 - 2.0 * CCF) / N_wl)
+                # loglikelihood = -0.5 * (m2 + f2 - 2.0 * CCF) / (b**2)
                 loglikelihoods[j] += loglikelihood
 
+                # CCFs[j] += CCF / np.sqrt(m2 * f2)
                 CCFs[j] += CCF
         CCF_array_per_phase[i, :] = CCFs
         for j, Kp in enumerate(Kp_arr):
@@ -151,11 +150,11 @@ d = planet["system_distance"]
 
 # ***** Define model *****#
 
-model_name = "Injection-retrieval-Fe-6"  # Model name used for plots, output files etc.
+model_name = "Fe -6"  # Model name used for plots, output files etc.
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 
 # for species in ["Fe", "Li", "Mg", "Ti"]:
-for species in ["Fe"]:
+for species in ["Fe", "Ca"]:
     param_species = [species]
 
     model = define_model(model_name, bulk_species, param_species, PT_profile="isotherm")
@@ -181,8 +180,8 @@ for species in ["Fe"]:
     opacity_treatment = "opacity_sampling"
 
     # Define fine temperature grid (K)
-    T_fine_min = 400  # 400 K lower limit suffices for a typical hot Jupiter
-    T_fine_max = 3500  # 2000 K upper limit suffices for a typical hot Jupiter
+    T_fine_min = 2000  # 400 K lower limit suffices for a typical hot Jupiter
+    T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
     T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 
     T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
@@ -211,7 +210,7 @@ for species in ["Fe"]:
     P_ref = 1e-5  # Reference pressure (bar)
     R_p_ref = R_p  # Radius at reference pressure
 
-    params = (-6, 2500)
+    params = (-4, 3375)
     log_species, T = params
 
     # Provide a specific set of model parameters for the atmosphere
@@ -233,27 +232,27 @@ for species in ["Fe"]:
         spectrum_type="transmission",
     )
 
-    # param_species = []
+    param_species = []
 
-    # # Create the model object
-    # model = define_model(model_name, bulk_species, param_species, PT_profile="isotherm")
+    # Create the model object
+    model = define_model(model_name, bulk_species, param_species, PT_profile="isotherm")
 
-    # # Provide a specific set of model parameters for the atmosphere
-    # PT_params = np.array([T])
-    # log_X_params = np.array([[log_Fe]])
+    # Provide a specific set of model parameters for the atmosphere
+    PT_params = np.array([T])
+    log_X_params = np.array([[log_species]])
 
-    # atmosphere = make_atmosphere(
-    #     planet, model, P, P_ref, R_p_ref, PT_params, log_X_params
-    # )
+    atmosphere = make_atmosphere(
+        planet, model, P, P_ref, R_p_ref, PT_params, log_X_params
+    )
 
-    # # Generate planet surface flux
-    # continuum = compute_spectrum(
-    #     planet, star, model, atmosphere, opac, wl, spectrum_type="transmission"
-    # )
+    # Generate planet surface flux
+    continuum = compute_spectrum(
+        planet, star, model, atmosphere, opac, wl, spectrum_type="transmission"
+    )
 
     # Passing stellar spectrum, planet spectrum, wavelenght grid to each core, thus saving time for reading the opacity again
-    data_path = f"./data/WASP-121b-injection-a10/"
-    output_path = f"./CC_output/WASP-121b-injection-a10/"
+    data_path = f"./data/WASP-121b/"
+    output_path = f"./CC_output/WASP-121b/"
 
     # data_path = f"./data/WASP-121b-injection/"
     # output_path = f"./CC_output/WASP-121b-injection/"
@@ -262,7 +261,10 @@ for species in ["Fe"]:
     data = read_high_res_data(data_path, method="sysrem", spectrum_type="transmission")
 
     time_1 = time.time()
-    cross_correlation_result = cross_correlate(K_p_arr, V_sys_arr, wl, spectrum, data)
+    a = 2
+    cross_correlation_result = cross_correlate(
+        K_p_arr, V_sys_arr, wl, (spectrum - continuum) * a + continuum, data
+    )
     time_2 = time.time()
     print(time_2 - time_1)
 

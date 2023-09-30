@@ -166,9 +166,21 @@ if __name__ == "__main__":
     # Specify the reference pressure and radius
     P_ref = 1e-5  # Reference pressure (bar)
     R_p_ref = R_p  # Radius at reference pressure
-    params = (-6, 0.3, 0.3, -1, -2, 1, 3000)
-    # Using maxmimum likelihood values from Brogi & Line
-    log_H2O, a1, a2, log_P1, log_P2, log_P3, T_ref = params
+    # params = (-6, 0.3, 0.3, -1, -2, 1, 3000)
+    # # Using maxmimum likelihood values from Brogi & Line
+    # log_H2O, a1, a2, log_P1, log_P2, log_P3, T_ref = params
+
+    params = (
+        -3.93,
+        -3.77,
+        0.38,
+        0.56,
+        0.17,
+        -1.39,
+        0.36,
+        931,
+    )  # Using maxmimum likelihood values from Brogi & Line
+    log_H2O, log_CO, a1, a2, log_P1, log_P2, log_P3, T_ref = params
 
     # Provide a specific set of model parameters for the atmosphere
     PT_params = np.array(

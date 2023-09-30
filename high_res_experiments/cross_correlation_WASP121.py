@@ -26,7 +26,7 @@ import time
 from scipy.ndimage import gaussian_filter1d, median_filter
 from POSEIDON.utility import read_high_res_data
 
-K_p = -200
+K_p = 200
 N_K_p = 100
 d_K_p = 2
 K_p_arr = (
@@ -56,10 +56,10 @@ y_values = np.arange(N_V_sys)
 
 coordinate_list = get_coordinate_list(x_values, y_values)
 
-data_path = "./data/WASP-121b-injection/"
-output_path = "./CC_output/WASP-121b-injection/"
-# data_path = "./data/WASP-121b/"
-# output_path = "./CC_output/WASP-121b/"
+# data_path = "./data/WASP-121b-injection/"
+# output_path = "./CC_output/WASP-121b-injection/"
+data_path = "./data/WASP-121b/"
+output_path = "./CC_output/WASP-121b/"
 os.makedirs(output_path, exist_ok=True)
 data = read_high_res_data(data_path, method="sysrem")
 
@@ -69,7 +69,7 @@ def cross_correlate(coord, K_p_arr, V_sys_arr, wl, spectrum, data):
     K_p = K_p_arr[coord[0]]
     V_sys = V_sys_arr[coord[1]]
     loglikelihood, CCF = loglikelihood_sysrem(
-        V_sys, K_p, 0, 1, None, wl, spectrum, data
+        V_sys, K_p, 0, 2, None, wl, spectrum, data
     )
     return (loglikelihood, CCF)
 
@@ -112,10 +112,10 @@ if __name__ == "__main__":
     model_name = "High-res retrieval"  # Model name used for plots, output files etc.
 
     bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-    param_species = ["Fe"]  # H2O, CO as in Brogi & Line
+    param_species = ["Cr"]  # H2O, CO as in Brogi & Line
 
     # Create the model object
-    model = define_model(model_name, bulk_species, param_species, PT_profile="Madhu")
+    model = define_model(model_name, bulk_species, param_species, PT_profile="isotherm")
 
     # Check the free parameters defining this model
     print("Free parameters: " + str(model["param_names"]))
@@ -163,14 +163,14 @@ if __name__ == "__main__":
     P_ref = 1e-5  # Reference pressure (bar)
     R_p_ref = R_p  # Radius at reference pressure
 
-    params = (-3, 0.3, 0.3, -1, -2, 1, 3000)
-    log_Fe, a1, a2, log_P1, log_P2, log_P3, T_ref = params
+    # params = (-3, 0.3, 0.3, -1, -2, 1, 3000)
+    # log_Fe, a1, a2, log_P1, log_P2, log_P3, T_ref = params
+    params = (-5, 3000)
+    log_species, T = params
 
     # Provide a specific set of model parameters for the atmosphere
-    PT_params = np.array(
-        [a1, a2, log_P1, log_P2, log_P3, T_ref]
-    )  # a1, a2, log_P1, log_P2, log_P3, T_deep
-    log_X_params = np.array([[log_Fe]])
+    PT_params = np.array([T])  # a1, a2, log_P1, log_P2, log_P3, T_deep
+    log_X_params = np.array([[log_species]])
 
     atmosphere = make_atmosphere(
         planet, model, P, P_ref, R_p_ref, PT_params, log_X_params
@@ -188,16 +188,15 @@ if __name__ == "__main__":
         model_name,
         bulk_species,
         param_species,
-        PT_profile="Madhu",
+        PT_profile="isotherm",
     )
 
-    params = (0.3, 0.3, -1, -2, 1, 3000)
-    a1, a2, log_P1, log_P2, log_P3, T_ref = params
+    params = (-5, 3000)
+    log_species, T = params
 
     # Provide a specific set of model parameters for the atmosphere
-    PT_params = np.array(
-        [a1, a2, log_P1, log_P2, log_P3, T_ref]
-    )  # a1, a2, log_P1, log_P2, log_P3, T_deep
+    PT_params = np.array([T])  # a1, a2, log_P1, log_P2, log_P3, T_deep
+    log_X_params = np.array([[log_species]])
 
     atmosphere = make_atmosphere(
         planet, model, P, P_ref, R_p_ref, PT_params, log_X_params
@@ -226,5 +225,5 @@ if __name__ == "__main__":
 
     pickle.dump(
         [K_p_arr, V_sys_arr, loglikelihood_array, CCF_array],
-        open(output_path + "/cross_correlation_results.pic", "wb"),
+        open(output_path + "/Cr_cross_correlation_results.pic", "wb"),
     )

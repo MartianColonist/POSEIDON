@@ -11,6 +11,9 @@ import numpy as np
 from spectres import spectres
 from sklearn.decomposition import TruncatedSVD
 from scipy.ndimage import gaussian_filter1d
+import cmasher as cmr
+import colormaps as cmaps
+import matplotlib.pyplot as plt
 
 
 @jit
@@ -146,7 +149,7 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
     return loglikelihood_sum, CCF_sum
 
 
-def loglikelihood_sysrem(radial_velocity, d_phi, a, b, wl, planet_spectrum, data):
+def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
     """
     Perform the loglikelihood calculation using SysRem. Based on N. Gibson 2021.
     N_order: number of spectral order.
@@ -204,6 +207,10 @@ def loglikelihood_sysrem(radial_velocity, d_phi, a, b, wl, planet_spectrum, data
     N_order, N_phi, N_wl = residuals.shape
 
     N = residuals.size
+
+    # Time-resolved total radial velocity
+    radial_velocity = V_sys + K_p * np.sin(2 * np.pi * (phi + d_phi))
+    # V_sys is an additive term around zero. Data should be in rest frame of star.
 
     delta_lambda = radial_velocity * 1e3 / constants.c  # delta lambda, for shifting
 
@@ -318,10 +325,10 @@ def loglikelihood_high_res(
     else:
         V_sys = model["V_sys"]
 
-    if "a" in high_res_param_names:
-        a = high_res_params[np.where(high_res_param_names == "a")[0][0]]
+    if "log_a" in high_res_param_names:
+        a = 10 ** high_res_params[np.where(high_res_param_names == "log_a")[0][0]]
     else:
-        a = model["a"]
+        a = 10 ** model["log_a"]
 
     if "d_phi" in high_res_param_names:
         d_phi = high_res_params[np.where(high_res_param_names == "d_phi")[0][0]]
@@ -368,11 +375,8 @@ def loglikelihood_high_res(
         if W_conv is not None:
             # np.convolve use smaller kernel. Apply filter to the spectrum. And multiply by scale factor a.
             planet_spectrum = gaussian_filter1d(planet_spectrum, W_conv)
-        # Time-resolved total radial velocity
-        radial_velocity = V_sys + K_p * np.sin(2 * np.pi * (data["phi"] + d_phi))
-        # V_sys is an additive term around zero. Data should be in rest frame of star.
         loglikelihood, _ = loglikelihood_sysrem(
-            radial_velocity, d_phi, a, b, wl, planet_spectrum, data
+            V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data
         )
         return loglikelihood
     else:
@@ -494,7 +498,7 @@ def fast_filter(data, uncertainties, N_iter=15):
     Us = np.zeros(
         (N_order, N_phi, N_iter + 1)
     )  # TODO: could turn into np.ones for clarity. This corresponds to Gibson 2021. page 4625.
-
+    data = data.copy()
     for i, order in enumerate(data):
         stds = uncertainties[i]
         residual, U = sysrem(order, stds, N_iter)
@@ -504,7 +508,7 @@ def fast_filter(data, uncertainties, N_iter=15):
     return residuals, Us
 
 
-def make_data_cube(data, wl_grid):
+def make_data_cube(data):
     N_order, N_phi, N_wl = data.shape  # yup, this again--Norders x Nphases x Npixels
     # SVD/PCA method
 
@@ -621,89 +625,184 @@ def fit_uncertainties_and_remove_outliers(data_raw, NPC=5):
     return data_cleaned, uncertainties
 
 
-def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
-    uncertainties = data["uncertainties"]
-    residuals = data["residuals"]
-    phi = data["phi"]
-    Bs = data["Bs"]
-    wl_grid = data["wl_grid"]
-    transit_weight = data["transit_weight"]
-    max_transit_depth = np.max(1 - transit_weight)
+from POSEIDON.utility import read_high_res_data
 
-    N_order, N_phi, N_wl = residuals.shape
-    loglikelihood_array_final = np.zeros((len(Kp_arr), len(Vsys_arr)))
-    CCF_array_final = np.zeros((len(Kp_arr), len(Vsys_arr)))
-    for i in range(N_phi):
-        # residual = residuals[:, i, :]
-        # uncertainty = uncertainties[:, i, :]
-        RV_range = np.arange(
-            np.min(Kp_arr * np.sin(2 * np.pi * phi[i])) + np.min(Vsys_arr),
-            np.max(Kp_arr * np.sin(2 * np.pi * phi[i])) + np.max(Vsys_arr) + 1,
+
+def cross_correlation_plot(
+    data_path, output_path, species, true_Kp, ture_Vsys, plot_label=False
+):
+    def get_coordinate_list(x_values, y_values):
+        x, y = np.meshgrid(x_values, y_values)
+        coordinates = np.dstack([x, y]).reshape(-1, 2)
+        return [tuple(coord) for coord in coordinates]
+
+    if isinstance(species, str):
+        species = [species]
+    for s in species:
+        K_p_arr, V_sys_arr, RV_range, loglikelihood, CCF, CCF_per_phase = pickle.load(
+            open(output_path + s + "_cross_correlation_results.pic", "rb")
         )
 
-        loglikelihoods = np.zeros_like(RV_range)
-        CCFs = np.zeros_like(RV_range)
-        for j, RV in enumerate(RV_range):
-            # Looping through each order and computing total log-L by summing logLs for each obvservation/order
-            for k in range(N_order):
-                wl_slice = wl_grid[k]  # Cropped wavelengths
-                delta_lambda = RV * 1e3 / constants.c
-                models_shifted = np.zeros(
-                    (N_phi, N_wl)
-                )  # "shifted" model spectra array at each phase
+        phi = pickle.load(open(data_path + "phi.pic", "rb"))
+        RV_min = min(
+            [
+                np.min(K_p_arr * np.sin(2 * np.pi * phi[i])) + np.min(V_sys_arr)
+                for i in range(len(phi))
+            ]
+        )
+        RV_max = max(
+            [
+                np.max(K_p_arr * np.sin(2 * np.pi * phi[i])) + np.max(V_sys_arr)
+                for i in range(len(phi))
+            ]
+        )
 
-                for l in range(N_phi):
-                    wl_shifted = wl_slice * (1.0 - delta_lambda)
-                    # wl_shifted_p = wl_slice * np.sqrt((1.0 - dl_p[j]) / (1 + dl_p[j]))
-                    F_p = np.interp(wl_shifted, wl, planet_spectrum)
+        RV_range = np.arange(RV_min, RV_max + 1)
+        K_p = true_Kp
+        V_sys = ture_Vsys  # True value
 
-                    # Fp = interpolate.splev(wl_shifted_p, cs_p, der=0) # linear interpolation, einsum
-                    models_shifted[l] = (1 - transit_weight[l]) / max_transit_depth * (
-                        -F_p
-                    ) + 1
+        stdev_range_x = np.where((K_p_arr < K_p - 50) | (K_p_arr > K_p + 50))[0]
+        stdev_range_y = np.where((V_sys_arr < V_sys - 50) | (V_sys_arr > V_sys + 50))[0]
+        stdev_range = get_coordinate_list(stdev_range_x, stdev_range_y)
 
-                # divide by the median over wavelength to mimic blaze correction
-                models_shifted = (
-                    models_shifted.T / np.median(models_shifted, axis=1)
-                ).T
+        CCF = CCF - np.mean(CCF)
+        stdev = np.std(CCF[stdev_range])
+        maxx = (CCF / stdev).max()
+        loc = np.where(CCF / stdev == maxx)
+        fig, ax = plt.subplots(figsize=(17, 17), constrained_layout=True)
+        im = ax.imshow(
+            CCF / stdev,
+            extent=[V_sys_arr.min(), V_sys_arr.max(), K_p_arr.min(), K_p_arr.max()],
+            aspect=len(V_sys_arr) / len(K_p_arr),
+            interpolation="bilinear",
+            cmap=cmaps.cividis,
+            origin="lower",
+        )
+        if plot_label:
+            ax.text(
+                0.1,
+                0.15,
+                s,
+                ha="left",
+                va="top",
+                transform=ax.transAxes,
+                color="white",
+                fontsize=60,
+            )
 
-                B = Bs[k]
-                models_filtered = models_shifted - B @ models_shifted
+        cbar = plt.colorbar(im, shrink=0.8)
+        plt.axvline(x=V_sys, color="white", ls="--", lw=2)
+        plt.axhline(y=K_p, color="white", ls="--", lw=2)
+        plt.plot(V_sys_arr[loc[1]], K_p_arr[loc[0]], "xk", ms=20, mew=4)
+        ax.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
+        ax.set_ylabel(r"K$_{p}$ (km/s)")
+        ax.set_title(r"$\Delta$ CCF ($\sigma$)")
+        plt.savefig(output_path + s + "_CCF_SNR.png")
+        plt.show()
+        plt.close()
 
-                # m = models_filtered[i] / uncertainties[k, i] * a
-                # m2 = m.dot(m)
-                # f = residuals[k, i] / uncertainties[k, i]
-                # f2 = f.dot(f)
-                # CCF = f.dot(m)
-                # loglikelihood = -0.5 * (m2 + f2 - 2.0 * CCF) / (b**2)
-                # loglikelihood_sum += loglikelihood
-                # CCF_sum += CCF
+        # loglikelihood = loglikelihood - np.mean(loglikelihood)
+        # stdev = np.std(loglikelihood[stdev_range])
+        # maxx = (loglikelihood / stdev).max()
+        # loc = np.where(loglikelihood / stdev == maxx)
+        # fig, ax = subplots(figsize=(17, 17), constrained_layout=True)
+        # im = ax.imshow(
+        #     loglikelihood / stdev,
+        #     extent=[V_sys_arr.min(), V_sys_arr.max(), K_p_arr.min(), K_p_arr.max()],
+        #     aspect=len(V_sys_arr) / len(K_p_arr),
+        #     interpolation="bilinear",
+        #     cmap=cmaps.cividis,
+        #     origin="lower",
+        # )
 
-                a = 1
-                m = models_filtered[i] / uncertainties[k, i] * a
-                m2 = m.dot(m)
-                f = residuals[k, i] / uncertainties[k, i]
-                f2 = f.dot(f)
-                CCF = f.dot(m)
-                loglikelihood = -N_wl / 2 * np.log((m2 + f2 - 2.0 * CCF) / N_wl)
-                loglikelihoods[j] += loglikelihood
-                CCFs[j] += CCF
+        # ax.text(
+        #     0.1,
+        #     0.15,
+        #     s,
+        #     ha="left",
+        #     va="top",
+        #     transform=ax.transAxes,
+        #     color="white",
+        #     fontsize=60,
+        # )
 
-        N_Kp = len(Kp_arr)
-        N_Vsys = len(Vsys_arr)
-        loglikelihood_array = np.zeros((N_Kp, N_Vsys))
-        CCF_array = np.zeros((N_Kp, N_Vsys))
+        # cbar = colorbar(im, shrink=0.8)
+        # axvline(x=V_sys, color="white", ls="--", lw=2)
+        # axhline(y=K_p, color="white", ls="--", lw=2)
+        # plot(V_sys_arr[loc[1]], K_p_arr[loc[0]], "xk", ms=20, mew=4)
+        # ax.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
+        # ax.set_ylabel(r"K$_{p}$ (km/s)")
+        # ax.set_title(r"$\Delta$ log($\mathcalL$) ($\sigma$)")
+        # savefig(output_path + s + "_CCF_SNR.png")
+        # show()
+        # close()
 
-        for j, Kp in enumerate(Kp_arr):
-            RV = Kp * np.sin(2 * np.pi * phi[i]) + Vsys_arr
-            loglikelihood_array_final[j] += np.interp(RV, RV_range, loglikelihoods)
-            CCF_array_final[j] += np.interp(RV, RV_range, CCFs)
+        # slice at Kp
+        fig, ax = plt.subplots(figsize=(17, 5), constrained_layout=True)
+        index = np.argmin(np.abs(K_p_arr - K_p_arr[loc[0]]))
 
-    cross_correlation_result = [
-        Kp_arr,
-        Vsys_arr,
-        loglikelihood_array_final,
-        CCF_array_final,
-    ]
+        slicee = CCF[index]
+        ax.plot(V_sys_arr, slicee)
+        ax.axis(
+            [
+                np.min(V_sys_arr),
+                np.max(V_sys_arr),
+                1.1 * slicee.min(),
+                1.1 * slicee.max(),
+            ]
+        )
+        ax.set_xlabel(r"$\Delta$V$_{sys}$(km/s)")
+        ax.set_ylabel(r"$\Delta$ CCF")
+        ax.set_title("Slice at K$_{p}$ = " + str(K_p_arr[loc[0]][0]) + " km/s")
+        ax.axvline(x=V_sys, ls="--", color="black")
+        plt.savefig(output_path + s + "_CCF_slice.png")
+        plt.show()
+        plt.close()
 
-    return cross_correlation_result
+        # for 77 injection
+        for i in range(len(CCF_per_phase)):
+            CCF_per_phase[i] = CCF_per_phase[i] - np.mean(CCF_per_phase[i])
+            # stdev = np.std(CCF_per_phase[i])
+            # CCF_per_phase[i] = CCF_per_phase[i] / stdev
+
+        maxx = (CCF_per_phase).max()
+        loc = np.where(CCF_per_phase / stdev == maxx)
+        fig, ax = plt.subplots(figsize=(17, 5), constrained_layout=True)
+        im = ax.imshow(
+            CCF_per_phase,
+            extent=[RV_range.min(), RV_range.max(), phi.min(), phi.max()],
+            aspect="auto",
+            interpolation="bilinear",
+            # cmap="cividis",
+            cmap=cmaps.cividis,
+            origin="lower",
+        )
+        if plot_label:
+            ax.text(
+                0.1,
+                0.15,
+                s,
+                ha="left",
+                va="top",
+                transform=ax.transAxes,
+                color="white",
+                fontsize=60,
+            )
+
+        cbar = plt.colorbar(im)
+        # ax.plot(
+        #     np.arange(-180, -50),
+        #     (np.arange(-180, -50) + 100) / (200) / (2 * np.pi)
+        #     + 0.4,  # phi start from 90 degrees. sin(phi-90) -90 = -phi
+        #     "--",
+        #     color="red",
+        #     alpha=0.5,
+        # )
+        # plot(V_sys_arr[loc[1]], phi[loc[0]], "xk", ms=7)
+        # axis([V_sys_arr.min(), V_sys_arr.max(), phi.min(), phi.max()])
+        ax.set_xlabel("Planet Radial Velocity (km/s)")
+        ax.set_ylabel(r"$\phi$", rotation=0, labelpad=20)
+        ax.set_title(r"$\Delta$ Cross Correlation Coefficient")
+        plt.savefig(output_path + s + "_CCF_phase.png")
+        plt.show()
+        plt.close()

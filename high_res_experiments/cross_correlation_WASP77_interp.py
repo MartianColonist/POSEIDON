@@ -27,17 +27,17 @@ from scipy.ndimage import gaussian_filter1d, median_filter
 from POSEIDON.utility import read_high_res_data
 import multiprocessing
 
-K_p = -200  # True value 192.06
-N_K_p = 100
-d_K_p = 2
+K_p = 200  # True value 192.06
+N_K_p = 200
+d_K_p = 1
 K_p_arr = (
     np.arange(N_K_p) - (N_K_p - 1) // 2
 ) * d_K_p + K_p  # making K_p_arr (centered on published or predicted K_p)
 # K_p_arr = [92.06 , ..., 191.06, 192.06, 193.06, ..., 291.06]
 
 V_sys = 0
-N_V_sys = 100
-d_V_sys = 2
+N_V_sys = 200
+d_V_sys = 1
 V_sys_arr = (
     np.arange(N_V_sys) - (N_V_sys - 1) // 2
 ) * d_V_sys + V_sys  # making V_sys_arr (centered on published or predicted V_sys (here 0 because we already added V_sys in V_bary))
@@ -122,8 +122,8 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, F_p_obs, F_s_obs, data):
 
 # The code below will only be run on one core to get the model spectrum.
 if __name__ == "__main__":
-    data_path = "./data/WASP-77Ab-injection-6/"
-    output_path = "./CC_output/WASP-77Ab-injection-6/"
+    data_path = "./data/WASP-77Ab/"
+    output_path = "./CC_output/WASP-77Ab/"
     os.makedirs(output_path, exist_ok=True)
     data = read_high_res_data(data_path, method="pca", spectrum_type="emission")
     data["data_raw"] = None
@@ -158,123 +158,145 @@ if __name__ == "__main__":
 
     bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 
-    for species in ["H2O", "CO", "CH4", "CO2"]:
-        # for species in ["H2O"]:
-        param_species = [species]
+    # for species in ["H2O", "CO", "CH4", "CO2"]:
+    # for species in ["H2O"]:
+    param_species = ["H2O", "CO"]
 
-        model = define_model(
-            model_name, bulk_species, param_species, PT_profile="Madhu"
-        )
+    model = define_model(model_name, bulk_species, param_species, PT_profile="Madhu")
 
-        # Check the free parameters defining this model
-        print("Free parameters: " + str(model["param_names"]))
+    # Check the free parameters defining this model
+    print("Free parameters: " + str(model["param_names"]))
 
-        # ***** Wavelength grid *****#
-        wl_min = 1.3  # Minimum wavelength (um)
-        wl_max = 2.6  # Maximum wavelength (um)
-        R = 250000  # Spectral resolution of grid
+    # ***** Wavelength grid *****#
+    wl_min = 1.3  # Minimum wavelength (um)
+    wl_max = 2.6  # Maximum wavelength (um)
+    R = 250000  # Spectral resolution of grid
 
-        model["R"] = R
-        model["R_instrument"] = 66000  # Resolution of instrument
+    model["R"] = R
+    model["R_instrument"] = 66000  # Resolution of instrument
 
-        wl = wl_grid_constant_R(wl_min, wl_max, R)
+    wl = wl_grid_constant_R(wl_min, wl_max, R)
 
-        # Create the stellar object
-        star = create_star(R_s, T_s, log_g_s, Met_s, stellar_grid="phoenix")
+    # Create the stellar object
+    star = create_star(R_s, T_s, log_g_s, Met_s, stellar_grid="phoenix")
 
-        F_s = star["F_star"]
-        wl_s = star["wl_star"]
+    F_s = star["F_star"]
+    wl_s = star["wl_star"]
 
-        # ***** Read opacity data *****#
+    # ***** Read opacity data *****#
 
-        opacity_treatment = "opacity_sampling"
+    opacity_treatment = "opacity_sampling"
 
-        # Define fine temperature grid (K)
-        T_fine_min = 2000  # 400 K lower limit suffices for a typical hot Jupiter
-        T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
-        T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
+    # Define fine temperature grid (K)
+    T_fine_min = 400  # 400 K lower limit suffices for a typical hot Jupiter
+    T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
+    T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 
-        T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
+    T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
-        # Define fine pressure grid (log10(P/bar))
-        log_P_fine_min = -5.0  # 1 ubar is the lowest pressure in the opacity database
-        log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
-        log_P_fine_step = 0.2
+    # Define fine pressure grid (log10(P/bar))
+    log_P_fine_min = -5.0  # 1 ubar is the lowest pressure in the opacity database
+    log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
+    log_P_fine_step = 0.2
 
-        log_P_fine = np.arange(
-            log_P_fine_min, (log_P_fine_max + log_P_fine_step), log_P_fine_step
-        )
+    log_P_fine = np.arange(
+        log_P_fine_min, (log_P_fine_max + log_P_fine_step), log_P_fine_step
+    )
 
-        # Now we can pre-interpolate the sampled opacities (may take up to a minute)
-        opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
+    # Now we can pre-interpolate the sampled opacities (may take up to a minute)
+    opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
-        # Specify the pressure grid of the atmosphere
-        P_min = 1.0e-5  # 0.1 ubar
-        P_max = 100  # 100 bar
-        N_layers = 100  # 100 layers
+    # Specify the pressure grid of the atmosphere
+    P_min = 1.0e-5  # 0.1 ubar
+    P_max = 100  # 100 bar
+    N_layers = 100  # 100 layers
 
-        # We'll space the layers uniformly in log-pressure
-        P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
+    # We'll space the layers uniformly in log-pressure
+    P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
-        # Specify the reference pressure and radius
-        P_ref = 1e-5  # Reference pressure (bar)
-        R_p_ref = R_p  # Radius at reference pressure
+    # Specify the reference pressure and radius
+    P_ref = 1e-5  # Reference pressure (bar)
+    R_p_ref = R_p  # Radius at reference pressure
 
-        params = (-6, 0.3, 0.3, -1, -2, 1, 3000)
-        log_H2O, a1, a2, log_P1, log_P2, log_P3, T_ref = params
+    # params = (
+    #     -3.93,
+    #     -3.77,
+    #     0.38,
+    #     0.56,
+    #     0.17,
+    #     -1.39,
+    #     0.36,
+    #     931,
+    # )  # Using maxmimum likelihood values from Brogi & Line
+    # log_H2O, log_CO, a1, a2, log_P1, log_P2, log_P3, T_ref = params
 
-        # Provide a specific set of model parameters for the atmosphere
-        PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])
+    params = (
+        -3,
+        0.38,
+        0.56,
+        0.17,
+        -1.39,
+        0.36,
+        931,
+    )  # Using maxmimum likelihood values from Brogi & Line
+    log_H2O, log_CO, a1, a2, log_P1, log_P2, log_P3, T_ref = params
 
-        log_X_params = np.array([[log_H2O]])
+    # Provide a specific set of model parameters for the atmosphere
+    PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])
 
-        atmosphere = make_atmosphere(
-            planet, model, P, P_ref, R_p_ref, PT_params, log_X_params
-        )
+    log_X_params = np.array([[log_H2O, log_CO]])
 
-        # Generate planet surface flux
-        F_p_obs = compute_spectrum(
-            planet, star, model, atmosphere, opac, wl, spectrum_type="direct_emission"
-        )
+    atmosphere = make_atmosphere(
+        planet, model, P, P_ref, R_p_ref, PT_params, log_X_params, P_param_set=1e-5
+    )
 
-        F_s_interp = spectres(wl, wl_s, F_s)
-        F_s_obs = (R_s / d) ** 2 * F_s_interp  # observed flux of star on earth
+    # Generate planet surface flux
+    F_p_obs = compute_spectrum(
+        planet, star, model, atmosphere, opac, wl, spectrum_type="direct_emission"
+    )
 
-        # instrument profile convolution
-        R_instrument = model["R_instrument"]
-        R = model["R"]
-        V_sin_i = data["V_sin_i"]
-        rot_kernel = get_rot_kernel(V_sin_i, wl, 401)
-        F_p_rot = np.convolve(
-            F_p_obs, rot_kernel, mode="same"
-        )  # calibrate for planetary rotation
-        xker = np.arange(-20, 21)
-        sigma = (R / R_instrument) / (
-            2 * np.sqrt(2.0 * np.log(2.0))
-        )  # model is right now at R=250K.  IGRINS is at R~45K. We make gaussian that is R_model/R_IGRINS ~ 5.5
-        yker = np.exp(
-            -0.5 * (xker / sigma) ** 2.0
-        )  # instrumental broadening kernel; not understand
-        yker /= yker.sum()
-        F_p_conv = np.convolve(F_p_rot, yker, mode="same")
-        F_s_conv = np.convolve(
-            F_s_obs, yker, mode="same"
-        )  # no need to times (R)^2 because F_p, F_s are already observed value on Earth
+    F_s_interp = spectres(wl, wl_s, F_s)
+    F_s_obs = (R_s / d) ** 2 * F_s_interp  # observed flux of star on earth
 
-        time_1 = time.time()
-        # results = Parallel(n_jobs=N_jobs, max_nbytes=1e7, verbose=10)(
-        #     delayed(cross_correlate)(
-        #         x, K_p_arr, V_sys_arr, wl, F_p_conv, F_s_conv, data
-        #     )
-        #     for x in coordinate_list
-        # )
-        cross_correlation_result = cross_correlate(
-            K_p_arr, V_sys_arr, wl, F_p_conv, F_s_conv, data
-        )
-        time_2 = time.time()
-        print(time_2 - time_1)
+    # instrument profile convolution
+    R_instrument = model["R_instrument"]
+    R = model["R"]
+    V_sin_i = data["V_sin_i"]
+    rot_kernel = get_rot_kernel(V_sin_i, wl, 401)
+    F_p_rot = np.convolve(
+        F_p_obs, rot_kernel, mode="same"
+    )  # calibrate for planetary rotation
+    xker = np.arange(-20, 21)
+    sigma = (R / R_instrument) / (
+        2 * np.sqrt(2.0 * np.log(2.0))
+    )  # model is right now at R=250K.  IGRINS is at R~45K. We make gaussian that is R_model/R_IGRINS ~ 5.5
+    yker = np.exp(
+        -0.5 * (xker / sigma) ** 2.0
+    )  # instrumental broadening kernel; not understand
+    yker /= yker.sum()
+    F_p_conv = np.convolve(F_p_rot, yker, mode="same")
+    F_s_conv = np.convolve(
+        F_s_obs, yker, mode="same"
+    )  # no need to times (R)^2 because F_p, F_s are already observed value on Earth
 
-        pickle.dump(
-            cross_correlation_result,
-            open(output_path + f"/{species}_cross_correlation_results.pic", "wb"),
-        )
+    time_1 = time.time()
+    # results = Parallel(n_jobs=N_jobs, max_nbytes=1e7, verbose=10)(
+    #     delayed(cross_correlate)(
+    #         x, K_p_arr, V_sys_arr, wl, F_p_conv, F_s_conv, data
+    #     )
+    #     for x in coordinate_list
+    # )
+    cross_correlation_result = cross_correlate(
+        K_p_arr, V_sys_arr, wl, F_p_conv, F_s_conv, data
+    )
+    time_2 = time.time()
+    print(time_2 - time_1)
+
+    pickle.dump(
+        cross_correlation_result,
+        open(
+            output_path
+            + f"/{param_species[0]}, {param_species[1]}_cross_correlation_results.pic",
+            "wb",
+        ),
+    )

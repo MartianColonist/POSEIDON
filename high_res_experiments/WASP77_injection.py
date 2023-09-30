@@ -4,8 +4,6 @@ from POSEIDON.constants import R_Sun, R_J, M_J
 import pickle
 
 # ***** Define stellar properties *****#
-
-
 R_s = 1.21 * R_Sun  # Stellar radius (m)
 T_s = 5605.0  # Stellar effective temperature (K)
 Met_s = -0.04  # Stellar metallicity [log10(Fe/H_star / Fe/H_solar)]
@@ -33,28 +31,22 @@ from POSEIDON.utility import read_high_res_data
 
 # ***** Define model *****#
 
-model_name = (
-    "H2O, CO2, CO, CH4 retrieval 400"  # Model name used for plots, output files etc.
-)
+model_name = "H2O"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["H2O", "CO2", "CO", "CH4"]  # H2O, CO as in Brogi & Line
+param_species = ["H2O"]  # H2O, CO as in Brogi & Line
 
 method = "pca"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
-high_res_params = ["a", "K_p", "V_sys"]
-
-# Create the model object
-# model = define_model(model_name, bulk_species, param_species,
-#                     PT_profile = 'Madhu', high_res = high_res,
-#                     high_res_params = high_res_params, R_p_ref_enabled=False)
+high_res_params = ["K_p", "V_sys", "log_a"]
 
 model = define_model(
     model_name,
     bulk_species,
     param_species,
-    PT_profile="Madhu",
+    PT_profile="gradient",
     high_res_params=high_res_params,
+    reference_parameter="R_p_ref",
 )
 
 # Check the free parameters defining this model
@@ -64,7 +56,7 @@ print("Free parameters: " + str(model["param_names"]))
 
 wl_min = 1.3  # Minimum wavelength (um)
 wl_max = 2.6  # Maximum wavelength (um)
-R = 200000  # Spectral resolution of grid
+R = 250000  # Spectral resolution of grid
 
 model["R"] = R
 model["R_instrument"] = 66000  # Resolution of instrument
@@ -76,7 +68,7 @@ star = create_star(R_s, T_s, log_g_s, Met_s, wl=wl, stellar_grid="phoenix")
 F_s = star["F_star"]
 wl_s = star["wl_star"]
 
-data_dir = "./data/WASP-77Ab-injection-6/"
+data_dir = "./data/WASP-77Ab-injection-H2O-4/"
 
 data = read_high_res_data(data_dir, method="pca", spectrum_type="emission")
 data["V_sin_i"] = 4.5
@@ -91,7 +83,8 @@ prior_types = {}
 
 # Specify whether priors are linear, Gaussian, etc.
 prior_types["T_ref"] = "uniform"
-prior_types["T"] = "uniform"
+prior_types["T_deep"] = "uniform"
+prior_types["T_high"] = "uniform"
 # prior_types["R_p_ref"] = "gaussian"
 prior_types["R_p_ref"] = "uniform"
 prior_types["log_H2O"] = "uniform"
@@ -106,15 +99,17 @@ prior_types["log_P3"] = "uniform"
 prior_types["K_p"] = "uniform"
 prior_types["V_sys"] = "uniform"
 prior_types["a"] = "uniform"
+prior_types["log_a"] = "uniform"
 
 # Initialise prior range dictionary
 prior_ranges = {}
 
 # Specify prior ranges for each free parameter
 prior_ranges["T_ref"] = [1500, 4000]
-prior_ranges["T"] = [1500, 4000]
+prior_ranges["T_deep"] = [1000, 4000]
+prior_ranges["T_high"] = [500, 2500]
 # prior_ranges["R_p_ref"] = [1.83 * R_J, 0.05 * R_J]
-prior_ranges["R_p_ref"] = [0.5 * R_p, 1.5 * R_p]
+prior_ranges["R_p_ref"] = [0.1 * R_p, 1.5 * R_p]
 prior_ranges["log_H2O"] = [-12, -1]
 prior_ranges["log_CO2"] = [-12, -1]
 prior_ranges["log_CO"] = [-12, -1]
@@ -126,6 +121,7 @@ prior_ranges["log_P2"] = [-5, 2]
 prior_ranges["log_P3"] = [-2, 2]
 prior_ranges["K_p"] = [-150, -250]
 prior_ranges["V_sys"] = [-50, 50]
+prior_ranges["log_a"] = [-2, 2]
 prior_ranges["a"] = [0.01, 100]
 
 # Create prior object for retrieval
@@ -191,7 +187,7 @@ run_retrieval(
     N_live=400,
     verbose=True,
     N_output_samples=1000,
-    resume=False,
+    resume=True,
 )
 
 
@@ -266,4 +262,6 @@ plot_chem_retrieved(
 # ***** Make corner plot *****#
 
 # fig_corner = generate_cornerplot(planet, model, true_vals=[])
-fig_corner = generate_cornerplot(planet, model, true_vals=[])
+fig_corner = generate_cornerplot(
+    planet, model, true_vals=[R_p / R_J, 1600, 3000, -4, -200, 10, None]
+)
