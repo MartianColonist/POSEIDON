@@ -25,7 +25,7 @@ from joblib import Parallel, delayed, dump, load
 import time
 from scipy.ndimage import gaussian_filter1d, median_filter
 from POSEIDON.utility import read_high_res_data
-import multiprocessing
+import h5py
 
 K_p = 250
 N_K_p = 200
@@ -36,7 +36,7 @@ K_p_arr = (
 # K_p_arr = [92.06 , ..., 191.06, 192.06, 193.06, ..., 291.06]
 
 V_sys = 0
-N_V_sys = 100
+N_V_sys = 200
 d_V_sys = 2
 V_sys_arr = (
     np.arange(N_V_sys) - (N_V_sys - 1) // 2
@@ -44,12 +44,11 @@ V_sys_arr = (
 
 
 def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
-    uncertainties = data["uncertainties"]
-    residuals = data["residuals"]
-    phi = data["phi"]
-    Bs = data["Bs"]
-    wl_grid = data["wl_grid"]
-    transit_weight = data["transit_weight"]
+    uncertainties = data["uncertainties"][:]
+    residuals = data["residuals_2020"][:]
+    phi = data["phi"][:]
+    wl_grid = data["wl_grid"][:]
+    transit_weight = data["transit_weight"][:]
     max_transit_depth = np.max(1 - transit_weight)
 
     N_order, N_phi, N_wl = residuals.shape
@@ -112,14 +111,14 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
             RV = Kp * np.sin(2 * np.pi * phi[i]) + Vsys_arr
             loglikelihood_array_final[j] += np.interp(RV, RV_range, loglikelihoods)
             CCF_array_final[j] += np.interp(RV, RV_range, CCFs)
-    cross_correlation_result = [
+    cross_correlation_result = (
         Kp_arr,
         Vsys_arr,
         RV_range,
         loglikelihood_array_final,
         CCF_array_final,
         CCF_array_per_phase,
-    ]
+    )
 
     return cross_correlation_result
 
@@ -154,7 +153,7 @@ model_name = "Fe -6"  # Model name used for plots, output files etc.
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 
 # for species in ["Fe", "Li", "Mg", "Ti"]:
-for species in ["Fe", "Ca"]:
+for species in ["Fe", "Mg", "Ca", "Ca+"]:
     param_species = [species]
 
     model = define_model(model_name, bulk_species, param_species, PT_profile="isotherm")
@@ -165,7 +164,7 @@ for species in ["Fe", "Ca"]:
     # ***** Wavelength grid *****#
 
     wl_min = 0.37  # Minimum wavelength (um) 0.37
-    wl_max = 0.51  # Maximum wavelength (um) 1.05
+    wl_max = 0.87  # Maximum wavelength (um) 1.05
     R = 250000  # Spectral resolution of grid
     model["R"] = R
     model["R_instrument"] = 66000  # Resolution of instrument
@@ -210,7 +209,7 @@ for species in ["Fe", "Ca"]:
     P_ref = 1e-5  # Reference pressure (bar)
     R_p_ref = R_p  # Radius at reference pressure
 
-    params = (-4, 3375)
+    params = (-6, 3500)
     log_species, T = params
 
     # Provide a specific set of model parameters for the atmosphere
@@ -258,17 +257,43 @@ for species in ["Fe", "Ca"]:
     # output_path = f"./CC_output/WASP-121b-injection/"
 
     os.makedirs(output_path, exist_ok=True)
-    data = read_high_res_data(data_path, method="sysrem", spectrum_type="transmission")
+    # data = read_high_res_data(data_path, method="sysrem", spectrum_type="transmission")
 
-    time_1 = time.time()
-    a = 2
-    cross_correlation_result = cross_correlate(
-        K_p_arr, V_sys_arr, wl, (spectrum - continuum) * a + continuum, data
-    )
-    time_2 = time.time()
-    print(time_2 - time_1)
+    dataset = h5py.File("./data/WASP-121.h5", "a")
 
-    pickle.dump(
-        cross_correlation_result,
-        open(output_path + f"/{species}_cross_correlation_results.pic", "wb"),
-    )
+    for key in dataset.keys():
+        print(key)
+        time_1 = time.time()
+        a = 1
+        (
+            Kp_arr,
+            Vsys_arr,
+            RV_range,
+            loglikelihood_array_final,
+            CCF_array_final,
+            CCF_array_per_phase,
+        ) = cross_correlate(
+            K_p_arr,
+            V_sys_arr,
+            wl,
+            gaussian_filter1d((spectrum - continuum) * a + continuum, 2),
+            dataset[key],
+        )
+        time_2 = time.time()
+        print(time_2 - time_1)
+        try:
+            del dataset[key][species]
+            dataset[key].create_group(species)
+        except:
+            dataset[key].create_group(species)
+        dataset[key][species].create_dataset(
+            "loglikelihood_map", data=loglikelihood_array_final
+        )
+        dataset[key][species].create_dataset("CCF_map", data=CCF_array_final)
+        dataset[key][species].create_dataset("CCF_per_phase", data=CCF_array_per_phase)
+        dataset[key][species].create_dataset("Kp_arr", data=Kp_arr)
+        dataset[key][species].create_dataset("Vsys_arr", data=Vsys_arr)
+
+        dataset[key][species].create_dataset("RV_range", data=RV_range)
+
+    dataset.close()
