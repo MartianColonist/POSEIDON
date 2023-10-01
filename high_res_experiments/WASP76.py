@@ -33,17 +33,15 @@ from POSEIDON.utility import read_high_res_data
 
 # ***** Define model *****#
 
-model_name = (
-    "Fe, Ca+, Na MAROON retrieval"  # Model name used for plots, output files etc.
-)
+model_name = "Fe Ca+ Na Cr V Madhu"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 # param_species = ["Fe", "Ca+", "Na", "K", "Li"]
-param_species = ["Fe", "Ca+", "Na"]
+param_species = ["Fe", "Cr", "V"]
 
 method = "sysrem"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
-high_res_params = ["a", "K_p", "V_sys", "W_conv"]
+high_res_params = ["K_p", "V_sys", "W_conv", "log_a"]
 
 model = define_model(
     model_name,
@@ -60,9 +58,9 @@ print("Free parameters: " + str(model["param_names"]))
 
 # ***** Wavelength grid *****#
 
-wl_min = 0.48  # Minimum wavelength (um)
-wl_max = 0.70  # Maximum wavelength (um)
-R = 250000  # Spectral resolution of grid
+wl_min = 0.37  # Minimum wavelength (um)
+wl_max = 1.05  # Maximum wavelength (um)
+R = 200000  # Spectral resolution of grid
 
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
@@ -70,7 +68,7 @@ wl = wl_grid_constant_R(wl_min, wl_max, R)
 # Create the stellar object
 star = create_star(R_s, T_s, log_g_s, Met_s, stellar_grid="phoenix")
 
-data_dir = "./data/WASP-76b-MAROON/night_1/"
+data_dir = "./data/WASP-76b/"
 
 data = read_high_res_data(data_dir, method="sysrem", spectrum_type="transmission")
 # %%
@@ -94,6 +92,8 @@ prior_types["log_Fe"] = "uniform"
 prior_types["log_Ca+"] = "uniform"
 prior_types["log_VO"] = "uniform"
 prior_types["log_Mg"] = "uniform"
+prior_types["log_Cr"] = "uniform"
+prior_types["log_V"] = "uniform"
 prior_types["a1"] = "uniform"
 prior_types["a2"] = "uniform"
 prior_types["log_P1"] = "uniform"
@@ -122,6 +122,8 @@ prior_ranges["log_Li"] = [-15, 0]
 prior_ranges["log_K"] = [-15, 0]
 prior_ranges["log_VO"] = [-15, 0]
 prior_ranges["log_Mg"] = [-15, 0]
+prior_ranges["log_Cr"] = [-15, 0]
+prior_ranges["log_V"] = [-15, 0]
 prior_ranges["a1"] = [0.02, 1]
 prior_ranges["a2"] = [0.02, 1]
 prior_ranges["log_P1"] = [-8, 2]
@@ -153,7 +155,7 @@ T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
 # Define fine pressure grid (log10(P/bar))
-log_P_fine_min = -8.0  # 1 ubar is the lowest pressure in the opacity database
+log_P_fine_min = -9.0  # 1 ubar is the lowest pressure in the opacity database
 log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
 log_P_fine_step = 0.2  # 0.2 dex steps are a good tradeoff between accuracy and RAM
 
@@ -170,7 +172,7 @@ from POSEIDON.retrieval import run_retrieval
 # ***** Specify fixed atmospheric settings for retrieval *****#
 
 # Atmospheric pressure grid
-P_min = 1e-8  # 0.1 ubar
+P_min = 1e-9  # 0.1 ubar
 P_max = 100  # 100 bar
 N_layers = 100  # 100 layers
 
@@ -195,10 +197,10 @@ run_retrieval(
     R=R,
     spectrum_type="transmission",
     sampling_algorithm="MultiNest",
-    N_live=800,
+    N_live=400,
     verbose=True,
     N_output_samples=1000,
-    resume=True,
+    resume=False,
     # ev_tol=0.05,
 )
 
