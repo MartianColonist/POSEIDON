@@ -27,8 +27,8 @@ from scipy.ndimage import gaussian_filter1d, median_filter
 from POSEIDON.utility import read_high_res_data
 import h5py
 
-K_p = 250
-N_K_p = 200
+K_p = 0
+N_K_p = 300
 d_K_p = 2
 K_p_arr = (
     np.arange(N_K_p) - (N_K_p - 1) // 2
@@ -54,8 +54,6 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
     N_order, N_phi, N_wl = residuals.shape
     loglikelihood_array_final = np.zeros((len(Kp_arr), len(Vsys_arr)))
     CCF_array_final = np.zeros((len(Kp_arr), len(Vsys_arr)))
-    f2_final = 0
-    m2_array_final = np.zeros((len(Kp_arr), len(Vsys_arr)))
 
     RV_min = min(
         [
@@ -88,11 +86,9 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
         print(i)
         loglikelihoods = np.zeros_like(RV_range)
         CCFs = np.zeros_like(RV_range)
-        m2s = np.zeros_like(RV_range)
         for k in range(N_order):
             f = residuals[k, i] / uncertainties[k, i]
             f2 = f.dot(f)
-            f2_final += f2
             for j, RV in enumerate(RV_range):
                 model = (-models_shifted[j, k]) * (
                     1 - transit_weight[i]
@@ -107,16 +103,14 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
                 loglikelihood = -N_wl / 2 * np.log((m2 + f2 - 2.0 * CCF) / N_wl)
                 # loglikelihood = -0.5 * (m2 + f2 - 2.0 * CCF) / (b**2)
                 loglikelihoods[j] += loglikelihood
-                m2s[j] += m2
+
                 # CCFs[j] += CCF / np.sqrt(m2 * f2)
                 CCFs[j] += CCF
-
         CCF_array_per_phase[i, :] = CCFs
         for j, Kp in enumerate(Kp_arr):
             RV = Kp * np.sin(2 * np.pi * phi[i]) + Vsys_arr
             loglikelihood_array_final[j] += np.interp(RV, RV_range, loglikelihoods)
             CCF_array_final[j] += np.interp(RV, RV_range, CCFs)
-            m2_array_final[j] += np.interp(RV, RV_range, m2s)
     cross_correlation_result = (
         Kp_arr,
         Vsys_arr,
@@ -124,9 +118,6 @@ def cross_correlate(Kp_arr, Vsys_arr, wl, planet_spectrum, data):
         loglikelihood_array_final,
         CCF_array_final,
         CCF_array_per_phase,
-        loglikelihood_array_final,
-        f2_final,
-        m2_array_final,
     )
 
     return cross_correlation_result
@@ -268,12 +259,13 @@ for species in ["Fe"]:
     os.makedirs(output_path, exist_ok=True)
     # data = read_high_res_data(data_path, method="sysrem", spectrum_type="transmission")
 
-    dataset = h5py.File("./data/WASP-121.h5", "a")
+    dataset = h5py.File("../high_res_experiments/data/WASP-121.h5", "a")
 
-    for key in dataset.keys():
+    # for key in dataset.keys():
+    for key in ["blue"]:
         print(key)
         time_1 = time.time()
-        a = 2
+        a = 1
         (
             Kp_arr,
             Vsys_arr,
@@ -285,7 +277,7 @@ for species in ["Fe"]:
             K_p_arr,
             V_sys_arr,
             wl,
-            gaussian_filter1d((spectrum - continuum) * a + continuum, 4),
+            gaussian_filter1d((spectrum - continuum) * a + continuum, 2),
             dataset[key],
         )
         time_2 = time.time()
