@@ -40,11 +40,12 @@ from POSEIDON.utility import read_high_res_data
 
 # ***** Define model *****#
 
-model_name = "Fe, Cr, V isotherm fix Rp"  # Model name used for plots, output files etc.
+model_name = (
+    "Fe, Cr, V, Ti, Mg isotherm"  # Model name used for plots, output files etc.
+)
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["Fe", "Cr", "V"]
-# param_species = ["Fe", "Mg"]
+param_species = ["Fe", "Cr", "V", "Ti", "Mg"]
 
 high_res = "sysrem"
 high_res_params = ["K_p", "V_sys", "W_conv", "log_a"]
@@ -60,7 +61,9 @@ model = define_model(
     param_species,
     PT_profile="isotherm",
     high_res_params=high_res_params,
-    reference_parameter="None",
+    cloud_model="MacMad17",
+    cloud_type="deck",
+    # reference_parameter="None",
 )
 
 model["method"] = "sysrem"
@@ -71,7 +74,7 @@ print("Free parameters: " + str(model["param_names"]))
 # ***** Wavelength grid *****#
 
 wl_min = 0.37  # Minimum wavelength (um)
-wl_max = 0.51  # Maximum wavelength (um)
+wl_max = 0.87  # Maximum wavelength (um)
 R = 200000  # Spectral resolution of grid
 
 # wl = wl_grid_line_by_line(wl_min, wl_max)
@@ -116,7 +119,7 @@ prior_types["log_P2"] = "uniform"
 prior_types["log_P3"] = "uniform"
 prior_types["K_p"] = "uniform"
 prior_types["V_sys"] = "uniform"
-prior_types["a"] = "uniform"
+prior_types["log_a"] = "uniform"
 prior_types["b"] = "uniform"
 prior_types["dPhi"] = "uniform"
 prior_types["W_conv"] = "uniform"
@@ -128,11 +131,11 @@ prior_ranges = {}
 prior_ranges["T_ref"] = [400, 4000]
 prior_ranges["T"] = [2000, 4000]
 prior_ranges["R_p_ref"] = [R_p, 0.05 * R_J]
-prior_ranges["log_Ti"] = [-15, 0]
-prior_ranges["log_Fe"] = [-15, 0]
-prior_ranges["log_Mg"] = [-15, 0]
-prior_ranges["log_Cr"] = [-15, 0]
-prior_ranges["log_V"] = [-15, 0]
+prior_ranges["log_Ti"] = [-15, -2.3]
+prior_ranges["log_Fe"] = [-15, -2.3]
+prior_ranges["log_Mg"] = [-15, -2.3]
+prior_ranges["log_Cr"] = [-15, -2.3]
+prior_ranges["log_V"] = [-15, -2.3]
 prior_ranges["a1"] = [0.02, 1]
 prior_ranges["a2"] = [0.02, 1]
 prior_ranges["log_P1"] = [-5.5, 2.5]
@@ -140,10 +143,10 @@ prior_ranges["log_P2"] = [-5.5, 2.5]
 prior_ranges["log_P3"] = [-2, 2]
 prior_ranges["K_p"] = [100, 300]
 prior_ranges["V_sys"] = [-50, 50]
-prior_ranges["a"] = [0.01, 100]
+prior_ranges["log_a"] = [-1, 1]
 prior_ranges["b"] = [0.00001, 10]
 prior_ranges["dPhi"] = [-0.01, 0.01]
-prior_ranges["W_conv"] = [0.1, 50]
+prior_ranges["W_conv"] = [0.1, 20]
 
 # Create prior object for retrieval
 priors = set_priors(planet, star, model, data, prior_types, prior_ranges)
