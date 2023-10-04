@@ -87,9 +87,6 @@ def run_retrieval(
     prior_types = priors["prior_types"]
     prior_ranges = priors["prior_ranges"]
 
-    # For high res
-    high_res = data.get("high_res")  # True or None
-
     # Unpack model properties
     model_name = model["model_name"]
     chemical_species = model["chemical_species"]
@@ -251,6 +248,7 @@ def run_retrieval(
             print("POSEIDON retrieval finished in " + str(total) + " hours")
 
             # Write POSEIDON retrieval output files
+            high_res = model.get('method')
             if not high_res:  # TODO: could fix by only writing high_res related results
                 write_MultiNest_results(
                     planet,
@@ -531,7 +529,7 @@ def forward_model(
             # Quit if given parameter combination is unphysical
             return 0, spectrum, atmosphere
 
-    if data.get("high_res"):  # For high res
+    if model.get('method'):  # For high res
         return 0, spectrum, atmosphere
 
     # ***** Step 4: stellar contamination *****#
@@ -787,7 +785,7 @@ def PyMultiNest_retrieval(
     R_p = planet["planet_radius"]
     d = planet["system_distance"]
 
-    high_res = data.get("high_res")
+    high_res = model.get('method')
 
     # Unpack stellar properties
     R_s = star["R_s"]

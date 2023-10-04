@@ -197,12 +197,12 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
             Loglikelihood value.
     """
 
-    wl_grid = data["wl_grid"]
-    residuals = data["residuals"]
-    Bs = data["Bs"]
-    phi = data["phi"]
-    transit_weight = data["transit_weight"]
-    uncertainties = data.get("uncertainties")  # in case we want to null uncertainties
+    wl_grid = data["wl_grid"][:]
+    residuals = data["residuals"][:]
+    Bs = data["Bs"][:]
+    phi = data["phi"][:]
+    transit_weight = data["transit_weight"][:]
+    uncertainties = data["uncertainties"][:]  # in case we want to null uncertainties
 
     N_order, N_phi, N_wl = residuals.shape
 
@@ -375,10 +375,14 @@ def loglikelihood_high_res(
         if W_conv is not None:
             # np.convolve use smaller kernel. Apply filter to the spectrum. And multiply by scale factor a.
             planet_spectrum = gaussian_filter1d(planet_spectrum, W_conv)
-        loglikelihood, _ = loglikelihood_sysrem(
-            V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data
-        )
-        return loglikelihood
+        loglikelihood_sum = 0
+        for key in data.keys():
+
+            loglikelihood, _ = loglikelihood_sysrem(
+                V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data[key]
+            )
+            loglikelihood_sum += loglikelihood
+        return loglikelihood_sum
     else:
         raise Exception("Problem with high res retreival data.")
 
