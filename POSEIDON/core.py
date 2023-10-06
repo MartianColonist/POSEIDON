@@ -898,8 +898,13 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                                                                            N_params_cum, TwoD_type)
     
     # Temporary H for testing 
-    g = g_p * (R_p_ref / r)**2
-    H = (sc.k * T) / (mu * g)
+    if is_physical == False:
+        g = 0
+        H = 0
+
+    else:
+        g = g_p * (R_p_ref / r)**2
+        H = (sc.k * T) / (mu * g)
 
     # Package atmosphere properties
     atmosphere = {'P': P, 'T': T, 'g': g_p, 'n': n, 'r': r, 'r_up': r_up,

@@ -1558,13 +1558,16 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         
     # Calculate number density and radial profiles
     if (constant_gravity == True):
+
         n, r, r_up, r_low, dr = radial_profiles_constant_g(P, T, g_0, P_ref, 
                                                            R_p_ref, mu, 
                                                            N_sectors, N_zones)
     else:
+
         n, r, r_up, r_low, dr = radial_profiles(P, T, g_0, R_p, P_ref, 
                                                 R_p_ref, mu, N_sectors, N_zones)
         
+
     
     return T, n, r, r_up, r_low, dr, mu, X, X_active, X_CIA, \
            X_ff, X_bf, True
