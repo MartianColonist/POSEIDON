@@ -40,4 +40,4 @@ aerosol_supported_species = np.array(['Al2O3', 'C', 'CH4', 'CaTiO3', 'Cr', 'ExoH
                                       'Mg4Fe6SiO3_amorph_glass', 'Mg5Fe5SiO3_amorph_glass', 'Mg8Fe12SiO4_amorph_glass',
                                       'Mg8Fe2SiO3_amorph_glass', 'MgAl2O4', 'MgFeSiO4_amorph_glass', 'MgO',
                                       'MgSiO3', 'MgSiO3_amorph_glass', 'MgSiO3_sol_gel', 'MnS', 'Na2S', 'NaCl', 
-                                      'SiC', 'SiO', 'SiO2', 'SiO2_amorph', 'Tholin', 'TiC', 'TiO2', 'TiO2_anatase', 'ZnS'])
+                                      'SiC', 'SiO', 'SiO2', 'SiO2_amorph', 'Tholin', 'TiC', 'TiO2', 'TiO2_anatase', 'ZnS', 'Ethane'])

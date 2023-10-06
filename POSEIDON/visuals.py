@@ -1308,6 +1308,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
         plot_type = 'direct_emission'
+    elif (y_unit in ['T_bright']):
+        plot_type = 'brightness_temp'
     else:
         raise Exception("Unexpected y unit. Did you mean 'transit_depth' " +
                         "or 'eclipse_depth'?")
@@ -1666,6 +1668,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
     elif (plot_type == 'direct_emission'):
         ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+    elif (plot_type == 'brightness_temp'):
+        ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
