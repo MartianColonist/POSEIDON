@@ -326,7 +326,7 @@ def define_model(model_name, bulk_species, param_species,
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
                  cloud_type = 'deck', opaque_Iceberg = False,
                  gravity_setting = 'fixed', mass_setting = 'fixed',
-                 stellar_contam = None, nightside_contam = False, 
+                 stellar_contam = None, nightside_contam = False,
                  offsets_applied = None, error_inflation = None, 
                  radius_unit = 'R_J', mass_unit = 'M_J', distance_unit = 'pc',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
@@ -367,6 +367,9 @@ def define_model(model_name, bulk_species, param_species,
         gravity_setting (str):
             Whether log_g is fixed or a free parameter.
             (Options: fixed / free).
+        mass_setting (str):
+            Whether the planetary mass is fixed or a free parameter.
+            (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots / 
@@ -383,6 +386,9 @@ def define_model(model_name, bulk_species, param_species,
         radius_unit (str)
             Planet radius unit used to report retrieval results
             (Options: R_J / R_E)
+        mass_unit (str)
+            Planet mass unit used to report retrieval results
+            (Options: M_J / M_E)
         distance_unit (str):
             Distance to system unit used to report retrieval results
             (Options: pc)
@@ -530,11 +536,12 @@ def define_model(model_name, bulk_species, param_species,
              'active_species': active_species, 'CIA_pairs': CIA_pairs,
              'ff_pairs': ff_pairs, 'bf_species': bf_species,
              'param_species': param_species, 
-             'radius_unit': radius_unit, 'mass_unit': mass_unit, 'distance_unit': distance_unit,
+             'radius_unit': radius_unit, 'mass_unit': mass_unit,
+             'distance_unit': distance_unit,
              'species_EM_gradient': species_EM_gradient,
              'species_DN_gradient': species_DN_gradient,
              'species_vert_gradient': species_vert_gradient,
-             'stellar_contam': stellar_contam, 'nightside_contam': nightside_contam,
+             'stellar_contam': stellar_contam, 'nightside_contam': nightside_contam, 
              'offsets_applied': offsets_applied, 
              'error_inflation': error_inflation, 'param_names': param_names,
              'physical_param_names': physical_param_names, 
@@ -726,8 +733,8 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
 
 def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_X_params = [], cloud_params = [], geometry_params = [],
-                    log_g = None, M_p = None, T_input = [], X_input = [], P_surf = None,
-                    P_param_set = 1.0e-2, He_fraction = 0.17, 
+                    log_g = None, M_p = None, T_input = [], X_input = [], 
+                    P_surf = None, P_param_set = 1.0e-2, He_fraction = 0.17, 
                     N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
                     chemistry_grid = None):
     '''
@@ -757,6 +764,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             Terminator opening angle parameters.
         log_g (float):
             Gravitational field of planet - only needed for free log_g parameter.
+        M_p (float):
+            Planet mass - only needed for free M_p parameter.
         T_input (np.array of float):
             Temperature profile (only if provided directly by the user).
         X_input (2D np.array of float):
@@ -2694,6 +2703,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     if ('R_p_ref' in prior_ranges):
         prior_ranges['R_p_ref'] = [prior_ranges['R_p_ref'][0]/R_p_norm,
                                    prior_ranges['R_p_ref'][1]/R_p_norm]
+        
+    # Normalise retrieved planet mass parameter into Jupiter or Earth masses
+    if (mass_unit == 'M_J'):
+        M_p_norm = M_J
+    elif (mass_unit == 'M_E'):
+        M_p_norm = M_E
+    if ('M_p' in prior_ranges):
+        prior_ranges['M_p'] = [prior_ranges['M_p'][0]/M_p_norm,
+                               prior_ranges['M_p'][1]/M_p_norm]
 
     # Normalise retrieved planet mass parameter into Jupiter or Earth masses
     if (mass_unit == 'M_J'):

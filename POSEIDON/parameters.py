@@ -11,9 +11,9 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 def assign_free_params(param_species, object_type, PT_profile, X_profile, 
                        cloud_model, cloud_type, gravity_setting, mass_setting,
-                       stellar_contam, offsets_applied, error_inflation, PT_dim, X_dim, cloud_dim, 
-                       TwoD_type, TwoD_param_scheme, species_EM_gradient, 
-                       species_DN_gradient, species_vert_gradient,
+                       stellar_contam, offsets_applied, error_inflation, 
+                       PT_dim, X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
+                       species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
                        aerosol_species):
@@ -43,6 +43,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: deck / haze / deck_haze).
         gravity_setting (str):
             Whether log_g is fixed or a free parameter.
+            (Options: fixed / free).
+        mass_setting (str):
+            Whether the planetary mass is fixed or a free parameter.
             (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
@@ -127,7 +130,6 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     cloud_params = []     # Cloud parameters
     geometry_params = []  # Geometry parameters
     stellar_params = []   # Stellar parameters
-
 
     # Models with no atmosphere only have Rp as a free parameter
     if (disable_atmosphere == True):

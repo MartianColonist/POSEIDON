@@ -487,7 +487,7 @@ def extend_rad_transfer_grids(phi_edge, theta_edge, R_s, d, R_max, f_cloud,
         
     # If planet partially overlaps star
     elif (d > (R_s - R_max)):
-            
+
         # For a 1D atmosphere, we can use an analytic area formula later in TRIDENT
         if (N_sectors == 1):
             N_phi = N_sectors
@@ -711,11 +711,11 @@ def area_overlap_circles(d, r_1, r_2):
     # Compute angles from star-planet line to R_p = R_s intersection
     phi_1 = np.arccos((d_sq + r_1_sq - r_2_sq)/(2 * d * r_1))  # Angle at planet centre
     phi_2 = np.arccos((d_sq + r_2_sq - r_1_sq)/(2 * d * r_2))  # Angle at star centre
-
+        
     # Evaluate the overlapping area analytically
     A_overlap = (r_1_sq * (phi_1 - 0.5 * np.sin(2.0 * phi_1)) +
                  r_2_sq * (phi_2 - 0.5 * np.sin(2.0 * phi_2)))
-
+    
     return A_overlap
 
 
@@ -873,7 +873,7 @@ def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck,
                 
     # Find overlapping area matrix of atmosphere (zero if rays don't intersect the star)
     # dA_atm_overlap = delta_ray * dA_atm
-    
+
     # Grazing transit 1D model (special case) 
     if ((d > (R_s - R_max)) and (d < (R_s + R_max)) and (N_sectors == 1)):
 
@@ -942,5 +942,4 @@ def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck,
     transit_depth = (A_overlap - A_atm_overlap_eff)/(np.pi * R_s_sq)
                 
     return transit_depth
-
 

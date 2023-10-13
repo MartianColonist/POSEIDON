@@ -1053,7 +1053,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     elif (legend_location == 'lower left'):
         legend.set_bbox_to_anchor([0.02, 0.02], transform=None)
     elif (legend_location == 'lower right'):
-        legend.set_bbox_to_anchor([0.98, 0.98], transform=None)
+        legend.set_bbox_to_anchor([0.98, 0.02], transform=None)
     
     fig.set_size_inches(9.0, 9.0)
 
@@ -1226,7 +1226,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  annotation_pos = [], wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
-                 show_errors = True):
+                 show_data_bin_width = True):
+
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -1291,8 +1292,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Matplotlib axis provided externally.
         save_fig (bool, optional):
             If True, saves a PDF in the POSEIDON output folder.
-        show_errors (bool, optional):
-            If true, shows data errors
+        show_data_bin_width (bool, optional):
+            Flag indicating whether to plot x bin widths for data points.
 
     Returns:
         fig (matplotlib figure object):
@@ -1300,8 +1301,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     
     '''
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth']):
         plot_type = 'transmission'
+    elif (y_unit in ['Rp/Rs', 'Rp/R*', '(Rp/Rs)', '(Rp/R*)']):
+        plot_type = 'planet_star_radius_ratio'
     elif (y_unit in ['time_average_transit_depth']):
         plot_type = 'time_average_transmission'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
@@ -1502,8 +1505,13 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
-    ymajorFormatter = ScalarFormatter(useMathText=True, useOffset=False)
-    ymajorFormatter.set_powerlimits((0,0))
+
+    if ((plot_type == 'planet_star_radius_ratio') or (y_min_plt > 0.10)):
+        ymajorFormatter = ScalarFormatter(useMathText=False)
+    else:
+        ymajorFormatter = ScalarFormatter(useMathText=True)
+        ymajorFormatter.set_powerlimits((0,0))
+
     yminorLocator = MultipleLocator(yminor_spacing)
 
     # Generate figure and axes
@@ -1582,67 +1590,43 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Overplot datapoints
     if (show_data == True):
 
-        if (show_errors == False):
+        for i in range(N_datasets):
+            
+            # If user did not specify dataset labels, use the instrument names
+            if (data_labels == []):
+                label_i = instruments[i]
+            else:
+                label_i = data_labels[i]
+            
+            # Find start and end indices of dataset_i in dataset property arrays
+            idx_start = data_properties['len_data_idx'][i]
+            idx_end = data_properties['len_data_idx'][i+1]
 
-            for i in range(N_datasets):
-                
-                # If user did not specify dataset labels, use the instrument names
-                if (data_labels == []):
-                    label_i = instruments[i]
-                else:
-                    label_i = data_labels[i]
-                
-                # Find start and end indices of dataset_i in dataset property arrays
-                idx_start = data_properties['len_data_idx'][i]
-                idx_end = data_properties['len_data_idx'][i+1]
+            # Extract the ith dataset
+            wl_data_i = wl_data[idx_start:idx_end]
+            ydata_i = ydata[idx_start:idx_end]
+            err_data_i = err_data[idx_start:idx_end]
+            bin_size_i = bin_size[idx_start:idx_end]
 
-                # Extract the ith dataset
-                wl_data_i = wl_data[idx_start:idx_end]
-                ydata_i = ydata[idx_start:idx_end]
-                err_data_i = err_data[idx_start:idx_end]
-                bin_size_i = bin_size[idx_start:idx_end]
+            # Plot dataset
+            if (show_data_bin_width == True):
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                                   xerr=bin_size_i, marker=data_markers[i], 
+                                                   markersize=data_markers_size[i], 
+                                                   capsize = 2, ls = 'none', elinewidth = 0.8, 
+                                                   color=data_colours[i], alpha = 0.8,
+                                                   ecolor = 'black', label=label_i,
+                                                   zorder = 100)
+            else:
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                                   marker=data_markers[i], 
+                                                   markersize=data_markers_size[i], 
+                                                   capsize=2, ls='none', elinewidth=0.8, 
+                                                   color=data_colours[i], alpha = 0.8,
+                                                   ecolor = 'black', label=label_i,
+                                                   zorder = 100)
 
-                # Plot dataset
-                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
-                                                xerr = bin_size_i, marker = data_markers[i], 
-                                                markersize = data_markers_size[i], 
-                                                capsize = 2, ls = 'none', elinewidth = 0, 
-                                                color = data_colours[i], alpha = 0.8,
-                                                ecolor = 'black', label = label_i,
-                                                zorder = 100)
-
-                [markers.set_alpha(1.0)]
-
-        else:
-
-            for i in range(N_datasets):
-                
-                # If user did not specify dataset labels, use the instrument names
-                if (data_labels == []):
-                    label_i = instruments[i]
-                else:
-                    label_i = data_labels[i]
-                
-                # Find start and end indices of dataset_i in dataset property arrays
-                idx_start = data_properties['len_data_idx'][i]
-                idx_end = data_properties['len_data_idx'][i+1]
-
-                # Extract the ith dataset
-                wl_data_i = wl_data[idx_start:idx_end]
-                ydata_i = ydata[idx_start:idx_end]
-                err_data_i = err_data[idx_start:idx_end]
-                bin_size_i = bin_size[idx_start:idx_end]
-
-                # Plot dataset
-                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
-                                                xerr = bin_size_i, marker = data_markers[i], 
-                                                markersize = data_markers_size[i], 
-                                                capsize = 2, ls = 'none', elinewidth = 0.8, 
-                                                color = data_colours[i], alpha = 0.8,
-                                                ecolor = 'black', label = label_i,
-                                                zorder = 100)
-
-                [markers.set_alpha(1.0)]
+            [markers.set_alpha(1.0)]
 
     # Plot text annotations
     if (text_annotations != []):
@@ -1661,7 +1645,12 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
-        ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        if (y_min_plt < 0.10):
+            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        else:
+            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+    elif (plot_type == 'planet_star_radius_ratio'):
+        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
     elif (plot_type == 'time_average_transmission'):
         ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
     elif (plot_type == 'emission'):
@@ -1731,7 +1720,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
               plt_label = None, data_colour_list = [], data_labels = [], 
               data_marker_list = [], data_marker_size_list = [],
               wl_axis = 'log', figure_shape = 'default', 
-              legend_location = 'upper right'):
+              legend_location = 'upper right', legend_box = False,
+              show_data_bin_width = True):
     ''' 
     Plot a collection of datasets. This function can plot transmission or 
     emission datasets, according to the user's choice of 'y_unit'.
@@ -1770,6 +1760,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
             'lower left', 'lower right').
+        legend_box (bool, optional):
+            Flag indicating whether to plot a box surrounding the figure legend.
+        show_data_bin_width (bool, optional):
+            Flag indicating whether to plot x bin widths for data points.
 
     Returns:
         fig (matplotlib figure object):
@@ -1782,8 +1776,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Create output directories (if not already present)
     create_directories(base_dir, planet_name)
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth']):
         plot_type = 'transmission'
+    elif (y_unit in ['Rp/Rs', 'Rp/R*', '(Rp/Rs)', '(Rp/R*)']):
+        plot_type = 'planet_star_radius_ratio'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
@@ -1902,8 +1898,13 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
-    ymajorFormatter = ScalarFormatter(useMathText=True)
-    ymajorFormatter.set_powerlimits((0,0))
+
+    if ((plot_type == 'planet_star_radius_ratio') or (y_min_plt > 0.10)):
+        ymajorFormatter = ScalarFormatter(useMathText=False)
+    else:
+        ymajorFormatter = ScalarFormatter(useMathText=True)
+        ymajorFormatter.set_powerlimits((0,0))
+
     yminorLocator = MultipleLocator(yminor_spacing)
 
     # Generate figure and axes
@@ -1951,12 +1952,20 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         bin_size_i = bin_size[idx_start:idx_end]
 
         # Plot dataset
-        markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                            xerr=bin_size_i, marker=data_markers[i], 
-                                            markersize=data_markers_size[i], 
-                                            capsize=2, ls='none', elinewidth=0.8, 
-                                            color=colours[i], alpha = 0.8,
-                                            ecolor = 'black', label=label_i)
+        if (show_data_bin_width == True):
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                               xerr=bin_size_i, marker=data_markers[i], 
+                                               markersize=data_markers_size[i], 
+                                               capsize=2, ls='none', elinewidth=0.8, 
+                                               color=colours[i], alpha = 0.8,
+                                               ecolor = 'black', label=label_i)
+        else:
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                               marker=data_markers[i], 
+                                               markersize=data_markers_size[i], 
+                                               capsize=2, ls='none', elinewidth=0.8, 
+                                               color=colours[i], alpha = 0.8,
+                                               ecolor = 'black', label=label_i)
 
         [markers.set_alpha(1.0)]
             
@@ -1968,7 +1977,12 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
-        ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        if (y_min_plt < 0.10):
+            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        else:
+            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+    elif (plot_type == 'planet_star_radius_ratio'):
+        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
     elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
     elif (plot_type == 'direct_emission'):
@@ -1988,21 +2002,24 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     # Plot wl tick labels
     ax1.set_xticks(wl_ticks)
-    
-    legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
-                        ncol = 1, frameon = True)    # Legend settings
-    
-    if legend_location == 'outside right':
+
+    # Add box around legend
+    if (legend_box == True) and (legend_location != 'outside right'):
+        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon = True)    # Legend settings
+        frame = legend.get_frame()
+        frame.set_facecolor('0.90') 
+    elif legend_location == 'outside right':
         legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))
-    
-    frame = legend.get_frame()
-    frame.set_facecolor('0.90') 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
+    else:
+        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon = False)    # Legend settings
         
+    plt.tight_layout()
+    
     for legline in legend.legendHandles:
         legline.set_linewidth(1.0)
-    
-    plt.tight_layout()
 
     # Write figure to file
     if (plt_label == None):
@@ -2030,6 +2047,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            wl_axis = 'log', figure_shape = 'default',
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
+                           show_data_bin_width = True,
                            sigma_to_plot = 2):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2105,8 +2123,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             Matplotlib axis provided externally.
         save_fig (bool, optional):
             If True, saves a PDF in the POSEIDON output folder.
-        sigma_to_plot (int:
-            How many sigmas to plot (0,1, or 2)
+        show_data_bin_width (bool, optional):
+            Flag indicating whether to plot x bin widths for data points.
+        sigma_to_plot (int, optional):
+            How many sigma contours to plot (0 for only median, 1 for median and 
+            1 sigma, or 2 for median, 1 sigma, and 2 sigma).
 
     Returns:
         fig (matplotlib figure object):
@@ -2114,8 +2135,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     
     '''
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', 'transit_depth']):
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth']):
         plot_type = 'transmission'
+    elif (y_unit in ['Rp/Rs', 'Rp/R*', '(Rp/Rs)', '(Rp/R*)']):
+        plot_type = 'planet_star_radius_ratio'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
@@ -2168,8 +2191,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick data validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 7):
-        raise Exception("Max number of concurrent datasets to plot is 7.")
+    if (N_datasets > 8):
+        raise Exception("Max number of concurrent datasets to plot is 8.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -2183,7 +2206,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'black', 'black']
+        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black', 'darkgreen']
     else:
         data_colours = data_colour_list
 
@@ -2195,7 +2218,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3, 3]
+        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
                 
@@ -2308,8 +2331,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
     # Create y formatting objects
     ymajorLocator   = MultipleLocator(ymajor_spacing)
-    ymajorFormatter = ScalarFormatter(useMathText=True, useOffset=False)
-    ymajorFormatter.set_powerlimits((0,0))
+
+    if ((plot_type == 'planet_star_radius_ratio') or (y_min_plt > 0.10)):
+        ymajorFormatter = ScalarFormatter(useMathText=False)
+    else:
+        ymajorFormatter = ScalarFormatter(useMathText=True)
+        ymajorFormatter.set_powerlimits((0,0))
+
     yminorLocator = MultipleLocator(yminor_spacing)
 
     # Generate figure and axes
@@ -2420,13 +2448,22 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         bin_size_i = bin_size[idx_start:idx_end]
 
         # Plot dataset
-        markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                           xerr=bin_size_i, marker=data_markers[i], 
-                                           markersize=data_markers_size[i], 
-                                           capsize=2, ls='none', elinewidth=0.8, 
-                                           color=data_colours[i], alpha = 0.8,
-                                           ecolor = 'black', label=label_i,
-                                           zorder = 100)
+        if (show_data_bin_width == True):
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                               xerr=bin_size_i, marker=data_markers[i], 
+                                               markersize=data_markers_size[i], 
+                                               capsize=2, ls='none', elinewidth=0.8, 
+                                               color=data_colours[i], alpha = 0.8,
+                                               ecolor = 'black', label=label_i,
+                                               zorder = 100)
+        else:
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
+                                               marker=data_markers[i], 
+                                               markersize=data_markers_size[i], 
+                                               capsize=2, ls='none', elinewidth=0.8, 
+                                               color=data_colours[i], alpha = 0.8,
+                                               ecolor = 'black', label=label_i,
+                                               zorder = 100)
 
         [markers.set_alpha(1.0)]
 
@@ -2447,7 +2484,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
-        ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        if (y_min_plt < 0.10):
+            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        else:
+            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+    elif (plot_type == 'planet_star_radius_ratio'):
+        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
     elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
     elif (plot_type == 'direct_emission'):
@@ -2502,7 +2544,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       TwoD_type = None, plt_label = None, show_profiles = [],
                       PT_labels = [], colour_list = [], log_P_min = None,
                       log_P_max = None, T_min = None, T_max = None,
-                      legend_location = 'lower left'):
+                      legend_location = 'lower left',
+                      ax = None, save_fig = True):
     '''
     Plot retrieved Pressure-Temperature (P-T) profiles.
     
@@ -2624,15 +2667,19 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
         log_P_max = np.log10(np.max(P))
     
     # create figure
-    fig = plt.figure()  
-    ax = plt.gca()
+    fig = plt.figure()
+
+    if (ax == None):
+        ax1 = plt.gca()
+    else:
+        ax1 = ax
     
     # Assign axis spacing
     xmajorLocator_PT = MultipleLocator(major_spacing)
     xminorLocator_PT = MultipleLocator(minor_spacing)
         
-    ax.xaxis.set_major_locator(xmajorLocator_PT)
-    ax.xaxis.set_minor_locator(xminorLocator_PT)
+    ax1.xaxis.set_major_locator(xmajorLocator_PT)
+    ax1.xaxis.set_minor_locator(xminorLocator_PT)
     
     #***** Plot P-T profiles *****#
     
@@ -2673,43 +2720,44 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                 label_two_sig = ''
 
             # Plot median retrieved spectrum
-            ax.semilogy(T_med, P, lw = 1.5, color = scale_lightness(colours[i], 1.0), 
+            ax1.semilogy(T_med, P, lw = 1.5, color = scale_lightness(colours[i], 1.0), 
                         label = label_med)
             
             # Plot +/- 1σ confidence region
-            ax.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
+            ax1.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
                             facecolor = colours[i], label = label_one_sig)
 
             # Plot +/- 2σ sigma confidence region
-            ax.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
+            ax1.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
                             facecolor = colours[i], label = label_two_sig)
 
         # Plot actual (true) P-T profile
         if (T_true != None):
-            ax.semilogy(T_true, P, lw = 1.5, color = 'crimson', label = 'True')
+            ax1.semilogy(T_true, P, lw = 1.5, color = 'crimson', label = 'True')
 
     # Common plot settings for all profiles
-    ax.invert_yaxis()            
-    ax.set_xlabel(r'Temperature (K)', fontsize = 20)
-    ax.set_xlim(T_min, T_max)
-    ax.set_ylabel(r'Pressure (bar)', fontsize = 20)
-    ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min)) 
+    ax1.invert_yaxis()            
+    ax1.set_xlabel(r'Temperature (K)', fontsize = 20)
+    ax1.set_xlim(T_min, T_max)
+    ax1.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax1.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))
 
-    ax.tick_params(labelsize=12)
+    ax1.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
+    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
 
     # Write figure to file
-    if (plt_label == None):
-        file_name = output_dir + planet_name + '_retrieved_PT.pdf'
-    else:
-        file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_PT.pdf'
+    if (save_fig == True):
+        if (plt_label == None):
+            file_name = output_dir + planet_name + '_retrieved_PT.pdf'
+        else:
+            file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_PT.pdf'
 
-    plt.savefig(file_name, bbox_inches='tight')
+        plt.savefig(file_name, bbox_inches = 'tight')
 
     return fig
 

@@ -721,12 +721,12 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
     node_comm = comm
 
     # Initialise output opacity arrays
-    cia_stored = shared_memory_array(node_rank, node_comm, (N_cia_pairs, N_T_fine, N_wl))                      # Collision-induced absorption
-    ff_stored = shared_memory_array(node_rank, node_comm, (N_ff_pairs, N_T_fine, N_wl))                        # Free-free
-    bf_stored = shared_memory_array(node_rank, node_comm, (N_bf_species, N_wl))                                # Bound-free
-    sigma_stored = shared_memory_array(node_rank, node_comm, (N_species_active, N_P_fine, N_T_fine, N_wl))     # Molecular and atomic opacities
-    Rayleigh_stored = shared_memory_array(node_rank, node_comm, (N_species, N_wl))                             # Rayleigh scattering
-    eta_stored = shared_memory_array(node_rank, node_comm, (N_species, N_wl))                                  # Refractive indices
+    cia_stored, _ = shared_memory_array(node_rank, node_comm, (N_cia_pairs, N_T_fine, N_wl))                      # Collision-induced absorption
+    ff_stored, _ = shared_memory_array(node_rank, node_comm, (N_ff_pairs, N_T_fine, N_wl))                        # Free-free
+    bf_stored, _ = shared_memory_array(node_rank, node_comm, (N_bf_species, N_wl))                                # Bound-free
+    sigma_stored, _ = shared_memory_array(node_rank, node_comm, (N_species_active, N_P_fine, N_T_fine, N_wl))     # Molecular and atomic opacities
+    Rayleigh_stored, _ = shared_memory_array(node_rank, node_comm, (N_species, N_wl))                             # Rayleigh scattering
+    eta_stored, _ = shared_memory_array(node_rank, node_comm, (N_species, N_wl))                                  # Refractive indices
     
     # When using multiple cores, only the first core needs to handle interpolation
     if (node_rank == 0):

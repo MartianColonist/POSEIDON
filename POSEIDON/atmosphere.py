@@ -1505,6 +1505,12 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             C_to_O = log_X_state[0]
             log_Met = log_X_state[1]
 
+            log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
+                                                     param_species, return_dict = False)
+            X_input = 10**log_X_input
+            X_param = X_input
+
+            '''
             if PT_profile == 'isotherm':
 
                 log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
@@ -1521,6 +1527,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                 
             else:
                 raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT (for now)')
+            '''
 
         # Gaussian smooth any profiles with a vertical profile
         for q, species in enumerate(param_species):

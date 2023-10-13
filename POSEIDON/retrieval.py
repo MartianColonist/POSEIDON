@@ -66,8 +66,9 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     X_profile = model['X_profile']
 
     # Unpack stellar properties
-    R_s = star['R_s']
-    stellar_interp_backend = star['stellar_interp_backend']
+    if (star is not None):
+        R_s = star['R_s']
+        stellar_interp_backend = star['stellar_interp_backend']
 
     # Check that one of the two reference parameters has been provided by the user
     if ((reference_parameter == 'R_p_ref') and (P_ref is None)):
@@ -103,11 +104,10 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
         # Interpolate and store stellar photosphere and heterogeneity spectra
         T_phot_grid, T_het_grid, \
         log_g_phot_grid, log_g_het_grid, \
-        I_phot_grid, I_het_grid = precompute_stellar_spectra(wl, star, prior_types, 
+        I_phot_grid, I_het_grid = precompute_stellar_spectra(comm, wl, star, prior_types, 
                                                              prior_ranges, stellar_contam,
                                                              stellar_T_step, stellar_log_g_step,
-                                                             stellar_interp_backend,
-                                                             comm)
+                                                             stellar_interp_backend)
 
     # No stellar grid precomputation needed for models with uniform star
     else:
@@ -121,12 +121,13 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
 
         # Load stellar spectrum
         F_s = star['F_star']
-        wl_s = star['wl_star']
+        d = planet['system_distance']
+      #  wl_s = star['wl_star']
 
-        if (wl_s != wl):
-            raise Exception("Error: wavelength grid for stellar spectrum does " +
-                            "not match wavelength grid of planet spectrum. " +
-                            "Did you forget to provide 'wl' to create_star?")
+      #  if (wl_s != wl):
+      #      raise Exception("Error: wavelength grid for stellar spectrum does " +
+      #                      "not match wavelength grid of planet spectrum. " +
+      #                      "Did you forget to provide 'wl' to create_star?")
 
         # Distance only used for flux ratios, so set it to 1 since it cancels
         if (d is None):
@@ -249,6 +250,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     N_params_cum = model['N_params_cum']
     surface = model['surface']
     stellar_contam = model['stellar_contam']
+    nightside_contam = model['nightside_contam']
     disable_atmosphere = model['disable_atmosphere']
 
     # Unpack planet and star properties
@@ -441,8 +443,24 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             # Apply multiplicative stellar contamination to spectrum
             spectrum = epsilon * spectrum
 
+    #***** Step 5: nightside contamination *****#
+    
+    # Nightside contamination is only relevant for transmission spectra
+    if ('transmission' in spectrum_type):
+
+        if (nightside_contam == True):
+
+            # Calculate nightside thermal emission spectrum
+            Fp_Fs_night = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                           spectrum_type = 'nightside_emission')
             
-    #***** Step 5: convolve spectrum with instrument PSF and bin to data resolution ****#
+            # Compute wavelength-dependent nightside contamination factor
+            psi = (1.0 / (1.0 + Fp_Fs_night))
+
+            # Apply multiplicative nightside contamination to spectrum
+            spectrum = psi * spectrum
+            
+    #***** Step 6: convolve spectrum with instrument PSF and bin to data resolution ****#
 
     if ('transmission' in spectrum_type):
         ymodel = bin_spectrum_to_data(spectrum, wl, data)
@@ -531,13 +549,6 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     error_inflation = model['error_inflation']
     offsets_applied = model['offsets_applied']
     stellar_contam = model['stellar_contam']
-
-    # Unpack planet properties
-    R_p = planet['planet_radius']
-    d = planet['system_distance']
-
-    # Unpack stellar properties
-    R_s = star['R_s']
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
