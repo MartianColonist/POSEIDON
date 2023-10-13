@@ -1,3 +1,4 @@
+# %%
 from __future__ import absolute_import, unicode_literals, print_function
 from POSEIDON.high_res import loglikelihood_sysrem
 import math, os
@@ -23,7 +24,7 @@ from spectres import spectres
 from tqdm import tqdm
 from joblib import Parallel, delayed, dump, load
 import time
-from scipy.ndimage import gaussian_filter1d, median_filter
+from scipy.ndimage import gaussian_filter1d, median_filter, maximum_filter1d
 from POSEIDON.utility import read_high_res_data
 import h5py
 
@@ -152,11 +153,13 @@ d = planet["system_distance"]
 model_name = "Fe -6"  # Model name used for plots, output files etc.
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 
+# %%
 # for species in ["Fe", "Li", "Mg", "Ti"]:
 for species in ["Fe"]:
     param_species = [species]
 
     model = define_model(model_name, bulk_species, param_species, PT_profile="isotherm")
+                        # cloud_model="MacMad17", cloud_type="deck")
 
     # Check the free parameters defining this model
     print("Free parameters: " + str(model["param_names"]))
@@ -206,15 +209,16 @@ for species in ["Fe"]:
     P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
 
     # Specify the reference pressure and radius
-    P_ref = 1e-5  # Reference pressure (bar)
-    R_p_ref = R_p  # Radius at reference pressure
+    P_ref = 2e-2  # Reference pressure (bar)
+    R_p_ref = 1.8*R_J  # Radius at reference pressure
 
-    params = (-6, 3500)
+    params = (-6, 3000)
     log_species, T = params
 
     # Provide a specific set of model parameters for the atmosphere
     PT_params = np.array([T])  # a1, a2, log_P1, log_P2, log_P3, T_deep
     log_X_params = np.array([[log_species]])
+    cloud_params = np.array([[np.log10(0.05)]])
 
     atmosphere = make_atmosphere(
         planet, model, P, P_ref, R_p_ref, PT_params, log_X_params
@@ -238,7 +242,7 @@ for species in ["Fe"]:
 
     # Provide a specific set of model parameters for the atmosphere
     PT_params = np.array([T])
-    log_X_params = np.array([[log_species]])
+    log_X_params = np.array([[]])
 
     atmosphere = make_atmosphere(
         planet, model, P, P_ref, R_p_ref, PT_params, log_X_params
@@ -248,7 +252,7 @@ for species in ["Fe"]:
     continuum = compute_spectrum(
         planet, star, model, atmosphere, opac, wl, spectrum_type="transmission"
     )
-
+    print(spectrum-continuum)
     # Passing stellar spectrum, planet spectrum, wavelenght grid to each core, thus saving time for reading the opacity again
     data_path = f"./data/WASP-121b/"
     output_path = f"./CC_output/WASP-121b/"
@@ -259,13 +263,15 @@ for species in ["Fe"]:
     os.makedirs(output_path, exist_ok=True)
     # data = read_high_res_data(data_path, method="sysrem", spectrum_type="transmission")
 
-    dataset = h5py.File("../high_res_experiments/data/WASP-121.h5", "a")
+    dataset = h5py.File("/home/rwang/POSEIDON_high_res/hdf5_experiments/data/WASP-121b.h5", "a")
 
     # for key in dataset.keys():
-    for key in ["blue"]:
+    for key in ["blue", "redl", "redu"]:
+    # for key in ["blue"]:
         print(key)
         time_1 = time.time()
         a = 1
+        lines = (spectrum-continuum)*a
         (
             Kp_arr,
             Vsys_arr,
@@ -277,7 +283,9 @@ for species in ["Fe"]:
             K_p_arr,
             V_sys_arr,
             wl,
-            gaussian_filter1d((spectrum - continuum) * a + continuum, 2),
+            # lines-gaussian_filter1d(maximum_filter1d(lines, 1400), 400),
+            lines,
+            # spectrum - continuum,
             dataset[key],
         )
         time_2 = time.time()
@@ -298,3 +306,5 @@ for species in ["Fe"]:
         dataset[key][species].create_dataset("RV_range", data=RV_range)
 
     dataset.close()
+
+# %%

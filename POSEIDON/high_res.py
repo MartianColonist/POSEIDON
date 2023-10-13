@@ -312,8 +312,8 @@ def loglikelihood_high_res(
             Loglikelihood calculated based on which filtering method (specified in data['method']).
     """
 
-    method = data["method"]
-    spectrum_type = data["spectrum_type"]
+    method = model["method"]
+    spectrum_type = model["spectrum_type"]
 
     if "K_p" in high_res_param_names:
         K_p = high_res_params[np.where(high_res_param_names == "K_p")[0][0]]
@@ -558,7 +558,6 @@ def fit_uncertainties(data_raw, NPC=5):
     uncertainties = np.zeros(data_raw.shape)
     residuals = np.zeros(data_raw.shape)
     N_order = len(data_raw)
-    mask = data_raw == 0
     for i in range(N_order):
         order = data_raw[i]
         svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(order)
@@ -577,14 +576,12 @@ def fit_uncertainties(data_raw, NPC=5):
             return -loglikelihood
 
         a, b = minimize(fun, [0.5, 200], method="Nelder-Mead").x
-        print(a, b)
         best_fit = np.sqrt(a * data_raw[i] + b)
 
         svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(best_fit)
 
         uncertainty = svd.transform(best_fit) @ svd.components_
         uncertainties[i] = uncertainty
-    uncertainties[mask] = 1e7
     return uncertainties
 
 

@@ -213,7 +213,7 @@ if not evaluate:
         N_live=400,
         verbose=True,
         N_output_samples=1000,
-        resume=False,
+        resume=True,
     )
 
 
