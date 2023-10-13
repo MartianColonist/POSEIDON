@@ -2006,7 +2006,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Add box around legend
     if (legend_box == True) and (legend_location != 'outside right'):
         legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = n_columns, frameon = True)    # Legend settings
+                            ncol = 1, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
     elif legend_location == 'outside right':
@@ -2014,7 +2014,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
                             ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = n_columns, frameon = False)    # Legend settings
+                            ncol = 1, frameon = False)    # Legend settings
         
     plt.tight_layout()
     
@@ -2047,7 +2047,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            wl_axis = 'log', figure_shape = 'default',
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
-                           show_data_bin_width = True):
+                           show_data_bin_width = True,
                            sigma_to_plot = 2):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2545,7 +2545,7 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       PT_labels = [], colour_list = [], log_P_min = None,
                       log_P_max = None, T_min = None, T_max = None,
                       legend_location = 'lower left',
-                      ax = None, save_fig = True,):
+                      ax = None, save_fig = True):
     '''
     Plot retrieved Pressure-Temperature (P-T) profiles.
     
