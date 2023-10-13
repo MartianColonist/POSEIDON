@@ -29,17 +29,20 @@ from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
                      open_pymsg_grid
 from .supported_chemicals import supported_species, supported_cia, inactive_species, \
-                                 fastchem_supported_species
+                                 fastchem_supported_species, aerosol_supported_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
-from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction, \
+from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
                         extinction_LBL, extinction_GPU, extinction_spectrum_contribution, extinction_spectrum_pressure_contribution
 from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
 from .instrument import init_instrument
 from .transmission import TRIDENT
-from .emission import emission_rad_transfer, determine_photosphere_radii, \
-                      emission_rad_transfer_GPU, determine_photosphere_radii_GPU
+from .emission import emission_single_stream, determine_photosphere_radii, \
+                      emission_single_stream_GPU, determine_photosphere_radii_GPU, \
+                      emission_Toon
+
+from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid
 
 from .utility import mock_missing
 
@@ -330,7 +333,8 @@ def define_model(model_name, bulk_species, param_species,
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
-                 reference_parameter = 'R_p_ref', disable_atmosphere = False):
+                 reference_parameter = 'R_p_ref', disable_atmosphere = False,
+                 aerosol_species = ['free'], scattering = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -354,7 +358,7 @@ def define_model(model_name, bulk_species, param_species,
             (Options: isochem / gradient / two-gradients / file_read / chem_eq).
         cloud_model (str):
             Chosen cloud parametrisation 
-            (Options: cloud-free / MacMad17 / Iceberg).
+            (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
             Cloud extinction type to consider 
             (Options: deck / haze / deck_haze).
@@ -425,6 +429,10 @@ def define_model(model_name, bulk_species, param_species,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
+        aerosol (string):
+            If cloud_model = Mie and cloud_type = specific_aerosol 
+        scattering (bool):
+            If True, uses a two-stream multiple scattering model.
 
     Returns:
         model (dict):
@@ -465,6 +473,10 @@ def define_model(model_name, bulk_species, param_species,
     # Check if cross sections are available for all the chemical species
     if (np.any(~np.isin(active_species, supported_species)) == True):
         raise Exception("A chemical species you selected is not supported.\n")
+    
+    # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
+    if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True) and aerosol_species != ['free'] and aerosol_species != ['file_read']:
+        raise Exception('Please input supported aerosols (check supported_opac.py) or aerosol = [\'free\'] or [\'file_read\'].')
 
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
@@ -505,7 +517,14 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere)
+                                      reference_parameter, disable_atmosphere, aerosol_species)
+    
+    # If cloud_model = Mie, load in the cross section 
+    if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
+        aerosol_grid = load_aerosol_grid(aerosol_species)
+    else:
+        aerosol_grid = None
+        
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -536,7 +555,9 @@ def define_model(model_name, bulk_species, param_species,
              'sharp_DN_transition': sharp_DN_transition,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
-            }
+             'aerosol_species': aerosol_species,
+             'aerosol_grid': aerosol_grid,
+             'scattering' : scattering}
 
     return model
 
@@ -566,6 +587,10 @@ def wl_grid_constant_R(wl_min, wl_max, R):
     log_wl = np.linspace(np.log(wl_min), np.log(wl_max), N_wl)    
 
     wl = np.exp(log_wl)
+
+    # Fix for numerical rounding error
+    wl[0] = wl_min
+    wl[-1] = wl_max
     
     return wl
 
@@ -789,6 +814,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     gravity_setting = model['gravity_setting']
     mass_setting = model['mass_setting']
     sharp_DN_transition = model['sharp_DN_transition']
+    aerosol_species = model['aerosol_species']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -884,8 +910,19 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     kappa_cloud_0, P_cloud, \
     f_cloud, phi_cloud_0, \
     theta_cloud_0, \
-    a, gamma = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
-                                   N_params_cum, TwoD_type)
+    a, gamma, \
+    r_m, log_n_max, fractional_scale_height, \
+    r_i_real, r_i_complex, log_X_Mie, P_cloud_bottom = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
+                                                                           N_params_cum, TwoD_type)
+    
+    # Temporary H for testing 
+    if is_physical == False:
+        g = 0
+        H = 0
+
+    else:
+        g = g_p * (R_p_ref / r)**2
+        H = (sc.k * T) / (mu * g)
 
     # Package atmosphere properties
     atmosphere = {'P': P, 'T': T, 'g': g_p, 'n': n, 'r': r, 'r_up': r_up,
@@ -897,7 +934,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'dphi': dphi, 'dtheta': dtheta, 'kappa_cloud_0': kappa_cloud_0, 
                   'P_cloud': P_cloud, 'f_cloud': f_cloud, 'phi_cloud_0': phi_cloud_0, 
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
-                  'is_physical': is_physical
+                  'is_physical': is_physical,
+                  'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 'fractional_scale_height': fractional_scale_height,
+                  'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie,
+                  'P_cloud_bottom' : P_cloud_bottom
                  }
 
     return atmosphere
@@ -1016,6 +1056,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     PT_dim = model['PT_dim']
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
+    scattering = model['scattering']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1066,6 +1107,15 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     f_cloud = atmosphere['f_cloud']
     phi_cloud_0 = atmosphere['phi_cloud_0']
     theta_cloud_0 = atmosphere['theta_cloud_0']
+    H = atmosphere['H']
+    r_m = atmosphere['r_m']
+    log_n_max = atmosphere['log_n_max']
+    fractional_scale_height = atmosphere['fractional_scale_height']
+    aerosol_species = atmosphere['aerosol_species']
+    r_i_real = atmosphere['r_i_real']
+    r_i_complex = atmosphere['r_i_complex']
+    log_X_Mie = atmosphere['log_X_Mie']
+    P_cloud_bottom = atmosphere['P_cloud_bottom']
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1074,10 +1124,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         enable_haze = 0
 
     # Check if a cloud deck is enabled in the cloud model
-    if ('deck' in model['cloud_type']):
+    # The cloud deck is handled differently for Mie calclations
+    if ('deck' in model['cloud_type'] and 'Mie' not in model['cloud_model']):
         enable_deck = 1
     else:
         enable_deck = 0
+
+    if ('Mie' in model['cloud_model']):
+        enable_Mie = 1
+    else:
+        enable_Mie = 0
 
     # Check if a surface is enabled
     if (P_surf != None):
@@ -1105,15 +1161,15 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         Rayleigh_stored = opac['Rayleigh_stored']
 
         # Calculate extinction coefficients in line-by-line mode        
-        kappa_clear, kappa_cloud = extinction_LBL(chemical_species, active_species, 
-                                                  CIA_pairs, ff_pairs, bf_species, 
-                                                  n, T, P, wl, X, X_active, X_CIA, 
-                                                  X_ff, X_bf, a, gamma, P_cloud,
-                                                  kappa_cloud_0, Rayleigh_stored, 
-                                                  enable_haze, enable_deck,
-                                                  enable_surface, N_sectors, 
-                                                  N_zones, P_surf, opacity_database, 
-                                                  disable_continuum, suppress_print)
+        kappa_gas, kappa_Ray, kappa_cloud = extinction_LBL(chemical_species, active_species, 
+                                                           CIA_pairs, ff_pairs, bf_species, 
+                                                           n, T, P, wl, X, X_active, X_CIA, 
+                                                           X_ff, X_bf, a, gamma, P_cloud,
+                                                           kappa_cloud_0, Rayleigh_stored, 
+                                                           enable_haze, enable_deck,
+                                                           enable_surface, N_sectors, 
+                                                           N_zones, P_surf, opacity_database, 
+                                                           disable_continuum, suppress_print)
         
     # If using opacity sampling, we can use pre-interpolated cross sections
     elif (opac['opacity_treatment'] == 'opacity_sampling'):
@@ -1131,19 +1187,144 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
-            
-            # Calculate extinction coefficients in standard mode
-            kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
-                                                CIA_pairs, ff_pairs, bf_species,
-                                                n, T, P, wl, X, X_active, X_CIA, 
-                                                X_ff, X_bf, a, gamma, P_cloud, 
-                                                kappa_cloud_0, sigma_stored, 
-                                                CIA_stored, Rayleigh_stored, 
-                                                ff_stored, bf_stored, enable_haze, 
-                                                enable_deck, enable_surface,
-                                                N_sectors, N_zones, T_fine, 
-                                                log_P_fine, P_surf)
 
+            if (model['cloud_model'] == 'Mie'):
+
+                aerosol_grid = model['aerosol_grid']
+
+                wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
+
+                # If its a fuzzy deck run
+                if (model['cloud_type'] == 'fuzzy_deck'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
+                                                          P_cloud = P_cloud,
+                                                          log_n_max = log_n_max, 
+                                                          fractional_scale_height = fractional_scale_height)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                     r_m, aerosol_species,
+                                                     cloud_type = model['cloud_type'],
+                                                     aerosol_grid = aerosol_grid,
+                                                     P_cloud = P_cloud,
+                                                     log_n_max = log_n_max, 
+                                                     fractional_scale_height = fractional_scale_height)
+
+                # If its a slab
+                elif (model['cloud_type'] == 'slab'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
+                                                        log_X_Mie = log_X_Mie,
+                                                        P_cloud = P_cloud,
+                                                        P_cloud_bottom = P_cloud_bottom)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                    r_m, aerosol_species,
+                                                    cloud_type = model['cloud_type'],
+                                                    aerosol_grid = aerosol_grid,
+                                                    log_X_Mie = log_X_Mie,
+                                                    P_cloud = P_cloud,
+                                                    P_cloud_bottom = P_cloud_bottom)
+                            
+                          
+                # If its a uniform X run
+                elif (model['cloud_type'] == 'uniform_X'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
+                                                          log_X_Mie = log_X_Mie)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                     r_m, aerosol_species,
+                                                     cloud_type = model['cloud_type'],
+                                                     aerosol_grid = aerosol_grid,
+                                                     log_X_Mie = log_X_Mie)
+
+                # If its a opaque_deck_plus_slab run 
+                elif (model['cloud_type'] == 'opaque_deck_plus_slab'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
+                                                        log_X_Mie = log_X_Mie,
+                                                        P_cloud = P_cloud,
+                                                        P_cloud_bottom = P_cloud_bottom)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                    r_m, aerosol_species,
+                                                    cloud_type = model['cloud_type'],
+                                                    aerosol_grid = aerosol_grid,
+                                                    log_X_Mie = log_X_Mie,
+                                                    P_cloud = P_cloud,
+                                                    P_cloud_bottom = P_cloud_bottom)
+                        
+                # If its a fuzzy_deck_plus_slab run 
+                elif (model['cloud_type'] == 'fuzzy_deck_plus_slab'):
+
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                     r_m, aerosol_species,
+                                                     cloud_type = model['cloud_type'],
+                                                     aerosol_grid = aerosol_grid,
+                                                     P_cloud = P_cloud,
+                                                     log_n_max = log_n_max, 
+                                                     fractional_scale_height = fractional_scale_height,
+                                                     log_X_Mie = log_X_Mie,
+                                                     P_cloud_bottom = P_cloud_bottom)
+
+            
+            else:
+
+                # Generate empty arrays so the dark god numba is satisfied
+                n_aerosol = []
+                sigma_ext_cloud = []
+                    
+                n_aerosol.append(np.zeros_like(r))
+                sigma_ext_cloud.append(np.zeros_like(wl))
+
+                n_aerosol = np.array(n_aerosol)
+                sigma_ext_cloud = np.array(sigma_ext_cloud)
+
+                w_cloud = np.zeros_like(wl)
+                g_cloud = np.zeros_like(wl)
+
+            # Calculate extinction coefficients in standard mode
+
+            # Numba will get mad if P_cloud is not an array (because you can have more than one cloud now)
+            # This line just makes sure that P_cloud is an array 
+            if isinstance(P_cloud, np.ndarray) == False:
+                P_cloud = np.array([P_cloud])
+
+            kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
+                                                           CIA_pairs, ff_pairs, bf_species,
+                                                           n, T, P, wl, X, X_active, X_CIA, 
+                                                           X_ff, X_bf, a, gamma, P_cloud, 
+                                                           kappa_cloud_0, sigma_stored, 
+                                                           CIA_stored, Rayleigh_stored, 
+                                                           ff_stored, bf_stored, enable_haze, 
+                                                           enable_deck, enable_surface,
+                                                           N_sectors, N_zones, T_fine, 
+                                                           log_P_fine, P_surf, enable_Mie, 
+                                                           n_aerosol, sigma_ext_cloud)
+            
+            
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):
 
@@ -1151,7 +1332,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             N_layers = len(P)  # Number of layers
 
             # Define extinction coefficient arrays explicitly on GPU
-            kappa_clear = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+            kappa_gas = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+            kappa_Ray = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
             kappa_cloud = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
 
             # Find index of deep pressure below which atmosphere is opaque
@@ -1167,16 +1349,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             N_bf_species = len(bf_species)           # Number of bound-free species included
         
             # Calculate extinction coefficients in standard mode
-            extinction_GPU[block, thread](kappa_clear, kappa_cloud, i_bot, N_species, 
-                                          N_species_active, N_cia_pairs, N_ff_pairs, 
-                                          N_bf_species, n, T, P, wl, X, X_active, 
-                                          X_CIA, X_ff, X_bf, a, gamma, P_cloud, 
-                                          kappa_cloud_0, sigma_stored, 
-                                          CIA_stored, Rayleigh_stored, 
-                                          ff_stored, bf_stored, enable_haze, 
-                                          enable_deck, enable_surface,
-                                          N_sectors, N_zones, T_fine, 
-                                          log_P_fine, P_surf, P_deep)
+            extinction_GPU[block, thread](kappa_gas, kappa_Ray, kappa_cloud, i_bot, 
+                                          N_species, N_species_active, N_cia_pairs, 
+                                          N_ff_pairs, N_bf_species, n, T, P, wl, 
+                                          X, X_active, X_CIA, X_ff, X_bf, a, 
+                                          gamma, P_cloud, kappa_cloud_0, 
+                                          sigma_stored, CIA_stored, 
+                                          Rayleigh_stored, ff_stored, bf_stored, 
+                                          enable_haze, enable_deck,
+                                          enable_surface, N_sectors, N_zones, 
+                                          T_fine, log_P_fine, P_surf, P_deep)
 
     # Generate transmission spectrum        
     if (spectrum_type == 'transmission'):
@@ -1185,9 +1367,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             raise Exception("GPU transmission spectra not yet supported.")
 
         # Call the core TRIDENT routine to compute the transmission spectrum
-        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
-                           enable_deck, enable_haze, b_p, y_p[0], R_s, f_cloud,
-                           phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray), 
+                           kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
+                           R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                           theta_edge)
 
     # Generate time-averaged transmission spectrum 
     elif (spectrum_type == 'transmission_time_average'):
@@ -1203,9 +1386,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         for i in range(0, (N_y//2 + 1)):   
 
             # Call TRIDENT at the given time step
-            spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
-                               enable_deck, enable_haze, b_p, y_p[i], R_s, f_cloud,
-                               phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+            spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray),
+                               kappa_cloud, enable_deck, enable_haze, b_p, y_p[i], 
+                               R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                               theta_edge)
 
             # At mid-transit, only have one spectrum to store
             if (i == N_y//2):
@@ -1233,23 +1417,52 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         else:
             zone_idx = 0
 
-        # Use atmospheric properties from dayside/nightside
-        kappa = kappa_clear[:,0,zone_idx,:]  # Only consider one region for 1D models
-        dz = dr[:,0,zone_idx]   # Only consider one region for 1D/2D models
-        T = T[:,0,zone_idx]     # Only consider one region for 1D/2D models
+        # Use atmospheric properties from dayside/nightside (only consider one region for 1D emission models)
+        dz = dr[:,0,zone_idx]
+        T = T[:,0,zone_idx]
 
-        # Compute planet flux (on CPU or GPU)
-        if (device == 'cpu'):
-            F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
-        elif (device == 'gpu'):
-            F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa, Gauss_quad)
+        # Compute total extinction (all absorption + scattering sources)
+        kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                     kappa_cloud[:,0,zone_idx,:])
+
+        # Store differential extinction optical depth across each layer
+        dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
+
+        # Without scattering, compute single steam radiative transfer
+        if (scattering == False):
+
+            # Compute planet flux (on CPU or GPU)
+            if (device == 'cpu'):
+                F_p, dtau = emission_single_stream(T, dz, wl, kappa_tot, Gauss_quad)
+            elif (device == 'gpu'):
+                F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
+
+        elif (scattering == True):
+
+            # Calculate combined single scattering albedo
+            w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
+
+            # Calculate combined scattering asymmetry parameter
+            g_tot = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+
+            # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
+            F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
+                                      np.flip(dtau_tot, axis=0), 
+                                      np.flip(w_tot, axis=0), 
+                                      np.flip(g_tot, axis=0))
+            
+            dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
+
+        else:
+            raise Exception("Error: Invalid scattering option")
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
             
             # Running POSEIDON on the CPU
             if (device == 'cpu'):
-                R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]), wl, photosphere_tau = 2/3)
+                R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]),
+                                                      wl, photosphere_tau = 2/3)
             
             # Running POSEIDON on the GPU
             elif (device == 'gpu'):
@@ -1440,6 +1653,15 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
     f_cloud = atmosphere['f_cloud']
     phi_cloud_0 = atmosphere['phi_cloud_0']
     theta_cloud_0 = atmosphere['theta_cloud_0']
+    H = atmosphere['H']
+    r_m = atmosphere['r_m']
+    log_n_max = atmosphere['log_n_max']
+    fractional_scale_height = atmosphere['fractional_scale_height']
+    aerosol_species = atmosphere['aerosol_species']
+    r_i_real = atmosphere['r_i_real']
+    r_i_complex = atmosphere['r_i_complex']
+    log_X_Mie = atmosphere['log_X_Mie']
+    P_cloud_bottom = atmosphere['P_cloud_bottom']
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1459,6 +1681,11 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
     else:
         enable_surface = 0
         P_surf = 100.0      # Set surface pressure to 100 bar if not defined
+
+    if ('Mie' in model['cloud_model']):
+        enable_Mie = 1
+    else:
+        enable_Mie = 0
 
     #***** Calculate extinction coefficients *****#
 
@@ -1506,17 +1733,99 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
 
-            # Calculate extinction coefficients in standard mode (to get normal spectrum)
-            kappa_clear, kappa_cloud = extinction(chemical_species, active_species,
-                                                CIA_pairs, ff_pairs, bf_species,
-                                                n, T, P, wl, X, X_active, X_CIA, 
-                                                X_ff, X_bf, a, gamma, P_cloud, 
-                                                kappa_cloud_0, sigma_stored, 
-                                                CIA_stored, Rayleigh_stored, 
-                                                ff_stored, bf_stored, enable_haze, 
-                                                enable_deck, enable_surface,
-                                                N_sectors, N_zones, T_fine, 
-                                                log_P_fine, P_surf)
+            if (model['cloud_model'] == 'Mie'):
+
+                aerosol_grid = model['aerosol_grid']
+
+                wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
+
+                # If its a fuzzy deck run
+                if (model['cloud_type'] == 'fuzzy_deck'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                          r_m, r_i_real, r_i_complex,
+                                                          P_cloud = P_cloud,
+                                                          log_n_max = log_n_max, 
+                                                          fractional_scale_height = fractional_scale_height)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                     r_m, aerosol_species,
+                                                     cloud_type = model['cloud_type'],
+                                                     aerosol_grid = aerosol_grid,
+                                                     P_cloud = P_cloud,
+                                                     log_n_max = log_n_max, 
+                                                     fractional_scale_height = fractional_scale_height)
+
+                # If its a slab
+                elif (model['cloud_type'] == 'slab'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                        r_m, r_i_real, r_i_complex,
+                                                        log_X_Mie = log_X_Mie,
+                                                        P_cloud = P_cloud,
+                                                        P_cloud_bottom = P_cloud_bottom)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                    r_m, aerosol_species,
+                                                    cloud_type = model['cloud_type'],
+                                                    aerosol_grid = aerosol_grid,
+                                                    log_X_Mie = log_X_Mie,
+                                                    P_cloud = P_cloud,
+                                                    P_cloud_bottom = P_cloud_bottom)
+                            
+                          
+                # If its a uniform X run
+                elif (model['cloud_type'] == 'uniform_X'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                          r_m, r_i_real, r_i_complex,
+                                                          log_X_Mie = log_X_Mie)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                     r_m, aerosol_species,
+                                                     cloud_type = model['cloud_type'],
+                                                     aerosol_grid = aerosol_grid,
+                                                     log_X_Mie = log_X_Mie)
+            
+            else:
+
+                # Generate empty arrays so the dark god numba is satisfied
+                n_aerosol = []
+                sigma_ext_cloud = []
+                    
+                n_aerosol.append(np.zeros_like(r))
+                sigma_ext_cloud.append(np.zeros_like(wl))
+
+                n_aerosol = np.array(n_aerosol)
+                sigma_ext_cloud = np.array(sigma_ext_cloud)
+
+                w_cloud = np.zeros_like(wl)
+                g_cloud = np.zeros_like(wl)
+
+            # Calculate extinction coefficients in standard mode
+            kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
+                                                           CIA_pairs, ff_pairs, bf_species,
+                                                           n, T, P, wl, X, X_active, X_CIA, 
+                                                           X_ff, X_bf, a, gamma, P_cloud, 
+                                                           kappa_cloud_0, sigma_stored, 
+                                                           CIA_stored, Rayleigh_stored, 
+                                                           ff_stored, bf_stored, enable_haze, 
+                                                           enable_deck, enable_surface,
+                                                           N_sectors, N_zones, T_fine, 
+                                                           log_P_fine, P_surf, enable_Mie, 
+                                                           n_aerosol, sigma_ext_cloud)
 
 
             # This is to store the contribution kappas
@@ -1526,7 +1835,7 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
             # If you want to see only the bulk species contribution, this runs first 
             if bulk == True:
 
-                kappa_clear_temp, kappa_cloud_temp = extinction_spectrum_contribution(chemical_species, active_species,
+                kappa_clear_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_spectrum_contribution(chemical_species, active_species,
                                                                                     CIA_pairs, ff_pairs, bf_species,
                                                                                     n, T, P, wl, X, X_active, X_CIA, 
                                                                                     X_ff, X_bf, a, gamma, P_cloud, 
@@ -1548,7 +1857,7 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
 
                 for i in range(len(contribution_molecule_list)):
 
-                    kappa_clear_temp, kappa_cloud_temp = extinction_spectrum_contribution(chemical_species, active_species,
+                    kappa_clear_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_spectrum_contribution(chemical_species, active_species,
                                                         CIA_pairs, ff_pairs, bf_species,
                                                         n, T, P, wl, X, X_active, X_CIA, 
                                                         X_ff, X_bf, a, gamma, P_cloud, 
@@ -1607,10 +1916,12 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
             raise Exception("GPU transmission spectra not yet supported.")
 
        
-       # Calculate normal spectrum 
-        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud,
-                           enable_deck, enable_haze, b_p, y_p[0], R_s, f_cloud,
-                           phi_cloud_0, theta_cloud_0, phi_edge, theta_edge)
+        # Call the core TRIDENT routine to compute the transmission spectrum
+        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray), 
+                           kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
+                           R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                           theta_edge)
+
        
         # If you have both contribution molecules and bulk molecules
         if contribution_molecule_list != [] and bulk == True:
@@ -1720,9 +2031,9 @@ def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
 
         # Compute planet flux (on CPU or GPU)
         if (device == 'cpu'):
-            F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_single_stream(T, dz, wl, kappa, Gauss_quad)
         elif (device == 'gpu'):
-            F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa, Gauss_quad)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -2122,9 +2433,9 @@ def compute_spectrum_p(planet, star, model, atmosphere, opac, wl,
 
         # Compute planet flux (on CPU or GPU)
         if (device == 'cpu'):
-            F_p, dtau = emission_rad_transfer(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_single_stream(T, dz, wl, kappa, Gauss_quad)
         elif (device == 'gpu'):
-            F_p, dtau = emission_rad_transfer_GPU(T, dz, wl, kappa, Gauss_quad)
+            F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa, Gauss_quad)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -2402,6 +2713,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         prior_ranges['M_p'] = [prior_ranges['M_p'][0]/M_p_norm,
                                prior_ranges['M_p'][1]/M_p_norm]
 
+    # Normalise retrieved planet mass parameter into Jupiter or Earth masses
+    if (mass_unit == 'M_J'):
+        M_p_norm = M_J
+    elif (mass_unit == 'M_E'):
+        M_p_norm = M_E
+    if ('M_p' in prior_ranges):
+        prior_ranges['M_p'] = [prior_ranges['M_p'][0]/M_p_norm,
+                               prior_ranges['M_p'][1]/M_p_norm]
+
     # Normalise retrieved system distance parameter into parsecs
     if (distance_unit == 'pc'):
         d_norm = parsec
@@ -2438,8 +2758,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
                                        np.log10(100.0*np.max(err_data**2))],
                              'C_to_O': [0.3,1.9],
-                             'log_Met' : [-0.9,3.9]
-                            }    
+                             'log_Met' : [-0.9,3.9],
+                             'log_r_m': [-3,1],       
+                             'log_n_max': [5.0,20.0],  
+                             'fractional_scale_height': [0.1,1], 
+                             'r_i_real': [0,10],
+                             'r_i_complex': [1e-6,100], 
+                             'log_X_Mie' : [-30,-1],
+                             'Delta_log_P' : [0,9],
+                            }   
 
     # Iterate through parameters, ensuring we have a full set of priors
     for parameter in param_names:

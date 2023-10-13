@@ -496,12 +496,12 @@ def extend_rad_transfer_grids(phi_edge, theta_edge, R_s, d, R_max, f_cloud,
 
         # For multiple sectors with a grazing transit, we'll use numerical polar integration
         else:
-            
+
             N_phi = N_phi_max                                    # Divide terminator into slices defined by N_phi_max (top of this function)
             dphi_0 = (2.0*np.pi)/N_phi                           # Polar angle integration element resolution
             dphi_grid = dphi_0 * np.ones(N_phi)                  # Polar integration element array (trivial here, all elements dphi_0)
             phi_grid = np.cumsum(dphi_grid) - (dphi_grid/2.0)    # Angles in centre of each area element
-  
+
     # Now create arrays storing which original sector and background sector
     # a given angle lies in (to avoid computing transmissivities multiple times)
     
@@ -869,10 +869,10 @@ def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck,
     #***** Step 4: Calculate atmosphere area matrices *****#
 
     # Populate elements of atmosphere area matrix
-   # dA_atm = np.outer((b * db), dphi_grid)
+    # dA_atm = np.outer((b * db), dphi_grid)
                 
     # Find overlapping area matrix of atmosphere (zero if rays don't intersect the star)
-   # dA_atm_overlap = delta_ray * dA_atm
+    # dA_atm_overlap = delta_ray * dA_atm
 
     # Grazing transit 1D model (special case) 
     if ((d > (R_s - R_max)) and (d < (R_s + R_max)) and (N_sectors == 1)):
@@ -888,7 +888,7 @@ def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck,
 
         # Polar coordinate system area for multi-dimensional atmosphere
         dA_atm = np.outer((b * db), dphi_grid)
-                
+
         # Find overlapping area matrix of atmosphere (zero if rays don't intersect the star)
         dA_atm_overlap = delta_ray * dA_atm
     

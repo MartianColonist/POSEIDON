@@ -1227,6 +1227,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
                  show_data_bin_width = True):
+
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -1310,6 +1311,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
         plot_type = 'direct_emission'
+    elif (y_unit in ['T_bright']):
+        plot_type = 'brightness_temp'
     else:
         raise Exception("Unexpected y unit. Did you mean 'transit_depth' " +
                         "or 'eclipse_depth'?")
@@ -1326,8 +1329,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Quick validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 8):
-        raise Exception("Max number of concurrent spectra to plot is 8.")
+    #if (N_spectra > 9):
+    #    raise Exception("Max number of concurrent spectra to plot is 9.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
@@ -1358,8 +1361,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Quick validity checks for plotting
         if (N_datasets == 0):
             raise Exception("Must provide at least one dataset to plot!")
-        if (N_datasets > 6):
-            raise Exception("Max number of concurrent datasets to plot is 6.")
+        if (N_datasets > 7):
+            raise Exception("Max number of concurrent datasets to plot is 7.")
         if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
             raise Exception("Number of colours does not match number of datasets.")
         if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1371,19 +1374,19 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             
         # Define colours for plotted spectra (default or user choice)
         if (data_colour_list == []):   # If user did not specify a custom colour list
-            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black']
+            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black']
         else:
             data_colours = data_colour_list
 
         # Define data marker symbols (default or user choice)
         if (data_marker_list == []):   # If user did not specify a custom colour list
-            data_markers = ['o', 's', 'D', '*', 'X', 'p']
+            data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p']
         else:
             data_markers = data_marker_list
 
         # Define data marker sizes (default or user choice)
         if (data_marker_size_list == []):   # If user did not specify a custom colour list
-            data_markers_size = [3, 3, 3, 3, 3, 3]
+            data_markers_size = [3, 3, 3, 3, 3, 3, 3]
         else:
             data_markers_size = data_marker_size_list
         
@@ -1519,6 +1522,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures)
+    elif (legend_location == 'outside right'):
+        fig.set_size_inches(12, 8.0) 
     else:
         raise Exception("Unsupported Figure shape - please use 'default' or 'wide'")
     
@@ -1652,6 +1657,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
     elif (plot_type == 'direct_emission'):
         ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+    elif (plot_type == 'brightness_temp'):
+        ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
@@ -1675,11 +1682,14 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         n_columns = 1
 
     # Add box around legend
-    if (legend_box == True):
+    if (legend_box == True) and (legend_location != 'outside right'):
         legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
                             ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
+    elif legend_location == 'outside right':
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
                             ncol = n_columns, frameon = False)    # Legend settings
@@ -1795,8 +1805,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Quick validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 6):
-        raise Exception("Max number of concurrent datasets to plot is 6.")
+    if (N_datasets > 7):
+        raise Exception("Max number of concurrent datasets to plot is 7.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1808,19 +1818,19 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black']
+        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black']
     else:
         colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X', 'p','p']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3]
+        data_markers_size = [3, 3, 3, 3, 3, 3,3]
     else:
         data_markers_size = data_marker_size_list
        
@@ -1905,6 +1915,9 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
+    elif (legend_location == 'outside right'):
+        fig.set_size_inches(12, 8.0) 
+
     
     ax1 = plt.gca()
     
@@ -1991,17 +2004,20 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     ax1.set_xticks(wl_ticks)
 
     # Add box around legend
-    if (legend_box == True):
+    if (legend_box == True) and (legend_location != 'outside right'):
         legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon = True)    # Legend settings
+                            ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
+    elif legend_location == 'outside right':
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon=False)    # Legend settings
-    
+                            ncol = n_columns, frameon = False)    # Legend settings
+        
     plt.tight_layout()
-   
+    
     for legline in legend.legendHandles:
         legline.set_linewidth(1.0)
 
@@ -2032,6 +2048,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
                            show_data_bin_width = True):
+                           sigma_to_plot = 2):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -2108,6 +2125,9 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             If True, saves a PDF in the POSEIDON output folder.
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
+        sigma_to_plot (int, optional):
+            How many sigma contours to plot (0 for only median, 1 for median and 
+            1 sigma, or 2 for median, 1 sigma, and 2 sigma).
 
     Returns:
         fig (matplotlib figure object):
@@ -2136,8 +2156,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick spectra validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 3):
-        raise Exception("Max number of concurrent retrieved spectra to plot is 3.")
+    if (N_spectra > 4):
+        raise Exception("Max number of concurrent retrieved spectra to plot is 4.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((binned_colour_list != []) and (N_spectra != len(binned_colour_list))):
@@ -2186,19 +2206,19 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black']
+        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black', 'darkgreen']
     else:
         data_colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3, 3, 3]
+        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
                 
@@ -2328,6 +2348,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         fig.set_size_inches(8.0, 6.0)    # Default Matplotlib figure size
     elif (figure_shape == 'wide'):
         fig.set_size_inches(10.667, 6.0)    # 16:9 widescreen format (for two column figures) 
+    elif (legend_location == 'outside right'):
+        fig.set_size_inches(12, 8.0) 
 
     if (ax == None):
         ax1 = plt.gca()
@@ -2387,14 +2409,16 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                  label = label_med)
         
         # Plot +/- 1σ confidence region
-        ax1.fill_between(wl_binned, spec_low1_binned, spec_high1_binned,
-                         lw=0.0, alpha=0.5, facecolor=colours[i],  
-                         label = label_one_sig)
+        if sigma_to_plot == 1 or sigma_to_plot == 2:
+            ax1.fill_between(wl_binned, spec_low1_binned, spec_high1_binned,
+                            lw=0.0, alpha=0.5, facecolor=colours[i],  
+                            label = label_one_sig)
 
         # Plot +/- 2σ sigma confidence region
-        ax1.fill_between(wl_binned, spec_low2_binned, spec_high2_binned,
-                         lw=0.0, alpha=0.2, facecolor=colours[i],  
-                         label = label_two_sig)
+        if sigma_to_plot ==2 :
+            ax1.fill_between(wl_binned, spec_low2_binned, spec_high2_binned,
+                            lw=0.0, alpha=0.2, facecolor=colours[i],  
+                            label = label_two_sig)
 
         # Overplot median model, binned to resolution of the observations
         if (show_ymodel == True):
@@ -2492,6 +2516,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                             ncol = 1, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
+
+    elif legend_location == 'outside right':
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))
+        
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
                             ncol = 1, frameon=False)    # Legend settings
@@ -3053,7 +3082,7 @@ def plot_stellar_flux(flux, wl, wl_min = None, wl_max = None, flux_min = None,
     return fig
 
 
-def plot_histogram(nbins, vals, colour, ax, shrink_factor):
+def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array):
     
   #  weights = np.ones_like(vals)/float(len(vals))
     
@@ -3064,8 +3093,10 @@ def plot_histogram(nbins, vals, colour, ax, shrink_factor):
     # Plot histogram border
     x,w,patches = ax.hist(vals, bins=nbins, histtype='stepfilled', lw = 0.8, 
                           facecolor='None', density=True, stacked=True)
+    
+    x_max = np.max(x_max_array)
         
-    ax.set_ylim(0, (1.1+shrink_factor)*x.max())
+    ax.set_ylim(0, (1.1+shrink_factor)*x_max)
     
     low3, low2, low1, median, high1, high2, high3 = confidence_intervals(len(vals), vals, 0)
     
@@ -3073,10 +3104,10 @@ def plot_histogram(nbins, vals, colour, ax, shrink_factor):
 
 
 def plot_parameter_panel(ax, param_vals, N_bins, param, 
-                         param_min, param_max, colour):
+                         param_min, param_max, colour, x_max_array):
     
     # Plot histogram
-    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0)
+    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array)
 
     # Adjust x-axis extent
     ax.set_xlim(param_min, param_max)
@@ -3118,6 +3149,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     # For each species
     for q in range(len(plot_parameters)):
 
+
         param = plot_parameters[q]
         param_label = param_labels[q]
         
@@ -3133,6 +3165,32 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             title_fmt = '.0f'
         else:
             title_fmt = '.2f'
+
+        # Find the maximum x to set the y off of 
+        x_max_array = []
+        for m in range(N_models):
+            
+            param_vals_m = param_vals[m]
+            
+            if (N_models == 1):
+                colour = parameter_colour_list[q]   # Each species has a different colour
+            else:
+                colour = retrieval_colour_list[m]   # Each retrieval has a different colour
+
+            # Set minimum and maximum mixing ratio plot limits
+            try:
+                param_min, param_max = span[q]
+            except:
+                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+                span[q] = _quantile(param_vals_m[:,q], quant)
+                param_min = span[q][0]
+                param_max = span[q][1]
+
+            x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
+                                alpha=0.4, edgecolor='None', density=True, stacked=True)
+            
+            
+            x_max_array.append(x.max())
 
         # For each retrieval
         for m in range(N_models):
@@ -3155,12 +3213,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
-                                                       param_min, param_max, colour)
+                                                       param_min, param_max, colour, x_max_array = x_max_array)
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
                 ax.text(0.10, (0.94 - m*0.10), retrieval_labels[m], color=colour, 
-                        fontsize = 12, horizontalalignment='left', 
+                        fontsize = 10, horizontalalignment='left', 
                         verticalalignment='top', transform=ax.transAxes)
                 
             # Plot median and +/- 1σ confidence intervals
@@ -3176,7 +3234,8 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
                 title = "{0} = {1}".format(param_label, title)
                 title = "{0}".format(title)
-                ax.set_title(title, fontsize = 12)
+                # Change back to 12
+                ax.set_title(title, fontsize = 11)
 
             # Create sub-axis for error bar
       #      newax = plt.gcf().add_axes(ax.get_position(), sharex=ax, frameon=False)
@@ -3194,7 +3253,27 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
       #      newax.tick_params(axis='both', which='major', labelsize=8)
 
             ax.set_yticks([])
+            # CHANGE THIS BACK TO LABEL SIZE 8
             ax.tick_params(axis='both', which='major', labelsize=8)
+
+            if (param == 'T'):
+                xmajorLocator = MultipleLocator(250)
+                xminorLocator = MultipleLocator(250/2)
+                ax.xaxis.set_major_locator(xmajorLocator)
+                ax.xaxis.set_minor_locator(xminorLocator)
+
+            if (param == 'log_r_m_SiO2') or (param == 'log_r_m_Fe2O3'):
+                xmajorLocator = MultipleLocator(1)
+                xminorLocator = MultipleLocator(0.5)
+                ax.xaxis.set_major_locator(xmajorLocator)
+                ax.xaxis.set_minor_locator(xminorLocator)
+
+            if (param == 'log_X_SiO2') or (param == 'log_X_Fe2O3'):
+                xmajorLocator = MultipleLocator(5)
+                xminorLocator = MultipleLocator(2.5)
+                ax.xaxis.set_major_locator(xmajorLocator)
+                ax.xaxis.set_minor_locator(xminorLocator)
+
 
         # Overplot true value
         if (truths != []):
@@ -3232,8 +3311,8 @@ def plot_histograms(planet_name, models, plot_parameters,
     N_models = len(models)
     N_params = len(plot_parameters)
 
-    if (N_models > 3):
-        raise Exception("Max supported number of retrieval models is 3.")
+    if (N_models > 4):
+        raise Exception("Max supported number of retrieval models is 4.")
 
     if (N_models == 1) and (parameter_colour_list == []):
         parameter_colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
@@ -3304,33 +3383,32 @@ def plot_histograms(planet_name, models, plot_parameters,
                         "mixing ratios or element ratios for multidimensional retrievals")
 
             # Create array to store the composition of the atmosphere  
-            log_X_stored = np.zeros(shape=(N_samples, N_species))
-
+            # log_X_stored = np.zeros(shape=(N_samples, N_species))
             # CLoad mixing ratios for atmosphere
-            for i in range(N_samples):
+            #for i in range(N_samples):
 
-                if ('H2' and 'He' in bulk_species):
+             #   if ('H2' and 'He' in bulk_species):
 
                     # Extract mixing ratios from MultiNest samples
-                    _, _, log_X_stored[i,2:], _, _, _, _, _ = split_params(samples[i], 
-                                                                            N_params_cum)
+                    #_, _, log_X_stored[i,2:], _, _, _, _, _ = split_params(samples[i], 
+                    #                                                        N_params_cum)
 
                     # Add H2 and He mixing ratios
-                    X_H2 = (1.0 - np.sum(np.power(10.0, log_X_stored[i,2:])))/(1.0 + He_fraction)
-                    X_He = He_fraction*X_H2
+                    #X_H2 = (1.0 - np.sum(np.power(10.0, log_X_stored[i,2:])))/(1.0 + He_fraction)
+                    #X_He = He_fraction*X_H2
 
-                    log_X_stored[i,0] = np.log10(X_H2)
-                    log_X_stored[i,1] = np.log10(X_He)                                   
+                    #log_X_stored[i,0] = np.log10(X_H2)
+                    #log_X_stored[i,1] = np.log10(X_He)                                   
 
-                else:
+                #else:
 
                     # Extract mixing ratios from MultiNest samples
-                    _, _, log_X_stored[i,1:], _, _, _, _, _ = split_params(samples[i], 
-                                                                            N_params_cum)
+                 #   _, _, log_X_stored[i,1:], _, _, _, _, _ = split_params(samples[i], 
+                 #                                                           N_params_cum)
 
                     # Add bulk mixing ratio
-                    X_0 = 1.0 - np.sum(np.power(10.0, log_X_stored[i,1:]), axis=0)
-                    log_X_stored[i,0] = np.log10(X_0)
+                 #   X_0 = 1.0 - np.sum(np.power(10.0, log_X_stored[i,1:]), axis=0)
+                  #  log_X_stored[i,0] = np.log10(X_0)
 
         # Or load samples in directly from external code
         else:
@@ -3346,8 +3424,11 @@ def plot_histograms(planet_name, models, plot_parameters,
 
             param = plot_parameters[q]
 
-            param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
+            # QUICK FIX DO NOT KEEP THIS
+            if param == 'log_P_cloud_SiO2':
+                param = 'log_P_top_slab_SiO2'
 
+            param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
       #      for j in range(len(chemical_species)):
       #          if (chemical_species[j] in param):
 
