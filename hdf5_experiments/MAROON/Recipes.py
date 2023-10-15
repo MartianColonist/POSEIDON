@@ -12,7 +12,7 @@ import sys
 import glob
 import time
 import copy
-from .Constants import Rsun, Rjup, Mjup, cLight, cLight_km
+from Constants import Rsun, Rjup, Mjup, cLight, cLight_km
 import matplotlib.pylab as plt
 from matplotlib.ticker import NullFormatter
 import matplotlib.patheffects as PathEffects
@@ -25,7 +25,6 @@ from astropy.convolution import convolve as astropy_convolve
 from astropy.convolution import Gaussian1DKernel, Box1DKernel
 from astropy.io import fits
 import astropy.units as u
-from astropy.table import Table
 import batman
 import pandas as pd
 from sklearn.decomposition import PCA
@@ -195,9 +194,9 @@ class LoadNight(object):
         # period in days
         perDay = self.per / 60 / 60 / 24
         # planet phases assuming circular orbit (0 = mid transit, 0.5 = mid eclipse)
-        # self.planet_phases = ((self.bjds - self.tt) / perDay) - np.floor(
-        #     (self.bjds - self.tt) / perDay
-        # )
+        self.planet_phases = ((self.bjds - self.tt) / perDay) - np.floor(
+            (self.bjds - self.tt) / perDay
+        )
         print("Calculating RV assuming circular orbit (from phase)")
         RV = calc_Vcirc_from_phase(Kp=self.Kp_0, phases=self.planet_phases)
         print(
@@ -2206,7 +2205,9 @@ def combine_nights(nights, phases):
         box_half_width=40,
         exposure_weights=ni.exposure_weights,
     )
-    ni.SNRmapCCF = ni.KpVsysMapCCF / map_std[:, None, None]
+    ni.SNRmapCCF = (
+        ni.KpVsysMapCCF - np.median(ni.KpVsysMapCCF, axis=(1, 2))[:, None, None]
+    ) / map_std[:, None, None]
 
     # phase-fold CCF matrix to compute SNR maps
     # night.calc_SNRmap(CCF_mat=CCF_mat, order_weights=order_weights, exposure_weights=exposure_weights, box_half_width=10)

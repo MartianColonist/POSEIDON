@@ -33,7 +33,9 @@ from POSEIDON.high_res import *
 
 # ***** Define model *****#
 
-model_name = "Fe Na Ca+ Cr gradient"  # Model name used for plots, output files etc.
+model_name = (
+    "Fe Na Ca+ Cr gradient deck"  # Model name used for plots, output files etc.
+)
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 # param_species = ["Fe", "Ca+", "Na", "K", "Li"]
@@ -49,6 +51,8 @@ model = define_model(
     param_species,
     PT_profile="gradient",
     high_res_params=high_res_params,
+    cloud_model="MacMad17",
+    cloud_type="deck",
 )  # gradient
 
 # model["b"] = 0.95
@@ -113,6 +117,7 @@ prior_types["V_sys"] = "uniform"
 prior_types["a"] = "uniform"
 prior_types["b"] = "uniform"
 prior_types["W_conv"] = "uniform"
+prior_types["log_P_cloud"] = "uniform"
 
 # Initialise prior range dictionary
 prior_ranges = {}
@@ -120,8 +125,8 @@ prior_ranges = {}
 # Specify prior ranges for each free parameter
 prior_ranges["T_ref"] = [1500, 4000]
 prior_ranges["T"] = [1500, 4000]
-prior_ranges["T_deep"] = [2500, 4000]
-prior_ranges["T_high"] = [2000, 3000]
+prior_ranges["T_deep"] = [2000, 4000]
+prior_ranges["T_high"] = [2000, 4000]
 prior_ranges["R_p_ref"] = [R_p, 0.05 * R_J]
 prior_ranges["log_Na"] = [-15, 0]
 prior_ranges["log_Fe"] = [-15, 0]
@@ -142,6 +147,7 @@ prior_ranges["V_sys"] = [-100, 100]
 prior_ranges["log_a"] = [-1, 1]
 prior_ranges["b"] = [0.01, 100]
 prior_ranges["W_conv"] = [1, 10]
+prior_ranges["log_P_cloud"] = [-6, 2]
 
 # Create prior object for retrieval
 priors = set_priors(planet, star, model, data, prior_types, prior_ranges)
