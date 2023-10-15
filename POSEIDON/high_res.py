@@ -9,40 +9,555 @@ from .constants import R_Sun
 from .constants import R_J, M_J
 import numpy as np
 from spectres import spectres
-from sklearn.decomposition import TruncatedSVD
-from scipy.ndimage import gaussian_filter1d
+from sklearn.decomposition import TruncatedSVD, PCA
+from scipy.ndimage import gaussian_filter1d, median_filter
 import cmasher as cmr
 import colormaps as cmaps
 import matplotlib.pyplot as plt
+import h5py
+import os
+from scipy.optimize import minimize
+import time
+
+def read_hdf5(file_path):
+    with h5py.File(file_path, 'r') as f:
+        data = {}
+        for name in f.keys():
+            data[name] = f[name][:]
+
+    return data
+
+def add_high_res_data(data_dir, name, flux, wl_grid, phi, transit_weight, overwrite=False):
+    os.makedirs(os.path.join(data_dir, name), exist_ok=True)
+    file_path = os.path.join(data_dir, name, 'data_raw.hdf5')
+    if os.path.exists(file_path):
+        if overwrite:
+            print('Overwriting data at {}'.format(file_path))
+            f = h5py.File(file_path, 'w')
+        else:
+            print('Raw data file already exists. Choose another name for observation or set overwrite=True to continue.')
+            return
+    else:
+        print('Creating raw data at {}'.format(file_path))
+        f = h5py.File(file_path, 'w')
+
+    f.create_dataset('flux', data=flux)
+    f.create_dataset('wl_grid', data=wl_grid)
+    f.create_dataset('phi', data=phi)
+    f.create_dataset('transit_weight', data=transit_weight)
+
+    f.close()
+
+    return
+
+def prepare_high_res_data(data_dir, name, spectrum_type, method, niter=15, n_PC=5, filter_size=(15,50), overwrite=False, Print=True):
+    raw_data_path = os.path.join(data_dir, name, 'data_raw.hdf5')
+    with h5py.File(raw_data_path, 'r') as f:
+        flux = f['flux'][:]
+        wl_grid = f['wl_grid'][:]
+        phi = f['phi'][:]
+        transit_weight = f['transit_weight'][:]
+        norder, nphi, npix = flux.shape
+
+    processed_data_path = os.path.join(data_dir, name, 'data_processed.hdf5')
+
+    if os.path.exists(processed_data_path):
+        if overwrite:
+            print('Overwriting data at {}'.format(processed_data_path))
+            f = h5py.File(processed_data_path, 'w')
+        else:
+            print("Processed data file already exists. Appending on current data file.")
+            print("You can set overwrite=True to overwrite everything.")
+            f = h5py.File(processed_data_path, 'a')
+            for key in f.keys():
+                if key not in ['uncertainties', 'flux_blaze_corrected']:
+                    del f[key]
+    else:
+        print('Creating processed data at {}'.format(processed_data_path))
+        f = h5py.File(processed_data_path, 'w')
+
+    f.create_dataset('flux', data=flux)
+    f.create_dataset('wl_grid', data=wl_grid)
+    f.create_dataset('phi', data=phi)
+    f.create_dataset('transit_weight', data=transit_weight)
+    
+    f.attrs['spectrum_type'] = spectrum_type
+    f.attrs['method'] = method
+
+    if 'uncertainties' in f.keys():
+        uncertainties = f['uncertainties'][:]
+    else:
+        uncertainties = fit_uncertainties(flux, n_PC, Print=Print)
+        f.create_dataset('uncertainties', data=uncertainties)
+
+    if 'flux_blaze_corrected' in f.keys():
+        flux_blaze_corrected = f['flux_blaze_corrected'][:]
+    else:
+        flux_blaze_corrected = blaze_correction(flux,filter_size, Print=Print)
+        f.create_dataset('flux_blaze_corrected', data=flux_blaze_corrected)
+
+    if spectrum_type == 'emission':
+        if method == 'PCA':
+            pass
+    
+    elif spectrum_type == 'transmission':
+        if method == 'sysrem_2022':
+            median = fit_spec(flux_blaze_corrected, spec='median') # TODO: check order, phase, wl
+            flux_blaze_corrected /= median
+            uncertainties /= median
+            residuals, Us = fast_filter(flux_blaze_corrected, uncertainties, niter)
+
+            Bs = np.zeros((norder, nphi, nphi))
+            for i in range(norder):
+                U = Us[i]
+                L = np.diag(1 / np.mean(uncertainties[i], axis=-1))
+                B = U @ np.linalg.pinv(L @ U) @ L
+                Bs[i] = B
+            f.create_dataset('Bs', data=Bs)
+        elif method == 'sysrem_2020':
+            residuals, _ = fast_filter(flux_blaze_corrected, uncertainties, niter)
+            rebuilt = flux_blaze_corrected - residuals
+            flux_blaze_corrected /= rebuilt
+            uncertainties /= rebuilt
+            # residuals = flux_blaze_corrected - np.median(flux_blaze_corrected, axis=2)[:, :, None] # mean normalize the data
+            residuals = flux_blaze_corrected - 1 # mean normalize the data
+        elif method == 'PCA':
+            median = fit_spec(flux_blaze_corrected, spec='median') # TODO: check order, phase, wl
+            flux_blaze_corrected /= median
+            rebuilt = PCA_rebuild(flux_blaze_corrected, n_components=10)
+            flux_blaze_corrected /= rebuilt
+            uncertainties /= (rebuilt*median)
+            # residuals = flux_blaze_corrected - np.median(flux_blaze_corrected, axis=2)[:, :, None] # mean normalize the data
+            residuals = flux_blaze_corrected - 1 # mean normalize the data
+        
+        f.create_dataset('residuals', data=residuals)
+        f.create_dataset('uncertainties_processed', data=uncertainties)
+
+    f.close()
+    return
 
 
-@jit
-def get_rot_kernel(V_sin_i, wl, W_conv):
+def read_high_res_data(data_dir, names=None, retrieval=True):
+    if not names:
+        names = os.listdir(data_dir)
+    elif isinstance(names, str):
+        names = [names]
+    data_all = {}
+    for name in names:
+        processed_data_path = os.path.join(data_dir, name, 'data_processed.hdf5')
+        data = read_hdf5(processed_data_path)
+        if retrieval:
+            data_all[name] = {}
+            data_all[name]['residuals'] = data['residuals']
+            data_all[name]['uncertainties_processed'] = data['uncertainties_processed']
+            data_all[name]['phi'] = data['phi']
+            data_all[name]['wl_grid'] = data['wl_grid']
+            data_all[name]['transit_weight'] = data['transit_weight']
+            data_all[name]['Bs'] = data['Bs']
+        else:
+            data_all[name] = data
+    return data_all
+
+
+def fit_uncertainties(flux, n_components=5, initial_guess=[0.5, 200], Print=True):
+    if Print:
+        print("Fitting Poisson uncertainties with {} components".format(n_components))
+    uncertainties = np.zeros(flux.shape)
+    norder = len(flux)
+    rebuilt = PCA_rebuild(flux, n_components=n_components)
+    residuals = flux-rebuilt
+
+    for i in range(norder):
+        # minimizing negative log likelihood is equivalent to maximizing log likelihood
+        def neg_likelihood(x):
+            a, b = x
+            sigma = np.sqrt(a * flux[i] + b)
+            loglikelihood = -0.5 * np.sum((residuals[i] / sigma) ** 2) - np.sum(
+                np.log(sigma)
+            )
+            return -loglikelihood
+
+        a, b = minimize(neg_likelihood, initial_guess, method="Nelder-Mead").x 
+        best_fit = np.sqrt(a * flux[i] + b)
+        uncertainties[i] = best_fit
+    
+    return PCA_rebuild(uncertainties, n_components=n_components)
+
+def blaze_correction(flux, filter_size, Print=True):
+    median_filter_size, gaussian_filter_size = filter_size
+    if Print:
+        print("Blaze correcting data with median filter size {} and gaussian filter size {}".format(median_filter_size, gaussian_filter_size))
+    blaze = np.zeros(flux.shape)
+    norder, nphi, npix = flux.shape
+    for i in range(norder):
+        order = flux[i]
+        median = np.median(order, axis=0)
+        order_norm = order / median
+        blaze[i] = order_norm
+
+    for i in range(norder):
+        for j in range(nphi):
+            blaze[i][j] = median_filter(blaze[i][j], size=median_filter_size)
+
+    for i in range(norder):
+        for j in range(nphi):
+            blaze[i][j] = gaussian_filter1d(blaze[i][j], sigma=gaussian_filter_size)
+
+    flux = flux / blaze
+
+    return flux
+
+
+def sysrem(data_array, uncertainties, niter=15):
     """
-    Get rotational kernel given V sin(i) and wavelength grid of the forward model.
+    SYSREM procedure adapted from https://github.com/stephtdouglas/PySysRem, originally used for detrending light curves.
+
+    Use this function in a high resolutional rerieval.
+    N_order: number of spectral order.
+    N_phi: number of time-resolved phases.
+    N_wl: number of wavelengths per spectral order.
 
     Args:
-        V_sin_i (float):
-            Projected rotational velocity of a star. The component of the rotational velocity along the line of sight, which is esponsible for broadening.
-        wl (np.array of float):
-            Wavelength grid of the forward model.
-        W_conv (int):
-            Width of the rotational kernel.
+        data_array (2D np.array of float):
+            Blaze-corrected data of a single order.
+            Shape: (N_phi x N_wl)
+        uncertainties (np.array of float):
+            Time and wavelength dependent uncertainties obtained from fit_uncertainties.
+            Shape: (N_phi x N_wl)
+        Niter (int):
+            Number of basis vectors to consider.
+
+    Returns:
+        residuals (np.array of float):
+            2D Array representing the residuals data of a single order after filtering.
+            Shape: (N_phi x N_wl)
+
+        U (2D np.array of float):
+            Basis vectors obtained from SYSREM of a single vector.
+            Shape: (N_phi x N_iter + 1)
     """
+    data_array = data_array.T
+    uncertainties = uncertainties.T
+    npix, nphi = data_array.shape
 
-    dRV = np.mean(2.0 * (wl[1:] - wl[0:-1]) / (wl[1:] + wl[0:-1])) * 2.998e5
-    n_ker = int(W_conv)
-    half_n_ker = (n_ker - 1) // 2
-    rot_ker = np.zeros(n_ker)
-    for ii in range(n_ker):
-        ik = ii - half_n_ker
-        x = ik * dRV / V_sin_i
-        if np.abs(x) < 1.0:
-            y = np.sqrt(1 - x**2)
-            rot_ker[ii] = y
-    rot_ker /= rot_ker.sum()
+    # Create empty matrices for residuals and corresponding errors with the found dimensions such that number of rows correspond to the number of available stars, and the number of columns correspond to each specific epoch:
+    residuals = np.zeros((npix, nphi))
 
-    return rot_ker
+    for i, light_curve in enumerate(data_array):
+        # Calculate residuals from the ORIGINAL light curve
+        residual = light_curve - np.median(light_curve)
+        # import the residual and error values into the matrices in the correct position (rows corresponding to stars, columns to epochs)
+        residuals[i] = residual
+
+    U = np.zeros((nphi, niter + 1))
+
+    for i in range(niter):  # The number of linear systematics to remove
+        w = np.zeros(npix)
+        u = np.ones(nphi) # Initial guesses
+
+        # minimize a and c values for a number of iterations. a -> u, c -> w
+        # each time minimizing equation (1) in Tamuz et al. 2005
+        for _ in range(10):
+            for pix in range(npix):
+                err_squared = uncertainties[pix] ** 2
+                numerator = np.sum(u * residuals[pix] / err_squared)
+                denominator = np.sum(u**2 / err_squared)
+                w[pix] = numerator / denominator
+
+            for phi in range(nphi):
+                err_squared = uncertainties[:, phi] ** 2
+                numerator = np.sum(w * residuals[:, phi] / err_squared)
+                denominator = np.sum(w**2 / err_squared)
+                u[phi] = numerator / denominator
+
+        # Create a matrix for the systematic errors:
+        systematic = np.zeros((npix, nphi))
+        for pix in range(npix):
+            for phi in range(nphi):
+                systematic[pix, phi] = u[phi] * w[pix]
+
+        # Remove the systematic error
+        residuals = residuals - systematic
+
+        U[:, i] = u
+
+    U[:, -1] = np.ones(nphi) # This corresponds to Gibson 2021. page 4625.
+
+    return residuals.T, U
+
+
+def fast_filter(flux, uncertainties, niter=15, Print=True):
+    """
+    TODO: Add docstrings.
+    Use this function in a high resolutional rerieval.
+
+    Args:
+
+    Returns:
+        residuals (3D np.array of float):
+            The residuals data of a single order after filtering.
+            Shape: (N_order x N_phi x N_wl)
+
+        Us (3D np.array of float):
+            Basis vectors obtained from SYSREM of a single vector.
+            Shape: (N_order x N_phi x N_iter+1)
+    """
+    if Print:
+        print("Filtering out systematics using SYSREM with {} iterations".format(niter))
+    norder, nphi, npix = flux.shape
+    residuals = np.zeros((norder, nphi, npix))
+    Us = np.zeros(
+        (norder, nphi, niter + 1)
+    )  
+ 
+    for i, order in enumerate(flux):
+        stds = uncertainties[i]
+        residual, U = sysrem(order, stds, niter)
+        residuals[i] = residual
+        Us[i] = U
+
+    return residuals, Us
+
+def PCA_rebuild(flux, n_components=5):
+    norder, nphi, npix = flux.shape
+    rebuilt = np.zeros_like(flux)
+    for i in range(norder):
+        order = flux[i]
+        svd = TruncatedSVD(n_components=n_components).fit(order)
+        rebuilt[i] = svd.transform(order) @ svd.components_
+    return rebuilt
+
+def fit_spec(flux, degree=2, spec="median", Print=True):
+    if Print:
+        print("Fitting out {} spectrum from each exposure".format(spec))
+    norder, nphi, npix = flux.shape
+    spec_fit = np.zeros_like(flux)
+    
+    for i in range(norder):
+        # construct a mean spectrum
+        if spec == 'mean':
+            mean_spec = np.mean(flux[i], axis=0)
+        elif spec == 'median':
+            mean_spec = np.median(flux[i], axis=0)
+        else:
+            raise Exception('Error: Please select "mean", "median"')
+        
+        for j in range(nphi):
+            # fit the mean spectrum to each exposure (typically with a second order polynomial)
+            mean_spec_poly_coeffs = np.polynomial.polynomial.polyfit(
+                mean_spec,
+                flux[i, j, :],
+                degree,
+            )
+            # reconstruct that polynomial
+            polynomial = np.polynomial.polynomial.polyval(
+                mean_spec, mean_spec_poly_coeffs
+            ).T
+            # fit as a polynomial of the mean spectrum and AFTER fit a slope
+            spec_fit[i, j, :] = polynomial
+
+    return spec_fit
+
+def get_RV_range(Kp_range, Vsys_range, phi):
+    RV_min = min(
+        [
+            np.min(Kp_range * np.sin(2 * np.pi * phi[i])) + np.min(Vsys_range)
+            for i in range(len(phi))
+        ]
+    )
+
+    RV_max = max(
+        [
+            np.max(Kp_range * np.sin(2 * np.pi * phi[i])) + np.max(Vsys_range)
+            for i in range(len(phi))
+        ]
+    )
+
+    RV_range = np.arange(RV_min, RV_max + 1)
+    return RV_range
+    
+
+def cross_correlate(Kp_range, Vsys_range, RV_range, wl, planet_spectrum, data, Print=True):
+    if Print:
+        time0 = time.time()
+    uncertainties = data["uncertainties_processed"]
+    residuals = data["residuals"]
+    phi = data["phi"]
+    wl_grid = data["wl_grid"]
+    transit_weight = data["transit_weight"]
+    max_transit_depth = np.max(1 - transit_weight)
+
+    norder, nphi, npix = residuals.shape
+    CCF_Kp_Vsys = np.zeros((len(Kp_range), len(Vsys_range)))
+
+    nRV = len(RV_range)
+    CCF_phase_RV = np.zeros((nphi, nRV))
+    models_shifted = np.zeros((nRV, norder, npix))
+    for RV_i, RV in enumerate(RV_range):
+        # Looping through each order and computing total log-L by summing logLs for each obvservation/order
+        for order_i in range(norder):
+            wl_slice = wl_grid[order_i]  # Cropped wavelengths
+            delta_lambda = RV * 1e3 / constants.c
+            wl_shifted = wl * (1.0 + delta_lambda)
+            F_p = np.interp(wl_slice, wl_shifted, planet_spectrum)
+            models_shifted[RV_i, order_i] = F_p  # choose not to filter
+
+    for phi_i in range(nphi):
+        print('Cross correlating phase {}'.format(phi_i))
+        loglikelihoods = np.zeros(nRV)
+        CCFs = np.zeros(nRV)
+        for order_i in range(norder):
+            f = residuals[order_i, phi_i] / uncertainties[order_i, phi_i]
+            f2 = f.dot(f)
+            for RV_i in range(nRV):
+                model = (-models_shifted[RV_i, order_i]) * (
+                    1 - transit_weight[phi_i]
+                ) / max_transit_depth + 1  # change to -model instead?
+                # divide by the median over wavelength to mimic blaze correction
+                # model = model / np.median(model)  # keep or not?
+                m = model / uncertainties[order_i, phi_i]
+                m2 = m.dot(m)
+                CCF = f.dot(m)
+                loglikelihood = -npix / 2 * np.log((m2 + f2 - 2.0 * CCF) / npix)
+                loglikelihoods[RV_i] += loglikelihood
+                CCFs[RV_i] += CCF
+        CCF_phase_RV[phi_i, :] = CCFs
+
+        for Kp_i, Kp in enumerate(Kp_range):
+            RV = Kp * np.sin(2 * np.pi * phi[phi_i]) + Vsys_range
+            CCF_Kp_Vsys[Kp_i] += np.interp(RV, RV_range, CCFs)
+    if Print:
+        time1 = time.time()
+        print("Cross correlation took {} seconds".format(time1-time0))
+    return CCF_Kp_Vsys, CCF_phase_RV
+
+
+def plot_CCF_Kp_Vsys(
+    Kp_range, Vsys_range, CCF_Kp_Vsys, species, Kp, Vsys=0, RM_mask_size=10, plot_label=False, savefig=False, output_path=None
+):
+
+    
+    # Expected value
+    CCF_Kp_Vsys = CCF_Kp_Vsys - np.mean(CCF_Kp_Vsys)
+    idx = find_nearest_idx(Vsys_range, Vsys)
+    mask = np.ones(len(Vsys_range), dtype=bool)
+    mask[idx - RM_mask_size : idx + RM_mask_size] = False
+    stdev = np.std(CCF_Kp_Vsys[:, mask])
+    maxx = (CCF_Kp_Vsys / stdev).max()
+
+    loc = np.where(CCF_Kp_Vsys / stdev == maxx)
+    fig, ax = plt.subplots(figsize=(17, 17), constrained_layout=True)
+    im = ax.imshow(
+        CCF_Kp_Vsys / stdev,
+        extent=[Vsys_range.min(), Vsys_range.max(), Kp_range.min(), Kp_range.max()],
+        aspect=len(Vsys_range) / len(Kp_range),
+        interpolation="bilinear",
+        cmap=cmaps.cividis,
+        origin="lower",
+    )
+    if plot_label:
+        ax.text(
+            0.1,
+            0.15,
+            species,
+            ha="left",
+            va="top",
+            transform=ax.transAxes,
+            color="white",
+            fontsize=60,
+        )
+
+    cbar = plt.colorbar(im, shrink=0.8)
+    plt.axvline(x=Vsys, color="white", ls="--", lw=2)
+    plt.axhline(y=Kp, color="white", ls="--", lw=2)
+    plt.plot(Vsys_range[loc[1]], Kp_range[loc[0]], "xk", ms=20, mew=4)
+    ax.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
+    ax.set_ylabel(r"K$_{p}$ (km/s)")
+    ax.set_title(r"$\Delta$ CCF ($\sigma$)")
+    if savefig:
+        plt.savefig(output_path + s + "_CCF_Kp_Vsys.png")
+    plt.show()
+    plt.close()
+
+    fig, ax = plt.subplots(figsize=(17, 5), constrained_layout=True)
+    idx = find_nearest_idx(Kp_range, Kp)
+
+    slicee = CCF_Kp_Vsys[idx]
+    ax.plot(Vsys_range, slicee)
+    ax.axis(
+        [
+            np.min(Vsys_range),
+            np.max(Vsys_range),
+            1.1 * slicee.min(),
+            1.1 * slicee.max(),
+        ]
+    )
+    ax.set_xlabel(r"$\Delta$V$_{sys}$(km/s)")
+    ax.set_ylabel(r"$\Delta$ CCF")
+    ax.set_title("Slice at K$_{p}$ = " + str(Kp) + " km/s")
+    ax.axvline(x=Vsys, ls="--", color="black")
+    if savefig:
+        plt.savefig(output_path + s + "_CCF_slice.png")
+    plt.show()
+    plt.close()
+
+def find_nearest_idx(array, value):
+    """
+    Function that will find the index of the value in the array nearest a given value
+
+        Input: array, number
+
+        Output: index of value in array closest to that number
+    """
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
+
+def plot_CCF_phase_RV(phi, RV_range, CCF_phase_RV, species, plot_label=False, savefig=False, output_path=None):
+    for i in range(len(CCF_phase_RV)):
+        CCF_phase_RV[i] = CCF_phase_RV[i] - np.mean(CCF_phase_RV[i])
+        # CCF_per_phase[i] = CCF_per_phase[i] / stdev
+    stdev = np.std(CCF_phase_RV)
+    maxx = (CCF_phase_RV).max()
+    fig, ax = plt.subplots(figsize=(17, 5), constrained_layout=True)
+    im = ax.imshow(
+        CCF_phase_RV,
+        extent=[RV_range.min(), RV_range.max(), phi.min(), phi.max()],
+        aspect="auto",
+        interpolation="bilinear",
+        cmap=cmaps.cividis,
+        origin="lower",
+    )
+    if plot_label:
+        ax.text(
+            0.1,
+            0.15,
+            species,
+            ha="left",
+            va="top",
+            transform=ax.transAxes,
+            color="white",
+            fontsize=60,
+        )
+
+    cbar = plt.colorbar(im)
+    # ax.plot(
+    #     np.arange(-180, -50),
+    #     (np.arange(-180, -50) + 100) / (200) / (2 * np.pi)
+    #     + 0.4,  # phi start from 90 degrees. sin(phi-90) -90 = -phi
+    #     "--",
+    #     color="red",
+    #     alpha=0.5,
+    # )
+    # plot(V_sys_arr[loc[1]], phi[loc[0]], "xk", ms=7)
+    # axis([V_sys_arr.min(), V_sys_arr.max(), phi.min(), phi.max()])
+    ax.set_xlabel("Planet Radial Velocity (km/s)")
+    ax.set_ylabel(r"$\phi$", rotation=0, labelpad=20)
+    ax.set_title(r"$\Delta$ Cross Correlation Coefficient")
+    if savefig:
+        plt.savefig(output_path + species + "_CCF_phase.png")
+    plt.show()
+    plt.close()
 
 
 def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, data):
@@ -113,7 +628,7 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
     CCF_sum = 0
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
     for j in range(N_order):  # Nord = 44 This takes 2.2 seconds to complete
-        wl_slice = wl_grid[j].copy()  # Cropped wavelengths
+        wl_slice = wl_grid[j] # Cropped wavelengths
         F_p_F_s = np.zeros((N_phi, N_wl))  # "shifted" model spectra array at each phase
         for i in range(N_phi):  # This for loop takes 0.025 seconds Nphi = 79
             wl_shifted_p = wl_slice * (1.0 - dl_p[i])
@@ -197,14 +712,14 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
             Loglikelihood value.
     """
 
-    wl_grid = data["wl_grid"][:]
-    residuals = data["residuals"][:]
-    Bs = data["Bs"][:]
-    phi = data["phi"][:]
-    transit_weight = data["transit_weight"][:]
-    uncertainties = data["uncertainties"][:]  # in case we want to null uncertainties
+    wl_grid = data["wl_grid"]
+    residuals = data["residuals"]
+    Bs = data["Bs"]
+    phi = data["phi"]
+    transit_weight = data["transit_weight"]
+    uncertainties = data.get("uncertainties_processed")  # in case we want to null uncertainties
 
-    N_order, N_phi, N_wl = residuals.shape
+    norder, nphi, npix = residuals.shape
 
     N = residuals.size
 
@@ -216,69 +731,63 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
 
     # Initializing loglikelihood
     loglikelihood_sum = 0
-    CCF_sum = 0
+    if b is not None:
+        loglikelihood_sum -= N * np.log(b)
 
     max_transit_depth = np.max(1 - transit_weight)
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
-    for i in range(N_order):
+    for i in range(norder):
         wl_slice = wl_grid[i]  # Cropped wavelengths
 
         models_shifted = np.zeros(
-            (N_phi, N_wl)
+            (nphi, npix)
         )  # "shifted" model spectra array at each phase
 
-        for j in range(N_phi):
+        for j in range(nphi):
             wl_shifted = wl_slice * (1.0 - delta_lambda[j])
-            # wl_shifted_p = wl_slice * np.sqrt((1.0 - dl_p[j]) / (1 + dl_p[j]))
             F_p = np.interp(wl_shifted, wl, planet_spectrum)
-
-            # Fp = interpolate.splev(wl_shifted_p, cs_p, der=0) # linear interpolation, einsum
             models_shifted[j] = (1 - transit_weight[j]) / max_transit_depth * (-F_p) + 1
 
         # divide by the median over wavelength to mimic blaze correction
         models_shifted = (models_shifted.T / np.median(models_shifted, axis=1)).T
 
         B = Bs[i]
-        models_filtered = models_shifted - B @ models_shifted  # filter the model
+        models_filtered = (models_shifted - B @ models_shifted) * a  # filter the model and scale by alpha
 
         if b is not None:
-            for j in range(N_phi):
-                m = models_filtered[j] / uncertainties[i, j] * a
+            for j in range(nphi):
+                m = models_filtered[j] / uncertainties[i, j]
                 m2 = m.dot(m)
                 f = residuals[i, j] / uncertainties[i, j]
                 f2 = f.dot(f)
                 CCF = f.dot(m)
                 loglikelihood = -0.5 * (m2 + f2 - 2.0 * CCF) / (b**2)
                 loglikelihood_sum += loglikelihood
-                CCF_sum += CCF
+
         elif uncertainties is not None:  # nulled b
-            for j in range(N_phi):
-                m = models_filtered[j] / uncertainties[i, j] * a
+            for j in range(nphi):
+                m = models_filtered[j] / uncertainties[i, j]
                 m2 = m.dot(m)
                 f = residuals[i, j] / uncertainties[i, j]
                 f2 = f.dot(f)
                 CCF = f.dot(m)
-                loglikelihood = -N_wl / 2 * np.log((m2 + f2 - 2.0 * CCF) / N_wl)
+                loglikelihood = -npix / 2 * np.log((m2 + f2 - 2.0 * CCF) / npix)
                 loglikelihood_sum += loglikelihood
-                CCF_sum += CCF
+
         else:  # nulled b and uncertainties
-            for j in range(N_phi):
+            for j in range(nphi):
                 m = models_filtered[j]
                 m2 = m.dot(m)
                 f = residuals[i, j]
                 f2 = f.dot(f)
                 CCF = f.dot(m)
-                loglikelihood = -N_wl / 2 * np.log((m2 + f2 - 2.0 * CCF) / N_wl)
+                loglikelihood = -npix / 2 * np.log((m2 + f2 - 2.0 * CCF) / npix)
                 loglikelihood_sum += loglikelihood
-                CCF_sum += CCF
-
-    if b is not None and uncertainties is not None:
-        loglikelihood_sum -= N * np.log(b)
-
+        
     # loglikelihood -= np.sum(np.log(uncertainties))
     # loglikelihood -= N / 2 * np.log(2*np.pi)          (These two terms are normalization)
 
-    return loglikelihood_sum, CCF_sum
+    return loglikelihood_sum
 
 
 def loglikelihood_high_res(
@@ -343,467 +852,98 @@ def loglikelihood_high_res(
     if "b" in high_res_param_names:
         b = high_res_params[np.where(high_res_param_names == "b")[0][0]]
     else:
-        b = model.get("b")  # Set a definite value or in case we want to null b
+        b = model.get("b")  # Set a value or else we null b
 
-    if method is "pca" and spectrum_type is "emission":
-        # instrument profile convolution
-        R_instrument = model["R_instrument"]
-        R = model["R"]
-        V_sin_i = data["V_sin_i"]
-        rot_kernel = get_rot_kernel(V_sin_i, wl, W_conv)
-        F_p_rot = np.convolve(
-            planet_spectrum, rot_kernel, mode="same"
-        )  # calibrate for planetary rotation
-        xker = np.arange(-20, 21)
-        sigma = (R / R_instrument) / (
-            2 * np.sqrt(2.0 * np.log(2.0))
-        )  # model is right now at R=250K.  IGRINS is at R~45K. We make gaussian that is R_model/R_IGRINS ~ 5.5
-        yker = np.exp(
-            -0.5 * (xker / sigma) ** 2.0
-        )  # instrumental broadening kernel; TODO: Understand this.
-        yker /= yker.sum()
-        F_p_conv = np.convolve(F_p_rot, yker, mode="same")
-        F_s_conv = np.convolve(
-            star_spectrum, yker, mode="same"
-        )  # no need to times (R)^2 because F_p, F_s are already observed value on Earth
-        loglikelihood, _ = loglikelihood_PCA(
-            V_sys, K_p, d_phi, a, wl, F_p_conv, F_s_conv, data
-        )
-        return loglikelihood
-
-    elif method is "sysrem" and spectrum_type is "transmission":
-        if W_conv is not None:
-            # np.convolve use smaller kernel. Apply filter to the spectrum. And multiply by scale factor a.
-            planet_spectrum = gaussian_filter1d(planet_spectrum, W_conv)
-        loglikelihood_sum = 0
-        for key in data.keys():
-
-            loglikelihood, _ = loglikelihood_sysrem(
-                V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data[key]
+    if spectrum_type is "emission":
+        if method is not "PCA":
+            raise Exception("Emission spectroscopy only supports PCA for now.")
+        else:
+            # instrument profile convolution
+            R_instrument = model["R_instrument"]
+            R = model["R"]
+            V_sin_i = data["V_sin_i"]
+            rot_kernel = get_rot_kernel(V_sin_i, wl, W_conv)
+            F_p_rot = np.convolve(
+                planet_spectrum, rot_kernel, mode="same"
+            )  # calibrate for planetary rotation
+            xker = np.arange(-20, 21)
+            sigma = (R / R_instrument) / (
+                2 * np.sqrt(2.0 * np.log(2.0))
+            )  # model is right now at R=250K.  IGRINS is at R~45K. We make gaussian that is R_model/R_IGRINS ~ 5.5
+            yker = np.exp(
+                -0.5 * (xker / sigma) ** 2.0
+            )  # instrumental broadening kernel; TODO: Understand this.
+            yker /= yker.sum()
+            F_p_conv = np.convolve(F_p_rot, yker, mode="same")
+            F_s_conv = np.convolve(
+                star_spectrum, yker, mode="same"
+            )  # no need to times (R)^2 because F_p, F_s are already observed value on Earth
+            loglikelihood, _ = loglikelihood_PCA(
+                V_sys, K_p, d_phi, a, wl, F_p_conv, F_s_conv, data
             )
-            loglikelihood_sum += loglikelihood
-        return loglikelihood_sum
+            return loglikelihood
+
+    elif spectrum_type is "transmission":
+        if method not in ["sysrem", "sysrem_2022", "SYSREM"]:
+            raise Exception("Transmission spectroscopy only supports fast filtering with SYSREM (Gibson et al. 2022).")
+        else:
+            if W_conv is not None:
+                planet_spectrum = gaussian_filter1d(planet_spectrum, W_conv)
+            loglikelihood = 0
+            for key in data.keys():
+                loglikelihood += loglikelihood_sysrem(
+                    V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data[key]
+                )
+            return loglikelihood
     else:
-        raise Exception("Problem with high res retreival data.")
-
-
-def sysrem(data_array, stds, N_iter=15):
+        raise Exception("Spectrum type can only be 'emission' or 'transmission'.")
+    
+def get_rot_kernel(V_sin_i, wl, W_conv):
     """
-    SYSREM procedure adapted from https://github.com/stephtdouglas/PySysRem, originally used for detrending light curves.
-
-    Use this function in a high resolutional rerieval.
-    N_order: number of spectral order.
-    N_phi: number of time-resolved phases.
-    N_wl: number of wavelengths per spectral order.
+    Get rotational kernel given V sin(i) and wavelength grid of the forward model.
 
     Args:
-        data_array (2D np.array of float):
-            Blaze-corrected data of a single order.
-            Shape: (N_phi x N_wl)
-        stds (np.array of float):
-            Time and wavelength dependent uncertainties obtained from fit_uncertainties.
-            Shape: (N_phi x N_wl)
-        Niter (int):
-            Number of basis vectors to consider.
-
-    Returns:
-        residuals (np.array of float):
-            2D Array representing the residuals data of a single order after filtering.
-            Shape: (N_phi x N_wl)
-
-        U (2D np.array of float):
-            Basis vectors obtained from SYSREM of a single vector.
-            Shape: (N_phi x N_iter + 1)
+        V_sin_i (float):
+            Projected rotational velocity of a star. The component of the rotational velocity along the line of sight, which is esponsible for broadening.
+        wl (np.array of float):
+            Wavelength grid of the forward model.
+        W_conv (int):
+            Width of the rotational kernel.
     """
-    data_transpose = data_array.T
-    N_wl, N_phi = data_transpose.shape
 
-    # Create empty matrices for residuals and corresponding errors with the found dimensions such that number of rows correspond to the number of available stars, and the number of columns correspond to each specific epoch:
-    residuals = np.zeros((N_wl, N_phi))
+    dRV = np.mean(2.0 * (wl[1:] - wl[0:-1]) / (wl[1:] + wl[0:-1])) * 2.998e5
+    n_ker = int(W_conv)
+    half_n_ker = (n_ker - 1) // 2
+    rot_ker = np.zeros(n_ker)
+    for ii in range(n_ker):
+        ik = ii - half_n_ker
+        x = ik * dRV / V_sin_i
+        if np.abs(x) < 1.0:
+            y = np.sqrt(1 - x**2)
+            rot_ker[ii] = y
+    rot_ker /= rot_ker.sum()
 
-    median_list = []
-    # Import each of the star files
-    for i, wl_channel in enumerate(data_transpose):
-        median_list.append(np.median(wl_channel))
-
-        # Calculate residuals from the ORIGINAL light curve
-        channel_residual = wl_channel - np.median(wl_channel)
-        # channel_residual = wl_channel
-
-        # import the residual and error values into the matrices in the correct position (rows corresponding to stars, columns to epochs)
-        residuals[i] = channel_residual
-
-    N_wl, N_phi = np.shape(residuals)
-
-    # This medians.txt file is a 2D list with the first column being the medians
-    # of stars' magnitudes at different epochs (the good ones) and their
-    # standard deviations, so that they can be plotted against the results after
-    # errors are taken out below.
-
-    U = np.zeros((N_phi, N_iter + 1))
-
-    for i in range(N_iter):  # The number of linear systematics to remove
-        w = np.zeros(N_wl)
-        u = np.ones(N_phi)
-
-        # minimize a and c values for a number of iterations, Niter
-        for _ in range(10):
-            # Using the initial guesses for each a value of each epoch, minimize c for each star
-            for pix in range(N_wl):
-                err_squared = stds.T[pix] ** 2
-                numerator = np.sum(u * residuals[pix] / err_squared)
-                denominator = np.sum(u**2 / err_squared)
-                w[pix] = numerator / denominator
-
-            # Using the c values found above, minimize a for each epoch
-            for phi in range(N_phi):
-                err_squared = stds.T[:, phi] ** 2
-                numerator = np.sum(w * residuals[:, phi] / err_squared)
-                denominator = np.sum(w**2 / err_squared)
-                u[phi] = numerator / denominator
-
-        # Create a matrix for the systematic errors:
-        systematic = np.zeros((N_wl, N_phi))
-        for pix in range(N_wl):
-            for phi in range(N_phi):
-                systematic[pix, phi] = u[phi] * w[pix]
-
-        # Remove the systematic error
-        residuals = residuals - systematic
-
-        U[:, i] = u
-
-    # for i in range(len(residuals)):
-    #     residuals[i] += median_list[i]
-
-    U[:, -1] = np.ones(N_phi)
-
-    return residuals.T, U
+    return rot_ker
 
 
-def fast_filter(data, uncertainties, N_iter=15):
-    """
-    TODO: Add docstrings.
-    Use this function in a high resolutional rerieval.
+def remove_outliers(wl_grid, flux):
+    norder, nphi, npix = flux.shape
+    cleaned_flux = flux.copy()
+    # Process each order separately
+    noutliers = 0
+    for i in range(norder):
+        # Fit a 10th order polynomial to the residual spectrum
+        for j in range(nphi):
+            coeffs = np.polynomial.polynomial.polyfit(wl_grid[i], flux[i, j], 20)
+            fitted_spectra = np.polynomial.polynomial.polyval(wl_grid[i], coeffs)
+            std = np.std(flux[i, j] - fitted_spectra)
+            # Identify and replace 5σ outliers in the residual spectrum
+            outliers = np.abs(flux[i, j] - fitted_spectra) > 5 * std
 
-    Args:
-
-    Returns:
-        residuals (3D np.array of float):
-            The residuals data of a single order after filtering.
-            Shape: (N_order x N_phi x N_wl)
-
-        Us (3D np.array of float):
-            Basis vectors obtained from SYSREM of a single vector.
-            Shape: (N_order x N_phi x N_iter+1)
-    """
-    N_order, N_phi, N_wl = data.shape
-    residuals = np.zeros((N_order, N_phi, N_wl))
-    Us = np.zeros(
-        (N_order, N_phi, N_iter + 1)
-    )  # TODO: could turn into np.ones for clarity. This corresponds to Gibson 2021. page 4625.
-    data = data.copy()
-    for i, order in enumerate(data):
-        stds = uncertainties[i]
-        residual, U = sysrem(order, stds, N_iter)
-        residuals[i] = residual
-        Us[i] = U
-
-    return residuals, Us
-
-
-def make_data_cube(data):
-    N_order, N_phi, N_wl = data.shape  # yup, this again--Norders x Nphases x Npixels
-    # SVD/PCA method
-
-    data_scale = np.zeros(data.shape)
-    data_arr = np.zeros(data.shape)
-
-    NPC = 4  # change the "4" to whatever. This is the number of PC's to remove
-
-    for i in range(N_order):
-        # taking only first four vectors, reconstructiong, and saving
-        u, s, vh = np.linalg.svd(data[i], full_matrices=False)  # decompose
-        s[NPC:] = 0
-        W = np.diag(s)
-        A = np.dot(u, np.dot(W, vh))
-        data_scale[i] = A
-
-        # removing first four vectors...this is the 'processesed data'
-        u, s, vh = np.linalg.svd(
-            data[i], full_matrices=False
-        )  # decompose--not sure why I did it again....guess you don't really need this line
-        s[0:NPC] = 0
-        W = np.diag(s)
-        A = np.dot(u, np.dot(W, vh))
-
-        # sigma clipping sort of--it really doesn't make a yuge difference.
-
-        sigma = np.std(A)
-        median = np.median(A)
-        loc = np.where(A > 3 * sigma + median)
-        A[loc] = 0  # *0.+20*sig
-        loc = np.where(A < -3 * sigma + median)
-        A[loc] = 0  # *0.+20*sig
-
-        data_arr[i] = A
-
-    return data_scale, data_arr
-
-
-from scipy.optimize import minimize
-
-
-def fit_uncertainties(data_raw, NPC=5):
-    uncertainties = np.zeros(data_raw.shape)
-    residuals = np.zeros(data_raw.shape)
-    N_order = len(data_raw)
-    for i in range(N_order):
-        order = data_raw[i]
-        svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(order)
-
-        residual = order - (svd.transform(order) @ svd.components_)
-        residuals[i] = residual
-
-    for i in range(N_order):
-
-        def fun(x):
-            a, b = x
-            sigma = np.sqrt(a * data_raw[i] + b)
-            loglikelihood = -0.5 * np.sum((residuals[i] / sigma) ** 2) - np.sum(
-                np.log(sigma)
+            cleaned_flux[i, j, outliers] = np.interp(
+                wl_grid[i, outliers], wl_grid[i, ~outliers], flux[i, j, ~outliers]
             )
-            return -loglikelihood
+            noutliers += np.sum(outliers)
+    print("{} outliers removed from a total of {} pixels".format(noutliers, flux.size))
 
-        a, b = minimize(fun, [0.5, 200], method="Nelder-Mead").x
-        best_fit = np.sqrt(a * data_raw[i] + b)
-
-        svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(best_fit)
-
-        uncertainty = svd.transform(best_fit) @ svd.components_
-        uncertainties[i] = uncertainty
-    return uncertainties
-
-
-def fit_uncertainties_and_remove_outliers(data_raw, NPC=5):
-    uncertainties = np.zeros(data_raw.shape)
-    residuals = np.zeros(data_raw.shape)
-    data_cleaned = data_raw.copy()
-    N_order = len(data_raw)
-    mean = data_raw.mean()
-    std = data_raw.std()
-
-    mask = (data_raw - mean) > 5 * std
-
-    for i in range(N_order):
-        order = data_raw[i]
-        svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(order)
-        PCA_model = svd.transform(order) @ svd.components_
-        residual = order - PCA_model
-        residuals[i] = residual
-        data_cleaned[i][mask[i]] = PCA_model[mask[i]]
-
-    for i in range(N_order):
-
-        def fun(x):
-            a, b = x
-            sigma = np.sqrt(a * data_cleaned[i] + b)
-            loglikelihood = -0.5 * np.sum((residuals[i] / sigma) ** 2) - np.sum(
-                np.log(sigma)
-            )
-            return -loglikelihood
-
-        a, b = minimize(fun, [1, 1], method="Nelder-Mead").x
-
-        best_fit = np.sqrt(a * data_cleaned[i] + b)
-
-        svd = TruncatedSVD(n_components=NPC, n_iter=15, random_state=42).fit(best_fit)
-
-        uncertainty = svd.transform(best_fit) @ svd.components_
-        uncertainties[i] = uncertainty
-
-    # uncertainties[mask] = 1e7
-    return data_cleaned, uncertainties
-
-
-from POSEIDON.utility import read_high_res_data
-
-
-def cross_correlation_plot(
-    data_path, output_path, species, true_Kp, ture_Vsys, plot_label=False
-):
-    def get_coordinate_list(x_values, y_values):
-        x, y = np.meshgrid(x_values, y_values)
-        coordinates = np.dstack([x, y]).reshape(-1, 2)
-        return [tuple(coord) for coord in coordinates]
-
-    if isinstance(species, str):
-        species = [species]
-    for s in species:
-        K_p_arr, V_sys_arr, RV_range, loglikelihood, CCF, CCF_per_phase = pickle.load(
-            open(output_path + s + "_cross_correlation_results.pic", "rb")
-        )
-
-        phi = pickle.load(open(data_path + "phi.pic", "rb"))
-        RV_min = min(
-            [
-                np.min(K_p_arr * np.sin(2 * np.pi * phi[i])) + np.min(V_sys_arr)
-                for i in range(len(phi))
-            ]
-        )
-        RV_max = max(
-            [
-                np.max(K_p_arr * np.sin(2 * np.pi * phi[i])) + np.max(V_sys_arr)
-                for i in range(len(phi))
-            ]
-        )
-
-        RV_range = np.arange(RV_min, RV_max + 1)
-        K_p = true_Kp
-        V_sys = ture_Vsys  # True value
-
-        stdev_range_x = np.where((K_p_arr < K_p - 50) | (K_p_arr > K_p + 50))[0]
-        stdev_range_y = np.where((V_sys_arr < V_sys - 50) | (V_sys_arr > V_sys + 50))[0]
-        stdev_range = get_coordinate_list(stdev_range_x, stdev_range_y)
-
-        CCF = CCF - np.mean(CCF)
-        stdev = np.std(CCF[stdev_range])
-        maxx = (CCF / stdev).max()
-        loc = np.where(CCF / stdev == maxx)
-        fig, ax = plt.subplots(figsize=(17, 17), constrained_layout=True)
-        im = ax.imshow(
-            CCF / stdev,
-            extent=[V_sys_arr.min(), V_sys_arr.max(), K_p_arr.min(), K_p_arr.max()],
-            aspect=len(V_sys_arr) / len(K_p_arr),
-            interpolation="bilinear",
-            cmap=cmaps.cividis,
-            origin="lower",
-        )
-        if plot_label:
-            ax.text(
-                0.1,
-                0.15,
-                s,
-                ha="left",
-                va="top",
-                transform=ax.transAxes,
-                color="white",
-                fontsize=60,
-            )
-
-        cbar = plt.colorbar(im, shrink=0.8)
-        plt.axvline(x=V_sys, color="white", ls="--", lw=2)
-        plt.axhline(y=K_p, color="white", ls="--", lw=2)
-        plt.plot(V_sys_arr[loc[1]], K_p_arr[loc[0]], "xk", ms=20, mew=4)
-        ax.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
-        ax.set_ylabel(r"K$_{p}$ (km/s)")
-        ax.set_title(r"$\Delta$ CCF ($\sigma$)")
-        plt.savefig(output_path + s + "_CCF_SNR.png")
-        plt.show()
-        plt.close()
-
-        # loglikelihood = loglikelihood - np.mean(loglikelihood)
-        # stdev = np.std(loglikelihood[stdev_range])
-        # maxx = (loglikelihood / stdev).max()
-        # loc = np.where(loglikelihood / stdev == maxx)
-        # fig, ax = subplots(figsize=(17, 17), constrained_layout=True)
-        # im = ax.imshow(
-        #     loglikelihood / stdev,
-        #     extent=[V_sys_arr.min(), V_sys_arr.max(), K_p_arr.min(), K_p_arr.max()],
-        #     aspect=len(V_sys_arr) / len(K_p_arr),
-        #     interpolation="bilinear",
-        #     cmap=cmaps.cividis,
-        #     origin="lower",
-        # )
-
-        # ax.text(
-        #     0.1,
-        #     0.15,
-        #     s,
-        #     ha="left",
-        #     va="top",
-        #     transform=ax.transAxes,
-        #     color="white",
-        #     fontsize=60,
-        # )
-
-        # cbar = colorbar(im, shrink=0.8)
-        # axvline(x=V_sys, color="white", ls="--", lw=2)
-        # axhline(y=K_p, color="white", ls="--", lw=2)
-        # plot(V_sys_arr[loc[1]], K_p_arr[loc[0]], "xk", ms=20, mew=4)
-        # ax.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
-        # ax.set_ylabel(r"K$_{p}$ (km/s)")
-        # ax.set_title(r"$\Delta$ log($\mathcalL$) ($\sigma$)")
-        # savefig(output_path + s + "_CCF_SNR.png")
-        # show()
-        # close()
-
-        # slice at Kp
-        fig, ax = plt.subplots(figsize=(17, 5), constrained_layout=True)
-        index = np.argmin(np.abs(K_p_arr - K_p_arr[loc[0]]))
-
-        slicee = CCF[index]
-        ax.plot(V_sys_arr, slicee)
-        ax.axis(
-            [
-                np.min(V_sys_arr),
-                np.max(V_sys_arr),
-                1.1 * slicee.min(),
-                1.1 * slicee.max(),
-            ]
-        )
-        ax.set_xlabel(r"$\Delta$V$_{sys}$(km/s)")
-        ax.set_ylabel(r"$\Delta$ CCF")
-        ax.set_title("Slice at K$_{p}$ = " + str(K_p_arr[loc[0]][0]) + " km/s")
-        ax.axvline(x=V_sys, ls="--", color="black")
-        plt.savefig(output_path + s + "_CCF_slice.png")
-        plt.show()
-        plt.close()
-
-        # for 77 injection
-        for i in range(len(CCF_per_phase)):
-            CCF_per_phase[i] = CCF_per_phase[i] - np.mean(CCF_per_phase[i])
-            # stdev = np.std(CCF_per_phase[i])
-            # CCF_per_phase[i] = CCF_per_phase[i] / stdev
-
-        maxx = (CCF_per_phase).max()
-        loc = np.where(CCF_per_phase / stdev == maxx)
-        fig, ax = plt.subplots(figsize=(17, 5), constrained_layout=True)
-        im = ax.imshow(
-            CCF_per_phase,
-            extent=[RV_range.min(), RV_range.max(), phi.min(), phi.max()],
-            aspect="auto",
-            interpolation="bilinear",
-            # cmap="cividis",
-            cmap=cmaps.cividis,
-            origin="lower",
-        )
-        if plot_label:
-            ax.text(
-                0.1,
-                0.15,
-                s,
-                ha="left",
-                va="top",
-                transform=ax.transAxes,
-                color="white",
-                fontsize=60,
-            )
-
-        cbar = plt.colorbar(im)
-        # ax.plot(
-        #     np.arange(-180, -50),
-        #     (np.arange(-180, -50) + 100) / (200) / (2 * np.pi)
-        #     + 0.4,  # phi start from 90 degrees. sin(phi-90) -90 = -phi
-        #     "--",
-        #     color="red",
-        #     alpha=0.5,
-        # )
-        # plot(V_sys_arr[loc[1]], phi[loc[0]], "xk", ms=7)
-        # axis([V_sys_arr.min(), V_sys_arr.max(), phi.min(), phi.max()])
-        ax.set_xlabel("Planet Radial Velocity (km/s)")
-        ax.set_ylabel(r"$\phi$", rotation=0, labelpad=20)
-        ax.set_title(r"$\Delta$ Cross Correlation Coefficient")
-        plt.savefig(output_path + s + "_CCF_phase.png")
-        plt.show()
-        plt.close()
+    return cleaned_flux
