@@ -2713,15 +2713,6 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         prior_ranges['M_p'] = [prior_ranges['M_p'][0]/M_p_norm,
                                prior_ranges['M_p'][1]/M_p_norm]
 
-    # Normalise retrieved planet mass parameter into Jupiter or Earth masses
-    if (mass_unit == 'M_J'):
-        M_p_norm = M_J
-    elif (mass_unit == 'M_E'):
-        M_p_norm = M_E
-    if ('M_p' in prior_ranges):
-        prior_ranges['M_p'] = [prior_ranges['M_p'][0]/M_p_norm,
-                               prior_ranges['M_p'][1]/M_p_norm]
-
     # Normalise retrieved system distance parameter into parsecs
     if (distance_unit == 'pc'):
         d_norm = parsec

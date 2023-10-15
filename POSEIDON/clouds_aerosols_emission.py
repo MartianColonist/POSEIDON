@@ -156,7 +156,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     N_species = len(aerosol_species)
 
     # Create array to store the log mixing ratios from the grid 
-    sigma_Mie_grid = shared_memory_array(rank, comm, (N_species, 6, r_m_num, wl_num))
+    sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species, 6, r_m_num, wl_num))
     
     # Only first core needs to load the aerosols into shared memory
     if (rank == 0):
