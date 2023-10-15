@@ -20,6 +20,17 @@ from scipy.optimize import minimize
 import time
 
 
+def airtovac(wlA):
+    # Convert wavelengths (nm) in air to wavelengths in vaccuum (empirical).
+    s = 1e4 / wlA
+    n = 1 + (
+        0.00008336624212083
+        + 0.02408926869968 / (130.1065924522 - s**2)
+        + 0.0001599740894897 / (38.92568793293 - s**2)
+    )
+    return wlA * n
+
+
 def read_hdf5(file_path):
     with h5py.File(file_path, "r") as f:
         data = {}
@@ -431,21 +442,30 @@ def cross_correlate(
             F_p = np.interp(wl_slice, wl_shifted, planet_spectrum)
             models_shifted[RV_i, order_i] = F_p  # choose not to filter
 
-    m = -models_shifted  # negative of transmission spectrum gives absorption
-    m -= np.mean(m, axis=1)[:, None]  # mean normalize the model
-    residuals -= np.mean(residuals, axis=2)[:, :, None]  # mean normalize the data
-
     for phi_i in range(nphi):
-        for RV_i in range(nRV):
-            f = residuals[:, phi_i, :]
-            CCF = np.sum(f[:, :] * m[RV_i, :] / uncertainties[:, phi_i, :] ** 2)
-            CCF_phase_RV[phi_i, RV_i] += CCF
+        print("Cross correlating phase {}".format(phi_i))
+        loglikelihoods = np.zeros(nRV)
+        CCFs = np.zeros(nRV)
+        for order_i in range(norder):
+            f = residuals[order_i, phi_i] / uncertainties[order_i, phi_i]
+            f2 = f.dot(f)
+            for RV_i in range(nRV):
+                model = (-models_shifted[RV_i, order_i]) * (
+                    1 - transit_weight[phi_i]
+                ) / max_transit_depth + 1  # change to -model instead?
+                # divide by the median over wavelength to mimic blaze correction
+                # model = model / np.median(model)  # keep or not?
+                m = model / uncertainties[order_i, phi_i]
+                m2 = m.dot(m)
+                CCF = f.dot(m)
+                loglikelihood = -npix / 2 * np.log((m2 + f2 - 2.0 * CCF) / npix)
+                loglikelihoods[RV_i] += loglikelihood
+                CCFs[RV_i] += CCF
+        CCF_phase_RV[phi_i, :] = CCFs
 
-    CCF_phase_RV = transit_weight[:, None] * CCF_phase_RV
-    CCFs = np.sum(CCF_phase_RV, axis=0)
-    for Kp_i, Kp in enumerate(Kp_range):
-        RV = Kp * np.sin(2 * np.pi * phi[phi_i]) + Vsys_range
-        CCF_Kp_Vsys[Kp_i] += np.interp(RV, RV_range, CCFs)
+        for Kp_i, Kp in enumerate(Kp_range):
+            RV = Kp * np.sin(2 * np.pi * phi[phi_i]) + Vsys_range
+            CCF_Kp_Vsys[Kp_i] += np.interp(RV, RV_range, CCFs)
     if Print:
         time1 = time.time()
         print("Cross correlation took {} seconds".format(time1 - time0))
@@ -934,8 +954,9 @@ def loglikelihood_high_res(
                 planet_spectrum = gaussian_filter1d(planet_spectrum, W_conv)
             loglikelihood = 0
             for key in data.keys():
+                wl_vacuum = airtovac(wl * 1e4) / 1e4
                 loglikelihood += loglikelihood_sysrem(
-                    V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data[key]
+                    V_sys, K_p, d_phi, a, b, wl_vacuum, planet_spectrum, data[key]
                 )
             return loglikelihood
     else:
