@@ -1115,6 +1115,9 @@ def generate_latex_param_names(param_names):
             latex_names += [string]
             continue
         if ('r_m' in param):
+
+            aerosol_name = param.split('_')[3]
+
             if('SiO2' in param):
                 string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{SiO_2}$'
                 latex_names += [string]
@@ -1123,13 +1126,25 @@ def generate_latex_param_names(param_names):
                 string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{Fe_2O_3}$'
                 latex_names += [string]
                 continue
+            else:
+                string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{' + aerosol_name + '}$'
+                latex_names += [string]
+                continue
+
         if ('X' in param):
+
+            aerosol_name = param.split('_')[2]
+
             if('SiO2' in param):
                 string = '$\\log \\, \\mathrm{SiO_2}$'
                 latex_names += [string]
                 continue
             if('Fe2O3' in param):
                 string = '$\\log \\, \\mathrm{Fe_2O_3}$'
+                latex_names += [string]
+                continue
+            else:
+                string = '$\\log \\, \\mathrm{' + aerosol_name + '}$'
                 latex_names += [string]
                 continue
         if ('C_to_O' in param):

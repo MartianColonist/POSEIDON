@@ -3119,7 +3119,8 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
     
 def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_colour_list, 
                               retrieval_colour_list, retrieval_labels, span, truths, 
-                              N_rows, N_columns, N_bins):
+                              N_rows, N_columns, N_bins,
+                              vertical_lines, vertical_lines_colors):
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3279,6 +3280,11 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         if (truths != []):
             ax.axvline(x=truths[q], linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
 
+        if (vertical_lines != []):
+            for n in range(len(vertical_lines)):
+                ax.axvline(x=vertical_lines[n][q], linewidth=1.5, linestyle='-', color=vertical_lines_colors[n], alpha=0.8)
+
+
         # Add parameter label
       #  ax.text(0.06, 0.94, param_label, color=colour, 
       #          fontsize = 10, horizontalalignment='left', 
@@ -3300,7 +3306,8 @@ def plot_histograms(planet_name, models, plot_parameters,
                     He_fraction = 0.17, N_rows = None, N_columns = None, 
                     axes = [], retrieval_codes = [], external_samples = [],
                     external_param_names = [], plt_label = None, 
-                    save_fig = True):
+                    save_fig = True,
+                    vertical_lines = [], vertical_line_colors = []):
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -3442,7 +3449,8 @@ def plot_histograms(planet_name, models, plot_parameters,
     fig = plot_retrieved_parameters(axes, param_vals, plot_parameters, 
                                     parameter_colour_list, retrieval_colour_list, 
                                     retrieval_labels, span, truths, 
-                                    N_rows, N_columns, N_bins)
+                                    N_rows, N_columns, N_bins,
+                                    vertical_lines, vertical_line_colors)
     
     # Save figure to file
     if (save_fig == True):
