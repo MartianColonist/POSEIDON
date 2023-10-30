@@ -1223,7 +1223,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
                  data_marker_size_list = [], text_annotations = [],
-                 annotation_pos = [], wl_axis = 'log', 
+                 annotation_pos = [], err_colour = 'black', wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
                  show_data_bin_width = True):
@@ -1279,6 +1279,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             A list of text annotations for Figure decoration (e.g. molecule names)
         annotation_pos (list of tuples of str, optional):
             (x, y) locations of the text annotations in the previous argument.
+        err_colour (string, optional):
+            Colour of the data error bars (white works best for a dark background)
         wl_axis (str, optional):
             The type of x-axis to use ('log' or 'linear').
         figure_shape (str, optional):
@@ -1615,7 +1617,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                                                    markersize=data_markers_size[i], 
                                                    capsize = 2, ls = 'none', elinewidth = 0.8, 
                                                    color=data_colours[i], alpha = 0.8,
-                                                   ecolor = 'black', label=label_i,
+                                                   ecolor = err_colour, label=label_i,
                                                    zorder = 100)
             else:
                 markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
@@ -1623,7 +1625,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                                                    markersize=data_markers_size[i], 
                                                    capsize=2, ls='none', elinewidth=0.8, 
                                                    color=data_colours[i], alpha = 0.8,
-                                                   ecolor = 'black', label=label_i,
+                                                   ecolor = err_colour, label=label_i,
                                                    zorder = 100)
 
             [markers.set_alpha(1.0)]
@@ -1719,7 +1721,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
               y_min = None, y_max = None, y_unit = 'transit_depth',
               plt_label = None, data_colour_list = [], data_labels = [], 
               data_marker_list = [], data_marker_size_list = [],
-              wl_axis = 'log', figure_shape = 'default', 
+              err_colour = 'black', wl_axis = 'log', figure_shape = 'default', 
               legend_location = 'upper right', legend_box = False,
               show_data_bin_width = True):
     ''' 
@@ -1753,6 +1755,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             A list of marker styles for the observational data.
         data_marker_size_list (list, optional):
             A list of marker sizes for the observational data.
+        err_colour (string, optional):
+            Colour of the data error bars (white works best for a dark background)
         wl_axis (str, optional):
             The type of x-axis to use ('log' or 'linear').
         figure_shape (str, optional):
@@ -1958,14 +1962,14 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
                                                markersize=data_markers_size[i], 
                                                capsize=2, ls='none', elinewidth=0.8, 
                                                color=colours[i], alpha = 0.8,
-                                               ecolor = 'black', label=label_i)
+                                               ecolor = err_colour, label=label_i)
         else:
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                marker=data_markers[i], 
                                                markersize=data_markers_size[i], 
                                                capsize=2, ls='none', elinewidth=0.8, 
                                                color=colours[i], alpha = 0.8,
-                                               ecolor = 'black', label=label_i)
+                                               ecolor = err_colour, label=label_i)
 
         [markers.set_alpha(1.0)]
             
@@ -2043,11 +2047,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            data_colour_list = [], data_labels = [],
                            data_marker_list = [], data_marker_size_list = [],
                            binned_colour_list = [], text_annotations = [],
-                           annotation_pos = [],
+                           annotation_pos = [], err_colour = 'black',
                            wl_axis = 'log', figure_shape = 'default',
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
-                           show_data_bin_width = True,
+                           show_data_bin_width = True, 
                            sigma_to_plot = 2):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2110,6 +2114,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             A list of text annotations for Figure decoration (e.g. molecule names)
         annotation_pos (list of tuples of str, optional):
             (x, y) locations of the text annotations in the previous argument.
+        err_colour (string, optional):
+            Colour of the data error bars (white works best for a dark background)
         wl_axis (str, optional):
             The type of x-axis to use ('log' or 'linear').
         figure_shape (str, optional):
@@ -2454,7 +2460,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                                                markersize=data_markers_size[i], 
                                                capsize=2, ls='none', elinewidth=0.8, 
                                                color=data_colours[i], alpha = 0.8,
-                                               ecolor = 'black', label=label_i,
+                                               ecolor = err_colour, label=label_i,
                                                zorder = 100)
         else:
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
@@ -2462,7 +2468,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                                                markersize=data_markers_size[i], 
                                                capsize=2, ls='none', elinewidth=0.8, 
                                                color=data_colours[i], alpha = 0.8,
-                                               ecolor = 'black', label=label_i,
+                                               ecolor = err_colour, label=label_i,
                                                zorder = 100)
 
         [markers.set_alpha(1.0)]
