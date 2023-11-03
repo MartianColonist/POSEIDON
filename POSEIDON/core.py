@@ -1439,10 +1439,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         elif (scattering == True):
 
-            # Calculate combined single scattering albedo
+            # Calculate weighted, combined single scattering albedo
+            # From Eq 8 in Batalha 2019
+            # w = ((tau_ray * w_Ray) + (tau_Mie * w_Mie))/(tau_tot) 
+            # where w_Ray = 1 (perfect scatterers)
             w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
 
-            # Calculate combined scattering asymmetry parameter
+            # Calculate weighted, combined scattering asymmetry parameter
+            # From 
+            # g = ((w_Ray*delta_tau_Ray*g_Ray) + (w_Mie * delta_tau_Mie * g_Mie))/ (w_ray*delta_tau_ray + w_Mie*delta_tau_Mie)
+            # where g_Ray = 0 (isotropic scatterers)
             g_tot = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
 
             # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)

@@ -480,9 +480,15 @@ def tri_diag_solve(l, a, b, c, d):
 
 
 @jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True)
 def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot, 
                   hard_surface = 0, tridiagonal = 0, 
                   Gauss_quad = 5, numt = 1):
+    
+    ###############################################
+    # ORIGINAL PICASO PREAMBLE (get_thermal_1d)
+    ###############################################
+
     '''
     This function uses the source function method, which is outlined here : 
     https://agupubs.onlinelibrary.wiley.com/doi/pdf/10.1029/JD094iD13p16287
@@ -496,6 +502,9 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
     Pressure ; dyne/cm2
     Reminder: Flux = pi * Intensity, so if you are trying to compare the result of this with 
     a black body you will need to compare with pi * BB !
+
+    Adapted from get_thermal_1d
+    
     Parameters
     ----------
     nlevel : int 
@@ -538,10 +547,39 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
         Thermal flux in CGS units (erg/cm3/s) in a matrix that is 
         numg x numt x nwno
     '''
+    
+    ###############################################
+    # POSEIDON PREAMBLE
+    ###############################################
+
+    # From PICASO we redefine we define or compute the following original inputs : 
+    # 
+    # nlevel as N_layer + 1 = len(P) + 1
+    # wno = 1/wl
+    # nwno as N_wl = len(wl)
+    # 
+    # numg = Num Gauss angles = Gauss_quad = 5
+    # numt = Num Chebychev angles =  1 
+    # we define our system to default to the 1x10 scheme where tangle = 0 and gangle = 5. See : 
+    # https://natashabatalha.github.io/picaso/notebooks/8_SphericalIntegration.html?highlight=geometry
+    #
+    # tlevel = T_level and is converted below 
+    #
+    # dtau = dtau_tot (differential extinction optical depth (from absorption + scattering) across each later)
+    # w0 = w_tot      (weighted, combined single scattering albedo)
+    # cosb = g_tot    (weighted, combined scattering asymmetry parameter)
+    # 
+    # plevel = P_level and is converted below 
+    #
+    # ubar 1 is calculated below (outgoing incident angles)
+    # 
+    # surf_reflect = 0s (for emission) 
+    # hard_surface = 0 (support only for gas giants)
+    # tridiagonal = 0 (support only for tridiagonal matrices)
 
     N_wl = len(wl)
     N_layer = len(P)
-    N_level = N_layer + 1 # Number of levels
+    N_level = N_layer + 1 # Number of levels (one more than the number of layers)
 
     #### No reflective surface (for now)
     surf_reflect = np.zeros(N_wl)
@@ -562,6 +600,7 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
     P_level = np.power(10.0, log_P_level)
 
     # Load Gaussian quadrature mu and weights
+    # gangle, gweight from get_angles_1d(num_gangle) 
     if (Gauss_quad == 5):
         gangle = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
         gweight = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])
@@ -572,11 +611,19 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
         gweight = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])      
 
     # Calculate whatever ubar1 represents from the Gaussian angles
+    # Taken from compute_disco(ng, nt, gangle, tangle, phase)
+    # Here we assume the symmetric case where chebychev angles = 1 (equatorial latitude) so tangle = 0
+    # phase_angle is assumed to be 0
+    
     cos_theta = 1.0
     longitude = np.arcsin((gangle-(cos_theta-1.0)/(cos_theta+1.0))/(2.0/(cos_theta+1)))
     colatitude = np.arccos(0.0)              # Colatitude = 90-latitude 
     f = np.sin(colatitude)                   # Define to eliminate repetition
     ubar1 = np.outer(np.cos(longitude), f) 
+
+    ###############################################
+    # IMPORTED PICASO CODE (with variable name changes)
+    ###############################################
 
     # Store hemispheric mean prefactor
     mu1 = 0.5  # From Table 1 Toon
@@ -593,6 +640,7 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
     b1 = (all_b[1:,:] - b0) / dtau_tot # Eqn 26, Toon+1989
 
     # Hemispheric mean parameters from Table 1 of Toon+1989 
+    # Changed 
     g1 = 2.0 - (w_tot * (1 + g_tot))
     g2 = w_tot * (1 - g_tot)
 

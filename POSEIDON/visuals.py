@@ -3254,14 +3254,13 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
       #      newax.tick_params(axis='both', which='major', labelsize=8)
 
             ax.set_yticks([])
-            # CHANGE THIS BACK TO LABEL SIZE 8
             ax.tick_params(axis='both', which='major', labelsize=8)
 
-            if (param == 'T'):
-                xmajorLocator = MultipleLocator(250)
-                xminorLocator = MultipleLocator(250/2)
-                ax.xaxis.set_major_locator(xmajorLocator)
-                ax.xaxis.set_minor_locator(xminorLocator)
+            #if (param == 'T'):
+            #    xmajorLocator = MultipleLocator(250)
+            #    xminorLocator = MultipleLocator(250/2)
+            #    ax.xaxis.set_major_locator(xmajorLocator)
+            #    ax.xaxis.set_minor_locator(xminorLocator)
 
             if (param == 'log_r_m_SiO2') or (param == 'log_r_m_Fe2O3'):
                 xmajorLocator = MultipleLocator(1)
@@ -3468,6 +3467,148 @@ def plot_histograms(planet_name, models, plot_parameters,
 Integration of below functions with plot_histograms pending.
 '''
 
+def plot_composition(planet, models, plot_type = 'abundances', include_bulk = False,
+                     plot_species = [], plot_ratios = [], colour_list = [], 
+                     retrieval_labels = [], span = [], truths = [], N_bins = 40,
+                     He_fraction = 0.17, N_rows = None, N_columns = None, 
+                     plt_label = None):
+
+
+    if (len(models) > 3):
+        raise Exception("Max supported number of retrieval models is 3.")
+
+    if ((len(models) == 1) and (colour_list == [])):
+        colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
+                       'saddlebrown', 'grey', 'brown']
+    elif ((len(models) == 1) and (colour_list != [])):
+        if (plot_species != []):
+            if (len(colour_list) != len(plot_species)):
+                raise Exception("Number of colours does not match the requested " + 
+                                "number of species to plot.")
+        elif (plot_ratios != []):
+            if (len(colour_list) != len(plot_ratios)):
+                raise Exception("Number of colours does not match the requested " + 
+                                "number of elemental ratios to plot.")
+    elif ((len(models) >= 2) and (colour_list == [])):
+        colour_list = ['purple', 'dodgerblue', 'forestgreen']
+    elif ((len(models) >= 2) and (colour_list != [])):
+        if (len(colour_list) != len(models)):
+            raise Exception("Number of colours does not match the number of " + 
+                            "retrieval models.")
+
+    X_vals = []    # List to store mixing ratios for all models, samples, and species
+
+    # We must include bulk gases for elemental ratios (e.g. H2 for O/H ratio)
+    if (plot_type == 'elemental_ratios'):
+        include_bulk = True
+
+    # For each retrieval
+    for m in range(len(models)):
+
+        model = models[m]
+
+        # Unpack model and atmospheric properties
+        planet_name = planet['planet_name']
+        model_name = model['model_name']
+        param_species = model['param_species']
+        bulk_species = model['bulk_species']
+        N_params_cum = model['N_params_cum']
+
+        # Unpack number of free parameters
+        param_names = model['param_names']
+        n_params = len(param_names)
+
+        # Identify output directory location
+        output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+
+        # Identify directory location where the plot will be saved
+        plot_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+        # Load relevant output directory
+        output_prefix = model_name + '-'
+
+        # Change directory into MultiNest result file folder
+        os.chdir(output_dir + 'MultiNest_raw/')
+
+        # Run PyMultiNest analyser to extract posterior samples
+        analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
+                                        verbose = False)
+        samples = analyzer.get_equal_weighted_posterior()[:,:-1]
+
+        # Change directory back to directory where user's python script is located
+        os.chdir('../../../../')
+
+        # Find total number of available posterior samples from MultiNest 
+        N_samples = len(samples[:,0])
+        N_species_param = len(param_species)
+
+        # Add bulk species to beginning of array (first histogram) if desired
+        if (include_bulk == True):
+
+            if ('H2' and 'He' in bulk_species):
+                all_species = np.append(np.array(['He']), param_species)
+                all_species = np.append(np.array(['H2']), all_species)
+                log_X_stored = np.zeros(shape=(N_samples, N_species_param+2))
+            else:
+                all_species = np.append(bulk_species, param_species)
+                log_X_stored = np.zeros(shape=(N_samples, N_species_param+1))
+
+        # Bulk species not plotted
+        else:
+            all_species = param_species
+            log_X_stored = np.zeros(shape=(N_samples, N_species_param))
+
+        # Generate spectrum and PT profiles from selected samples
+        for i in range(N_samples):
+
+            # Append bulk component abundance
+            if (include_bulk == True):
+
+                if ('H2' and 'He' in bulk_species):
+
+                    # Extract mixing ratios from MultiNest samples
+                    _, _, log_X_stored[i,2:], _, _, _, _, _ = split_params(samples[i], 
+                                                                           N_params_cum)
+
+                    X_H2 = (1.0 - np.sum(np.power(10.0, log_X_stored[i,2:])))/(1.0 + He_fraction)
+                    X_He = He_fraction*X_H2
+
+                    log_X_stored[i,0] = np.log10(X_H2)
+                    log_X_stored[i,1] = np.log10(X_He)                                   
+
+                else:
+
+                    # Extract mixing ratios from MultiNest samples
+                    _, _, log_X_stored[i,1:], _, _, _, _, _ = split_params(samples[i], 
+                                                                           N_params_cum)
+
+                    X_0 = 1.0 - np.sum(np.power(10.0, log_X_stored[i,1:]), axis=0)
+                    log_X_stored[i,0] = np.log10(X_0)
+
+            else:
+
+                # Extract mixing ratios from MultiNest samples
+                _, _, log_X_stored[i,:], _, _, _, _, _ = split_params(samples[i], 
+                                                                      N_params_cum)
+
+        X_vals_m = np.power(10.0, log_X_stored)
+
+        X_vals.append(X_vals_m)
+
+    # Plot elemental ratios
+    if (plot_type == 'elemental_ratios'):
+        fig = plot_retrieved_element_ratios(X_vals, all_species, plot_ratios,
+                                            colour_list, retrieval_labels, span,
+                                            truths, N_rows, N_columns, N_bins)
+
+    # Save figure to file
+    if (plt_label == None):
+        file_name = (plot_dir + planet_name + '_' + plot_type + '.png')
+    else:
+        file_name = (plot_dir + planet_name + '_' + plt_label + '_' + plot_type + '.png')
+
+    fig.savefig(file_name, bbox_inches='tight', dpi=800)
+
 def elemental_ratio(all_species, X_vals, element_1, element_2):
     '''
     Helper function.
@@ -3559,6 +3700,39 @@ def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
 
         ax = plt.subplot(gs[row_idx, column_idx:column_idx+1])
 
+        x_max_array = []
+        # For each retrieval
+        for m in range(len(X_vals)):
+
+            X_vals_m = X_vals[m]
+
+            N_samples = np.shape(X_vals_m)[0]
+
+            ratio_vals = elemental_ratio(all_species, X_vals_m, elements[0], elements[1])
+
+            if (elements[1] == 'H'):
+                ratio_vals = ratio_vals / solar_values[ratio]
+            
+            if (N_models == 1):
+                colour = colour_list[q]   # Each ratio has a different colour
+            else:
+                colour = colour_list[m]   # Each retrieval has a different colour
+
+            # Set minimum and maximum mixing ratio plot limits
+            try:
+                x_min, x_max = span[q]
+            except:
+                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+
+                if (elements[1] == 'H'):
+                    span[q] = _quantile(np.log10(ratio_vals), quant)
+                else:
+                    span[q] = _quantile(ratio_vals, quant)
+                x_min = span[q][0]
+                x_max = span[q][1]
+
+            x_max_array.append(x_max)
+
         # For each retrieval
         for m in range(len(X_vals)):
 
@@ -3590,12 +3764,13 @@ def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
                 x_max = span[q][1]
         
             # Plot histogram
+            
             if (elements[1] == 'H'):
-                low1, median, high1 = plot_parameter_panel(ax, np.log10(ratio_vals), ratio,
-                                                           N_bins, x_min, x_max, colour)
+                low1, median, high1 = plot_parameter_panel(ax, np.log10(ratio_vals), N_bins, ratio,
+                                                        x_min, x_max, colour, x_max_array)
             else:
-                low1, median, high1 = plot_parameter_panel(ax, ratio_vals, ratio, 
-                                                           N_bins, x_min, x_max, colour)
+                low1, median, high1 = plot_parameter_panel(ax, ratio_vals, N_bins, ratio,
+                                                        x_min, x_max, colour, x_max_array)
 
             print(0.5*((median-low1) + (high1 - median)))
 
