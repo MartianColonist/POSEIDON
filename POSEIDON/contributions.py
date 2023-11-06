@@ -1234,7 +1234,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         colour_list = colour_list[:len(spectrum_contribution_list)+1]
         
         fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                    plt_label = 'Cloud Contribution Plot',
+                    plt_label = 'Spectral Contribution Plot',
                     spectra_labels = labels,
                     plot_full_res = False, 
                     save_fig = False,

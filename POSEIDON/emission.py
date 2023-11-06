@@ -480,15 +480,15 @@ def tri_diag_solve(l, a, b, c, d):
 
 
 @jit(nopython=True, cache=True)
-@jit(nopython=True, cache=True)
-def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot, 
+def emission_Toon(P, T, wl, dtau_tot, 
+                  kappa_Ray, kappa_cloud, kappa_tot,
+                  w_cloud, g_cloud, zone_idx,
                   hard_surface = 0, tridiagonal = 0, 
                   Gauss_quad = 5, numt = 1):
     
     ###############################################
-    # ORIGINAL PICASO PREAMBLE (get_thermal_1d)
+    # ORIGINAL PICASO PREAMBLE (fluxes.py, get_thermal_1d())
     ###############################################
-
     '''
     This function uses the source function method, which is outlined here : 
     https://agupubs.onlinelibrary.wiley.com/doi/pdf/10.1029/JD094iD13p16287
@@ -566,8 +566,8 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
     # tlevel = T_level and is converted below 
     #
     # dtau = dtau_tot (differential extinction optical depth (from absorption + scattering) across each later)
-    # w0 = w_tot      (weighted, combined single scattering albedo)
-    # cosb = g_tot    (weighted, combined scattering asymmetry parameter)
+    # w0 = w_tot      calculated below (weighted, combined single scattering albedo)
+    # cosb = g_tot    calculated below (weighted, combined scattering asymmetry parameter)
     # 
     # plevel = P_level and is converted below 
     #
@@ -576,6 +576,34 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
     # surf_reflect = 0s (for emission) 
     # hard_surface = 0 (support only for gas giants)
     # tridiagonal = 0 (support only for tridiagonal matrices)
+    #
+    # We additionally loop over the gauss angles at the end
+    # and apply the gass weight, a step performed in justdoit.py , picaso()
+    #############################################################################  
+
+    # Calculate weighted, combined single scattering albedo
+    # From W0_no_raman in optics.py, compute_opacity()
+    # W0_no_raman = (TAURAY*0.99999 + TAUCLD*single_scattering_cld) / (TAUGAS + TAURAY + TAUCLD
+    # or 
+    # w = ((tau_ray * w_Ray) + (tau_Mie * w_Mie))/(tau_tot) 
+    # where w_Ray = 1 (perfect scatterers), and taus = kappas
+    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
+
+    # Calculate weighted, combined scattering asymmetry parameter
+    # From COSB in optics.py, compute_opacity()
+    # COSB = ftau_cld*asym_factor_cld 
+    #      = (single_scattering_cld * TAUCLD)/(single_scattering_cld * TAUCLD + TAURAY)) * asym_factor_cloud
+    # or 
+    # g = ((w_Ray*delta_tau_Ray*g_Ray) + (w_Mie * delta_tau_Mie * g_Mie))/ (w_ray*delta_tau_ray + w_Mie*delta_tau_Mie)
+    # where g_Ray = 0 (isotropic scatterers), w_rRay = 1, and taus = kappas 
+    g_tot = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+
+    # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip all the axis)
+    P = np.flip(P)
+    T = np.flip(T)
+    dtau_tot = np.flip(dtau_tot, axis = 0)
+    w_tot = np.flip(w_tot, axis = 0)
+    g_tot = np.flip(g_tot, axis = 0)   
 
     N_wl = len(wl)
     N_layer = len(P)
@@ -613,7 +641,6 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
     # Calculate whatever ubar1 represents from the Gaussian angles
     # Taken from compute_disco(ng, nt, gangle, tangle, phase)
     # Here we assume the symmetric case where chebychev angles = 1 (equatorial latitude) so tangle = 0
-    # phase_angle is assumed to be 0
     
     cos_theta = 1.0
     longitude = np.arcsin((gangle-(cos_theta-1.0)/(cos_theta+1.0))/(2.0/(cos_theta+1)))
@@ -622,7 +649,9 @@ def emission_Toon(P, T, wl, dtau_tot, w_tot, g_tot,
     ubar1 = np.outer(np.cos(longitude), f) 
 
     ###############################################
-    # IMPORTED PICASO CODE (with variable name changes)
+    # IMPORTED PICASO CODE *
+    #
+    # * variable names are changed, and we loop over gauss angles at end 
     ###############################################
 
     # Store hemispheric mean prefactor
