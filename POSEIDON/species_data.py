@@ -29,7 +29,7 @@ masses = {'H2O':   18.010565, 'CH4':   16.031300, 'NH3':   17.026549, 'HCN':   2
           'COCl2': 97.932620, 'H2':    2.0156500, 'He':    4.0026030, 'Fe+':   55.934942,
           'Ti':    47.947946, 'Ti+':   47.947946, 'H':     1.0078250, 'H-':    1.0083740,  
           'e-':    5.4858e-4, 'Mg':    23.985042, 'Mg+':   23.985042, 'Mn':    54.938050,
-          'Ca':    39.962591, 'Ca+':   39.962591}
+          'Ca':    39.962591, 'Ca+':   39.962591, 'CH3':   15.023475}
 
 # Polarisabilities (cgs units, cm^3) used for computing refractive index and Rayleigh scattering - Mostly from CRC handbook
 polarisabilities = {'H2':  0.80e-24,  'He':  0.21e-24, 'N2':   1.74e-24,  'O2':  1.58e-24, 
@@ -46,6 +46,6 @@ polarisabilities = {'H2':  0.80e-24,  'He':  0.21e-24, 'N2':   1.74e-24,  'O2': 
                     'PN':  3.69e-24,  'PO':  3.69e-24, 'PS':   3.69e-24,  'Fe':  9.47e-24,   # No values, so ~ polarisability of P
                     'Fe+': 9.47e-24,  'Ti':  14.8e-24, 'Ti+':  14.8e-24,  'H':   0.67e-24,
                     'H-':  30.5e-24,  'e-':  0.00e-24, 'Mg':   10.6e-24,  'Mg+': 10.6e-24,
-                    'Mn':  9.40e-24,  'Ca':  22.8e-24, 'Ca+':  22.8e-24}   
+                    'Mn':  9.40e-24,  'Ca':  22.8e-24, 'Ca+':  22.8e-24,  'CH3': 2.59e-24}   # No literature for CH3, so ~ to CH4
 
 

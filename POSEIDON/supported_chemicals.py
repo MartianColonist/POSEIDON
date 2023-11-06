@@ -14,7 +14,8 @@ supported_species = np.array(['AlH', 'AlO', 'BeH', 'C2H2', 'CH', 'CH4', 'CO',
                               'PH3', 'PN', 'PO', 'PS', 'Rb', 'SH', 'SO2', 'ScH', 
                               'SiH', 'SiO', 'Ti', 'Ti+', 'TiH', 'TiO', 'VO',
                               'Mg', 'Mg+', 'Ca', 'Ca+', 'Mn' 'Cr', 'V', 'V+',
-                              'Ba', 'Ba+', 'Al', 'Ni', 'O', 'Sc', 'H'])
+                              'Ba', 'Ba+', 'Al', 'Ni', 'O', 'Sc', 'H',
+                              'CH3'])
 
 # Chemical species supported in the fastchem equilibrium grid
 fastchem_supported_species = np.array(['H2O', 'CO2', 'OH', 'SO', 'C2H2', 
