@@ -1260,7 +1260,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         y_unit (str, optional):
             The unit of the y-axis
             (Options: 'transit_depth', 'eclipse_depth', '(Rp/Rs)^2', 
-            '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp').
+            '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp', 'Fs', 'F*').
         plt_label (str, optional):
             The label for the plot.
         colour_list (list, optional):
@@ -1311,7 +1311,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         plot_type = 'time_average_transmission'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
         plot_type = 'emission'
-    elif (y_unit in ['Fp']):
+    elif (y_unit in ['Fp', 'Fs', 'F*']):
         plot_type = 'direct_emission'
     elif (y_unit in ['T_bright']):
         plot_type = 'brightness_temp'
@@ -1483,9 +1483,13 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     ymajor_spacing = round_sig_figs((y_max_plt - y_min_plt), 1)/10
     yminor_spacing = ymajor_spacing/10
     
-    major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
-    minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
-    
+    if (np.log10(ymajor_spacing) <= 10.0):    
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
+    else:    # Bug fix for surface spectra where Fp > 1e10 
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 2)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 2)
+
     # If last digit of y labels would be a multiple of 6,7,8,or 9, bump up to 10
     if (ymajor_spacing > 5*np.power(10, major_exponent)):
         ymajor_spacing = 1*np.power(10, major_exponent+1)
@@ -1495,7 +1499,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         yminor_spacing = 1*np.power(10, minor_exponent+1)
     elif (yminor_spacing == 3*np.power(10, minor_exponent)):
         yminor_spacing = 2*np.power(10, minor_exponent)
-    
+
     # Refine y range to be a multiple of the tick spacing (only if range not specified by user)
     if (y_min == None):
         y_min_plt = np.floor(y_min_plt/ymajor_spacing)*ymajor_spacing
@@ -1657,8 +1661,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
     elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
-    elif (plot_type == 'direct_emission'):
+    elif ((plot_type == 'direct_emission') and (y_unit == 'Fp')):
         ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+    elif ((plot_type == 'direct_emission') and (y_unit in ['Fs', 'F*'])):
+        ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
     elif (plot_type == 'brightness_temp'):
         ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
 
@@ -2312,9 +2318,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Aim for 10 major y-axis labels
     ymajor_spacing = round_sig_figs((y_max_plt - y_min_plt), 1)/10
     yminor_spacing = ymajor_spacing/10
-    
-    major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
-    minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
+
+    if (np.log10(ymajor_spacing) <= 10.0):    
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
+    else:    # Bug fix for surface spectra where Fp > 1e10 
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 2)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 2)
     
     # If last digit of y labels would be a multiple of 6,7,8,or 9, bump up to 10
     if (ymajor_spacing > 5*np.power(10, major_exponent)):

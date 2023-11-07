@@ -68,7 +68,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
                 f_het = None, T_het = None, log_g_het = None, 
                 f_spot = None, f_fac = None, T_spot = None,
                 T_fac = None, log_g_spot = None, log_g_fac = None,
-                wl = [], interp_backend = 'pysynphot'):
+                wl = [], interp_backend = 'pysynphot', 
+                user_spectrum = [], user_wl = []):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
 
@@ -88,12 +89,12 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             Stellar metallicity [log10(Fe/H_star / Fe/H_solar)].
         T_eff_error (float):
             A priori 1-sigma error on stellar effective temperature (K).
-        T_eff_error (float):
+        log_g_error (float):
             A priori 1-sigma error on stellar log g (log10(cm/s^2)).
         stellar_grid (string):
             Chosen stellar model grid
             (Options: blackbody / cbk04 [for pysynphot] / phoenix [for pysynphot] /
-                      Goettingen-HiRes [for pymsg]).
+                      Goettingen-HiRes [for pymsg] / user).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots).
@@ -119,11 +120,17 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
         log_g_fac (float):
             For the 'two_spots' model, the log g of the facula (log10(cm/s^2)).
         wl (np.array of float):
-            Wavelength grid on which to output the stellar spectra (μm). If not
-            provided, a fiducial grid from 0.2 to 5.4 μm will be used.
+            Model wavelength grid (μm). If not provided, a fiducial grid from 
+            0.2 to 5.4 μm will be used.
         interp_backend (str):
             Stellar grid interpolation package for POSEIDON to use.
             (Options: pysynphot / pymsg).
+        user_wl (np.array of float):
+            For stellar_grid is 'custom', the wavelengths of the custom stellar
+            spectrum file (μm).
+        user_spectrum (np.array of float):
+            For stellar_grid is 'custom', the custom stellar spectrum. CAUTION:
+            this is the stellar *surface flux* in SI units (W/m^2/m).
     
     Returns:
         star (dict):
@@ -153,6 +160,22 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
         # Evaluate Planck function at stellar effective temperature
         I_phot = planck_lambda(T_eff, wl_star)
+
+    elif (stellar_grid == 'custom'):
+
+        if ((user_wl == []) or (user_spectrum == [])):
+            raise Exception("Error: for a custom stellar spectrum you need to provide " +
+                            "both 'user_wl' and 'user_spectrum'. Note that 'user_wl' " +
+                            "will generally not be the same as the model wavelength " +
+                            "array ('wl'), since it will be from your custom file.")
+
+        if (wl == []):
+            raise Exception("Error: you must provide the model wavelength array 'wl' " +
+                            "so that your custom stellar spectrum can be interpolated " +
+                            "onto the model wavelength grid.")
+        
+        # Bin / interpolate user's stellar spectrum onto model wavelength grid
+        I_phot = spectres(wl_star, user_wl, user_spectrum) / np.pi
 
     else:
 
@@ -1508,9 +1531,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 raise Exception("Error: wavelength grid for stellar spectrum does " +
                                 "not match wavelength grid of planet spectrum. " +
                                 "Did you forget to provide 'wl' to create_star?")
-
-            # Interpolate stellar spectrum onto planet spectrum wavelength grid
-        #    F_s_interp = spectres(wl, wl_s, F_s)
 
             # Convert stellar surface flux to observed flux at Earth
             F_s_obs = (R_s / d)**2 * F_s
