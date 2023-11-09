@@ -255,7 +255,9 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
 
     # Unpack planet and star properties
     R_p = planet['planet_radius']
-    R_s = star['R_s']
+
+    if (star is not None):
+        R_s = star['R_s']
 
     # For a retrieval we do not have user provided P-T or chemical profiles
     T_input = []
