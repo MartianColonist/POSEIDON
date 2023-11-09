@@ -1097,15 +1097,21 @@ def generate_latex_param_names(param_names):
     
     # Loop over each free parameter
     for param in param_names:
-        
+            
         components = []    # Array of 'special' components for this parameter (e.g. 'log', 'bar')
         idxs = []          # Indices where each component starts
         lens= []           # Number of characters in each component
         
         captured_characters = np.zeros(len(param)).astype(np.int32)  # Stays zero for entries with solo letters (e.g. 'H' in 'H2O')
 
+        # Temporary fix for 'slope' P-T profile parameters
+        if (param in ['Delta_T_10-1mb', 'Delta_T_100-10mb', 'Delta_T_1-0.1b',
+                      'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 'Delta_T_32-10b',
+                      'Delta_T_100-32b']):
+            latex_names += ['$\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
+            continue
+
         # Temporary fix for aerosol parameter names 
-        '$\\log \\, \\mathrm{Na}$'
         if ('Pbase' in param):
             string = '$\\log \\, \\mathrm{P_{base}} \\, \\mathrm{SiO_2}$'
             latex_names += [string]
