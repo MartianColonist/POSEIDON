@@ -2707,10 +2707,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         log_g_phot = star['log_g']
         err_log_g_phot = star['log_g_error']
     else:
-        T_phot = None
-        err_T_phot = None
-        log_g_phot = None
-        err_log_g_phot = None
+        T_phot = 4710            # Fiducial values to avoid error in default priors below
+        err_T_phot = 100
+        log_g_phot = 5
+        err_log_g_phot = 0.1
 
     # Unpack data error bars (not error inflation parameter prior)
     err_data = data['err_data']    

@@ -205,7 +205,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             elif (PT_profile == 'Madhu'):     
                 PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_ref']
             elif (PT_profile == 'slope'):
-                PT_params += ['T_phot', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
+                PT_params += ['T_phot_PT', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
                             'Delta_T_1-0.1b', 'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 
                             'Delta_T_32-10b', 'Delta_T_100-32b']
             
