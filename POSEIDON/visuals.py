@@ -1483,7 +1483,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     ymajor_spacing = round_sig_figs((y_max_plt - y_min_plt), 1)/10
     yminor_spacing = ymajor_spacing/10
     
-    if (np.log10(ymajor_spacing) <= 10.0):    
+    if (np.abs(np.log10(ymajor_spacing)) <= 10.0):    
         major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
         minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
     else:    # Bug fix for surface spectra where Fp > 1e10 
@@ -2319,7 +2319,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ymajor_spacing = round_sig_figs((y_max_plt - y_min_plt), 1)/10
     yminor_spacing = ymajor_spacing/10
 
-    if (np.log10(ymajor_spacing) <= 10.0):    
+    if (np.abs(np.log10(ymajor_spacing)) <= 10.0):    
         major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
         minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
     else:    # Bug fix for surface spectra where Fp > 1e10 
