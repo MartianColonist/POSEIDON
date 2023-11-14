@@ -624,6 +624,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab']):
                 raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab.")
         
+        elif (cloud_model == 'eddysed'):
+            cloud_params += ['kappa_cloud_eddysed']
+            cloud_params += ['g_cloud_eddysed']
+            cloud_params += ['w_cloud_eddysed']
+
         else:
             raise Exception("Error: unsupported cloud model.")
             
@@ -1449,6 +1454,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
 
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
+
     # Patchy cloud model from MacDonald & Madhusudhan (2017)
     if (cloud_model == 'MacMad17'):
         
@@ -1488,6 +1498,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_real = 0
         r_i_complex = 0
         log_X_Mie = []
+
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
          
     # 3D patchy cloud model from MacDonald & Lewis (2022)
     elif (cloud_model == 'Iceberg'):
@@ -1538,6 +1553,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
 
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
+
     # Mie clouds 
     elif (cloud_model == 'Mie'):
 
@@ -1550,6 +1570,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # Cloud is opaque up to P_cloud, and then follows an exponential distribution for 
         # number density of aerosols. This is set by n_cloud 
         kappa_cloud_0 = 1.0e250
+
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
         
         if (cloud_dim == 1):
             f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
@@ -1717,9 +1742,31 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         else:
             r_i_real = 0
             r_i_complex = 0
+
+    elif (cloud_model =='eddysed'):
+
+        kappa_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'kappa_cloud_eddysed')[0][0]]
+        g_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'g_cloud_eddysed')[0][0]]
+        w_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'w_cloud_eddysed')[0][0]]
+        
+        # Set dummy parameter values, not used when cloud-free
+        kappa_cloud_0 = 1.0e250
+        P_cloud = 100.0
+        P_slab_bottom = 100.0
+        a, gamma = 1.0, -4.0  
+        f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
     
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
-           fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom
+           fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom, \
+           kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

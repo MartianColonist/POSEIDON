@@ -1480,9 +1480,13 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Aim for 10 major y-axis labels
     ymajor_spacing = round_sig_figs((y_max_plt - y_min_plt), 1)/10
     yminor_spacing = ymajor_spacing/10
-    
-    major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
-    minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
+
+    if (np.abs(np.log10(ymajor_spacing)) <= 10.0):    
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
+    else:    # Bug fix for surface spectra where Fp > 1e10 
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 2)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 2)
     
     # If last digit of y labels would be a multiple of 6,7,8,or 9, bump up to 10
     if (ymajor_spacing > 5*np.power(10, major_exponent)):
@@ -2306,9 +2310,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Aim for 10 major y-axis labels
     ymajor_spacing = round_sig_figs((y_max_plt - y_min_plt), 1)/10
     yminor_spacing = ymajor_spacing/10
-    
-    major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
-    minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
+
+    if (np.abs(np.log10(ymajor_spacing)) <= 10.0):    
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
+    else:    # Bug fix for surface spectra where Fp > 1e10 
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 2)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 2)
     
     # If last digit of y labels would be a multiple of 6,7,8,or 9, bump up to 10
     if (ymajor_spacing > 5*np.power(10, major_exponent)):

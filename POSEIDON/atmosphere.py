@@ -1576,5 +1576,12 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         
 
     
-    return T, n, r, r_up, r_low, dr, mu, X, X_active, X_CIA, \
-           X_ff, X_bf, True
+     # Check if any of the values in r are negative
+    if (np.any(r < 0.0)): 
+        
+        # Quit computations if model rejected
+        return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+
+    else: 
+        return T, n, r, r_up, r_low, dr, mu, X, X_active, X_CIA, \
+            X_ff, X_bf, True

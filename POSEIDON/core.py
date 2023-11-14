@@ -40,7 +40,7 @@ from .instrument import init_instrument
 from .transmission import TRIDENT
 from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
-                      emission_Toon
+                      emission_Toon, reflection_Toon
 
 from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid
 
@@ -334,7 +334,7 @@ def define_model(model_name, bulk_species, param_species,
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
                  reference_parameter = 'R_p_ref', disable_atmosphere = False,
-                 aerosol_species = ['free'], scattering = False):
+                 aerosol_species = [], scattering = False, reflection = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -432,7 +432,9 @@ def define_model(model_name, bulk_species, param_species,
         aerosol (string):
             If cloud_model = Mie and cloud_type = specific_aerosol 
         scattering (bool):
-            If True, uses a two-stream multiple scattering model.
+            If True, uses a two-stream multiple scattering emission model.
+        reflection (bool):
+            If True, uses a two-stream multiple scattering reflection model.
 
     Returns:
         model (dict):
@@ -557,7 +559,8 @@ def define_model(model_name, bulk_species, param_species,
              'disable_atmosphere': disable_atmosphere,
              'aerosol_species': aerosol_species,
              'aerosol_grid': aerosol_grid,
-             'scattering' : scattering}
+             'scattering' : scattering,
+             'reflection' : reflection}
 
     return model
 
@@ -912,7 +915,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     theta_cloud_0, \
     a, gamma, \
     r_m, log_n_max, fractional_scale_height, \
-    r_i_real, r_i_complex, log_X_Mie, P_cloud_bottom = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
+    r_i_real, r_i_complex, log_X_Mie, P_cloud_bottom, \
+    kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
                                                                            N_params_cum, TwoD_type)
     
     # Temporary H for testing 
@@ -937,7 +941,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'is_physical': is_physical,
                   'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 'fractional_scale_height': fractional_scale_height,
                   'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie,
-                  'P_cloud_bottom' : P_cloud_bottom
+                  'P_cloud_bottom' : P_cloud_bottom, 
+                  'kappa_cloud_eddysed' : kappa_cloud_eddysed, 'g_cloud_eddysed' : g_cloud_eddysed, 'w_cloud_eddysed' : w_cloud_eddysed,
                  }
 
     return atmosphere
@@ -1057,6 +1062,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
     scattering = model['scattering']
+    reflection = model['reflection']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1116,6 +1122,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     r_i_complex = atmosphere['r_i_complex']
     log_X_Mie = atmosphere['log_X_Mie']
     P_cloud_bottom = atmosphere['P_cloud_bottom']
+    kappa_cloud_eddysed = atmosphere['kappa_cloud_eddysed']
+    g_cloud_eddysed = atmosphere['g_cloud_eddysed']
+    w_cloud_eddysed = atmosphere['w_cloud_eddysed']
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1187,7 +1196,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
-
+            
             if (model['cloud_model'] == 'Mie'):
 
                 aerosol_grid = model['aerosol_grid']
@@ -1324,6 +1333,26 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                            log_P_fine, P_surf, enable_Mie, 
                                                            n_aerosol, sigma_ext_cloud)
             
+            # If we read in an eddysed file 
+            if model['cloud_model'] == 'eddysed':
+                w_cloud = w_cloud_eddysed
+                g_cloud = g_cloud_eddysed
+                kappa_cloud = kappa_cloud_eddysed
+            
+            # Else, we need to restructure w_cloud and g_cloud to span by layer 
+            # For Mie models with 1 species, the g and w can be help constant with each layer since
+            # Kappa cloud will encode where clouds are
+            # For models that are cloud free, you still need a g and w thats just an array of 0s
+            # For Mie models with more than one species, we need to be more careful with the g and w array
+            else:
+                if len(aerosol_species) == 1 or aerosol_species == []:
+                    w_cloud = np.ones_like(kappa_cloud)*w_cloud
+                    g_cloud = np.ones_like(kappa_cloud)*g_cloud
+
+                # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+                else:
+                    raise Exception('Only 1 aerosol species supported for scattering')
+            
             
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):
@@ -1450,6 +1479,20 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         else:
             raise Exception("Error: Invalid scattering option")
+
+        # Add in the seperate reflection  
+        # FOR DEBUGGING PURPOSES, THIS JUST RETURNS THE ALBEDO RIGHT NOW
+        if (reflection == True):
+
+            albedo = reflection_Toon(P, wl, dtau_tot,
+                                    kappa_Ray, kappa_cloud, kappa_tot,
+                                    w_cloud, g_cloud, zone_idx,
+                                    single_phase = 3, multi_phase = 0,
+                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                    Gauss_quad = 5, numt = 1,
+                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+            
+            return P, wl, dtau_tot, kappa_Ray, kappa_cloud, kappa_tot, w_cloud, g_cloud, zone_idx
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere

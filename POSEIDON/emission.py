@@ -328,6 +328,7 @@ def determine_photosphere_radii_GPU(tau_lambda, r_low, wl, R_p_eff, photosphere_
 
 
 ##### Functions adapted from PICASO (https://github.com/natashabatalha/picaso) #####
+# IMPORTANT : WE DON"T INCLUDE RAMAN SCATTERING (yet)
 
 @jit(nopython=True, cache=True, fastmath=True)
 def slice_gt(array, lim):
@@ -566,14 +567,17 @@ def emission_Toon(P, T, wl, dtau_tot,
     # tlevel = T_level and is converted below 
     #
     # dtau = dtau_tot (differential extinction optical depth (from absorption + scattering) across each later)
+    # IMPORTANT : We only consider a 1D model, meaning the dtau and taus don't vary with gauss weight
+    # 
     # w0 = w_tot      calculated below (weighted, combined single scattering albedo)
     # cosb = g_tot    calculated below (weighted, combined scattering asymmetry parameter)
     # 
     # plevel = P_level and is converted below 
     #
     # ubar 1 is calculated below (outgoing incident angles)
+    # IMPORTANT : We end up redefining iubar = ubar1[ng,nt] to iubar = gangle[ng]
     # 
-    # surf_reflect = 0s (for emission) 
+    # surf_reflect = 0s (for emission, eventually will add support for terresterial planets) 
     # hard_surface = 0 (support only for gas giants)
     # tridiagonal = 0 (support only for tridiagonal matrices)
     #
@@ -581,13 +585,19 @@ def emission_Toon(P, T, wl, dtau_tot,
     # and apply the gass weight, a step performed in justdoit.py , picaso()
     #############################################################################  
 
+    # Numba doesn't like it when you multiply numpy arrays that are 1d vs 2d 
+
     # Calculate weighted, combined single scattering albedo
     # From W0_no_raman in optics.py, compute_opacity()
-    # W0_no_raman = (TAURAY*0.99999 + TAUCLD*single_scattering_cld) / (TAUGAS + TAURAY + TAUCLD
+    # W0_no_raman = (TAURAY*0.99999 + TAUCLD*single_scattering_cld) / (TAUGAS + TAURAY + TAUCLD)
     # or 
     # w = ((tau_ray * w_Ray) + (tau_Mie * w_Mie))/(tau_tot) 
     # where w_Ray = 1 (perfect scatterers), and taus = kappas
-    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
+    
+    # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
+    w_cloud[:,0,zone_idx,:] = w_cloud[:,0,zone_idx,:] * 0.99999
+    
+    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud[:,0,zone_idx,:]))/kappa_tot
 
     # Calculate weighted, combined scattering asymmetry parameter
     # From COSB in optics.py, compute_opacity()
@@ -596,14 +606,14 @@ def emission_Toon(P, T, wl, dtau_tot,
     # or 
     # g = ((w_Ray*delta_tau_Ray*g_Ray) + (w_Mie * delta_tau_Mie * g_Mie))/ (w_ray*delta_tau_ray + w_Mie*delta_tau_Mie)
     # where g_Ray = 0 (isotropic scatterers), w_rRay = 1, and taus = kappas 
-    g_tot = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+    g_tot = ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud[:,0,zone_idx,:]
 
     # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip all the axis)
-    P = np.flip(P)
-    T = np.flip(T)
-    dtau_tot = np.flip(dtau_tot, axis = 0)
-    w_tot = np.flip(w_tot, axis = 0)
-    g_tot = np.flip(g_tot, axis = 0)   
+    P = np.flipud(P)
+    T = np.flipud(T)
+    dtau_tot = np.flipud(dtau_tot)
+    w_tot = np.flipud(w_tot)
+    g_tot = np.flipud(g_tot)   
 
     N_wl = len(wl)
     N_layer = len(P)
@@ -673,7 +683,7 @@ def emission_Toon(P, T, wl, dtau_tot,
     g1 = 2.0 - (w_tot * (1 + g_tot))
     g2 = w_tot * (1 - g_tot)
 
-    alpha = np.sqrt((1.0 - w_tot) / (1.0 - (w_tot * g_tot)) )
+    alpha = np.sqrt((1.0 - w_tot) / (1.0 - (w_tot * g_tot)))
     lamda = np.sqrt(g1**2 - g2**2) #eqn 21 toon 
     gamma = (g1-lamda)/g2 # #eqn 22 toon
     
@@ -840,3 +850,558 @@ def emission_Toon(P, T, wl, dtau_tot,
         F += (int_at_top[ng,0,:] * gweight[ng]) 
 
     return F, dtau_tot
+
+@jit(nopython=True, cache=True)
+def numba_cumsum(mat):
+    """Function to compute cumsum along axis=0 to bypass numba not allowing kwargs in 
+    cumsum 
+    """
+    new_mat = np.zeros(mat.shape)
+    for i in range(mat.shape[1]):
+        new_mat[:,i] = np.cumsum(mat[:,i])
+    return new_mat
+
+#@jit(nopython=True, cache=True)
+def reflection_Toon(P, wl, dtau_tot,
+                    kappa_Ray, kappa_cloud, kappa_tot,
+                    w_cloud, g_cloud, zone_idx,
+                    single_phase = 3, multi_phase = 0,
+                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                    Gauss_quad = 5, numt = 1,
+                    toon_coefficients=0, tridiagonal=0, b_top=0):
+
+    ###############################################
+    # ORIGINAL PICASO PREAMBLE (get_reflected_1d)
+    ###############################################
+    """
+    Computes toon fluxes given tau and everything is 1 dimensional. This is the exact same function 
+    as `get_flux_geom_3d` but is kept separately so we don't have to do unecessary indexing for fast
+    retrievals. 
+    Parameters
+    ----------
+    nlevel : int 
+        Number of levels in the model 
+    wno : array of float 
+        Wave number grid in cm -1 
+    nwno : int 
+        Number of wave points
+    numg : int 
+        Number of Gauss angles 
+    numt : int 
+        Number of Chebyshev angles 
+    DTAU : ndarray of float
+        This is the opacity contained within each individual layer (defined at midpoints of "levels")
+        WITHOUT D-Eddington Correction
+        Dimensions=# layer by # wave
+    TAU : ndarray of float
+        This is the cumulative summed opacity 
+        WITHOUT D-Eddington Correction
+        Dimensions=# level by # wave        
+    W0 : ndarray of float 
+        This is the single scattering albedo, from scattering, clouds, raman, etc 
+        WITHOUT D-Eddington Correction
+        Dimensions=# layer by # wave
+    COSB : ndarray of float 
+        This is the asymmetry factor 
+        WITHOUT D-Eddington Correction
+        Dimensions=# layer by # wave
+    GCOS2 : ndarray of float 
+        Parameter that allows us to directly include Rayleigh scattering 
+        = 0.5*tau_rayleigh/(tau_rayleigh + tau_cloud)
+    ftau_cld : ndarray of float 
+        Fraction of cloud extinction to total 
+        = tau_cloud/(tau_rayleigh + tau_cloud)
+    ftau_ray : ndarray of float 
+        Fraction of rayleigh extinction to total 
+        = tau_rayleigh/(tau_rayleigh + tau_cloud)
+    dtau_og : ndarray of float 
+        This is the opacity contained within each individual layer (defined at midpoints of "levels")
+        WITHOUT the delta eddington correction, if it was specified by user
+        Dimensions=# layer by # wave
+    tau_og : ndarray of float
+        This is the cumulative summed opacity 
+        WITHOUT the delta eddington correction, if it was specified by user
+        Dimensions=# level by # wave    
+    w0_og : ndarray of float 
+        Same as w0 but WITHOUT the delta eddington correction, if it was specified by user  
+    cosb_og : ndarray of float 
+        Same as cosbar buth WITHOUT the delta eddington correction, if it was specified by user
+    surf_reflect : float 
+        Surface reflectivity 
+    ubar0 : ndarray of float 
+        matrix of cosine of the incident angle from geometric.json
+    ubar1 : ndarray of float 
+        matrix of cosine of the observer angles
+    cos_theta : float 
+        Cosine of the phase angle of the planet 
+    F0PI : array 
+        Downward incident solar radiation
+    single_phase : str 
+        Single scattering phase function, default is the two-term henyey-greenstein phase function
+    multi_phase : str 
+        Multiple scattering phase function, defulat is N=2 Legendre polynomial 
+    frac_a : float 
+        (Optional), If using the TTHG phase function. Must specify the functional form for fraction 
+        of forward to back scattering (A + B * gcosb^C)
+    frac_b : float 
+        (Optional), If using the TTHG phase function. Must specify the functional form for fraction 
+        of forward to back scattering (A + B * gcosb^C)
+    frac_c : float 
+        (Optional), If using the TTHG phase function. Must specify the functional form for fraction 
+        of forward to back scattering (A + B * gcosb^C), Default is : 1 - gcosb^2
+    constant_back : float 
+        (Optional), If using the TTHG phase function. Must specify the assymetry of back scatterer. 
+        Remember, the output of A & M code does not separate back and forward scattering.
+    constant_forward : float 
+        (Optional), If using the TTHG phase function. Must specify the assymetry of forward scatterer. 
+        Remember, the output of A & M code does not separate back and forward scattering.
+    tridiagonal : int 
+        0 for tridiagonal, 1 for pentadiagonal 
+    toon_coefficients : int     
+        0 for quadrature (default) 1 for eddington
+
+    Returns
+    -------
+    intensity at the top of the atmosphere for all the different ubar1 and ubar2 
+    To Do
+    -----
+    - F0PI Solar flux shouldn't always be 1.. Follow up to make sure that this isn't a bad 
+          hardwiring to solar, despite "relative albedo"
+    """
+ 
+    ###############################################
+    # POSEIDON PREAMBLE
+    ###############################################
+
+    # From PICASO, we define or compute the following original inputs : 
+    # 
+    # nlevel as N_layer + 1 = len(P) + 1
+    # wno = 1/wl
+    # nwno as N_wl = len(wl)
+    #
+    # numg = Num Gauss angles (longitude) as Gauss_quad = 5
+    # numt = Num Chebychev angles (latitude) =  1
+    # we define our system to default to the 1x10 scheme where where tangle = 0 and gangle = 5
+    # the weights are defined below
+    # https://natashabatalha.github.io/picaso/notebooks/8_SphericalIntegration.html?highlight=geometry
+    #
+    # dtau = delta eddington version of dtau_og (calculated below), renamed dtau_dedd
+    # tau = delta eddington version of tau (calculated below), renamed tau_dedd
+    # IMPORTANT : We only consider a 1D model, meaning the dtau and taus don't vary with gauss weight
+    #
+    # w0 = delta eddington version of w0_og (calculated below), renamed w_dedd
+    # cosb = delta eddington version of cosb_og (calculated below), renamed g_dedd
+    # IMPORTANT : Delta Eddington is used in reflection tridiagonal + multiple scattering
+    # but NOT single scattering 
+    #
+    # gcos2 = asymmetry parameter of Rayleigh scattering, calculated below
+    #
+    # ftau_cld = fractional scattering due to clouds, calculated below (see g_tot in emission_Toon)
+    # ftau_ray = fractional scattering due to Rayleigh, claculated below 
+    #
+    # Since we use delta eddington, these are actually our initial inputs 
+    # dtau_og = dtau_tot (differential extinction optical depth (from absorption + scattering) across each later)
+    # tau_og  = summed d_tau across each layer, calculated below 
+    # w0_og = w_tot      calculated below (weighted, combined single scattering albedo)
+    # cosb_og = g_cloud  (IMPORTANT : in reflection, we don't take the weighted version)
+    #
+    # surf_reflect = 0s (for emission, eventually will add support for terresterial planets) 
+    #
+    # ubar0 (ingoing incident angles) are calculated below with phase_angle 0
+    # ubar1 (outgoing incident angles) are calculated below with phase_angle = 0
+    # IMPORTANT : We don't redefine iubar here, like we do for emission_Toon
+    # 
+    # cos_theta is set to 1 (phase_angle = 0)
+    #
+    # F0PI = np.zeros(nwno) + 1. by default
+    # 
+    # These are the default settings from PICASO
+    # See equations described in section 2.1 of Batalha 2019
+    # single_phase = 'TTHG_ray' ( = 3)
+    # multi_phase = 'N=2' ( = 0)
+    # frac_a = 1
+    # frac_b = -1
+    # frac_c = 2
+    # constant_back = -1/2
+    # constant_forward = 1
+    # toon_coefficients = 0 (quadtrature)
+    # tridiagonal = 0 (only support for tridiagonal matrices)
+    # b_top = 0 (The diffuse radiation into the model at the top of the atmosphere, default boundary condition for the triadonalg matrix)
+
+    # We additionally loop over the gauss angles at the end
+    # and apply the gass weight, a step performed in justdoit.py , picaso()
+    # We also compute the albedo, a step performed in justdoit.py, picaso(), compress_disco()
+    ############################################################################################################
+
+    N_wl = len(wl)
+    N_layer = len(P)
+    N_level = N_layer + 1 # Number of levels (one more than the number of layers)
+
+    # From optics.py, compute_opacity 
+    # We calculate the ftaus, tau, and delta_eddington corrections 
+
+    # ftau_cld 
+
+    # From emission_Toon we figured out that 
+    # cosb = g_tot = ftau_cld * g_cloud 
+    # however, the above is only valid in emission. In reflection, g_cloud remains g_cloud
+    # but we can still use the above equation to figure out ftau_cld in POSEIDON terms 
+    # in emission_Toon 
+    # g_tot = ((w_cloud * kappa_cloud) / ((w_cloud * kappa_cloud) + kappa_Ray)) * g_cloud 
+    # it follows that 
+    # ftau_cld = ((w_cloud * kappa_cloud) / ((w_cloud * kappa_cloud) + kappa_Ray))
+
+    ftau_cld = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+
+    # gcos2 
+    # ftau_ray = TAURAY/(TAURAY + single_scattering_cld * TAUCLD)
+    # GCOS2 = 0.5*ftau_ray #Hansen & Travis 1974 for Rayleigh scattering 
+
+    ftau_ray = kappa_Ray[:,0,zone_idx,:]/(kappa_Ray[:,0,zone_idx,:] + g_cloud * kappa_cloud[:,0,zone_idx,:])
+    gcos2 = 0.5*ftau_ray
+
+    # w_tot is the same as it is in emission_Toon (weighted version)
+    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
+    
+    # tau 
+    # This sums up the taus starting at the top
+    # In the original picaso : TAU = np.zeros((nlayer+1, nwno,ngauss))
+    # Where each ngauss column is exactly the same for contiuum and rayleight
+    # but not the same for molecular opacities 
+    # In POSEIDON we don't use the gauss quad as a dimension to loop over
+    # So we remove that dependence here 
+    # FOR LATER : Make sure this is an ok assumption 
+    tau = np.zeros((N_layer+1, N_wl))
+    tau[1:,:]=numba_cumsum(dtau_tot[:,:])
+ 
+    # Delta Eddington Correction
+    # We take the default number of streams to be 2 
+    stream = 2
+    f_deltaM = g_cloud**stream
+    w_dedd=w_tot*(1.-f_deltaM)/(1.0-w_tot*f_deltaM)
+    g_dedd=(g_cloud-f_deltaM)/(1.-f_deltaM)
+    dtau_dedd=dtau_tot*(1.-w_tot*f_deltaM) 
+    tau_dedd = np.zeros((N_layer+1, N_wl))
+    tau_dedd[1:,:]=numba_cumsum(dtau_dedd[:,:])
+ 
+    # Function expects 0 index to be top of atmosphere, so flip all the axis
+    P = np.flipud(P)
+    dtau_tot = np.flipud(dtau_tot)
+    dtau_dedd = np.flipud(dtau_dedd)
+    tau = np.flipud(tau)
+    tau_dedd = np.flipud(tau_dedd)
+    w_tot = np.flipud(w_tot)
+    w_dedd = np.flipud(w_dedd)
+    g_cloud = np.flipud(g_cloud)   
+    g_dedd = np.flipud(g_dedd)
+    
+    # Load Gaussian quadrature mu and weights
+    # gangle, gweight from disco.py, get_angles_1d(num_gangle) 
+    # tangle, tweight = 0 and 1 (equator only)
+    if (Gauss_quad == 5):
+        gangle = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
+        gweight = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])
+
+    # Only 5th order Gaussian quadrature is currently supported
+    else:
+        gangle = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
+        gweight = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])      
+
+    # Calculate what ubar1 and ubar0 represents from the Gaussian angles
+    # Taken from compute_disco(ng, nt, gangle, tangle, phase)
+    # Here we assume the symmetric case where chebychev angles = 1 (equatorial latitude) so tangle = 0
+    phase_angle = 0
+    cos_theta = 1.0     #cos(phase_angle)
+    longitude = np.arcsin((gangle-(cos_theta-1.0)/(cos_theta+1.0))/(2.0/(cos_theta+1)))
+    colatitude = np.arccos(0.0)              # Colatitude = 90-latitude, 0 at equator 
+    f = np.sin(colatitude)                   # Define to eliminate repetition
+    ubar0 = np.outer(np.cos(longitude-phase_angle) , f) #ng by nt 
+    ubar1 = np.outer(np.cos(longitude), f) 
+ 
+    #### No reflective surface (for now)
+    surf_reflect = np.zeros(N_wl)
+ 
+    # FOPI is just an array of 1s (solar)
+    F0PI = np.zeros(N_wl) + 1
+
+    ###############################################
+    # IMPORTED PICASO CODE (with variable name changes, and loop at end)
+    ###############################################
+
+    #what we want : intensity at the top as a function of all the different angles
+
+    xint_at_top = np.zeros((Gauss_quad, numt, N_wl))
+    #intensity = zeros((numg, numt, nlevel, nwno))
+
+    flux_out = np.zeros((Gauss_quad, numt, 2*N_level, N_wl))
+
+    #now define terms of Toon et al 1989 quadrature Table 1 
+    #https://agupubs.onlinelibrary.wiley.com/doi/pdf/10.1029/JD094iD13p16287
+    #see table of terms 
+
+    # terms not dependent on incident angle
+    # Taken from table 1, these are the coefficients for eddington and quadrature
+    # The default is quadtrature 
+    # Different from emission, where we assume hemispheric g1 and g2
+
+    sq3 = np.sqrt(3.)
+    if toon_coefficients == 1:#eddington
+        g1  = (7-w_dedd*(4+3*ftau_cld*g_dedd))/4 #(sq3*0.5)*(2. - w0*(1.+cosb)) #table 1 # 
+        g2  = -(1-w_dedd*(4-3*ftau_cld*g_dedd))/4 #(sq3*w0*0.5)*(1.-cosb)        #table 1 # 
+
+    # DEFAULT
+    elif toon_coefficients == 0:#quadrature
+        g1  = (sq3*0.5)*(2. - w_dedd*(1.+ftau_cld*g_dedd)) #table 1 # 
+        g2  = (sq3*w_dedd*0.5)*(1.-ftau_cld*g_dedd)        #table 1 # 
+
+    lamda = np.sqrt(g1**2 - g2**2)         #eqn 21
+    gama  = (g1-lamda)/g2               #eqn 22
+
+    #================ START CRAZE LOOP OVER ANGLE #================
+    for ng in range(Gauss_quad):
+        for nt in range(numt):
+            u1 = ubar1[ng,nt]
+            u0 = ubar0[ng,nt]
+            if toon_coefficients == 1 : #eddington
+                g3  = (2-3*ftau_cld*g_dedd*u0)/4#0.5*(1.-sq3*cosb*ubar0[ng, nt]) #  #table 1 #ubar has dimensions [gauss angles by tchebyshev angles ]
+            elif toon_coefficients == 0 :#quadrature
+                g3  = 0.5*(1.-sq3*ftau_cld*g_dedd*u0) #  #table 1 #ubar has dimensions [gauss angles by tchebyshev angles ]
+    
+            # now calculate c_plus and c_minus (equation 23 and 24 toon)
+            g4 = 1.0 - g3
+            denominator = lamda**2 - 1.0/u0**2.0
+
+            #everything but the exponential 
+            a_minus = F0PI*w_dedd* (g4*(g1 + 1.0/u0) +g2*g3 ) / denominator
+            a_plus  = F0PI*w_dedd*(g3*(g1-1.0/u0) +g2*g4) / denominator
+
+            #add in exponential to get full eqn
+            #_up is the terms evaluated at lower optical depths (higher altitudes)
+            #_down is terms evaluated at higher optical depths (lower altitudes)
+            x = np.exp(-tau_dedd[:-1,:]/u0)
+            c_minus_up = a_minus*x #CMM1
+            c_plus_up  = a_plus*x #CPM1
+            x = np.exp(-tau_dedd[1:,:]/u0)
+            c_minus_down = a_minus*x #CM
+            c_plus_down  = a_plus*x #CP
+
+            #calculate exponential terms needed for the tridiagonal rotated layered method
+            exptrm = lamda*dtau_dedd
+            #save from overflow 
+            exptrm = slice_gt(exptrm, 35.0) 
+
+            exptrm_positive =np.exp(exptrm) #EP
+            exptrm_minus = 1.0/exptrm_positive#EM
+
+
+            #boundary conditions 
+            #b_top = 0.0                                       
+
+            b_surface = 0. + surf_reflect*u0*F0PI*np.exp(-tau_dedd[-1, :]/u0)
+
+            #Now we need the terms for the tridiagonal rotated layered method
+            if tridiagonal==0:
+                A, B, C, D = setup_tri_diag(N_layer,N_wl, c_plus_up, c_minus_up, 
+                                    c_plus_down, c_minus_down, b_top, b_surface, surf_reflect,
+                                     gama, dtau_dedd, 
+                                    exptrm_positive,  exptrm_minus) 
+
+            #else:
+            #   A_, B_, C_, D_, E_, F_ = setup_pent_diag(nlayer,nwno,  c_plus_up, c_minus_up, 
+            #                       c_plus_down, c_minus_down, b_top, b_surface, surf_reflect,
+            #                        gama, dtau, 
+            #                       exptrm_positive,  exptrm_minus, g1,g2,exptrm,lamda) 
+
+            positive = np.zeros((N_layer, N_wl))
+            negative = np.zeros((N_layer, N_wl))
+            #========================= Start loop over wavelength =========================
+            L = N_layer + N_layer
+
+            for w in range(N_wl):
+                #coefficient of posive and negative exponential terms 
+                if tridiagonal==0:
+                    X = tri_diag_solve(L, A[:,w], B[:,w], C[:,w], D[:,w])
+                    #unmix the coefficients
+                    positive[:,w] = X[::2] + X[1::2] 
+                    negative[:,w] = X[::2] - X[1::2]
+
+                #else: 
+                #   X = pent_diag_solve(L, A_[:,w], B_[:,w], C_[:,w], D_[:,w], E_[:,w], F_[:,w])
+                    #unmix the coefficients
+                #   positive[:,w] = exptrm_minus[:,w] * (X[::2] + X[1::2])
+                #   negative[:,w] = X[::2] - X[1::2]
+
+            #========================= End loop over wavelength =========================
+
+            #use expression for bottom flux to get the flux_plus and flux_minus at last
+            #bottom layer
+            flux_zero  = positive[-1,:]*exptrm_positive[-1,:] + gama[-1,:]*negative[-1,:]*exptrm_minus[-1,:] + c_plus_down[-1,:]
+            flux_minus  = gama*positive*exptrm_positive + negative*exptrm_minus + c_minus_down
+            flux_plus  = positive*exptrm_positive + gama*negative*exptrm_minus + c_plus_down
+            flux = np.zeros((2*N_level, N_wl))
+            flux[0,:] = (gama*positive + negative + a_minus)[0,:]
+            flux[1,:] = (positive + gama*negative + a_plus)[0,:]
+            flux[2::2, :] = flux_minus
+            flux[3::2, :] = flux_plus
+            flux_out[ng,nt,:,:] = flux
+
+            xint = np.zeros((N_level,N_wl))
+            xint[-1,:] = flux_zero/np.pi
+
+            ################################ BEGIN OPTIONS FOR MULTIPLE SCATTERING####################
+
+            #Legendre polynomials for the Phase function due to multiple scatterers 
+            if multi_phase ==0:#'N=2':
+                #ubar2 is defined to deal with the integration over the second moment of the 
+                #intensity. It is FIT TO PURE RAYLEIGH LIMIT, ~(1/sqrt(3))^(1/2)
+                #this is a decent assumption because our second order legendre polynomial 
+                #is forced to be equal to the rayleigh phase function
+                ubar2 = 0.767  # 
+                multi_plus = (1.0+1.5*ftau_cld*g_dedd*u1 #! was 3
+                                + gcos2*(3.0*ubar2*ubar2*u1*u1 - 1.0)/2.0)
+                multi_minus = (1.-1.5*ftau_cld*g_dedd*u1 
+                                + gcos2*(3.0*ubar2*ubar2*u1*u1 - 1.0)/2.0)
+            elif multi_phase ==1:#'N=1':
+                multi_plus = 1.0+1.5*ftau_cld*g_dedd*u1  
+                multi_minus = 1.-1.5*ftau_cld*g_dedd*u1
+
+
+            ################################ END OPTIONS FOR MULTIPLE SCATTERING####################
+
+            G=positive*(multi_plus+gama*multi_minus)    * w_dedd
+            H=negative*(gama*multi_plus+multi_minus)    *w_dedd
+            A=(multi_plus*c_plus_up+multi_minus*c_minus_up) *w_dedd
+
+            G=G*0.5/np.pi
+            H=H*0.5/np.pi
+            A=A*0.5/np.pi
+
+            ################################ BEGIN OPTIONS FOR DIRECT SCATTERING####################
+            #define f (fraction of forward to back scattering), 
+            #g_forward (forward asymmetry), g_back (backward asym)
+            #needed for everything except the OTHG
+            if single_phase!=1: 
+                g_forward = constant_forward*g_cloud
+                g_back = constant_back*g_cloud#-
+                f = frac_a + frac_b*g_back**frac_c
+
+            # NOTE ABOUT HG function: we are translating to the frame of the downward propagating beam
+            # Therefore our HG phase function becomes:
+            # p_single=(1-cosb_og**2)/sqrt((1+cosb_og**2+2*cosb_og*cos_theta)**3) 
+            # as opposed to the traditional:
+            # p_single=(1-cosb_og**2)/sqrt((1+cosb_og**2-2*cosb_og*cos_theta)**3) (NOTICE NEGATIVE FROM COS_THETA)
+
+            if single_phase==0:#'cahoy':
+                #Phase function for single scattering albedo frum Solar beam
+                #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
+                      #first term of TTHG: forward scattering
+                p_single=(f * (1-g_forward**2)
+                                /np.sqrt((1+g_cloud**2+2*g_cloud*cos_theta)**3) 
+                                #second term of TTHG: backward scattering
+                                +(1-f)*(1-g_back**2)
+                                /np.sqrt((1+(-g_cloud/2.)**2+2*(-g_cloud/2.)*cos_theta)**3)+
+                                #rayleigh phase function
+                                (gcos2))
+            elif single_phase==1:#'OTHG':
+                p_single=(1-g_cloud**2)/np.sqrt((1+g_cloud**2+2*g_cloud*cos_theta)**3) 
+            elif single_phase==2:#'TTHG':
+                #Phase function for single scattering albedo frum Solar beam
+                #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
+                      #first term of TTHG: forward scattering
+                p_single=(f * (1-g_forward**2)
+                                /np.sqrt((1+g_forward**2+2*g_forward*cos_theta)**3) 
+                                #second term of TTHG: backward scattering
+                                +(1-f)*(1-g_back**2)
+                                /np.sqrt((1+g_back**2+2*g_back*cos_theta)**3))
+            elif single_phase==3:#'TTHG_ray':
+                #Phase function for single scattering albedo frum Solar beam
+                #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
+                            #first term of TTHG: forward scattering
+                p_single=(ftau_cld*(f * (1-g_forward**2)
+                                                /np.sqrt((1+g_forward**2+2*g_forward*cos_theta)**3) 
+                                                #second term of TTHG: backward scattering
+                                                +(1-f)*(1-g_back**2)
+                                                /np.sqrt((1+g_back**2+2*g_back*cos_theta)**3))+            
+                                #rayleigh phase function
+                                ftau_ray*(0.75*(1+cos_theta**2.0)))
+            
+            #removing single form option from code 
+            #single_form : int 
+            #    form of the phase function can either be written as an 'explicit' (0) henyey greinstein 
+            #    or it can be written as a 'legendre' (1) expansion. Default is 'explicit'=0
+
+            #if single_form==1:
+            #    TAU = tau; DTAU = dtau; W0 = w0
+            #    p_single = 0*p_single
+            #    Pu0 = legP(-u0) # legendre polynomials for -u0
+            #    Pu1 = legP(u1) # legendre polynomials for -u0
+            #    maxterm = 2
+            #    for l in range(maxterm):
+            #        w = (2*l+1) * cosb_og**l
+            #        w_single = (w - (2*l+1)*cosb_og**maxterm) / (1 - cosb_og**maxterm) 
+            #        p_single = p_single + w_single * Pu0[l]*Pu1[l]
+            #else:
+            #    TAU = tau_og; DTAU = dtau_og; W0 = w0_og
+
+            ################################ END OPTIONS FOR DIRECT SCATTERING####################
+
+            single_scat = np.zeros((N_level,N_wl))
+            multi_scat = np.zeros((N_level,N_wl))
+            for i in range(N_layer-1,-1,-1):
+                single_scat[i,:] = ((w_tot[i,:]*F0PI/(4.*np.pi))
+                        *(p_single[i,:])*np.exp(-tau[i,:]/u0)
+                        *(1. - np.exp(-dtau_tot[i,:]*(u0+u1)
+                        /(u0*u1)))*
+                        (u0/(u0+u1)))
+
+                multi_scat[i,:] = (A[i,:]*(1. - np.exp(-dtau_dedd[i,:] *(u0+1*u1)/(u0*u1)))*
+                        (u0/(u0+1*u1))
+                        +G[i,:]*(np.exp(exptrm[i,:]*1-dtau_dedd[i,:]/u1) - 1.0)/(lamda[i,:]*1*u1 - 1.0)
+                        +H[i,:]*(1. - np.exp(-exptrm[i,:]*1-dtau_dedd[i,:]/u1))/(lamda[i,:]*1*u1 + 1.0)
+                        )
+
+                #direct beam
+                xint[i,:] =( xint[i+1,:]*np.exp(-dtau_dedd[i,:]/u1) 
+                        #single scattering albedo from sun beam (from ubar0 to ubar1)
+                        +(w_tot[i,:]*F0PI/(4.*np.pi))
+                        *(p_single[i,:])*np.exp(-tau[i,:]/u0)
+                        *(1. - np.exp(-dtau_tot[i,:]*(u0+u1)
+                        /(u0*u1)))*
+                        (u0/(u0+u1))
+                        #multiple scattering terms p_single
+                        +A[i,:]*(1. - np.exp(-dtau_dedd[i,:] *(u0+1*u1)/(u0*u1)))*
+                        (u0/(u0+1*u1))
+                        +G[i,:]*(np.exp(exptrm[i,:]*1-dtau_dedd[i,:]/u1) - 1.0)/(lamda[i,:]*1*u1 - 1.0)
+                        +H[i,:]*(1. - np.exp(-exptrm[i,:]*1-dtau_dedd[i,:]/u1))/(lamda[i,:]*1*u1 + 1.0)
+                        )
+
+            xint_at_top[ng,nt,:] = xint[0,:]
+            #intensity[ng,nt,:,:] = xint
+
+#    import IPython; IPython.embed()
+#    import sys; sys.exit()
+
+    # Apply the gauss weights 
+    # IMPORTANT : In picaso.py, when get_reflected_1d is called
+    # It first uses the gauss weights that go with correlated k
+    # So we don't use these weights
+
+    # Now we want to get the abedo 
+    # This is taken from the compress_disco functions 
+
+    # Default tangle and tweight
+    tangle,tweight = np.array([0]), np.array([1])
+ 
+    ng = len(gweight)
+    nt = len(tweight)
+    if nt==1 : sym_fac = 2*np.pi #azimuthal symmetry  
+    else: sym_fac = 1
+    albedo=np.zeros(N_wl)
+    #for w in range(nwno):
+    #   albedo[w] = 0.5 * sum((xint_at_top[:,:,w]*tweight).T*gweight)
+    for ig in range(ng): 
+        for it in range(nt): 
+            albedo = albedo + xint_at_top[ig,it,:] * gweight[ig] * tweight[it]
+    albedo = sym_fac * 0.5 * albedo /F0PI * (cos_theta + 1.0)
+
+    return albedo

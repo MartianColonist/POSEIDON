@@ -36,7 +36,7 @@ from .instrument import init_instrument
 from .transmission import TRIDENT
 from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
-                      emission_Toon
+                      emission_Toon, reflection_Toon
 
 from .species_data import polarisabilities
 
@@ -546,6 +546,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
     scattering = model['scattering']
+    reflection = model['reflection']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -794,6 +795,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 w_cloud = np.zeros_like(wl)
                 g_cloud = np.zeros_like(wl)
 
+
             # Calculate extinction coefficients in standard mode
 
             # Numba will get mad if P_cloud is not an array (because you can have more than one cloud now)
@@ -982,23 +984,45 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
 
         elif (scattering == True):
+            
+            # Else, we need to restructure w_cloud and g_cloud to span by layer 
+            # For Mie models with 1 species, the g and w can be help constant with each layer since
+            # Kappa cloud will encode where clouds are
+            # For models that are cloud free, you still need a g and w thats just an array of 0s
+            # For Mie models with more than one species, we need to be more careful with the g and w array
+            if len(aerosol_species) == 1 or aerosol_species == []:
+                w_cloud = np.ones_like(kappa_cloud)*w_cloud
+                g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
-            # Calculate combined single scattering albedo
-            w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
+            # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+            else:
+                raise Exception('Only 1 aerosol species supported for scattering')
 
-            # Calculate combined scattering asymmetry parameter
-            g_tot = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
-
-            # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
-            F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
-                                      np.flip(dtau_tot, axis=0), 
-                                      np.flip(w_tot, axis=0), 
-                                      np.flip(g_tot, axis=0))
+            # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+            F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                        kappa_Ray, kappa_cloud, kappa_tot,
+                                        w_cloud, g_cloud, zone_idx,
+                                        hard_surface = 0, tridiagonal = 0, 
+                                        Gauss_quad = 5, numt = 1)
             
             dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
         else:
             raise Exception("Error: Invalid scattering option")
+
+        # Add in the seperate reflection  
+        # FOR DEBUGGING PURPOSES, THIS JUST RETURNS THE ALBEDO RIGHT NOW
+        if (reflection == True):
+
+            albedo = reflection_Toon(P, wl, dtau_tot,
+                                    kappa_Ray, kappa_cloud, kappa_tot,
+                                    w_cloud, g_cloud, zone_idx,
+                                    single_phase = 3, multi_phase = 0,
+                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                    Gauss_quad = 5, numt = 1,
+                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+            
+            return P, wl, dtau_tot, kappa_Ray, kappa_cloud, kappa_tot, w_cloud, g_cloud, zone_idx
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -1091,17 +1115,26 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
             elif (scattering == True):
 
-                # Calculate combined single scattering albedo
-                w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud_temp[:,0,zone_idx,:] * w_cloud))/kappa_tot
+                # Else, we need to restructure w_cloud and g_cloud to span by layer 
+                # For Mie models with 1 species, the g and w can be help constant with each layer since
+                # Kappa cloud will encode where clouds are
+                # For models that are cloud free, you still need a g and w thats just an array of 0s
+                # For Mie models with more than one species, we need to be more careful with the g and w array
+                if len(aerosol_species) == 1 or aerosol_species == []:
+                    w_cloud = np.ones_like(kappa_cloud)*w_cloud
+                    g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
-                # Calculate combined scattering asymmetry parameter
-                g_tot = ((w_cloud * kappa_cloud_temp[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud_temp[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+                # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+                else:
+                    raise Exception('Only 1 aerosol species supported for scattering')
 
-                # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
-                F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
-                                        np.flip(dtau_tot, axis=0), 
-                                        np.flip(w_tot, axis=0), 
-                                        np.flip(g_tot, axis=0))
+                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                            kappa_Ray, kappa_cloud, kappa_tot,
+                                            w_cloud, g_cloud, zone_idx,
+                                            hard_surface = 0, tridiagonal = 0, 
+                                            Gauss_quad = 5, numt = 1)
+            
                 
                 dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
@@ -1180,7 +1213,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_names, spectrum_contribution_list,
                                full_spectrum_first = True, y_unit='transit_depth',
                                brightness_temperature = False, star = [],
-                               stellar_spectrum = False):
+                               stellar_spectrum = False,
+                               y_min = None, y_max = None,):
 
     from POSEIDON.utility import plot_collection
     from POSEIDON.visuals import plot_spectra
@@ -1197,11 +1231,11 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         wl_brightness = wl * 1e-6
 
         Rp = planet['planet_radius']
-        F_star = star['F_star']
-        Rs = star['R_s']
 
         # Check to see if its directly imaged or not 
         if star != []:
+            F_star = star['F_star']
+            Rs = star['R_s']
             Fp = spectrum * F_star/((Rp/Rs)**2.) # Planet Flux
         else:
             Fp = spectrum
@@ -1239,7 +1273,9 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                     plot_full_res = False, 
                     save_fig = False,
                     colour_list = colour_list,
-                    y_unit = y_unit)
+                    y_unit = y_unit,
+                    y_min = y_min,
+                    y_max = y_max)
         
     else: 
         
@@ -1266,7 +1302,9 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                     plot_full_res = False, 
                     save_fig = False,
                     colour_list = colour_list,
-                    y_unit = y_unit)
+                    y_unit = y_unit,
+                    y_min = y_min,
+                    y_max = y_max)
         
 #################################
 # Pressure Contribution Functions
@@ -2202,19 +2240,29 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
         elif (scattering == True):
 
-            # Calculate combined single scattering albedo
-            w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
+            # Else, we need to restructure w_cloud and g_cloud to span by layer 
+            # For Mie models with 1 species, the g and w can be help constant with each layer since
+            # Kappa cloud will encode where clouds are
+            # For models that are cloud free, you still need a g and w thats just an array of 0s
+            # For Mie models with more than one species, we need to be more careful with the g and w array
+            if len(aerosol_species) == 1 or aerosol_species == []:
+                w_cloud = np.ones_like(kappa_cloud)*w_cloud
+                g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
-            # Calculate combined scattering asymmetry parameter
-            g_tot = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+            # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+            else:
+                raise Exception('Only 1 aerosol species supported for scattering')
 
-            # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
-            F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
-                                      np.flip(dtau_tot, axis=0), 
-                                      np.flip(w_tot, axis=0), 
-                                      np.flip(g_tot, axis=0))
+            # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+            F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                        kappa_Ray, kappa_cloud, kappa_tot,
+                                        w_cloud, g_cloud, zone_idx,
+                                        hard_surface = 0, tridiagonal = 0, 
+                                        Gauss_quad = 5, numt = 1)
+        
             
             dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
+        
 
         else:
             raise Exception("Error: Invalid scattering option")
@@ -2310,17 +2358,26 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
             elif (scattering == True):
 
-                # Calculate combined single scattering albedo
-                w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud_temp[:,0,zone_idx,:] * w_cloud))/kappa_tot
+                # Else, we need to restructure w_cloud and g_cloud to span by layer 
+                # For Mie models with 1 species, the g and w can be help constant with each layer since
+                # Kappa cloud will encode where clouds are
+                # For models that are cloud free, you still need a g and w thats just an array of 0s
+                # For Mie models with more than one species, we need to be more careful with the g and w array
+                if len(aerosol_species) == 1 or aerosol_species == []:
+                    w_cloud = np.ones_like(kappa_cloud)*w_cloud
+                    g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
-                # Calculate combined scattering asymmetry parameter
-                g_tot = ((w_cloud * kappa_cloud_temp[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud_temp[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+                # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+                else:
+                    raise Exception('Only 1 aerosol species supported for scattering')
 
-                # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
-                F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
-                                        np.flip(dtau_tot, axis=0), 
-                                        np.flip(w_tot, axis=0), 
-                                        np.flip(g_tot, axis=0))
+                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                            kappa_Ray, kappa_cloud, kappa_tot,
+                                            w_cloud, g_cloud, zone_idx,
+                                            hard_surface = 0, tridiagonal = 0, 
+                                            Gauss_quad = 5, numt = 1)
+            
                 
                 dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
@@ -2411,7 +2468,7 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
                             fix_mu = True,
                             scattering_contribution = False,
                             reflection_contribution = False,
-                            total_pressure_contribuiton = False):
+                            total_pressure_contribution = False):
 
 
     '''
@@ -2424,16 +2481,27 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
             Array [i,j] where i = molecule number and j = wavelength. If user wants to normalize them   
     '''
     
+    # Warning message
+    if len(wl) > 10000:
+        print('Given current resolution (R), this will take more than a few hours to run. We reccomend to lower the resolution to 1000.')
+
     P = atmosphere['P']
 
     # Find how many elements you need 
     contribution_length = 0 
 
+    # Need to figure out if cloud contribution for non aerosols counts here or not(it doesnt)
     if bulk_species == True:
         contribution_length += 1
-    if cloud_total_contribution == True:
-        contribution_length += 1
-    if total_pressure_contribuiton == True:
+    # This only matters of aerosol models with multiple cloud species 
+    if model['cloud_type'] == 'Mie':
+        if cloud_total_contribution == True:
+            contribution_length += 1
+    else:
+        if cloud_contribution == True:
+            contribution_length += 1
+        
+    if total_pressure_contribution == True:
         contribution_length += 1
     
     contribution_length += len(contribution_species_list)
@@ -2462,8 +2530,9 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
                                                                                                                         fix_mu = fix_mu,
                                                                                                                         scattering_contribution = scattering_contribution,
                                                                                                                         reflection_contribution = reflection_contribution,
-                                                                                                                        total_pressure_contribution = total_pressure_contribuiton,
+                                                                                                                        total_pressure_contribution = total_pressure_contribution,
                                                                                                                         layer_to_ignore = i)
+        
                                                                                                             
         for j in range(len(spectrum_contribution_list)):
         
@@ -2471,7 +2540,7 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
             diff = spectrum - spectrum_contribution_list[j]
 
             # Add to contribution function (not yet normalized)
-            Contribution[j,i,:] = diff
+            Contribution[j,i,:] = np.abs(diff)
 
             # Increment normalization factor 
             norm[j,:] += diff
@@ -2499,7 +2568,7 @@ def plot_pressure_contribution(wl,P,
             title = 'Contribution Function : ' + str(spectrum_contribution_list_names[i])
             
             ax.set_title(title)
-            plt.colorbar(a, label='Transmission CF')
+            plt.colorbar(a, label='Contribution')
             plt.show()
 
             # Trying Ryan's Binning 

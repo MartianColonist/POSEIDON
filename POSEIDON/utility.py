@@ -1147,6 +1147,7 @@ def generate_latex_param_names(param_names):
                 string = '$\\log \\, \\mathrm{' + aerosol_name + '}$'
                 latex_names += [string]
                 continue
+            
         if ('C_to_O' in param):
             string = '$\\mathrm{C} \\, / \\, \\mathrm{O}$'
             latex_names += [string]
