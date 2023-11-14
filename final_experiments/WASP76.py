@@ -34,7 +34,7 @@ from POSEIDON.high_res import *
 # ***** Define model *****#
 
 model_name = (
-    "Fe Na Ca+ Cr gradient deck"  # Model name used for plots, output files etc.
+    "Fe Na Ca+ Cr isotherm deck a=0.1-5"  # Model name used for plots, output files etc.
 )
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
@@ -49,7 +49,7 @@ model = define_model(
     model_name,
     bulk_species,
     param_species,
-    PT_profile="gradient",
+    PT_profile="isotherm",
     high_res_params=high_res_params,
     cloud_model="MacMad17",
     cloud_type="deck",
@@ -107,11 +107,6 @@ prior_types["log_VO"] = "uniform"
 prior_types["log_Mg"] = "uniform"
 prior_types["log_Cr"] = "uniform"
 prior_types["log_V"] = "uniform"
-prior_types["a1"] = "uniform"
-prior_types["a2"] = "uniform"
-prior_types["log_P1"] = "uniform"
-prior_types["log_P2"] = "uniform"
-prior_types["log_P3"] = "uniform"
 prior_types["K_p"] = "uniform"
 prior_types["V_sys"] = "uniform"
 prior_types["a"] = "uniform"
@@ -124,30 +119,25 @@ prior_ranges = {}
 
 # Specify prior ranges for each free parameter
 prior_ranges["T_ref"] = [1500, 4000]
-prior_ranges["T"] = [1500, 4000]
+prior_ranges["T"] = [2000, 3500]
 prior_ranges["T_deep"] = [2000, 4000]
 prior_ranges["T_high"] = [2000, 4000]
 prior_ranges["R_p_ref"] = [R_p, 0.05 * R_J]
-prior_ranges["log_Na"] = [-15, 0]
-prior_ranges["log_Fe"] = [-15, 0]
-prior_ranges["log_Ca+"] = [-15, 0]
-prior_ranges["log_Li"] = [-15, 0]
-prior_ranges["log_K"] = [-15, 0]
-prior_ranges["log_VO"] = [-15, 0]
-prior_ranges["log_Mg"] = [-15, 0]
-prior_ranges["log_Cr"] = [-15, 0]
-prior_ranges["log_V"] = [-15, 0]
-prior_ranges["a1"] = [0.02, 1]
-prior_ranges["a2"] = [0.02, 1]
-prior_ranges["log_P1"] = [-8, 2]
-prior_ranges["log_P2"] = [-8, 2]
-prior_ranges["log_P3"] = [-3, 2]
+prior_ranges["log_Na"] = [-14, 0]
+prior_ranges["log_Fe"] = [-14, 0]
+prior_ranges["log_Ca+"] = [-14, 0]
+prior_ranges["log_Li"] = [-14, 0]
+prior_ranges["log_K"] = [-14, 0]
+prior_ranges["log_VO"] = [-14, 0]
+prior_ranges["log_Mg"] = [-14, 0]
+prior_ranges["log_Cr"] = [-14, 0]
+prior_ranges["log_V"] = [-14, 0]
 prior_ranges["K_p"] = [150, 250]
-prior_ranges["V_sys"] = [-100, 100]
-prior_ranges["log_a"] = [-1, 1]
+prior_ranges["V_sys"] = [-30, 30]
+prior_ranges["log_a"] = [-1, np.log10(5)]
 prior_ranges["b"] = [0.01, 100]
 prior_ranges["W_conv"] = [1, 10]
-prior_ranges["log_P_cloud"] = [-6, 2]
+prior_ranges["log_P_cloud"] = [-8, 2]
 
 # Create prior object for retrieval
 priors = set_priors(planet, star, model, data, prior_types, prior_ranges)
@@ -162,13 +152,13 @@ opacity_treatment = "opacity_sampling"
 
 # Define fine temperature grid (K)
 T_fine_min = 2000  # 400 K lower limit suffices for a typical hot Jupiter
-T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
+T_fine_max = 3500  # 2000 K upper limit suffices for a typical hot Jupiter
 T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
 
 T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
 # Define fine pressure grid (log10(P/bar))
-log_P_fine_min = -9.0  # 1 ubar is the lowest pressure in the opacity database
+log_P_fine_min = -10.0  # 1 ubar is the lowest pressure in the opacity database
 log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
 log_P_fine_step = 0.2  # 0.2 dex steps are a good tradeoff between accuracy and RAM
 
@@ -185,7 +175,7 @@ from POSEIDON.retrieval import run_retrieval
 # ***** Specify fixed atmospheric settings for retrieval *****#
 
 # Atmospheric pressure grid
-P_min = 1e-9  # 0.1 ubar
+P_min = 1e-10  # 0.1 ubar
 P_max = 100  # 100 bar
 N_layers = 100  # 100 layers
 
@@ -213,7 +203,7 @@ run_retrieval(
     N_live=400,
     verbose=True,
     N_output_samples=1000,
-    resume=False,
+    resume=True,
     # ev_tol=0.05,
 )
 

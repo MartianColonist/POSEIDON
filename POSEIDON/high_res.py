@@ -9,7 +9,7 @@ from .constants import R_Sun
 from .constants import R_J, M_J
 import numpy as np
 from spectres import spectres
-from sklearn.decomposition import TruncatedSVD, PCA
+from sklearn.decomposition import TruncatedSVD
 from scipy.ndimage import gaussian_filter1d, median_filter
 import cmasher as cmr
 import colormaps as cmaps
@@ -18,6 +18,8 @@ import h5py
 import os
 from scipy.optimize import minimize
 import time
+import batman
+from astropy.constants import au
 
 
 def airtovac(wlA):
@@ -41,29 +43,27 @@ def read_hdf5(file_path):
 
 
 def add_high_res_data(
-    data_dir, name, flux, wl_grid, phi, transit_weight, overwrite=False
+    data_dir, name, flux, wl_grid, phi, transit_weight=None, overwrite=False
 ):
     os.makedirs(os.path.join(data_dir, name), exist_ok=True)
     file_path = os.path.join(data_dir, name, "data_raw.hdf5")
-    if os.path.exists(file_path):
+
+    if os.path.exists(file_path) and not overwrite:
+        print(
+            "Raw data file already exists. Choose another name for observation or set overwrite=True to continue."
+        )
+        return
+
+    with h5py.File(file_path, "w") as f:
         if overwrite:
             print("Overwriting data at {}".format(file_path))
-            f = h5py.File(file_path, "w")
         else:
-            print(
-                "Raw data file already exists. Choose another name for observation or set overwrite=True to continue."
-            )
-            return
-    else:
-        print("Creating raw data at {}".format(file_path))
-        f = h5py.File(file_path, "w")
-
-    f.create_dataset("flux", data=flux)
-    f.create_dataset("wl_grid", data=wl_grid)
-    f.create_dataset("phi", data=phi)
-    f.create_dataset("transit_weight", data=transit_weight)
-
-    f.close()
+            print("Creating raw data at {}".format(file_path))
+        f.create_dataset("flux", data=flux)
+        f.create_dataset("wl_grid", data=wl_grid)
+        f.create_dataset("phi", data=phi)
+        if transit_weight is not None:
+            f.create_dataset("transit_weight", data=transit_weight)
 
     return
 
@@ -76,6 +76,7 @@ def prepare_high_res_data(
     niter=15,
     n_PC=5,
     filter_size=(15, 50),
+    stack_order=False,
     overwrite=False,
     Print=True,
 ):
@@ -84,92 +85,111 @@ def prepare_high_res_data(
         flux = f["flux"][:]
         wl_grid = f["wl_grid"][:]
         phi = f["phi"][:]
-        transit_weight = f["transit_weight"][:]
-        norder, nphi, npix = flux.shape
+        if spectrum_type == "transmission":
+            transit_weight = f["transit_weight"][:]
 
     processed_data_path = os.path.join(data_dir, name, "data_processed.hdf5")
 
-    if os.path.exists(processed_data_path):
-        if overwrite:
-            print("Overwriting data at {}".format(processed_data_path))
-            f = h5py.File(processed_data_path, "w")
-        else:
-            print("Processed data file already exists. Appending on current data file.")
-            print("You can set overwrite=True to overwrite everything.")
-            f = h5py.File(processed_data_path, "a")
-            for key in f.keys():
-                if key not in ["uncertainties", "flux_blaze_corrected"]:
+    with h5py.File(processed_data_path, "a") as f:
+        if os.path.exists(processed_data_path):
+            if overwrite:
+                print("Overwriting data at {}".format(processed_data_path))
+                for key in f.keys():
                     del f[key]
-    else:
-        print("Creating processed data at {}".format(processed_data_path))
-        f = h5py.File(processed_data_path, "w")
+            else:
+                print(
+                    "Processed data file already exists. Appending on current data file."
+                )
+                print("You can set overwrite=True to overwrite everything.")
+                for key in f.keys():
+                    if key not in ["uncertainties", "flux_blaze_corrected"]:
+                        del f[key]
+        else:
+            print("Creating processed data at {}".format(processed_data_path))
+        f.create_dataset("phi", data=phi)
+        f.create_dataset("wl_grid", data=wl_grid)
 
-    f.create_dataset("flux", data=flux)
-    f.create_dataset("wl_grid", data=wl_grid)
-    f.create_dataset("phi", data=phi)
-    f.create_dataset("transit_weight", data=transit_weight)
+        if "uncertainties" in f.keys():
+            uncertainties = f["uncertainties"][:]
+        else:
+            uncertainties = fit_uncertainties(flux, n_PC, Print=Print)
+            f.create_dataset("uncertainties", data=uncertainties)
 
-    f.attrs["spectrum_type"] = spectrum_type
-    f.attrs["method"] = method
+        if "flux_blaze_corrected" in f.keys():
+            flux_blaze_corrected = f["flux_blaze_corrected"][:]
+        else:
+            flux_blaze_corrected = blaze_correction(flux, filter_size, Print=Print)
+            f.create_dataset("flux_blaze_corrected", data=flux_blaze_corrected)
 
-    if "uncertainties" in f.keys():
-        uncertainties = f["uncertainties"][:]
-    else:
-        uncertainties = fit_uncertainties(flux, n_PC, Print=Print)
-        f.create_dataset("uncertainties", data=uncertainties)
+        if stack_order:
+            nord, nphi, npix = flux.shape
+            flux_blaze_corrected = flux_blaze_corrected.swapaxes(0, 1).reshape(
+                1, nphi, -1
+            )
+            uncertainties = uncertainties.swapaxes(0, 1).reshape(1, nphi, -1)
+            wl_grid = wl_grid.reshape(1, -1)
 
-    if "flux_blaze_corrected" in f.keys():
-        flux_blaze_corrected = f["flux_blaze_corrected"][:]
-    else:
-        flux_blaze_corrected = blaze_correction(flux, filter_size, Print=Print)
-        f.create_dataset("flux_blaze_corrected", data=flux_blaze_corrected)
+        nord, nphi, npix = flux_blaze_corrected.shape
 
-    if spectrum_type == "emission":
-        if method == "PCA":
-            pass
+        if spectrum_type == "emission":
+            if method == "PCA":
+                _, residuals = make_data_cube(flux_blaze_corrected, n_components=4)
+                f.create_dataset("residuals", data=residuals)
+            elif method == "sysrem_2022":
+                residuals, Us = fast_filter(flux_blaze_corrected, uncertainties, niter)
+                Bs = np.zeros((nord, nphi, nphi))
+                for i in range(nord):
+                    U = Us[i]
+                    L = np.diag(1 / np.mean(uncertainties[i], axis=-1))
+                    B = U @ np.linalg.pinv(L @ U) @ L
+                    Bs[i] = B
+                f.create_dataset("Bs", data=Bs)
+                f.create_dataset("residuals", data=residuals)
+                f.create_dataset("uncertainties_processed", data=uncertainties)
 
-    elif spectrum_type == "transmission":
-        if method == "sysrem_2022":
-            median = fit_spec(
-                flux_blaze_corrected, spec="median"
-            )  # TODO: check order, phase, wl
-            flux_blaze_corrected /= median
-            uncertainties /= median
-            residuals, Us = fast_filter(flux_blaze_corrected, uncertainties, niter)
+        elif spectrum_type == "transmission":
+            if method == "sysrem_2022":
+                median = fit_spec(
+                    flux_blaze_corrected, spec="median"
+                )  # TODO: check order, phase, wl
+                flux_blaze_corrected /= median
+                uncertainties /= median
+                residuals, Us = fast_filter(flux_blaze_corrected, uncertainties, niter)
 
-            Bs = np.zeros((norder, nphi, nphi))
-            for i in range(norder):
-                U = Us[i]
-                L = np.diag(1 / np.mean(uncertainties[i], axis=-1))
-                B = U @ np.linalg.pinv(L @ U) @ L
-                Bs[i] = B
-            f.create_dataset("Bs", data=Bs)
-        elif method == "sysrem_2020":
-            residuals, _ = fast_filter(flux_blaze_corrected, uncertainties, niter)
-            rebuilt = flux_blaze_corrected - residuals
-            flux_blaze_corrected /= rebuilt
-            uncertainties /= rebuilt
-            # residuals = flux_blaze_corrected - np.median(flux_blaze_corrected, axis=2)[:, :, None] # mean normalize the data
-            residuals = flux_blaze_corrected - 1  # mean normalize the data
-        elif method == "PCA":
-            median = fit_spec(
-                flux_blaze_corrected, spec="median"
-            )  # TODO: check order, phase, wl
-            flux_blaze_corrected /= median
-            rebuilt = PCA_rebuild(flux_blaze_corrected, n_components=10)
-            flux_blaze_corrected /= rebuilt
-            uncertainties /= rebuilt * median
-            # residuals = flux_blaze_corrected - np.median(flux_blaze_corrected, axis=2)[:, :, None] # mean normalize the data
-            residuals = flux_blaze_corrected - 1  # mean normalize the data
+                Bs = np.zeros((nord, nphi, nphi))
+                for i in range(nord):
+                    U = Us[i]
+                    L = np.diag(1 / np.mean(uncertainties[i], axis=-1))
+                    B = U @ np.linalg.pinv(L @ U) @ L
+                    Bs[i] = B
+                f.create_dataset("Bs", data=Bs)
+            # elif method == "NMF":
+            elif method == "sysrem_2020":
+                residuals, _ = fast_filter(flux_blaze_corrected, uncertainties, niter)
+                rebuilt = flux_blaze_corrected - residuals
+                flux_blaze_corrected /= rebuilt
+                uncertainties /= rebuilt
+                # residuals = flux_blaze_corrected - np.median(flux_blaze_corrected, axis=2)[:, :, None] # mean normalize the data
+                residuals = flux_blaze_corrected - 1  # mean normalize the data
+            elif method == "PCA":
+                median = fit_spec(
+                    flux_blaze_corrected, spec="median"
+                )  # TODO: check order, phase, wl
+                flux_blaze_corrected /= median
+                rebuilt = PCA_rebuild(flux_blaze_corrected, n_components=10)
+                flux_blaze_corrected /= rebuilt
+                uncertainties /= rebuilt * median
+                # residuals = flux_blaze_corrected - np.median(flux_blaze_corrected, axis=2)[:, :, None] # mean normalize the data
+                residuals = flux_blaze_corrected - 1  # mean normalize the data
 
-        f.create_dataset("residuals", data=residuals)
-        f.create_dataset("uncertainties_processed", data=uncertainties)
+            f.create_dataset("transit_weight", data=transit_weight)
+            f.create_dataset("residuals", data=residuals)
+            f.create_dataset("uncertainties_processed", data=uncertainties)
 
-    f.close()
     return
 
 
-def read_high_res_data(data_dir, names=None, retrieval=True):
+def read_high_res_data(data_dir, names=None):
     if not names:
         names = os.listdir(data_dir)
     elif isinstance(names, str):
@@ -178,16 +198,7 @@ def read_high_res_data(data_dir, names=None, retrieval=True):
     for name in names:
         processed_data_path = os.path.join(data_dir, name, "data_processed.hdf5")
         data = read_hdf5(processed_data_path)
-        if retrieval:
-            data_all[name] = {}
-            data_all[name]["residuals"] = data["residuals"]
-            data_all[name]["uncertainties_processed"] = data["uncertainties_processed"]
-            data_all[name]["phi"] = data["phi"]
-            data_all[name]["wl_grid"] = data["wl_grid"]
-            data_all[name]["transit_weight"] = data["transit_weight"]
-            data_all[name]["Bs"] = data["Bs"]
-        else:
-            data_all[name] = data
+        data_all[name] = data
     return data_all
 
 
@@ -195,11 +206,11 @@ def fit_uncertainties(flux, n_components=5, initial_guess=[0.5, 200], Print=True
     if Print:
         print("Fitting Poisson uncertainties with {} components".format(n_components))
     uncertainties = np.zeros(flux.shape)
-    norder = len(flux)
+    nord = len(flux)
     rebuilt = PCA_rebuild(flux, n_components=n_components)
     residuals = flux - rebuilt
 
-    for i in range(norder):
+    for i in range(nord):
         # minimizing negative log likelihood is equivalent to maximizing log likelihood
         def neg_likelihood(x):
             a, b = x
@@ -225,18 +236,18 @@ def blaze_correction(flux, filter_size, Print=True):
             )
         )
     blaze = np.zeros(flux.shape)
-    norder, nphi, npix = flux.shape
-    for i in range(norder):
+    nord, nphi, npix = flux.shape
+    for i in range(nord):
         order = flux[i]
         median = np.median(order, axis=0)
         order_norm = order / median
         blaze[i] = order_norm
 
-    for i in range(norder):
+    for i in range(nord):
         for j in range(nphi):
             blaze[i][j] = median_filter(blaze[i][j], size=median_filter_size)
 
-    for i in range(norder):
+    for i in range(nord):
         for j in range(nphi):
             blaze[i][j] = gaussian_filter1d(blaze[i][j], sigma=gaussian_filter_size)
 
@@ -250,28 +261,28 @@ def sysrem(data_array, uncertainties, niter=15):
     SYSREM procedure adapted from https://github.com/stephtdouglas/PySysRem, originally used for detrending light curves.
 
     Use this function in a high resolutional rerieval.
-    N_order: number of spectral order.
-    N_phi: number of time-resolved phases.
-    N_wl: number of wavelengths per spectral order.
+    nord: number of spectral order.
+    nphi: number of time-resolved phases.
+    npix: number of wavelengths per spectral order.
 
     Args:
         data_array (2D np.array of float):
             Blaze-corrected data of a single order.
-            Shape: (N_phi x N_wl)
+            Shape: (nphi x npix)
         uncertainties (np.array of float):
             Time and wavelength dependent uncertainties obtained from fit_uncertainties.
-            Shape: (N_phi x N_wl)
+            Shape: (nphi x npix)
         Niter (int):
             Number of basis vectors to consider.
 
     Returns:
         residuals (np.array of float):
             2D Array representing the residuals data of a single order after filtering.
-            Shape: (N_phi x N_wl)
+            Shape: (nphi x npix)
 
         U (2D np.array of float):
             Basis vectors obtained from SYSREM of a single vector.
-            Shape: (N_phi x N_iter + 1)
+            Shape: (nphi x N_iter + 1)
     """
     data_array = data_array.T
     uncertainties = uncertainties.T
@@ -333,17 +344,17 @@ def fast_filter(flux, uncertainties, niter=15, Print=True):
     Returns:
         residuals (3D np.array of float):
             The residuals data of a single order after filtering.
-            Shape: (N_order x N_phi x N_wl)
+            Shape: (nord x nphi x npix)
 
         Us (3D np.array of float):
             Basis vectors obtained from SYSREM of a single vector.
-            Shape: (N_order x N_phi x N_iter+1)
+            Shape: (nord x nphi x N_iter+1)
     """
     if Print:
         print("Filtering out systematics using SYSREM with {} iterations".format(niter))
-    norder, nphi, npix = flux.shape
-    residuals = np.zeros((norder, nphi, npix))
-    Us = np.zeros((norder, nphi, niter + 1))
+    nord, nphi, npix = flux.shape
+    residuals = np.zeros((nord, nphi, npix))
+    Us = np.zeros((nord, nphi, niter + 1))
 
     for i, order in enumerate(flux):
         stds = uncertainties[i]
@@ -354,10 +365,31 @@ def fast_filter(flux, uncertainties, niter=15, Print=True):
     return residuals, Us
 
 
+def make_data_cube(data, n_components=4):
+    nord, nphi, npix = data.shape
+
+    # SVD/PCA method
+    data_scale = PCA_rebuild(data, n_components=n_components)
+    data_arr = data - data_scale
+
+    for i in range(nord):
+        A = data_arr[i]
+        # sigma clipping sort of--it really doesn't make a yuge difference.
+        sigma = np.std(A)
+        median = np.median(A)
+        loc = np.where(A > 3 * sigma + median)
+        A[loc] = 0  # *0.+20*sig
+        loc = np.where(A < -3 * sigma + median)
+        A[loc] = 0  # *0.+20*sig
+        data_arr[i] = A
+
+    return data_scale, data_arr
+
+
 def PCA_rebuild(flux, n_components=5):
-    norder, nphi, npix = flux.shape
+    nord, nphi, npix = flux.shape
     rebuilt = np.zeros_like(flux)
-    for i in range(norder):
+    for i in range(nord):
         order = flux[i]
         svd = TruncatedSVD(n_components=n_components).fit(order)
         rebuilt[i] = svd.transform(order) @ svd.components_
@@ -367,10 +399,10 @@ def PCA_rebuild(flux, n_components=5):
 def fit_spec(flux, degree=2, spec="median", Print=True):
     if Print:
         print("Fitting out {} spectrum from each exposure".format(spec))
-    norder, nphi, npix = flux.shape
+    nord, nphi, npix = flux.shape
     spec_fit = np.zeros_like(flux)
 
-    for i in range(norder):
+    for i in range(nord):
         # construct a mean spectrum
         if spec == "mean":
             mean_spec = np.mean(flux[i], axis=0)
@@ -421,51 +453,51 @@ def cross_correlate(
     if Print:
         time0 = time.time()
     uncertainties = data["uncertainties_processed"]
+    uncertainties = np.ones_like(uncertainties)
     residuals = data["residuals"]
     phi = data["phi"]
     wl_grid = data["wl_grid"]
-    transit_weight = data["transit_weight"]
-    max_transit_depth = np.max(1 - transit_weight)
+    if "transit_weight" in data.keys():
+        spectrum_type = "transmission"
+        transit_weight = data["transit_weight"]
+        max_transit_depth = np.max(1 - transit_weight)
+    else:
+        spectrum_type = "emission"
 
-    norder, nphi, npix = residuals.shape
+    nord, nphi, npix = residuals.shape
     CCF_Kp_Vsys = np.zeros((len(Kp_range), len(Vsys_range)))
 
     nRV = len(RV_range)
     CCF_phase_RV = np.zeros((nphi, nRV))
-    models_shifted = np.zeros((nRV, norder, npix))
+    models_shifted = np.zeros((nRV, nord, npix))
     for RV_i, RV in enumerate(RV_range):
         # Looping through each order and computing total log-L by summing logLs for each obvservation/order
-        for order_i in range(norder):
-            wl_slice = wl_grid[order_i]  # Cropped wavelengths
+        for ord_i in range(nord):
+            wl_slice = wl_grid[ord_i]  # Cropped wavelengths
             delta_lambda = RV * 1e3 / constants.c
             wl_shifted = wl * (1.0 + delta_lambda)
             F_p = np.interp(wl_slice, wl_shifted, planet_spectrum)
-            models_shifted[RV_i, order_i] = F_p  # choose not to filter
+            models_shifted[RV_i, ord_i] = F_p  # choose not to filter
+
+    # negative of transmission spectrum gives absorption. Adding or multiplying constant does not change the CCF
+    if spectrum_type == "emission":
+        m = models_shifted
+    elif spectrum_type == "transmission":
+        m = -models_shifted
 
     for phi_i in range(nphi):
-        print("Cross correlating phase {}".format(phi_i))
-        loglikelihoods = np.zeros(nRV)
-        CCFs = np.zeros(nRV)
-        for order_i in range(norder):
-            f = residuals[order_i, phi_i] / uncertainties[order_i, phi_i]
-            f2 = f.dot(f)
-            for RV_i in range(nRV):
-                model = (-models_shifted[RV_i, order_i]) * (
-                    1 - transit_weight[phi_i]
-                ) / max_transit_depth + 1  # change to -model instead?
-                # divide by the median over wavelength to mimic blaze correction
-                # model = model / np.median(model)  # keep or not?
-                m = model / uncertainties[order_i, phi_i]
-                m2 = m.dot(m)
-                CCF = f.dot(m)
-                loglikelihood = -npix / 2 * np.log((m2 + f2 - 2.0 * CCF) / npix)
-                loglikelihoods[RV_i] += loglikelihood
-                CCFs[RV_i] += CCF
-        CCF_phase_RV[phi_i, :] = CCFs
+        for RV_i in range(nRV):
+            f = residuals[:, phi_i, :]
+            CCF = np.sum(f[:, :] * m[RV_i, :, :] / uncertainties[:, phi_i, :] ** 2)
+            CCF_phase_RV[phi_i, RV_i] += CCF
 
-        for Kp_i, Kp in enumerate(Kp_range):
-            RV = Kp * np.sin(2 * np.pi * phi[phi_i]) + Vsys_range
-            CCF_Kp_Vsys[Kp_i] += np.interp(RV, RV_range, CCFs)
+    if spectrum_type == "transmission":
+        CCF_phase_RV = (1 - transit_weight[:, None]) * CCF_phase_RV
+
+    for Kp_i, Kp in enumerate(Kp_range):
+        for phi_i in range(nphi):
+            RV = Kp * np.sin(2 * np.pi * phi[phi_i]) + Vsys_range  # + V_bary[phi_i]
+            CCF_Kp_Vsys[Kp_i] += np.interp(RV, RV_range, CCF_phase_RV[phi_i])
     if Print:
         time1 = time.time()
         print("Cross correlation took {} seconds".format(time1 - time0))
@@ -493,8 +525,18 @@ def plot_CCF_Kp_Vsys(
     maxx = (CCF_Kp_Vsys / stdev).max()
 
     loc = np.where(CCF_Kp_Vsys / stdev == maxx)
-    fig, ax = plt.subplots(figsize=(17, 17), constrained_layout=True)
-    im = ax.imshow(
+
+    fig, axes = plt.subplots(
+        2,
+        1,
+        figsize=(17, 22),
+        constrained_layout=True,
+        gridspec_kw={"height_ratios": [17, 5]},
+    )
+
+    # First subplot (Top, 17:17)
+    ax1 = axes[0]
+    im = ax1.imshow(
         CCF_Kp_Vsys / stdev,
         extent=[Vsys_range.min(), Vsys_range.max(), Kp_range.min(), Kp_range.max()],
         aspect=len(Vsys_range) / len(Kp_range),
@@ -503,35 +545,30 @@ def plot_CCF_Kp_Vsys(
         origin="lower",
     )
     if plot_label:
-        ax.text(
+        ax1.text(
             0.1,
             0.15,
             species,
             ha="left",
             va="top",
-            transform=ax.transAxes,
+            transform=ax1.transAxes,
             color="white",
             fontsize=60,
         )
+    cbar = plt.colorbar(im, ax=ax1, shrink=0.8)
+    ax1.axvline(x=Vsys, color="white", ls="--", lw=2)
+    ax1.axhline(y=Kp, color="white", ls="--", lw=2)
+    ax1.plot(Vsys_range[loc[1]], Kp_range[loc[0]], "xk", ms=20, mew=4)
+    ax1.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
+    ax1.set_ylabel(r"K$_{p}$ (km/s)")
+    ax1.set_title(r"$\Delta$ CCF ($\sigma$)")
 
-    cbar = plt.colorbar(im, shrink=0.8)
-    plt.axvline(x=Vsys, color="white", ls="--", lw=2)
-    plt.axhline(y=Kp, color="white", ls="--", lw=2)
-    plt.plot(Vsys_range[loc[1]], Kp_range[loc[0]], "xk", ms=20, mew=4)
-    ax.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
-    ax.set_ylabel(r"K$_{p}$ (km/s)")
-    ax.set_title(r"$\Delta$ CCF ($\sigma$)")
-    if savefig:
-        plt.savefig(output_path + s + "_CCF_Kp_Vsys.png")
-    plt.show()
-    plt.close()
-
-    fig, ax = plt.subplots(figsize=(17, 5), constrained_layout=True)
+    # Second subplot (Bottom, 17:5)
+    ax2 = axes[1]
     idx = find_nearest_idx(Kp_range, Kp)
-
-    slicee = CCF_Kp_Vsys[idx]
-    ax.plot(Vsys_range, slicee)
-    ax.axis(
+    slicee = CCF_Kp_Vsys[idx] / stdev
+    ax2.plot(Vsys_range, slicee)
+    ax2.axis(
         [
             np.min(Vsys_range),
             np.max(Vsys_range),
@@ -539,12 +576,13 @@ def plot_CCF_Kp_Vsys(
             1.1 * slicee.max(),
         ]
     )
-    ax.set_xlabel(r"$\Delta$V$_{sys}$(km/s)")
-    ax.set_ylabel(r"$\Delta$ CCF")
-    ax.set_title("Slice at K$_{p}$ = " + str(Kp) + " km/s")
-    ax.axvline(x=Vsys, ls="--", color="black")
+    ax2.set_xlabel(r"$\Delta$V$_{sys}$(km/s)")
+    ax2.set_ylabel(r"$\Delta$ CCF ($\sigma$)")
+    ax2.set_title("Slice at K$_{p}$ = " + str(Kp) + " km/s")
+    ax2.axvline(x=Vsys, ls="--", color="black")
+
     if savefig:
-        plt.savefig(output_path + s + "_CCF_slice.png")
+        plt.savefig(output_path + species + "_CCF_Kp_Vsys_combined.png")
     plt.show()
     plt.close()
 
@@ -620,9 +658,9 @@ def plot_CCF_phase_RV(
 def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, data):
     """
     Perform the loglikelihood calculation using Principal Component Analysis (PCA). Based on M. Line 2019.
-    N_order: number of spectral order.
-    N_phi: number of time-resolved phases.
-    N_wl: number of wavelengths per spectral order.
+    nord: number of spectral order.
+    nphi: number of time-resolved phases.
+    npix: number of wavelengths per spectral order.
 
     Args:
         V_sys (float):
@@ -644,16 +682,16 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
             Has the following key-value pairss:
                 data_arr (3D np.array of float):
                     3D Array representing the top principal components removed data.
-                    Shape: (N_order x N_phi x N_wl)
+                    Shape: (nord x nphi x npix)
                 data_scale (3D np.array of float):
                     3D Array representing the top principal components of data.
-                    Shape: (N_order x N_phi x N_wl)
+                    Shape: (nord x nphi x npix)
                 V_bary (np.array of float):
                     Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
-                    Shape: (N_phi, )
+                    Shape: (nphi, )
                 phi (np.array of float):
                     Array of time-resolved phases.
-                    Shpae (N_phi, )
+                    Shpae (nphi, )
 
     Returns:
         loglikelihood_sum (float):
@@ -662,35 +700,36 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
             Cross-correlation value.
     """
 
-    data_arr = data["data_arr"]
-    data_scale = data["data_scale"]
+    residuals = data["residuals"]
+    flux = data["flux_blaze_corrected"]
+    data_scale = flux - residuals
     V_bary = data["V_bary"]
     phi = data["phi"]
     wl_grid = data["wl_grid"]
 
-    N_order, N_phi, N_wl = data_arr.shape
+    nord, nphi, npix = residuals.shape
 
     # Time-resolved total radial velocity
-    RV_p = V_sys + V_bary + K_p * np.sin(2 * np.pi * (phi + d_phi))
+    radial_velocity_p = V_sys + V_bary + K_p * np.sin(2 * np.pi * (phi + d_phi))
     # V_sys is an additive term around zero
-    dl_p = RV_p * 1e3 / constants.c  # delta lambda, for shifting
+    delta_lambda_p = radial_velocity_p * 1e3 / constants.c  # delta lambda, for shifting
 
     K_s = 0.3229
-    RV_s = (
+    radial_velocity_s = (
         V_sys + V_bary - K_s * np.sin(2 * np.pi * phi)
     ) * 0  # Velocity of the star is very small compared to planet's velocity and it's already be corrected
-    dl_s = RV_s * 1e3 / constants.c  # delta lambda, for shifting
+    delta_lambda_s = radial_velocity_s * 1e3 / constants.c  # delta lambda, for shifting
 
     loglikelihood_sum = 0
     CCF_sum = 0
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
-    for j in range(N_order):  # Nord = 44 This takes 2.2 seconds to complete
+    for j in range(nord):  # Nord = 44 This takes 2.2 seconds to complete
         wl_slice = wl_grid[j]  # Cropped wavelengths
-        F_p_F_s = np.zeros((N_phi, N_wl))  # "shifted" model spectra array at each phase
-        for i in range(N_phi):  # This for loop takes 0.025 seconds Nphi = 79
-            wl_shifted_p = wl_slice * (1.0 - dl_p[i])
+        F_p_F_s = np.zeros((nphi, npix))  # "shifted" model spectra array at each phase
+        for i in range(nphi):  # This for loop takes 0.025 seconds Nphi = 79
+            wl_shifted_p = wl_slice * (1.0 - delta_lambda_p[i])
             F_p = np.interp(wl_shifted_p, wl, planet_spectrum)
-            wl_shifted_s = wl_slice * (1.0 - dl_s[i])
+            wl_shifted_s = wl_slice * (1.0 - delta_lambda_s[i])
             F_s = np.interp(wl_shifted_s, wl, star_spectrum)
             F_p_F_s[i, :] = F_p / F_s
 
@@ -702,31 +741,33 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
         models_filtered = model_injected - (
             svd.transform(model_injected) @ svd.components_
         )  # 0.008 s
-        # svd.transform gives data matrix in reduced dimension (79, 5). svd.components gives the first n_components right singular vectors (5, N_wl)
+        # svd.transform gives data matrix in reduced dimension (79, 5). svd.components gives the first n_components right singular vectors (5, npix)
         # Original data minus PCA-ed data is equivalent to doing np.linalg.svd, setting first n_components components to zero.
 
-        for i in range(N_phi):  # This loop takes 0.001 second
+        for i in range(nphi):  # This loop takes 0.001 second
             model_filtered = models_filtered[i] * a
             model_filtered -= model_filtered.mean()  # mean subtracting here...
             m2 = model_filtered.dot(model_filtered)
-            planet_signal = data_arr[j, i]  # already mean-subtracted
+            planet_signal = residuals[j, i]  # already mean-subtracted
             f2 = planet_signal.dot(planet_signal)
             R = model_filtered.dot(planet_signal)  # cross-covariance
             CCF = R / np.sqrt(m2 * f2)  # cross-correlation
             CCF_sum += CCF
             loglikelihood_sum += (
-                -0.5 * N_wl * np.log((m2 + f2 - 2.0 * R) / N_wl)
+                -0.5 * npix * np.log((m2 + f2 - 2.0 * R) / npix)
             )  # Equation 9 in paper
 
     return loglikelihood_sum, CCF_sum
 
 
-def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
+def loglikelihood_sysrem(
+    V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data, star_spectrum=None
+):
     """
     Perform the loglikelihood calculation using SysRem. Based on N. Gibson 2021.
-    N_order: number of spectral order.
-    N_phi: number of time-resolved phases.
-    N_wl: number of wavelengths per spectral order.
+    nord: number of spectral order.
+    nphi: number of time-resolved phases.
+    npix: number of wavelengths per spectral order.
 
     Args:
         V_sys (float):
@@ -749,20 +790,20 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
             Has the following key-value pairs:
                 residuals (3D np.array of float):
                     3D Array representing the residuals data after filtering.
-                    Shape: (N_order x N_phi x N_wl)
+                    Shape: (nord x nphi x npix)
                 Bs (list of 2D np.array of float):
                     A list of basis vectors returned by fast_filter.
-                    Shape: (N_order x N_phi x N_wl)
+                    Shape: (nord x nphi x npix)
                 phi (np.array of float):
                     Array of time-resolved phases.
-                    Shape (N_phi, )
+                    Shape (nphi, )
                 transit_weight (np.array of float):
                     Transit model of the planet. A value of 1 is out of transit, and 0 is full transit.
-                    Shape (N_phi, )
+                    Shape (nphi, )
                 uncertainties (None or 3D np.array of float):
                     Time and wavelength dependent uncertainties obtained from fit_uncertainties.
                     Can be None only if b is also None.
-                    Shape: (N_order x N_phi x N_wl)
+                    Shape: (nord x nphi x npix)
 
     Returns:
         Loglikelihood (float):
@@ -773,12 +814,17 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
     residuals = data["residuals"]
     Bs = data["Bs"]
     phi = data["phi"]
-    transit_weight = data["transit_weight"]
+    if star_spectrum is None:
+        transit_weight = data["transit_weight"]
+        max_transit_depth = np.max(1 - transit_weight)
+    else:
+        flux = data["flux_blaze_corrected"]
+
     uncertainties = data.get(
         "uncertainties_processed"
     )  # in case we want to null uncertainties
 
-    norder, nphi, npix = residuals.shape
+    nord, nphi, npix = residuals.shape
 
     N = residuals.size
 
@@ -793,9 +839,10 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
     if b is not None:
         loglikelihood_sum -= N * np.log(b)
 
-    max_transit_depth = np.max(1 - transit_weight)
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
-    for i in range(norder):
+    flux_star = flux - residuals
+
+    for i in range(nord):
         wl_slice = wl_grid[i]  # Cropped wavelengths
 
         models_shifted = np.zeros(
@@ -805,10 +852,16 @@ def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data):
         for j in range(nphi):
             wl_shifted = wl_slice * (1.0 - delta_lambda[j])
             F_p = np.interp(wl_shifted, wl, planet_spectrum)
-            models_shifted[j] = (1 - transit_weight[j]) / max_transit_depth * (-F_p) + 1
-
-        # divide by the median over wavelength to mimic blaze correction
-        models_shifted = (models_shifted.T / np.median(models_shifted, axis=1)).T
+            if star_spectrum is None:
+                models_shifted[j] = (1 - transit_weight[j]) / max_transit_depth * (
+                    -F_p
+                ) + 1
+                models_shifted[j] /= np.median(
+                    models_shifted[j]
+                )  # divide by the median over wavelength to mimic blaze correction (doubt this is necessary)
+            else:
+                F_s = np.interp(wl_shifted, wl, star_spectrum)
+                models_shifted[j] = F_p / F_s * flux_star[i, j]
 
         B = Bs[i]
         models_filtered = (
@@ -895,10 +948,10 @@ def loglikelihood_high_res(
     else:
         V_sys = model["V_sys"]
 
-    if "log_a" in high_res_param_names:
-        a = 10 ** high_res_params[np.where(high_res_param_names == "log_a")[0][0]]
+    if "log_alpha" in high_res_param_names:
+        a = 10 ** high_res_params[np.where(high_res_param_names == "log_alpha")[0][0]]
     else:
-        a = 10 ** model["log_a"]
+        a = 10 ** model["log_alpha"]
 
     if "d_phi" in high_res_param_names:
         d_phi = high_res_params[np.where(high_res_param_names == "d_phi")[0][0]]
@@ -910,55 +963,51 @@ def loglikelihood_high_res(
     else:
         W_conv = model.get("W_conv")
 
-    if "b" in high_res_param_names:
-        b = high_res_params[np.where(high_res_param_names == "b")[0][0]]
+    if "beta" in high_res_param_names:
+        b = high_res_params[np.where(high_res_param_names == "beta")[0][0]]
     else:
-        b = model.get("b")  # Set a value or else we null b
+        b = model.get("beta")  # Set a value or else we null b
 
     if spectrum_type is "emission":
-        if method is not "PCA":
-            raise Exception("Emission spectroscopy only supports PCA for now.")
+        if W_conv is not None:
+            F_p = gaussian_filter1d(planet_spectrum, W_conv)
+            F_s = gaussian_filter1d(star_spectrum, W_conv)
         else:
-            # instrument profile convolution
-            R_instrument = model["R_instrument"]
-            R = model["R"]
-            V_sin_i = data["V_sin_i"]
-            rot_kernel = get_rot_kernel(V_sin_i, wl, W_conv)
-            F_p_rot = np.convolve(
-                planet_spectrum, rot_kernel, mode="same"
-            )  # calibrate for planetary rotation
-            xker = np.arange(-20, 21)
-            sigma = (R / R_instrument) / (
-                2 * np.sqrt(2.0 * np.log(2.0))
-            )  # model is right now at R=250K.  IGRINS is at R~45K. We make gaussian that is R_model/R_IGRINS ~ 5.5
-            yker = np.exp(
-                -0.5 * (xker / sigma) ** 2.0
-            )  # instrumental broadening kernel; TODO: Understand this.
-            yker /= yker.sum()
-            F_p_conv = np.convolve(F_p_rot, yker, mode="same")
-            F_s_conv = np.convolve(
-                star_spectrum, yker, mode="same"
-            )  # no need to times (R)^2 because F_p, F_s are already observed value on Earth
-            loglikelihood, _ = loglikelihood_PCA(
-                V_sys, K_p, d_phi, a, wl, F_p_conv, F_s_conv, data
-            )
-            return loglikelihood
+            F_p = planet_spectrum
+            F_s = star_spectrum
+        loglikelihood = 0
+        for key in data.keys():
+            if method == "sysrem":
+                loglikelihood += loglikelihood_sysrem(
+                    V_sys, K_p, d_phi, a, b, wl, F_p, data[key], F_s
+                )
+            elif method == "PCA":
+                loglikelihood, _ = loglikelihood_PCA(
+                    V_sys, K_p, d_phi, a, wl, F_p, F_s, data[key]
+                )
+            else:
+                raise Exception(
+                    "Emission spectroscopy only supports sysrem and PCA for now."
+                )
+        return loglikelihood
 
     elif spectrum_type is "transmission":
-        if method not in ["sysrem", "sysrem_2022", "SYSREM"]:
+        if method != "sysrem":
             raise Exception(
-                "Transmission spectroscopy only supports fast filtering with SYSREM (Gibson et al. 2022)."
+                "Transmission spectroscopy only supports fast filtering with sysrem (Gibson et al. 2022)."
             )
+        if W_conv is not None:
+            F_p = gaussian_filter1d(planet_spectrum, W_conv)
         else:
-            if W_conv is not None:
-                planet_spectrum = gaussian_filter1d(planet_spectrum, W_conv)
-            loglikelihood = 0
-            for key in data.keys():
-                wl_vacuum = airtovac(wl * 1e4) / 1e4
-                loglikelihood += loglikelihood_sysrem(
-                    V_sys, K_p, d_phi, a, b, wl_vacuum, planet_spectrum, data[key]
-                )
-            return loglikelihood
+            F_p = planet_spectrum
+        loglikelihood = 0
+        for key in data.keys():
+            # wl_vacuum = airtovac(wl * 1e4) / 1e4
+            wl_vacuum = wl
+            loglikelihood += loglikelihood_sysrem(
+                V_sys, K_p, d_phi, a, b, wl_vacuum, F_p, data[key]
+            )
+        return loglikelihood
     else:
         raise Exception("Spectrum type can only be 'emission' or 'transmission'.")
 
@@ -992,11 +1041,11 @@ def get_rot_kernel(V_sin_i, wl, W_conv):
 
 
 def remove_outliers(wl_grid, flux):
-    norder, nphi, npix = flux.shape
+    nord, nphi, npix = flux.shape
     cleaned_flux = flux.copy()
     # Process each order separately
     noutliers = 0
-    for i in range(norder):
+    for i in range(nord):
         # Fit a 10th order polynomial to the residual spectrum
         for j in range(nphi):
             coeffs = np.polynomial.polynomial.polyfit(wl_grid[i], flux[i, j], 20)
@@ -1012,3 +1061,92 @@ def remove_outliers(wl_grid, flux):
     print("{} outliers removed from a total of {} pixels".format(noutliers, flux.size))
 
     return cleaned_flux
+
+
+def transit_model(R_p, R_s, a, phi):
+    params = batman.TransitParams()  # object to store transit parameters
+    params.t0 = 0  # time of inferior conjunction
+    params.per = 1  # orbital period, dummy value
+    params.rp = R_p / R_s  # planet radius (in units of stellar radii)
+    params.a = a / R_s  # semi-major axis (in units of stellar radii)
+    params.inc = 88.0  # orbital inclination (in degrees)
+    params.ecc = 0.0  # eccentricity
+    params.w = 90.0  # longitude of periastron (in degrees)
+    params.limb_dark = "quadratic"  # limb darkening model
+    params.u = [0, 0]  # limb darkening coefficients [u1, u2, u3, u4]
+    t = phi * params.per  # times at which to calculate light curve
+    m = batman.TransitModel(params, t)  # initializes model
+    flux = m.light_curve(params)
+    return flux
+
+
+def make_injection_data(
+    data,
+    data_dir,
+    name,
+    wl,
+    planet_spectrum,
+    K_p,
+    V_sys,
+    method,
+    a=1,
+    W_conv=None,
+    star_spectrum=None,
+):
+    residuals = data["residuals"]
+    flux = data["flux_blaze_corrected"]
+    wl_grid = data["wl_grid"]
+
+    phi = data["phi"]
+    if "V_bary" in data.keys():
+        V_bary = data["V_bary"]
+    else:
+        V_bary = np.zeros_like(phi)
+
+    nord, nphi, npix = residuals.shape
+    planet_spectrum = gaussian_filter1d(planet_spectrum, W_conv)
+    emission = star_spectrum is not None
+
+    if emission:
+        spectrum_type = "emission"
+        star_spectrum = gaussian_filter1d(star_spectrum, W_conv)
+    else:
+        spectrum_type = "transmission"
+        transit_weight = data["transit_weight"]
+        max_transit_depth = np.max(1 - transit_weight)
+    # Time-resolved total radial velocity
+    radial_velocity = V_sys + V_bary + K_p * np.sin(2 * np.pi * phi)
+    # V_sys is an additive term around zero
+    delta_lambda = radial_velocity * 1e3 / constants.c  # delta lambda, for shifting
+
+    F_p_F_s = np.zeros((nord, nphi, npix))
+    F_p = np.zeros((nord, nphi, npix))
+
+    for i in range(nord):  # Nord = 44 This takes 2.2 seconds to complete
+        wl_slice = wl_grid[i].copy()  # Cropped wavelengths
+        for j in range(nphi):  # This for loop takes 0.025 seconds Nphi = 79
+            wl_shifted_p = wl_slice * (1.0 - delta_lambda[j])
+            if emission:
+                F_p_F_s[i, j, :] = np.interp(
+                    wl_shifted_p, wl, planet_spectrum
+                ) / np.interp(wl_slice, wl, star_spectrum)
+            else:
+                F_p[i, j, :] = (
+                    -np.interp(wl_shifted_p, wl, planet_spectrum)
+                    * (1 - transit_weight[j])
+                    / max_transit_depth
+                    + 1
+                )
+
+    if emission:
+        data_injected = (1 + F_p_F_s) * (flux - residuals)
+    else:
+        data_injected = F_p * flux
+
+    add_high_res_data(
+        data_dir, name, data_injected, wl_grid, phi, transit_weight=None, overwrite=True
+    )
+
+    prepare_high_res_data(data_dir, name, spectrum_type, method, overwrite=True)
+
+    return

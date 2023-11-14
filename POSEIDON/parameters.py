@@ -174,6 +174,8 @@ def assign_free_params(
             physical_params += ["R_p_ref"]  # Reference radius parameter (in R_J or R_E)
         elif reference_parameter == "P_ref":
             physical_params += ["log_P_ref"]  # Reference pressure
+        elif reference_parameter == "None":
+            pass
         else:
             raise Exception(
                 "Error: Only R_p_ref or P_ref are supported reference parameters."

@@ -4,7 +4,7 @@ from POSEIDON.constants import R_Sun, R_J, M_J
 import pickle
 
 # ***** Define stellar properties *****#
-
+mode = "evaluate"
 
 R_s = 1.21 * R_Sun  # Stellar radius (m)
 T_s = 5605.0  # Stellar effective temperature (K)
@@ -29,7 +29,7 @@ d = planet["system_distance"]
 
 # %%
 from POSEIDON.core import define_model, wl_grid_constant_R
-from POSEIDON.utility import read_high_res_data
+from POSEIDON.utility import read_high_res_data_deprecate
 
 # ***** Define model *****#
 
@@ -79,7 +79,7 @@ wl_s = star["wl_star"]
 
 data_dir = "./data/WASP-77Ab/"
 
-data = read_high_res_data(data_dir, method="pca", spectrum_type="emission")
+data = read_high_res_data_deprecate(data_dir, method="pca", spectrum_type="emission")
 data["V_sin_i"] = 4.5
 model["W_conv"] = 401
 # %%
@@ -161,8 +161,9 @@ log_P_fine = np.arange(
     log_P_fine_min, (log_P_fine_max + log_P_fine_step), log_P_fine_step
 )
 
-# Now we can pre-interpolate the sampled opacities (may take up to a minute)
-opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
+if mode == "retrieval":
+    # Now we can pre-interpolate the sampled opacities (may take up to a minute)
+    opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
 # ***** Specify fixed atmospheric settings for retrieval *****#
 # Specify the pressure grid of the atmosphere
@@ -181,25 +182,26 @@ from POSEIDON.retrieval import run_retrieval
 
 # ***** Run atmospheric retrieval *****#
 
-run_retrieval(
-    planet,
-    star,
-    model,
-    opac,
-    data,
-    priors,
-    wl,
-    P,
-    P_ref,
-    R_p_ref=R_p,
-    R=R,
-    spectrum_type="emission",
-    sampling_algorithm="MultiNest",
-    N_live=400,
-    verbose=True,
-    N_output_samples=1000,
-    resume=False,
-)
+if mode == "retrieval":
+    run_retrieval(
+        planet,
+        star,
+        model,
+        opac,
+        data,
+        priors,
+        wl,
+        P,
+        P_ref,
+        R_p_ref=R_p,
+        R=R,
+        spectrum_type="emission",
+        sampling_algorithm="MultiNest",
+        N_live=400,
+        verbose=True,
+        N_output_samples=1000,
+        resume=False,
+    )
 
 
 # %% [markdown]
@@ -211,6 +213,17 @@ run_retrieval(
 from POSEIDON.utility import read_retrieved_PT, read_retrieved_log_X
 from POSEIDON.visuals import plot_PT, plot_PT_retrieved, plot_chem_retrieved
 from POSEIDON.corner import generate_cornerplot
+
+import colormaps as cmaps
+import cmasher as cmr
+
+cmap = cmr.get_sub_cmap("cmr.sapphire", 0.2, 0.9)  # cmaps.lapaz
+
+Fp_colors = cmr.take_cmap_colors(
+    "cmr.sapphire", 10, cmap_range=(0.3, 0.7), return_fmt="hex"
+)
+
+color = Fp_colors[5]
 
 # ***** Plot retrieved transmission spectrum *****#
 
@@ -238,7 +251,7 @@ plot_PT_retrieved(
     plt_label=None,
     show_profiles=[],
     PT_labels=[],
-    colour_list=[],
+    colour_list=[color],
     log_P_min=None,
     log_P_max=None,
     T_min=None,
@@ -246,30 +259,35 @@ plot_PT_retrieved(
     legend_location="lower left",
 )
 
-(
-    P,
-    chemical_species,
-    log_X_low2,
-    log_X_low1,
-    log_X_median,
-    log_X_high1,
-    log_X_high2,
-) = read_retrieved_log_X(planet_name, model_name, retrieval_name=None)
-log_Xs_median = [(log_X_median, P)]
-log_Xs_low2 = [(log_X_low2, P)]
-log_Xs_low1 = [(log_X_low1, P)]
-log_Xs_high1 = [(log_X_high1, P)]
-log_Xs_high2 = [(log_X_high2, P)]
+# (
+#     P,
+#     chemical_species,
+#     log_X_low2,
+#     log_X_low1,
+#     log_X_median,
+#     log_X_high1,
+#     log_X_high2,
+# ) = read_retrieved_log_X(planet_name, model_name, retrieval_name=None)
+# log_Xs_median = [(log_X_median, P)]
+# log_Xs_low2 = [(log_X_low2, P)]
+# log_Xs_low1 = [(log_X_low1, P)]
+# log_Xs_high1 = [(log_X_high1, P)]
+# log_Xs_high2 = [(log_X_high2, P)]
 
-plot_chem_retrieved(
-    planet_name,
-    chemical_species,
-    log_Xs_median,
-    log_Xs_low2,
-    log_Xs_low1,
-    log_Xs_high1,
-    log_Xs_high2,
-)
+# plot_chem_retrieved(
+#     planet_name,
+#     chemical_species,
+#     log_Xs_median,
+#     log_Xs_low2,
+#     log_Xs_low1,
+#     log_Xs_high1,
+#     log_Xs_high2,
+# )
+
 # ***** Make corner plot *****#
-
-fig_corner = generate_cornerplot(planet, model)
+fig_corner = generate_cornerplot(
+    planet,
+    model,
+    params_to_plot=["log_H2O", "log_CO", "K_p", "V_sys", "log_a"],
+    colour_scheme=color,
+)

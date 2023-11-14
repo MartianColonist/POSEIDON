@@ -37,22 +37,26 @@ d = planet["system_distance"]
 
 # %%
 from POSEIDON.core import define_model, wl_grid_constant_R, make_atmosphere
-from POSEIDON.utility import read_high_res_data
+from POSEIDON.utility import read_high_res_data_deprecate
 
 # ***** Define model *****#
 
-model_name = (
-    "Mg, Fe, Ti, Cr, V isotherm"  # Model name used for plots, output files etc.
-)
+model_name = "Fe-3 injection retrieval"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["Mg", "Fe", "Ti", "Cr", "V"]
+param_species = ["Fe"]
 # param_species = ["Fe", "Mg"]
 
 high_res = "sysrem"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
 # high_res_params = ["a", "b", "K_p", "V_sys", "W_conv"]
-high_res_params = ["K_p", "V_sys", "W_conv", "log_a"]
+high_res_params = [
+    "a",
+    "b",
+    "K_p",
+    "V_sys",
+    # "W_conv",
+]
 
 # Create the model object
 # model = define_model(model_name, bulk_species, param_species,
@@ -79,8 +83,8 @@ R = 250000  # Spectral resolution of grid
 # wl = wl_grid_line_by_line(wl_min, wl_max)
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
-data_path = "./data/WASP-121b/"
-data = read_high_res_data(data_path)
+data_path = "./data/WASP-121b-injection/"
+data = read_high_res_data_deprecate(data_path)
 # %%
 from POSEIDON.core import set_priors
 
@@ -226,17 +230,29 @@ PT_high1 = [(T_high1, P)]
 PT_high2 = [(T_high2, P)]
 
 
-# params = (-6, 0.3, 0.3, -1, -2, 1, 3000)
-# log_Fe, a1, a2, log_P1, log_P2, log_P3, T_ref = params
+params = (-6, 0.3, 0.3, -1, -2, 1, 3000)
+log_Fe, a1, a2, log_P1, log_P2, log_P3, T_ref = params
 
-# # Provide a specific set of model parameters for the atmosphere
-# PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])
-# log_X_params = np.array([[log_Fe]])
+# Provide a specific set of model parameters for the atmosphere
+PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])
+log_X_params = np.array([[log_Fe]])
 
-# atmosphere = make_atmosphere(
-#     planet, model, P, P_ref, R_p, PT_params, log_X_params, P_param_set=1
-# )
-
+atmosphere = make_atmosphere(
+    planet,
+    define_model(
+        model_name,
+        bulk_species,
+        param_species,
+        PT_profile="Madhu",
+        high_res_params=high_res_params,
+    ),
+    P,
+    P_ref,
+    R_p,
+    PT_params,
+    log_X_params,
+    P_param_set=1,
+)
 
 plot_PT_retrieved(
     planet_name,
@@ -245,8 +261,7 @@ plot_PT_retrieved(
     PT_low1,
     PT_high1,
     PT_high2,
-    # T_true=atmosphere["T"].reshape(-1),
-    T_true=None,
+    T_true=atmosphere["T"].reshape(-1),
     Atmosphere_dimension=1,
     TwoD_type=None,
     plt_label=None,
@@ -288,5 +303,5 @@ plot_chem_retrieved(
 fig_corner = generate_cornerplot(
     planet,
     model,
-    # true_vals=[R_p / R_J, 0.3, 0.3, -1, -2, 1, 3000, -6, 2, None, -200, -20],
+    true_vals=[R_p / R_J, 0.3, 0.3, -1, -2, 1, 3000, -6, 2, 0.9163, -200, -20],
 )
