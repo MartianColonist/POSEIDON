@@ -448,8 +448,8 @@ def define_model(model_name, bulk_species, param_species,
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
         reference_parameter (str):
-            For retrievals, whether R_p_ref or P_ref will be a free parameter
-            (Options: R_p_ref / P_ref).
+            For retrievals, whether R_p_ref, P_ref, or both will be a free parameter
+            (Options: R_p_ref / P_ref / R_p_ref+P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
         aerosol (string):

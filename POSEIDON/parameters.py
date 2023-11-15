@@ -150,13 +150,15 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** Physical property parameters *****#
 
         if (reference_parameter == 'R_p_ref'):
-            physical_params += ['R_p_ref']        # Reference radius parameter (in R_J or R_E)
+            physical_params += ['R_p_ref']                  # Reference radius parameter (in R_J or R_E)
         elif (reference_parameter == 'P_ref'):
-            physical_params += ['log_P_ref']      # Reference pressure
+            physical_params += ['log_P_ref']                # Reference pressure
+        elif (reference_parameter == 'R_p_ref+P_ref'):
+            physical_params += ['R_p_ref', 'log_P_ref']     # Reference radius and pressure
         else:
             raise Exception("Error: Only R_p_ref or P_ref are supported reference parameters.")
         
-        if ((reference_parameter == 'log_P_ref') and (Atmosphere_dimension > 1)):
+        if (('log_P_ref' in reference_parameter) and (Atmosphere_dimension > 1)):
             raise Exception("Error: P_ref is not a valid parameter for multidimensional models.")
 
         if ((gravity_setting == 'free') and (mass_setting == 'free')):
