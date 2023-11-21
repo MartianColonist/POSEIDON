@@ -1500,11 +1500,10 @@ def Mie_cloud(P,wl,r, H, n,
         # Slab Model 
         elif (cloud_type == 'slab'):
             # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-            n_aerosol = np.empty_like(r)
+            n_aerosol = np.zeros_like(r)
             P_cloud_index_top = find_nearest(P,P_cloud[q])
             P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q])
 
-            n_aerosol = np.empty_like(r)
             n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
             n_aerosol_array.append(n_aerosol)
 
@@ -1522,10 +1521,9 @@ def Mie_cloud(P,wl,r, H, n,
 
             else:
                 # Others will be slabs 
-                n_aerosol = np.empty_like(r)
+                n_aerosol = np.zeros_like(r)
                 P_cloud_index_top = find_nearest(P,P_cloud[q])
                 P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q-1]) #Because this is one shorter than the P_cloud array, decks don't have P_bottom
-                n_aerosol = np.empty_like(r)
                 n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q-1]) # same reason
                 n_aerosol_array.append(n_aerosol)
 
@@ -1538,10 +1536,9 @@ def Mie_cloud(P,wl,r, H, n,
                 n_aerosol[:P_cloud_index] = 1.0e250
                 n_aerosol_array.append(n_aerosol)
                 
-            n_aerosol = np.empty_like(r)
+            n_aerosol = np.zeros_like(r)
             P_cloud_index_top = find_nearest(P,P_cloud[q+1]) # The slab top pressure are next after the deck 
             P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q]) # Doesn't change
-            n_aerosol = np.empty_like(r)
             n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
             n_aerosol_array.append(n_aerosol)
 
@@ -2083,7 +2080,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     # If P_cloud is a float its just the slab, without a deck
     elif cloud_type == 'slab':
         # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-        n_aerosol = np.empty_like(r)
+        n_aerosol = np.zeros_like(r)
         P_cloud_index_top = find_nearest(P,P_cloud)
         P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
 
@@ -2094,7 +2091,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     # In this model, the P_cloud has the deck pressure and the slab pressure. For the others, its a int 
     elif cloud_type == 'opaque_deck_plus_slab':
         # Deck First 
-        n_aerosol = np.empty_like(r)
+        n_aerosol = np.zeros_like(r)
         P_cloud_index = find_nearest(P,P_cloud[0])
         n_aerosol[:P_cloud_index] = 1.0e250
 

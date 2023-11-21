@@ -258,7 +258,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
 
 def create_planet(planet_name, R_p, mass = None, gravity = None, 
-                  log_g = None, T_eq = None, d = None, d_err = None, b_p = 0.0):
+                  log_g = None, T_eq = None, d = None, d_err = None, b_p = 0.0, a_p = None):
     '''
     Initialise the planet dictionary object used by POSEIDON.
 
@@ -315,7 +315,8 @@ def create_planet(planet_name, R_p, mass = None, gravity = None,
     planet = {'planet_name': planet_name, 'planet_radius': R_p, 
               'planet_mass': mass, 'planet_gravity': gravity, 
               'planet_T_eq': T_eq, 'planet_impact_parameter': b_p,
-              'system_distance': d, 'system_distance_error': d_err
+              'system_distance': d, 'system_distance_error': d_err,
+              'planet_semi_major_axis': a_p
              }
 
     return planet
@@ -1079,6 +1080,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     R_p = planet['planet_radius']
     b_p = planet['planet_impact_parameter']
     d = planet['system_distance']
+    a_p = planet['planet_semi_major_axis']
 
     if (star is not None):
         R_s = star['R_s']
@@ -1481,7 +1483,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             raise Exception("Error: Invalid scattering option")
 
         # Add in the seperate reflection  
-        # FOR DEBUGGING PURPOSES, THIS JUST RETURNS THE ALBEDO RIGHT NOW
         if (reflection == True):
 
             albedo = reflection_Toon(P, wl, dtau_tot,
@@ -1492,7 +1493,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                     Gauss_quad = 5, numt = 1,
                                     toon_coefficients=0, tridiagonal=0, b_top=0)
             
-            return P, wl, dtau_tot, kappa_Ray, kappa_cloud, kappa_tot, w_cloud, g_cloud, zone_idx
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -1548,7 +1548,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                 "Did you forget to provide 'wl' to create_star?")
 
             # Interpolate stellar spectrum onto planet spectrum wavelength grid
-        #    F_s_interp = spectres(wl, wl_s, F_s)
+            # F_s_interp = spectres(wl, wl_s, F_s)
 
             # Convert stellar surface flux to observed flux at Earth
             F_s_obs = (R_s / d)**2 * F_s
@@ -1558,6 +1558,29 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
             # Final spectrum is the planet-star flux ratio
             spectrum = F_p_obs / F_s_obs
+
+        if (reflection == True):
+
+            FpFs_reflected = albedo*(R_p_eff/a_p)**2
+            
+            if ('direct' in spectrum_type):
+
+                # Load stellar spectrum
+                F_s = star['F_star']
+                wl_s = star['wl_star']
+
+                if (np.array_equiv(wl_s, wl) is False):
+                    raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                    "not match wavelength grid of planet spectrum. " +
+                                    "Did you forget to provide 'wl' to create_star?")
+                
+                Fp_reflected_obs = FpFs_reflected*F_s*(1/d)**2
+                
+                spectrum += Fp_reflected_obs
+
+            else:
+                FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                spectrum += FpFs_reflected_obs
         
     # Write spectrum to file
     if (save_spectrum == True):

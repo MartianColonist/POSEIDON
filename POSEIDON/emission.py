@@ -596,7 +596,7 @@ def emission_Toon(P, T, wl, dtau_tot,
     
     # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
     w_cloud[:,0,zone_idx,:] = w_cloud[:,0,zone_idx,:] * 0.99999
-    
+
     w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud[:,0,zone_idx,:]))/kappa_tot
 
     # Calculate weighted, combined scattering asymmetry parameter
@@ -861,7 +861,7 @@ def numba_cumsum(mat):
         new_mat[:,i] = np.cumsum(mat[:,i])
     return new_mat
 
-#@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True)
 def reflection_Toon(P, wl, dtau_tot,
                     kappa_Ray, kappa_cloud, kappa_tot,
                     w_cloud, g_cloud, zone_idx,
@@ -1040,6 +1040,9 @@ def reflection_Toon(P, wl, dtau_tot,
     # From optics.py, compute_opacity 
     # We calculate the ftaus, tau, and delta_eddington corrections 
 
+    # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
+    w_cloud[:,0,zone_idx,:] = w_cloud[:,0,zone_idx,:] * 0.99999
+
     # ftau_cld 
 
     # From emission_Toon we figured out that 
@@ -1051,26 +1054,36 @@ def reflection_Toon(P, wl, dtau_tot,
     # it follows that 
     # ftau_cld = ((w_cloud * kappa_cloud) / ((w_cloud * kappa_cloud) + kappa_Ray))
 
-    ftau_cld = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+    ftau_cld = ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud[:,0,zone_idx,:]
 
     # gcos2 
     # ftau_ray = TAURAY/(TAURAY + single_scattering_cld * TAUCLD)
     # GCOS2 = 0.5*ftau_ray #Hansen & Travis 1974 for Rayleigh scattering 
 
-    ftau_ray = kappa_Ray[:,0,zone_idx,:]/(kappa_Ray[:,0,zone_idx,:] + g_cloud * kappa_cloud[:,0,zone_idx,:])
+    ftau_ray = kappa_Ray[:,0,zone_idx,:]/(kappa_Ray[:,0,zone_idx,:] + g_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:])
     gcos2 = 0.5*ftau_ray
 
     # w_tot is the same as it is in emission_Toon (weighted version)
-    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
+    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud[:,0,zone_idx,:]))/kappa_tot
+     
+    # Function expects 0 index to be top of atmosphere, so flip all the axis
+    P = np.flipud(P)
+    dtau_tot = np.flipud(dtau_tot)
+    w_tot = np.flipud(w_tot)
+    g_cloud = np.flipud(g_cloud)  
+    ftau_cld = np.flipud(ftau_cld) 
+    ftau_ray = np.flipud(ftau_ray)
+
+    # Remake g_cloud so that its always [:,0,zone_idx,:]
+    g_cloud = g_cloud[:,0,zone_idx,:]
     
     # tau 
     # This sums up the taus starting at the top
     # In the original picaso : TAU = np.zeros((nlayer+1, nwno,ngauss))
-    # Where each ngauss column is exactly the same for contiuum and rayleight
+    # Where each ngauss column is exactly the same for contiuum and rayleigh
     # but not the same for molecular opacities 
     # In POSEIDON we don't use the gauss quad as a dimension to loop over
     # So we remove that dependence here 
-    # FOR LATER : Make sure this is an ok assumption 
     tau = np.zeros((N_layer+1, N_wl))
     tau[1:,:]=numba_cumsum(dtau_tot[:,:])
  
@@ -1081,19 +1094,9 @@ def reflection_Toon(P, wl, dtau_tot,
     w_dedd=w_tot*(1.-f_deltaM)/(1.0-w_tot*f_deltaM)
     g_dedd=(g_cloud-f_deltaM)/(1.-f_deltaM)
     dtau_dedd=dtau_tot*(1.-w_tot*f_deltaM) 
+
     tau_dedd = np.zeros((N_layer+1, N_wl))
     tau_dedd[1:,:]=numba_cumsum(dtau_dedd[:,:])
- 
-    # Function expects 0 index to be top of atmosphere, so flip all the axis
-    P = np.flipud(P)
-    dtau_tot = np.flipud(dtau_tot)
-    dtau_dedd = np.flipud(dtau_dedd)
-    tau = np.flipud(tau)
-    tau_dedd = np.flipud(tau_dedd)
-    w_tot = np.flipud(w_tot)
-    w_dedd = np.flipud(w_dedd)
-    g_cloud = np.flipud(g_cloud)   
-    g_dedd = np.flipud(g_dedd)
     
     # Load Gaussian quadrature mu and weights
     # gangle, gweight from disco.py, get_angles_1d(num_gangle) 
@@ -1316,14 +1319,16 @@ def reflection_Toon(P, wl, dtau_tot,
             elif single_phase==3:#'TTHG_ray':
                 #Phase function for single scattering albedo frum Solar beam
                 #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
-                            #first term of TTHG: forward scattering
+                #first term of TTHG: forward scattering
                 p_single=(ftau_cld*(f * (1-g_forward**2)
                                                 /np.sqrt((1+g_forward**2+2*g_forward*cos_theta)**3) 
                                                 #second term of TTHG: backward scattering
                                                 +(1-f)*(1-g_back**2)
                                                 /np.sqrt((1+g_back**2+2*g_back*cos_theta)**3))+            
-                                #rayleigh phase function
-                                ftau_ray*(0.75*(1+cos_theta**2.0)))
+                                                #rayleigh phase function
+                                                ftau_ray*(0.75*(1+cos_theta**2.0)))
+                
+
             
             #removing single form option from code 
             #single_form : int 
@@ -1347,6 +1352,7 @@ def reflection_Toon(P, wl, dtau_tot,
 
             single_scat = np.zeros((N_level,N_wl))
             multi_scat = np.zeros((N_level,N_wl))
+
             for i in range(N_layer-1,-1,-1):
                 single_scat[i,:] = ((w_tot[i,:]*F0PI/(4.*np.pi))
                         *(p_single[i,:])*np.exp(-tau[i,:]/u0)
