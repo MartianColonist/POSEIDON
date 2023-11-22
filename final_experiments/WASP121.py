@@ -38,15 +38,13 @@ from POSEIDON.core import define_model, wl_grid_constant_R, make_atmosphere
 
 # ***** Define model *****#
 
-model_name = (
-    "Fe-6 injection"  # Model name used for plots, output files etc.
-)
+model_name = "Fe-6 injection"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["Fe"]
+param_species = ["Fe", "Cr", "Mg"]
 
 high_res = "sysrem"
-high_res_params = ["K_p", "V_sys", "W_conv", "log_a"]
+high_res_params = ["K_p", "V_sys", "W_conv", "log_alpha"]
 
 model = define_model(
     model_name,
@@ -74,8 +72,9 @@ R = 250000  # Spectral resolution of grid
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 from POSEIDON.high_res import read_high_res_data
+
 # ***** Read in data *****#
-data = read_high_res_data('./data/WASP-121b-Fe-6-retrieval')
+data = read_high_res_data("./data/WASP-121b-injection")
 # %%
 from POSEIDON.core import set_priors
 
@@ -91,7 +90,7 @@ prior_types["log_Cr"] = "uniform"
 prior_types["log_V"] = "uniform"
 prior_types["K_p"] = "uniform"
 prior_types["V_sys"] = "uniform"
-prior_types["log_a"] = "uniform"
+prior_types["log_alpha"] = "uniform"
 prior_types["b"] = "uniform"
 prior_types["W_conv"] = "uniform"
 
@@ -99,14 +98,14 @@ prior_ranges = {}
 # Specify prior ranges for each free parameter
 prior_ranges["T"] = [2000, 4000]
 prior_ranges["R_p_ref"] = [R_p, 0.05 * R_J]
-prior_ranges["log_Ti"] = [-15, -2.3]
-prior_ranges["log_Fe"] = [-15, -2.3]
-prior_ranges["log_Mg"] = [-15, -2.3]
-prior_ranges["log_Cr"] = [-15, -2.3]
-prior_ranges["log_V"] = [-15, -2.3]
-prior_ranges["K_p"] = [100, 300]
+prior_ranges["log_Ti"] = [-15, 0]
+prior_ranges["log_Fe"] = [-15, 0]
+prior_ranges["log_Mg"] = [-15, 0]
+prior_ranges["log_Cr"] = [-15, 0]
+prior_ranges["log_V"] = [-15, 0]
+prior_ranges["K_p"] = [-300, -100]
 prior_ranges["V_sys"] = [-50, 50]
-prior_ranges["log_a"] = [-1, 1]
+prior_ranges["log_alpha"] = [-2, 2]
 prior_ranges["b"] = [0.00001, 10]
 prior_ranges["W_conv"] = [0.1, 20]
 
@@ -124,7 +123,7 @@ opacity_treatment = "opacity_sampling"
 # Define fine temperature grid (K)
 T_fine_min = 2000  # 400 K lower limit suffices for a typical hot Jupiter
 T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
-T_fine_step = 20  # 20 K steps are a good tradeoff between accuracy and RAM
+T_fine_step = 50  # 20 K steps are a good tradeoff between accuracy and RAM
 
 T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
@@ -203,17 +202,16 @@ PT_high1 = [(T_high1, P)]
 PT_high2 = [(T_high2, P)]
 
 
-# params = (-6, 0.3, 0.3, -1, -2, 1, 3000)
-# log_Fe, a1, a2, log_P1, log_P2, log_P3, T_ref = params
+import colormaps as cmaps
+import cmasher as cmr
 
-# # Provide a specific set of model parameters for the atmosphere
-# PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])
-# log_X_params = np.array([[log_Fe]])
+cmap = cmr.get_sub_cmap("cmr.sapphire", 0.1, 0.9)  # cmaps.lapaz
 
-# atmosphere = make_atmosphere(
-#     planet, model, P, P_ref, R_p, PT_params, log_X_params, P_param_set=1
-# )
+colors = cmr.take_cmap_colors(
+    "cmr.sapphire", 10, cmap_range=(0.1, 0.9), return_fmt="hex"
+)
 
+color = colors[5]
 
 plot_PT_retrieved(
     planet_name,
@@ -263,7 +261,5 @@ plot_chem_retrieved(
 )
 # ***** Make corner plot *****#
 fig_corner = generate_cornerplot(
-    planet,
-    model,
-    true_vals=[R_p / R_J, 3000, -6, -200, -20, None, None],
+    planet, model, true_vals=[3000, -6, -6, -6 - 200, -20, 1, 0], colour_scheme=color
 )

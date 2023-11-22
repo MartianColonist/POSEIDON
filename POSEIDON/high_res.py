@@ -20,6 +20,15 @@ from scipy.optimize import minimize
 import time
 import batman
 from astropy.constants import au
+import POSEIDON.visuals
+import matplotlib
+
+params = {
+    "legend.fontsize": 14,
+    "axes.labelsize": 16,
+    "axes.titlesize": 16,
+}
+matplotlib.rcParams.update(params)
 
 
 def airtovac(wlA):
@@ -453,7 +462,7 @@ def cross_correlate(
     if Print:
         time0 = time.time()
     uncertainties = data["uncertainties_processed"]
-    uncertainties = np.ones_like(uncertainties)
+    # uncertainties = np.ones_like(uncertainties)
     residuals = data["residuals"]
     phi = data["phi"]
     wl_grid = data["wl_grid"]
@@ -504,87 +513,59 @@ def cross_correlate(
     return CCF_Kp_Vsys, CCF_phase_RV
 
 
-def plot_CCF_Kp_Vsys(
-    Kp_range,
-    Vsys_range,
-    CCF_Kp_Vsys,
+def plot_CCF_phase_RV(
+    phi,
+    RV_range,
+    CCF_phase_RV,
     species,
-    Kp,
-    Vsys=0,
-    RM_mask_size=10,
     plot_label=False,
-    savefig=False,
-    output_path=None,
+    save_path=None,
+    cmap=cmr.ember,
 ):
-    # Expected value
-    CCF_Kp_Vsys = CCF_Kp_Vsys - np.mean(CCF_Kp_Vsys)
-    idx = find_nearest_idx(Vsys_range, Vsys)
-    mask = np.ones(len(Vsys_range), dtype=bool)
-    mask[idx - RM_mask_size : idx + RM_mask_size] = False
-    stdev = np.std(CCF_Kp_Vsys[:, mask])
-    maxx = (CCF_Kp_Vsys / stdev).max()
-
-    loc = np.where(CCF_Kp_Vsys / stdev == maxx)
-
-    fig, axes = plt.subplots(
-        2,
-        1,
-        figsize=(17, 22),
-        constrained_layout=True,
-        gridspec_kw={"height_ratios": [17, 5]},
-    )
-
-    # First subplot (Top, 17:17)
-    ax1 = axes[0]
-    im = ax1.imshow(
-        CCF_Kp_Vsys / stdev,
-        extent=[Vsys_range.min(), Vsys_range.max(), Kp_range.min(), Kp_range.max()],
-        aspect=len(Vsys_range) / len(Kp_range),
+    for i in range(len(CCF_phase_RV)):
+        CCF_phase_RV[i] = CCF_phase_RV[i] - np.mean(CCF_phase_RV[i])
+        # CCF_per_phase[i] = CCF_per_phase[i] / stdev
+        CCF_phase_RV[i] /= np.std(CCF_phase_RV[i])
+    # stdev = np.std(CCF_phase_RV)
+    # maxx = (CCF_phase_RV).max()
+    fig, ax = plt.subplots(figsize=(10.667, 3), constrained_layout=False)
+    im = ax.imshow(
+        CCF_phase_RV,
+        extent=[RV_range.min(), RV_range.max(), phi.min(), phi.max()],
+        aspect="auto",
         interpolation="bilinear",
-        cmap=cmaps.cividis,
+        cmap=cmap,
         origin="lower",
     )
     if plot_label:
-        ax1.text(
-            0.1,
-            0.15,
+        ax.text(
+            0.05,
+            0.3,
             species,
             ha="left",
             va="top",
-            transform=ax1.transAxes,
+            transform=ax.transAxes,
             color="white",
-            fontsize=60,
+            fontsize=32,
         )
-    cbar = plt.colorbar(im, ax=ax1, shrink=0.8)
-    ax1.axvline(x=Vsys, color="white", ls="--", lw=2)
-    ax1.axhline(y=Kp, color="white", ls="--", lw=2)
-    ax1.plot(Vsys_range[loc[1]], Kp_range[loc[0]], "xk", ms=20, mew=4)
-    ax1.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
-    ax1.set_ylabel(r"K$_{p}$ (km/s)")
-    ax1.set_title(r"$\Delta$ CCF ($\sigma$)")
 
-    # Second subplot (Bottom, 17:5)
-    ax2 = axes[1]
-    idx = find_nearest_idx(Kp_range, Kp)
-    slicee = CCF_Kp_Vsys[idx] / stdev
-    ax2.plot(Vsys_range, slicee)
-    ax2.axis(
-        [
-            np.min(Vsys_range),
-            np.max(Vsys_range),
-            1.1 * slicee.min(),
-            1.1 * slicee.max(),
-        ]
-    )
-    ax2.set_xlabel(r"$\Delta$V$_{sys}$(km/s)")
-    ax2.set_ylabel(r"$\Delta$ CCF ($\sigma$)")
-    ax2.set_title("Slice at K$_{p}$ = " + str(Kp) + " km/s")
-    ax2.axvline(x=Vsys, ls="--", color="black")
-
-    if savefig:
-        plt.savefig(output_path + species + "_CCF_Kp_Vsys_combined.png")
-    plt.show()
-    plt.close()
+    cbar = plt.colorbar(im)
+    # ax.plot(
+    #     np.arange(-180, -50),
+    #     (np.arange(-180, -50) + 100) / (200) / (2 * np.pi)
+    #     + 0.4,  # phi start from 90 degrees. sin(phi-90) -90 = -phi
+    #     "--",
+    #     color="red",
+    #     alpha=0.5,
+    # )
+    # plot(V_sys_arr[loc[1]], phi[loc[0]], "xk", ms=7)
+    # axis([V_sys_arr.min(), V_sys_arr.max(), phi.min(), phi.max()])
+    ax.set_xlabel(r"$\rm{V_p}$ (km/s)")
+    ax.set_ylabel(r"$\phi$", rotation=0, labelpad=20)
+    ax.set_title(r"$\Delta$ CCF ($\sigma$)")
+    if save_path:
+        plt.savefig(save_path, bbox_inches="tight", pad_inches=0.1)
+    return
 
 
 def find_nearest_idx(array, value):
@@ -600,59 +581,89 @@ def find_nearest_idx(array, value):
     return idx
 
 
-def plot_CCF_phase_RV(
-    phi,
-    RV_range,
-    CCF_phase_RV,
+def plot_CCF_Kp_Vsys(
+    Kp_range,
+    Vsys_range,
+    CCF_Kp_Vsys,
     species,
+    Kp,
+    Vsys=0,
+    RM_mask_size=10,
+    plot_slice=False,
     plot_label=False,
     savefig=False,
-    output_path=None,
+    file_path=None,
+    cmap=cmr.ember,
 ):
-    for i in range(len(CCF_phase_RV)):
-        CCF_phase_RV[i] = CCF_phase_RV[i] - np.mean(CCF_phase_RV[i])
-        # CCF_per_phase[i] = CCF_per_phase[i] / stdev
-    stdev = np.std(CCF_phase_RV)
-    maxx = (CCF_phase_RV).max()
-    fig, ax = plt.subplots(figsize=(17, 5), constrained_layout=True)
-    im = ax.imshow(
-        CCF_phase_RV,
-        extent=[RV_range.min(), RV_range.max(), phi.min(), phi.max()],
-        aspect="auto",
+    # Expected value
+    CCF_Kp_Vsys = CCF_Kp_Vsys - np.mean(CCF_Kp_Vsys)
+    idx = find_nearest_idx(Vsys_range, Vsys)
+    mask = np.ones(len(Vsys_range), dtype=bool)
+    mask[idx - RM_mask_size : idx + RM_mask_size] = False
+    stdev = np.std(CCF_Kp_Vsys[:, mask])
+    maxx = (CCF_Kp_Vsys / stdev).max()
+
+    loc = np.where(CCF_Kp_Vsys / stdev == maxx)
+
+    colors = cmr.take_cmap_colors(cmap, 10, cmap_range=(0.1, 0.9), return_fmt="hex")
+    if plot_slice:
+        fig, axes = plt.subplots(
+            2,
+            1,
+            figsize=(8, 10),
+            constrained_layout=True,
+            gridspec_kw={"height_ratios": [8, 2]},
+        )
+        ax1 = axes[0]
+        ax2 = axes[1]
+        idx = find_nearest_idx(Kp_range, Kp)
+        slicee = CCF_Kp_Vsys[idx] / stdev
+        ax2.plot(Vsys_range, slicee, c=colors[5])
+        ax2.axis(
+            [
+                np.min(Vsys_range),
+                np.max(Vsys_range),
+                1.1 * slicee.min(),
+                1.1 * slicee.max(),
+            ]
+        )
+        ax2.set_xlabel(r"$\Delta$V$_{sys}$(km/s)")
+        ax2.set_ylabel(r"$\Delta$ CCF ($\sigma$)")
+        ax2.set_title("Slice at K$_{p}$ = " + str(Kp) + " km/s")
+        ax2.axvline(x=Vsys, ls="--", color="black")
+    else:
+        fig, ax1 = plt.subplots(figsize=(8, 8), constrained_layout=False)
+    im = ax1.imshow(
+        CCF_Kp_Vsys / stdev,
+        extent=[Vsys_range.min(), Vsys_range.max(), Kp_range.min(), Kp_range.max()],
+        aspect=len(Vsys_range) / len(Kp_range),
         interpolation="bilinear",
-        cmap=cmaps.cividis,
+        cmap=cmap,
         origin="lower",
     )
     if plot_label:
-        ax.text(
-            0.1,
+        ax1.text(
+            0.05,
             0.15,
             species,
             ha="left",
             va="top",
-            transform=ax.transAxes,
+            transform=ax1.transAxes,
             color="white",
-            fontsize=60,
+            fontsize=32,
         )
+    cbar = plt.colorbar(im, ax=ax1, shrink=0.8)
+    ax1.axvline(x=Vsys, color="white", ls="--", lw=2)
+    ax1.axhline(y=Kp, color="white", ls="--", lw=2)
+    ax1.plot(Vsys_range[loc[1]], Kp_range[loc[0]], "xk", ms=15, mew=3)
+    ax1.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
+    ax1.set_ylabel(r"K$_{p}$ (km/s)")
+    ax1.set_title(r"$\Delta$ CCF ($\sigma$)")
 
-    cbar = plt.colorbar(im)
-    # ax.plot(
-    #     np.arange(-180, -50),
-    #     (np.arange(-180, -50) + 100) / (200) / (2 * np.pi)
-    #     + 0.4,  # phi start from 90 degrees. sin(phi-90) -90 = -phi
-    #     "--",
-    #     color="red",
-    #     alpha=0.5,
-    # )
-    # plot(V_sys_arr[loc[1]], phi[loc[0]], "xk", ms=7)
-    # axis([V_sys_arr.min(), V_sys_arr.max(), phi.min(), phi.max()])
-    ax.set_xlabel("Planet Radial Velocity (km/s)")
-    ax.set_ylabel(r"$\phi$", rotation=0, labelpad=20)
-    ax.set_title(r"$\Delta$ Cross Correlation Coefficient")
     if savefig:
-        plt.savefig(output_path + species + "_CCF_phase.png")
-    plt.show()
-    plt.close()
+        plt.savefig(file_path, bbox_inches="tight", pad_inches=0.1)
+
+    return
 
 
 def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, data):
@@ -819,6 +830,7 @@ def loglikelihood_sysrem(
         max_transit_depth = np.max(1 - transit_weight)
     else:
         flux = data["flux_blaze_corrected"]
+        flux_star = flux - residuals
 
     uncertainties = data.get(
         "uncertainties_processed"
@@ -840,7 +852,6 @@ def loglikelihood_sysrem(
         loglikelihood_sum -= N * np.log(b)
 
     # Looping through each order and computing total log-L by summing logLs for each obvservation/order
-    flux_star = flux - residuals
 
     for i in range(nord):
         wl_slice = wl_grid[i]  # Cropped wavelengths

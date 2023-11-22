@@ -4,7 +4,7 @@ from POSEIDON.constants import R_Sun, R_J, M_J
 import pickle
 
 # ***** Define stellar properties *****#
-mode = "evaluate"
+mode = "retrieval"
 
 R_s = 1.21 * R_Sun  # Stellar radius (m)
 T_s = 5605.0  # Stellar effective temperature (K)
@@ -33,13 +33,13 @@ from POSEIDON.utility import read_high_res_data_deprecate
 
 # ***** Define model *****#
 
-model_name = "H2O, CO, CH4, NH3 sysrem"  # Model name used for plots, output files etc.
+model_name = "H2O, CO, CH4, NH3 pca"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 param_species = ["H2O", "CO", "CH4", "NH3"]  # H2O, CO as in Brogi & Line
 # param_species = []
 
-method = "sysrem"
+method = "PCA"
 # high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
 high_res_params = ["K_p", "V_sys", "log_alpha", "W_conv"]
 
@@ -59,7 +59,7 @@ print("Free parameters: " + str(model["param_names"]))
 
 wl_min = 1.3  # Minimum wavelength (um)
 wl_max = 2.6  # Maximum wavelength (um)
-R = 200000  # Spectral resolution of grid
+R = 250000  # Spectral resolution of grid
 
 model["R"] = R
 model["R_instrument"] = 66000  # Resolution of instrument
@@ -72,12 +72,12 @@ star = create_star(R_s, T_s, log_g_s, Met_s, wl=wl, stellar_grid="phoenix")
 F_s = star["F_star"]
 wl_s = star["wl_star"]
 
-data_dir = "./data/WASP-77Ab/"
+data_dir = "./data/WASP-77Ab-injection/"
 from POSEIDON.high_res import read_high_res_data
 
 data = read_high_res_data(
     data_dir,
-    ["IGRINS"],
+    ["H2O_CO_CH4_NH3_pca"],
 )
 # %%
 from POSEIDON.core import set_priors
@@ -117,13 +117,13 @@ prior_ranges["a2"] = [0.02, 1]
 prior_ranges["log_P1"] = [-5, 2]
 prior_ranges["log_P2"] = [-5, 2]
 prior_ranges["log_P3"] = [-2, 2]
-prior_ranges["K_p"] = [150, 230]
-prior_ranges["V_sys"] = [-20, 20]
+prior_ranges["K_p"] = [-300, -100]
+prior_ranges["V_sys"] = [-50, 50]
 prior_ranges["log_alpha"] = [-3, 2]
 prior_ranges["a"] = [0.01, 2]
 prior_ranges["b"] = [0.01, 100]
 prior_ranges["dPhi"] = [-0.1, 0.1]
-prior_ranges["W_conv"] = [1, 10]
+prior_ranges["W_conv"] = [0, 10]
 
 # Create prior object for retrieval
 priors = set_priors(planet, star, model, data, prior_types, prior_ranges)
@@ -190,8 +190,9 @@ if mode == "retrieval":
         sampling_algorithm="MultiNest",
         N_live=400,
         verbose=True,
+        P_param_set=1e-5,
         N_output_samples=1000,
-        resume=True,
+        resume=False,
     )
 
 
@@ -208,10 +209,10 @@ from POSEIDON.corner import generate_cornerplot
 import colormaps as cmaps
 import cmasher as cmr
 
-cmap = cmr.get_sub_cmap("cmr.sapphire", 0.2, 0.9)  # cmaps.lapaz
+cmap = cmr.get_sub_cmap("cmr.sepia", 0.1, 0.9)  # cmaps.lapaz
 
 Fp_colors = cmr.take_cmap_colors(
-    "cmr.sapphire", 10, cmap_range=(0.3, 0.7), return_fmt="hex"
+    "cmr.sepia", 10, cmap_range=(0.1, 0.9), return_fmt="hex"
 )
 
 color = Fp_colors[5]
