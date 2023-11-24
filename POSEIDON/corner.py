@@ -806,6 +806,7 @@ def generate_cornerplot(planet, model, retrieval_name = None, true_vals = None,
             
         # Save corner plot in results directory
         plt.savefig(results_prefix + '_corner.pdf', bbox_inches='tight')
+        plt.savefig(results_prefix + '_corner.png', bbox_inches='tight')
 
         return fig
 

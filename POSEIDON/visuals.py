@@ -723,6 +723,7 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
     file_name = output_dir + planet_name + '_' + model_name + '_PT.pdf'
 
     plt.savefig(file_name, bbox_inches='tight')
+    plt.savefig(file_name.replace('.pdf', '.png'), bbox_inches='tight')
 
     return fig
 
@@ -1061,6 +1062,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     file_name = output_dir + planet_name + '_' + model_name + '_chem.pdf'
 
     plt.savefig(file_name, bbox_inches='tight')
+    plt.savefig(file_name.replace('.pdf', '.png'), bbox_inches='tight')
 
     return fig
 
@@ -1719,6 +1721,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                         plot_type + '_spectra.pdf')
 
         plt.savefig(file_name, bbox_inches = 'tight')
+        plt.savefig(file_name.replace('.pdf', '.png'), bbox_inches='tight')
 
     return fig
 
@@ -2040,6 +2043,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
                      '_data.pdf')
 
     plt.savefig(file_name, bbox_inches='tight')
+    plt.savefig(file_name.replace('.pdf', '.png'), bbox_inches='tight')
 
     return fig
 
@@ -2551,6 +2555,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_spectra.pdf'
 
         plt.savefig(file_name, bbox_inches = 'tight')
+        plt.savefig(file_name.replace('.pdf', '.png'), bbox_inches='tight')
 
     return fig
 
@@ -2774,6 +2779,7 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
             file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_PT.pdf'
 
         plt.savefig(file_name, bbox_inches = 'tight')
+        plt.savefig(file_name.replace('.pdf', '.png'), bbox_inches='tight')
 
     return fig
 
@@ -3029,6 +3035,7 @@ def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median,
         file_name = output_dir + planet_name + '_' + plt_label + '_retrieved_chem.pdf'
 
     plt.savefig(file_name, bbox_inches='tight')
+    plt.savefig(file_name.replace('.pdf', '.png'), bbox_inches='tight')
 
     return fig
 
