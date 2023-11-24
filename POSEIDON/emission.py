@@ -583,6 +583,8 @@ def emission_Toon(P, T, wl, dtau_tot,
     #
     # We additionally loop over the gauss angles at the end
     # and apply the gass weight, a step performed in justdoit.py , picaso()
+    #
+    # Similar to PICASO, we don't use any delta-eddington nor raman scattering for emission.
     #############################################################################  
 
     # Numba doesn't like it when you multiply numpy arrays that are 1d vs 2d 
@@ -1283,10 +1285,10 @@ def reflection_Toon(P, wl, dtau_tot,
             #define f (fraction of forward to back scattering), 
             #g_forward (forward asymmetry), g_back (backward asym)
             #needed for everything except the OTHG
-            if single_phase!=1: 
-                g_forward = constant_forward*g_cloud
-                g_back = constant_back*g_cloud#-
-                f = frac_a + frac_b*g_back**frac_c
+            # if single_phase!=1: 
+            g_forward = constant_forward*g_cloud
+            g_back = constant_back*g_cloud#-
+            f = frac_a + frac_b*g_back**frac_c
 
             # NOTE ABOUT HG function: we are translating to the frame of the downward propagating beam
             # Therefore our HG phase function becomes:
@@ -1294,39 +1296,39 @@ def reflection_Toon(P, wl, dtau_tot,
             # as opposed to the traditional:
             # p_single=(1-cosb_og**2)/sqrt((1+cosb_og**2-2*cosb_og*cos_theta)**3) (NOTICE NEGATIVE FROM COS_THETA)
 
-            if single_phase==0:#'cahoy':
-                #Phase function for single scattering albedo frum Solar beam
-                #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
-                      #first term of TTHG: forward scattering
-                p_single=(f * (1-g_forward**2)
-                                /np.sqrt((1+g_cloud**2+2*g_cloud*cos_theta)**3) 
-                                #second term of TTHG: backward scattering
-                                +(1-f)*(1-g_back**2)
-                                /np.sqrt((1+(-g_cloud/2.)**2+2*(-g_cloud/2.)*cos_theta)**3)+
-                                #rayleigh phase function
-                                (gcos2))
-            elif single_phase==1:#'OTHG':
-                p_single=(1-g_cloud**2)/np.sqrt((1+g_cloud**2+2*g_cloud*cos_theta)**3) 
-            elif single_phase==2:#'TTHG':
-                #Phase function for single scattering albedo frum Solar beam
-                #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
-                      #first term of TTHG: forward scattering
-                p_single=(f * (1-g_forward**2)
-                                /np.sqrt((1+g_forward**2+2*g_forward*cos_theta)**3) 
-                                #second term of TTHG: backward scattering
-                                +(1-f)*(1-g_back**2)
-                                /np.sqrt((1+g_back**2+2*g_back*cos_theta)**3))
-            elif single_phase==3:#'TTHG_ray':
+            #if single_phase==0:#'cahoy':
+            #    #Phase function for single scattering albedo frum Solar beam
+            #    #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
+            #          #first term of TTHG: forward scattering
+            #    p_single=(f * (1-g_forward**2)
+            #                    /np.sqrt((1+g_cloud**2+2*g_cloud*cos_theta)**3) 
+            #                    #second term of TTHG: backward scattering
+            #                    +(1-f)*(1-g_back**2)
+            #                    /np.sqrt((1+(-g_cloud/2.)**2+2*(-g_cloud/2.)*cos_theta)**3)+
+            #                    #rayleigh phase function
+            #                    (gcos2))
+            #elif single_phase==1:#'OTHG':
+            #    p_single=(1-g_cloud**2)/np.sqrt((1+g_cloud**2+2*g_cloud*cos_theta)**3) 
+            #elif single_phase==2:#'TTHG':
+            #    #Phase function for single scattering albedo frum Solar beam
+            #    #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
+            #          #first term of TTHG: forward scattering
+            #    p_single=(f * (1-g_forward**2)
+            #                    /np.sqrt((1+g_forward**2+2*g_forward*cos_theta)**3) 
+            #                    #second term of TTHG: backward scattering
+            #                    +(1-f)*(1-g_back**2)
+            #                    /np.sqrt((1+g_back**2+2*g_back*cos_theta)**3))
+            #elif single_phase==3:#'TTHG_ray':
                 #Phase function for single scattering albedo frum Solar beam
                 #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
                 #first term of TTHG: forward scattering
-                p_single=(ftau_cld*(f * (1-g_forward**2)
-                                                /np.sqrt((1+g_forward**2+2*g_forward*cos_theta)**3) 
-                                                #second term of TTHG: backward scattering
-                                                +(1-f)*(1-g_back**2)
-                                                /np.sqrt((1+g_back**2+2*g_back*cos_theta)**3))+            
-                                                #rayleigh phase function
-                                                ftau_ray*(0.75*(1+cos_theta**2.0)))
+            p_single=(ftau_cld*(f * (1-g_forward**2)
+                                            /np.sqrt((1+g_forward**2+2*g_forward*cos_theta)**3) 
+                                            #second term of TTHG: backward scattering
+                                            +(1-f)*(1-g_back**2)
+                                            /np.sqrt((1+g_back**2+2*g_back*cos_theta)**3))+            
+                                            #rayleigh phase function
+                                            ftau_ray*(0.75*(1+cos_theta**2.0)))
                 
 
             

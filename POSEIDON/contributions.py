@@ -18,6 +18,7 @@ from spectres import spectres
 from scipy.constants import parsec
 import cmasher as cmr
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 
 from .constants import R_J, R_E
 from .utility import create_directories, write_spectrum, read_data, prior_index, prior_index_V2, closest_index, closest_index_GPU, \
@@ -1609,6 +1610,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                                 # If we want one species of cloud contribution 
                                 if (cloud_contribution == True) and (cloud_total_contribution == False) and (i == layer_to_ignore):
 
+
                                     if aerosol != aerosol_species_index:
                                         kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
 
@@ -1622,6 +1624,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                                 # If we just want total pressure contribution 
                                 elif (total_pressure_contribution == True) and (i == layer_to_ignore):
                                     kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * 0
+                                    
 
                                 # Else, don't turn off clouds
                                 else:
@@ -1765,7 +1768,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     
     '''
 
-    # Check if the atmosphere is unphysical (e.g. temperature out of bounds)
+    #Check if the atmosphere is unphysical (e.g. temperature out of bounds)
     if (check_atmosphere_physical(atmosphere, opac) == False):
         spectrum = np.empty(len(wl))
         spectrum[:] = np.NaN
@@ -2340,6 +2343,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             kappa_gas_temp = kappa_gas_contribution_array[i]
             kappa_cloud_temp = kappa_cloud_contribution_array[i]
 
+
             # Compute total extinction (all absorption + scattering sources)
             kappa_tot = (kappa_gas_temp[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
                         kappa_cloud_temp[:,0,zone_idx,:])
@@ -2364,8 +2368,8 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 # For models that are cloud free, you still need a g and w thats just an array of 0s
                 # For Mie models with more than one species, we need to be more careful with the g and w array
                 if len(aerosol_species) == 1 or aerosol_species == []:
-                    w_cloud = np.ones_like(kappa_cloud)*w_cloud
-                    g_cloud = np.ones_like(kappa_cloud)*g_cloud
+                    w_cloud = np.ones_like(kappa_cloud_temp)*w_cloud
+                    g_cloud = np.ones_like(kappa_cloud_temp)*g_cloud
 
                 # Need to make a g and w array that vary with pressure layer where aerosols actually are 
                 else:
@@ -2373,7 +2377,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
                 # Compute planet flux including scattering (PICASO implementation), see emission.py for details
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                            kappa_Ray, kappa_cloud, kappa_tot,
+                                            kappa_Ray, kappa_cloud_temp, kappa_tot,
                                             w_cloud, g_cloud, zone_idx,
                                             hard_surface = 0, tridiagonal = 0, 
                                             Gauss_quad = 5, numt = 1)
@@ -2450,7 +2454,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 spectrum_temp = F_p_obs / F_s_obs
 
             spectrum_contribution_list.append(spectrum_temp)
-  
+    
     return spectrum, spectrum_contribution_list_names, spectrum_contribution_list
 
 def pressure_contribution(planet, star, model, atmosphere, opac, wl,
@@ -2548,6 +2552,7 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
 
     return Contribution, norm, spectrum_contribution_list_names
 
+
 def plot_pressure_contribution(wl,P,
                                Contribution,
                                spectrum_contribution_list_names, 
@@ -2564,7 +2569,6 @@ def plot_pressure_contribution(wl,P,
             ax.set_ylabel('Log Pressure (bar)')
             ax.invert_yaxis()
             ax.set_xlabel('Wavelength ($\mu$m)')
-
             title = 'Contribution Function : ' + str(spectrum_contribution_list_names[i])
             
             ax.set_title(title)
@@ -2576,7 +2580,6 @@ def plot_pressure_contribution(wl,P,
             fig = plt.figure()  
             fig.set_size_inches(14, 7)
             ax = plt.gca()
-
             ax.set_yscale("log")
 
             # Bin the wavelengths using the first pressure layer of the spectrum 
@@ -2592,7 +2595,7 @@ def plot_pressure_contribution(wl,P,
 
             X_bin, Y_bin = np.meshgrid(wl_binned, P)
             
-            # Plot binned contribution function
+            # Plot binned contribution functio
             contour_plot = plt.contourf(X_bin, Y_bin, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
             #contour_plot = plt.contourf(wl_binned, P, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
 
@@ -2608,25 +2611,51 @@ def plot_pressure_contribution(wl,P,
             plt.colorbar()
             plt.show()
 
+            fig = plt.figure()  
+            fig.set_size_inches(14, 7)
+            ax = plt.gca()
+            ax.set_yscale("log")
+
+            Contribution_binned[Contribution_binned == 0] = np.min(Contribution_binned[np.nonzero(Contribution_binned)])
+
+            contour_plot = plt.contourf(X_bin, Y_bin, Contribution_binned[:,:], 100, cmap=cmr.swamp_r, norm = colors.LogNorm(vmin=Contribution_binned[:,:].min(), vmax=Contribution_binned[:,:].max()))
+
+            ax.invert_yaxis()    
+
+            ax.set_xlim([wl[0], wl[-1]])
+            ax.set_ylim([P[0], P[-1]])        
+            
+            ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5)
+            ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
+            title = 'LOG Contribution Function : ' + str(spectrum_contribution_list_names[i])
+            ax.set_title(title)
+
+            plt.colorbar()
+            plt.show()
+
+import matplotlib.pyplot as plt
+
 def photometric_contribution_function(wl, P, Contribution, 
                                       spectrum_contribution_list_names,
+                                      binsize = 0
                                       ):
 
     wl_min = np.min(wl)
     wl_max = np.max(wl)
 
-    # Bin Stuff from minimum wavelength to maximum wavelength by 0.1 
-    bins = np.arange(wl_min,wl_max+0.1,0.1)
+    if binsize == 0:
+        binsize = np.max(np.diff(wl))
 
-    for b in range(len(bins)):
-        bins[b] = round(bins[b],1)
+    # Bin Stuff from minimum wavelength to maximum wavelength by 0.1 
+    bins = np.arange(wl_min,wl_max+binsize,binsize)
 
     # Make it so the last bin includes the max wavelength (if not it will be a seperate bin)
-    bins[-1] += 0.1
+    bins[-1] += binsize
     bin_indices = np.digitize(wl, bins)
-    bins[-1] -= 0.1
+    bins[-1] -= binsize
 
     bincount = np.bincount(bin_indices)
+    
 
     # Finds the indices to loop over in the wavelength ranges
     indices_for_loop = []
@@ -2635,7 +2664,6 @@ def photometric_contribution_function(wl, P, Contribution,
             indices_for_loop.append(n)
         else:
             indices_for_loop.append(np.sum(bincount[0:n+1])-1)
-
 
     # Now to find photometric contribution 
 
@@ -2651,13 +2679,15 @@ def photometric_contribution_function(wl, P, Contribution,
             # Loop over each pressure range to get the median 
             temp_row = []
             for p in range(len(P)):
+                
 
                 temp_row.append(np.nanmedian(Contribution[i,p,indices_for_loop[j]:indices_for_loop[j+1]]))
 
+            
             median_array_one_molecule.append(temp_row)
 
         photometric_contribution.append(median_array_one_molecule)
-
+    
     # Finding the total photometric contribution for each molecule by adding everything up    
     photometric_total = []
     for i in range(len(photometric_contribution)):
@@ -2670,14 +2700,14 @@ def photometric_contribution_function(wl, P, Contribution,
         photometric_total.append(temp_row)
 
 
-    return photometric_contribution, photometric_total
+    return photometric_contribution, photometric_total, bins
 
 def plot_photometric_contribution(wl,P,
                                   photometric_contribution, photometric_total,
-                                  spectrum_contribution_list_names):
+                                  spectrum_contribution_list_names,
+                                  bins = []):
 
     # Loop over each molecule
-
     labels = []
     for i in spectrum_contribution_list_names:
         labels.append(i)
@@ -2687,8 +2717,19 @@ def plot_photometric_contribution(wl,P,
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
-        for b in range(len(photometric_contribution[i])):
-            ax.plot(photometric_contribution[i][b],np.log10(P))
+        if bins == []:
+            for b in range(len(photometric_contribution[i])):
+                ax.plot(photometric_contribution[i][b],np.log10(P))
+        
+        else:
+            cm = plt.get_cmap('gist_rainbow')
+            ax.set_prop_cycle('color', [cm(1.*i/len(bins)) for i in range(len(bins))])
+            for b in range(len(bins)-1):
+                label = '[' + str(round(bins[b],1)) + ':' + str(round(bins[b+1],1)) + ')'
+                if b == len(bins)-2:
+                    label = '[' + str(round(bins[b],1)) + ':' + str(round(bins[b+1],1)) + ']'
+                ax.plot(photometric_contribution[i][b],np.log10(P), label = label)
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
 
         ax.set_ylabel('Log Pressure (bar)')
         ax.invert_yaxis()

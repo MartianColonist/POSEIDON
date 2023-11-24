@@ -1346,7 +1346,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # Kappa cloud will encode where clouds are
             # For models that are cloud free, you still need a g and w thats just an array of 0s
             # For Mie models with more than one species, we need to be more careful with the g and w array
-            else:
+            elif scattering == True or reflection == True:
                 if len(aerosol_species) == 1 or aerosol_species == []:
                     w_cloud = np.ones_like(kappa_cloud)*w_cloud
                     g_cloud = np.ones_like(kappa_cloud)*g_cloud
@@ -1560,8 +1560,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             spectrum = F_p_obs / F_s_obs
 
         if (reflection == True):
-
-            FpFs_reflected = albedo*(R_p_eff/a_p)**2
+            
+            try:
+                FpFs_reflected = albedo*(R_p_eff/a_p)**2
+            except:
+                raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
             
             if ('direct' in spectrum_type):
 
