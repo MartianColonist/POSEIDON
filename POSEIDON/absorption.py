@@ -892,7 +892,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
                 nu_q = np.array(opac_file[species_q + '/nu'])
                     
                 # Evaluate temperature interpolation weighting factor
-                y_q = np.zeros(N_T_fine, dtype=np.int)  # Index of T in cross section arrays prior to fine temperature value
+                y_q = np.zeros(N_T_fine, dtype=np.int64)  # Index of T in cross section arrays prior to fine temperature value
                 w_T_q = T_interpolation_init(N_T_fine, T_grid_q, T_fine, y_q)   # Weighting factor
         
                 # Read in log10(cross section) of specified molecule (only need float 32 accuracy for exponents)
@@ -1719,7 +1719,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                 N_T_cia_q = len(T_grid_cia_q)  # Number of temperatures in this grid
             
                 # Evaluate temperature interpolation weighting factor
-                y_cia_q = np.zeros(N_layers, dtype=np.int)   # Layer idex in cia arrays prior to layer temperature value
+                y_cia_q = np.zeros(N_layers, dtype=np.int64)   # Layer idex in cia arrays prior to layer temperature value
                 w_T_cia_q = T_interpolation_init(N_layers, T_grid_cia_q, T[:,j,k], y_cia_q)   # Weighting factor
                 
                 # Read in log10(binary cross section) for specified CIA pair
@@ -1796,7 +1796,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                 N_P_q = len(log_P_grid_q)  # Number of pressures in this grid
                 
                 # Evaluate temperature interpolation weighting factor
-                y_q = np.zeros(N_layers, dtype=np.int)  # Layer index in cross section arrays prior to layer temperature value
+                y_q = np.zeros(N_layers, dtype=np.int64)  # Layer index in cross section arrays prior to layer temperature value
                 w_T_q = T_interpolation_init(N_layers, T_grid_q, T[:,j,k], y_q)   # Weighting factor
                 
                 # Read in log10(cross section) of specified molecule (only need float 32 accuracy for exponents)
