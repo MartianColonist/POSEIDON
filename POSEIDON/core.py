@@ -1001,7 +1001,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
                      disable_continuum = False, suppress_print = False,
                      Gauss_quad = 2, use_photosphere_radius = True,
-                     device = 'cpu', y_p = np.array([0.0])):
+                     device = 'cpu', y_p = np.array([0.0]),
+                     return_albedo = False):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -1045,6 +1046,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             is identical at all times due to translational symmetry, so y_p = 0
             is good for all times post second contact and pre third contact.
             Units are in m, not in stellar radii.
+        return_albedo (bool):
+            If True, returns spectrum and albedo 
 
     Returns:
         spectrum (np.array of float):
@@ -1589,7 +1592,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     if (save_spectrum == True):
         write_spectrum(planet['planet_name'], model['model_name'], spectrum, wl)
 
-    return spectrum
+    if return_albedo == True:
+        return spectrum, albedo
+
+    else:
+        return spectrum
 
 
 def compute_spectrum_c(planet, star, model, atmosphere, opac, wl,
@@ -2750,8 +2757,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         err_T_phot = star['T_eff_error']
         log_g_phot = star['log_g']
         err_log_g_phot = star['log_g_error']
+    
+    # Fiducial values to avoid error in default priors below
     else:
-        T_phot = None
+        T_phot = 4710
         err_T_phot = None
         log_g_phot = None
         err_log_g_phot = None
