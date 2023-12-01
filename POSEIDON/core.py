@@ -380,7 +380,7 @@ def define_model(model_name, bulk_species, param_species,
             transmission spectrum (nightside contamination).   
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
-            (Options: single_dataset).
+            (Options: single_dataset, two_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
             (Options: Line15).
@@ -1579,14 +1579,15 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     raise Exception("Error: wavelength grid for stellar spectrum does " +
                                     "not match wavelength grid of planet spectrum. " +
                                     "Did you forget to provide 'wl' to create_star?")
-                
-                Fp_reflected_obs = FpFs_reflected*F_s*(1/d)**2
+
+                F_s_obs = (R_s / d)**2 * F_s
+                Fp_reflected_obs = FpFs_reflected*F_s_obs
                 
                 spectrum += Fp_reflected_obs
 
             else:
-                FpFs_reflected_obs =FpFs_reflected*(1/d)**2
-                spectrum += FpFs_reflected_obs
+                #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                spectrum += FpFs_reflected
         
     # Write spectrum to file
     if (save_spectrum == True):
@@ -2666,15 +2667,34 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
 
     # For relative offsets, find which data indices the offset applies to
     if (offset_datasets is not None):
+        
+        # Initialize the offset datasets
         offset_datasets = np.array(offset_datasets)
-        if (len(offset_datasets) > 1):
-            raise Exception("Error: only one dataset can have a free offset.")
-        if (offset_datasets[0] in datasets):
-            offset_dataset_idx = np.where(datasets == offset_datasets[0])[0][0]
-            offset_data_start = len_data_idx[offset_dataset_idx]  # Data index of first point with offset
-            offset_data_end = len_data_idx[offset_dataset_idx+1]  # Data index of last point with offset + 1
-        else: 
-            raise Exception("Dataset chosen for relative offset is not included.")
+
+        # If there is only one dataset with an offset
+        # Run the old code, and record start and end indices as integers
+        if len(offset_datasets) == 1:
+
+            if (offset_datasets[0] in datasets):
+
+                offset_dataset_idx = np.where(datasets == offset_datasets[0])[0][0]
+                offset_data_start = len_data_idx[offset_dataset_idx]  # Data index of first point with offset
+                offset_data_end = len_data_idx[offset_dataset_idx+1]  # Data index of last point with offset + 1
+            else: 
+                raise Exception("Dataset chosen for relative offset is not included.")
+
+        # Else, if there are more than one dataset the start and end indices are lists 
+        else:
+            offset_data_start = []
+            offset_data_end = []
+            
+            for n in range(len(offset_datasets)):
+                if (offset_datasets[n] in datasets):
+                    offset_dataset_idx = np.where(datasets == offset_datasets[n])[0][0]
+                    offset_data_start.append(len_data_idx[offset_dataset_idx])  # Data index of first point with offset
+                    offset_data_end.append(len_data_idx[offset_dataset_idx+1])  # Data index of last point with offset + 1
+                else: 
+                    raise Exception("Dataset chosen for relative offset is not included.")
     else:
         offset_data_start = 0    # Dummy values when no offsets included
         offset_data_end = 0

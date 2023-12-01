@@ -895,6 +895,10 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         if (offsets_applied == 'single_dataset'):
             ydata_adjusted = ydata.copy()
             ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
+        elif (offsets_applied == 'two_datasets'):
+            ydata_adjusted = ydata.copy()
+            ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
+            ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
         else: 
             ydata_adjusted = ydata
         
