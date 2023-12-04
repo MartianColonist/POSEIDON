@@ -2,7 +2,7 @@
 from POSEIDON.core import create_star, create_planet
 from POSEIDON.constants import R_Sun, R_J, M_J
 
-evaluate = False
+evaluate = True
 # ***** Define stellar properties *****#
 
 R_s = 1.458 * R_Sun  # Stellar radius (m)
@@ -38,7 +38,7 @@ from POSEIDON.core import define_model, wl_grid_constant_R, make_atmosphere
 
 # ***** Define model *****#
 
-model_name = "Fe-6 injection"  # Model name used for plots, output files etc.
+model_name = "Fe Cr Mg Madhu Injection"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 param_species = ["Fe", "Cr", "Mg"]
@@ -52,9 +52,9 @@ model = define_model(
     param_species,
     PT_profile="isotherm",
     high_res_params=high_res_params,
-    # cloud_model="MacMad17",
-    # cloud_type="deck",
-    # reference_parameter="None",
+    cloud_model="MacMad17",
+    cloud_type="deck",
+    reference_parameter="R_p_ref",
 )
 
 model["method"] = "sysrem"
@@ -73,8 +73,9 @@ wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 from POSEIDON.high_res import read_high_res_data
 
+names = ["blue", "redl", "redu"]
 # ***** Read in data *****#
-data = read_high_res_data("./data/WASP-121b-injection")
+data = read_high_res_data("./data/WASP-121b-injection", names)
 # %%
 from POSEIDON.core import set_priors
 
@@ -121,14 +122,14 @@ import numpy as np
 opacity_treatment = "opacity_sampling"
 
 # Define fine temperature grid (K)
-T_fine_min = 2000  # 400 K lower limit suffices for a typical hot Jupiter
+T_fine_min = 1500  # 400 K lower limit suffices for a typical hot Jupiter
 T_fine_max = 4000  # 2000 K upper limit suffices for a typical hot Jupiter
 T_fine_step = 50  # 20 K steps are a good tradeoff between accuracy and RAM
 
 T_fine = np.arange(T_fine_min, (T_fine_max + T_fine_step), T_fine_step)
 
 # Define fine pressure grid (log10(P/bar))
-log_P_fine_min = -12.0  # 1 ubar is the lowest pressure in the opacity database
+log_P_fine_min = -5.0  # 1 ubar is the lowest pressure in the opacity database
 log_P_fine_max = 2  # 100 bar is the highest pressure in the opacity database
 log_P_fine_step = 0.2  # 0.2 dex steps are a good tradeoff between accuracy and RAM
 
@@ -143,7 +144,7 @@ from POSEIDON.retrieval import run_retrieval
 # ***** Specify fixed atmospheric settings for retrieval *****#
 
 # Atmospheric pressure grid
-P_min = 1e-12  # 0.1 ubar
+P_min = 1e-5  # 0.1 ubar
 P_max = 100  # 100 bar
 N_layers = 100  # 100 layers
 
@@ -178,6 +179,17 @@ if not evaluate:
     )
 
 
+# from POSEIDON.visuals import *
+
+# plot_histograms(
+#     planet_name,
+#     [model],
+#     ["log_Fe", "log_Cr", "log_V", "log_Ti", "log_Mg"],
+#     N_bins=[10, 10, 10, 10, 10],
+#     N_rows=1,
+#     N_columns=5,
+# )
+
 # %% [markdown]
 # Now that the retrieval is finished, you're eager and ready to see what WASP-999b's atmosphere is hiding.
 #
@@ -187,6 +199,30 @@ if not evaluate:
 from POSEIDON.utility import read_retrieved_PT, read_retrieved_log_X
 from POSEIDON.visuals import plot_PT, plot_PT_retrieved, plot_chem_retrieved
 from POSEIDON.corner import generate_cornerplot
+
+
+params = (-6, -6, -6, 0.1, 0.3, -1, -2, 2, 3000)
+log_Fe, log_Cr, log_Mg, a1, a2, log_P1, log_P2, log_P3, T_ref = params
+
+# Provide a specific set of model parameters for the atmosphere
+PT_params = np.array([a1, a2, log_P1, log_P2, log_P3, T_ref])
+log_X_params = np.array([[log_Fe, log_Cr, log_Mg]])
+
+atmosphere = make_atmosphere(
+    planet,
+    define_model(
+        model_name,
+        bulk_species,
+        param_species,
+        PT_profile="Madhu",
+        high_res_params=high_res_params,
+    ),
+    P,
+    P_ref,
+    R_p,
+    PT_params,
+    log_X_params,
+)
 
 # ***** Plot retrieved transmission spectrum *****#
 
@@ -220,46 +256,59 @@ plot_PT_retrieved(
     PT_low1,
     PT_high1,
     PT_high2,
-    # T_true=atmosphere["T"].reshape(-1),
-    T_true=None,
+    T_true=atmosphere["T"].reshape(-1),
+    # T_true=None,
     Atmosphere_dimension=1,
     TwoD_type=None,
     plt_label=None,
     show_profiles=[],
     PT_labels=[],
-    colour_list=[],
+    colour_list=[color],
     log_P_min=None,
     log_P_max=None,
-    T_min=None,
-    T_max=None,
+    T_min=2000,
+    T_max=4000,
     legend_location="lower left",
 )
 
-(
-    P,
-    chemical_species,
-    log_X_low2,
-    log_X_low1,
-    log_X_median,
-    log_X_high1,
-    log_X_high2,
-) = read_retrieved_log_X(planet_name, model_name, retrieval_name=None)
-log_Xs_median = [(log_X_median, P)]
-log_Xs_low2 = [(log_X_low2, P)]
-log_Xs_low1 = [(log_X_low1, P)]
-log_Xs_high1 = [(log_X_high1, P)]
-log_Xs_high2 = [(log_X_high2, P)]
-
-plot_chem_retrieved(
-    planet_name,
-    chemical_species,
-    log_Xs_median,
-    log_Xs_low2,
-    log_Xs_low1,
-    log_Xs_high1,
-    log_Xs_high2,
-)
 # ***** Make corner plot *****#
 fig_corner = generate_cornerplot(
-    planet, model, true_vals=[3000, -6, -6, -6 - 200, -20, 1, 0], colour_scheme=color
+    planet,
+    model,
+    true_vals=[
+        R_p / R_J,
+        # a1,
+        # a2,
+        # log_P1,
+        # log_P2,
+        # log_P3,
+        # T_ref,
+        None,
+        -6,
+        -6,
+        -6,
+        None,
+        -200,
+        -20,
+        1,
+        0,
+    ],
+    span=[
+        (1.60, 1.9),
+        # (0, 2),
+        # (0, 2),
+        # (-5, 2),
+        # (-5, 2),
+        # (-2, 2),
+        (2700, 4000),
+        (-7, -4),
+        (-7, -4),
+        (-15, -4),
+        (-2, 2),
+        (-210, -190),
+        (-21, -19),
+        (0, 2),
+        (-0.6, 0.6),
+    ],
+    colour_scheme=color,
 )
