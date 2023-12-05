@@ -15,31 +15,4 @@ POSEIDON.egg-info/
 inputs/
 run/
 .vscode
-/testing_new_functions
-/refractive_indices_txt
-<<<<<<< HEAD
-/Wasp-17b
-/Wasp-17b-Final-ExoTiC-Temp
-/Wasp17b-Petit-Poseidon
-/Wasp-17b-Miri-Only
-/Wasp-17b-Slab
-/Q-Exam
-/refractive_indices_txt
-/refractive_indices
-/BIC
-/BIC copy 
-/DATA-FOLDER
-/WD1856b
-=======
-/HD209
-/HD189-Transit
-/Make-Database-Final
-/Make-Database-Final-Less-Important
-/refractive_indices_txt
-/Wasp-17b
-/thermo_sonora_2020
-/Vulcan Output 3:20
-/VULCAN-HD189 Gradient
-/VULCAN-master
-/VULCAN2
->>>>>>> 1619cac (GitIgnore PEGASI)
+final_experiments
