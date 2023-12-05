@@ -63,7 +63,7 @@ R = 250000  # Spectral resolution of grid
 
 model["R"] = R
 model["R_instrument"] = 66000  # Resolution of instrument
-model["method"] = "sysrem"
+model["method"] = "PCA"
 model["spectrum_type"] = "emission"
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
@@ -192,7 +192,7 @@ if mode == "retrieval":
         verbose=True,
         P_param_set=1e-5,
         N_output_samples=1000,
-        resume=False,
+        resume=True,
     )
 
 
@@ -292,3 +292,5 @@ fig_corner = generate_cornerplot(
     ],
     colour_scheme=color,
 )
+
+# %%

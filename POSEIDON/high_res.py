@@ -27,6 +27,7 @@ params = {
     "legend.fontsize": 14,
     "axes.labelsize": 16,
     "axes.titlesize": 16,
+    "font.size": 16,
 }
 matplotlib.rcParams.update(params)
 
@@ -714,9 +715,13 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
     residuals = data["residuals"]
     flux = data["flux_blaze_corrected"]
     data_scale = flux - residuals
-    V_bary = data["V_bary"]
     phi = data["phi"]
     wl_grid = data["wl_grid"]
+
+    try:
+        V_bary = data["V_bary"]
+    except:
+        V_bary = np.zeros_like(phi)
 
     nord, nphi, npix = residuals.shape
 
