@@ -445,7 +445,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             # Apply multiplicative stellar contamination to spectrum
             spectrum = epsilon * spectrum
 
-    #***** Step 5: nightside contamination *****#
+    #***** Step 5: nightside contamination (credit to John Kappelmeier) *****#
     
     # Nightside contamination is only relevant for transmission spectra
     if ('transmission' in spectrum_type):
