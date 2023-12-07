@@ -759,7 +759,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_g = None, M_p = None, T_input = [], X_input = [], 
                     P_surf = None, P_param_set = 1.0e-2, He_fraction = 0.17, 
                     N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
-                    chemistry_grid = None):
+                    chemistry_grid = None, testing = False):
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
     full generality, this function generates 3D pressure-temperature and mixing 
@@ -857,7 +857,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             g_p = np.power(10.0, log_g)/100   # Convert log cm/s^2 to m/s^2
     else:
         raise Exception("Invalid gravity / mass setting")
-
+    
     # Unpack lists of chemical species in this model
     chemical_species = model['chemical_species']
     active_species = model['active_species']
@@ -926,8 +926,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
                            T_input, X_input, P_param_set, constant_gravity,
-                           chemistry_grid)
-
+                           chemistry_grid, testing)
+    
     #***** Store cloud / haze / aerosol properties *****#
 
     kappa_cloud_0, P_cloud, \
