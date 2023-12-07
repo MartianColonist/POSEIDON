@@ -378,7 +378,7 @@ def define_model(model_name, bulk_species, param_species,
              file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / file_read / chem_eq).
+            (Options: isochem / gradient / two-gradients / lever / file_read / chem_eq).
         cloud_model (str):
             Chosen cloud parametrisation 
             (Options: cloud-free / MacMad17 / Iceberg / Mie).

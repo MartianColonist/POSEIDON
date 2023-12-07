@@ -653,6 +653,55 @@ def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_spec
     return X_profiles
 
 
+def compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones):
+    '''
+    The function takes in four parameters and returns an array of values called log_X  that represent the
+    output of the function, which is an array of numbers that would be used to plot the profle of the chemical species.
+    This is done by taking the difference in the logarithm of the pressures and the original array, log_xi
+    and multiplying it by the slope of the isochemical line (angle between the isochemical line and the
+    array log_xi). The volume mixing ratio log_xi is the number density / the total volume.
+
+    The function takes in five parameters:
+
+        log_xi: Logarithm of the mixing ratio at element i.
+        log_pi: Logarithm of the pressure at element i.
+        upsilon_i: The angle between the local vertical and the slope for element i.
+        log_p: An array of logarithm of the pressures.
+
+    Returns:
+        log_x: the the mixing ratio  of the ith element as a function of pressure.
+    '''
+
+    log_p = np.log10(P)
+    N_param_species = np.shape(log_X_state)[0]
+    log_X = np.zeros(shape = (N_param_species, len(P), N_sectors, N_zones))
+    
+    # Loop over gases
+    for q in range(N_param_species):
+
+        # Unpack the abundance
+        log_X_q, log_P_q, upsilon_q = log_X_state[q, :]
+
+        # For angles between 0 and pi/2
+        if np.abs(upsilon_q) <= np.pi/2:
+
+            # Loop over layers
+            for j in range (len(log_p)) :
+                if log_p[j] <= log_P_q :
+                    log_X[q,j,0,0] = log_X_q + np.tan(upsilon_q) * (log_p[j] - log_P_q)
+                elif log_p[j] > log_P_q :
+                    log_X[q,j,0,0] = log_X_q
+
+        # For angles between pi/2  and pi
+        elif (np.abs(upsilon_q) > np.pi/2) and (np.abs(upsilon_q) <= np.pi):
+          for j in range (len(log_p)) :
+              if log_p[j] > log_P_q :
+                log_X[q,j,0,0] = log_X_q + np.tan(upsilon_q) * (log_p[j] - log_P_q)
+              elif log_p[j] <= log_P_q :
+                log_X[q,j,0,0] = log_X_q
+        
+    return np.power(10, log_X)
+
 def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
                        He_fraction):
     ''' 
@@ -1656,8 +1705,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                                                     param_species, species_has_profile, 
                                                     alpha, beta, phi, theta)
             
-    #    elif (X_profile == 'lever'):
-    #        X_param = YOUR_FUNCTION()
+        elif (X_profile == 'lever'):
+            X_param = compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones)
 
         # Read in equilibrium mixing ratio profiles 
         elif (X_profile == 'chem_eq'):
