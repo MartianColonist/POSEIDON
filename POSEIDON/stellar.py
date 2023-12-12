@@ -351,7 +351,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
 
    # for i in range(offset, offset + chunk_size):
 
-    # Only first core interplates stellar grids into shared memory
+    # Only first core interpolates stellar grids into shared memory
     if (rank == 0):
 
         # Interpolate and store stellar intensities
@@ -364,8 +364,11 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                                                           Met_phot, log_g_phot_grid[j], 
                                                           stellar_grid)
                 elif (interp_backend == 'pymsg'):
-                    I_phot_local = load_stellar_pymsg(wl_out, specgrid, T_phot_grid[i], 
-                                                      Met_phot, log_g_phot_grid[j])
+                    I_phot_local_1 = load_stellar_pymsg(wl_out[wl_out < 5.499], specgrid, T_phot_grid[i], 
+                                                        Met_phot, log_g_phot_grid[j])
+                    I_phot_local_2 = load_stellar_pymsg(wl_out[wl_out >= 5.499], specgrid, T_phot_grid[i], 
+                                                        Met_phot, log_g_phot_grid[j])
+                    I_phot_local = np.concatenate([I_phot_local_1, I_phot_local_2])
                     
                 # Lock the shared memory window before copying results
                # win_phot.Lock(rank)
@@ -453,7 +456,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
   #  if (rank == (size - 1)):
   #      chunk_size += N_spec_T_het % size  
 
-    # Only first core interplates stellar grids into shared memory
+    # Only first core interpolates stellar grids into shared memory
     if (rank == 0):
 
         # Interpolate and store stellar intensities
@@ -466,8 +469,11 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                                                          Met_phot, log_g_het_grid[j], 
                                                          stellar_grid)
                 elif (interp_backend == 'pymsg'):
-                    I_het_local = load_stellar_pymsg(wl_out, specgrid, T_het_grid[i], 
-                                                     Met_phot, log_g_het_grid[j])
+                    I_het_local_1 = load_stellar_pymsg(wl_out[wl_out < 5.499], specgrid, T_het_grid[i], 
+                                                       Met_phot, log_g_het_grid[j])
+                    I_het_local_2 = load_stellar_pymsg(wl_out[wl_out >= 5.499], specgrid, T_het_grid[i], 
+                                                       Met_phot, log_g_het_grid[j])
+                    I_het_local = np.concatenate([I_het_local_1, I_het_local_2])
                     
                 # Lock the shared memory window before copying results
              #   win_het.Lock(rank)
