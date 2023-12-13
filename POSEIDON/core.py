@@ -907,7 +907,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     # Unpack terminator opening angles (for 2D or 3D models)
     alpha, beta = unpack_geometry_params(param_names, geometry_params, N_params_cum)
 
-    # Compute discretised angular grids for multidimensional atmospheres
+    # Compute discretised angular grids for atmospheres
     phi, theta, phi_edge, \
     theta_edge, dphi, dtheta = angular_grids(Atmosphere_dimension, TwoD_type, 
                                              N_slice_EM, N_slice_DN, 
@@ -2866,6 +2866,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'T_phot': [T_phot, err_T_phot], 
                              'log_g_phot': [log_g_phot, err_log_g_phot], 
                              'delta_rel': [-1.0e-3, 1.0e-3],
+                             'delta_rel_1': [-1.0e-3, 1.0e-3],
+                             'delta_rel_2': [-1.0e-3, 1.0e-3],
                              'log_b': [np.log10(0.001*np.min(err_data**2)),
                                        np.log10(100.0*np.max(err_data**2))],
                              'C_to_O': [0.3,1.9],
