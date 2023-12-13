@@ -1249,7 +1249,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              active_species, CIA_pairs, ff_pairs, bf_species, N_sectors, 
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
              He_fraction, T_input, X_input, P_param_set, 
-             log_P_slope_phot, log_P_slope_arr,
+             log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio,
              constant_gravity = False, chemistry_grid = None):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
@@ -1327,6 +1327,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         log_P_slope_array (np.array of float):
             Log pressures where the Piette & Madhusudhan (2020) temperature difference 
             parameters are defined (log bar).
+        Na_K_fixed_ratio (bool):
+            If True, sets log_K = 0.1 * log_Na
         constant_gravity (bool):
             If True, disable inverse square law gravity (only for testing).
         chemistry_grid (dict):
@@ -1477,6 +1479,10 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
 
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
+
+    # If Na_K_fixed_ratio = True then there is an additional K
+    if Na_K_fixed_ratio == True:
+        N_species = len(included_species)
     
     # Find which parametrised chemical species have a gradient profile
     species_has_profile = np.zeros(len(param_species)).astype(np.int64)
@@ -1541,6 +1547,14 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             if (species_has_profile[q] == 1):
                 X_param[q,:,:,:] = gauss_conv(X_param[q,:,:,:], sigma=3, axis=0, 
                                             mode='nearest')
+                
+        # Add in the K mixing ratio if Na_K_fixed_ratio is True
+        if Na_K_fixed_ratio == True:
+            # Make an array with the same dimensions as the Na column of X_param times 0.1
+            # Ratio = 0.1
+            # We add an additional bracket so that np.append works 
+            K_X_state = [X_param[param_species.index("Na")]*0.1]
+            X_param = np.append(X_param, K_X_state, axis = 0)
         
         # Add bulk mixing ratios to form full mixing ratio array
         X = add_bulk_component(P, X_param, N_species, N_sectors, N_zones, 

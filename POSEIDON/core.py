@@ -478,6 +478,15 @@ def define_model(model_name, bulk_species, param_species,
     # Combine bulk species with parametrised species
     chemical_species = np.append(bulk_species, param_species)
 
+    # If Na_K_fixed_ratio is true, remove K from param_species, and check to make sure X_profile = 'isochem'
+    if Na_K_fixed_ratio == True and X_profile != 'isochem':
+        raise Exception('Error: Na-K fixed ratio only supported for isochem profiles')
+    
+    if Na_K_fixed_ratio == True:
+        if 'K' not in param_species or 'Na' not in param_species:
+            raise Exception('If Na_K_fixed_ratio = True, please include Na and K in the param species')
+        param_species = [i for i in param_species if i != 'K']
+
     # Identify chemical species with active spectral features
     active_species = chemical_species[~np.isin(chemical_species, inactive_species)]
 
@@ -531,8 +540,7 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere, aerosol_species, log_P_slope_arr,
-                                      Na_K_fixed_ratio)
+                                      reference_parameter, disable_atmosphere, aerosol_species, log_P_slope_arr,)
     
     # If cloud_model = Mie, load in the cross section 
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
@@ -925,7 +933,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
-                           T_input, X_input, P_param_set, log_P_slope_phot, log_P_slope_arr, constant_gravity,
+                           T_input, X_input, P_param_set, log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio, constant_gravity,
                            chemistry_grid)
 
     #***** Store cloud / haze / aerosol properties *****#

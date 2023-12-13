@@ -16,7 +16,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
-                       aerosol_species, log_P_slope_arr, Na_K_fixed_ratio):
+                       aerosol_species, log_P_slope_arr):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -104,8 +104,6 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         log_P_slope_array (np.array of float):
             Log pressures where the temperature difference parameters are 
             defined (Piette & Madhusudhan 2020 profile only)
-        Na_K_fixed_ratio (bool):
-            If True, sets log_K = 0.1 * log_Na
 
     Returns:
         params (np.array of str):
@@ -282,9 +280,6 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
         if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'chem_eq']):
             raise Exception("Error: unsupported mixing ratio profile.")
-        
-        if Na_K_fixed_ratio == True and X_profile != 'isochem':
-            raise Exception('Error: Na-K fixed ratio only supported for isochem profiles')
             
         if X_profile != 'chem_eq':
         
@@ -300,11 +295,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                             X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                         elif (X_profile == 'two-gradients'):  
                             X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']   
-
-                    # If Na-K ratio is true, do not give K a free parameter
-                    elif Na_K_fixed_ratio == True and species == 'K':
-                        continue
+                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']  
 
                     else:
                         X_params += ['log_' + species]
