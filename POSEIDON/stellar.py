@@ -366,8 +366,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                 elif (interp_backend == 'pymsg'):
                     I_phot_local_1 = load_stellar_pymsg(wl_out[wl_out < 5.499], specgrid, T_phot_grid[i], 
                                                         Met_phot, log_g_phot_grid[j])
-                    I_phot_local_2 = load_stellar_pymsg(wl_out[wl_out >= 5.499], specgrid, T_phot_grid[i], 
-                                                        Met_phot, log_g_phot_grid[j])
+                    I_phot_local_2 = planck_lambda(T_phot_grid[i], wl_out[wl_out >= 5.499])
                     I_phot_local = np.concatenate([I_phot_local_1, I_phot_local_2])
                     
                 # Lock the shared memory window before copying results
@@ -471,8 +470,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                 elif (interp_backend == 'pymsg'):
                     I_het_local_1 = load_stellar_pymsg(wl_out[wl_out < 5.499], specgrid, T_het_grid[i], 
                                                        Met_phot, log_g_het_grid[j])
-                    I_het_local_2 = load_stellar_pymsg(wl_out[wl_out >= 5.499], specgrid, T_het_grid[i], 
-                                                       Met_phot, log_g_het_grid[j])
+                    I_het_local_2 = planck_lambda(T_het_grid[i], wl_out[wl_out >= 5.499])
                     I_het_local = np.concatenate([I_het_local_1, I_het_local_2])
                     
                 # Lock the shared memory window before copying results
