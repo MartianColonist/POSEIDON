@@ -335,7 +335,10 @@ def define_model(model_name, bulk_species, param_species,
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
                  reference_parameter = 'R_p_ref', disable_atmosphere = False,
-                 aerosol_species = [], scattering = False, reflection = False):
+                 aerosol_species = [], scattering = False, reflection = False,
+                 log_P_slope_phot = 0.5,
+                 log_P_slope_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0],
+                 Na_K_fixed_ratio = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -436,6 +439,14 @@ def define_model(model_name, bulk_species, param_species,
             If True, uses a two-stream multiple scattering emission model.
         reflection (bool):
             If True, uses a two-stream multiple scattering reflection model.
+        log_P_slope_phot (float):
+            Log pressure of the photosphere temperature parameter (only for the 
+            Piette & Madhusudhan 2020 P-T profile).
+        log_P_slope_arr (np.array of float):
+            Log pressures where the temperature difference parameters are 
+            defined (only for the Piette & Madhusudhan 2020 P-T profile).
+        Na_K_fixed_ratio (bool):
+            If True, sets log_K = 0.1 * log_Na
 
     Returns:
         model (dict):
@@ -520,7 +531,8 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere, aerosol_species)
+                                      reference_parameter, disable_atmosphere, aerosol_species, log_P_slope_arr,
+                                      Na_K_fixed_ratio)
     
     # If cloud_model = Mie, load in the cross section 
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
@@ -561,7 +573,11 @@ def define_model(model_name, bulk_species, param_species,
              'aerosol_species': aerosol_species,
              'aerosol_grid': aerosol_grid,
              'scattering' : scattering,
-             'reflection' : reflection}
+             'reflection' : reflection,
+             'log_P_slope_phot': log_P_slope_phot,
+             'log_P_slope_arr': log_P_slope_arr,
+             'Na_K_fixed_ratio': Na_K_fixed_ratio
+             }
 
     return model
 
@@ -818,7 +834,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     gravity_setting = model['gravity_setting']
     mass_setting = model['mass_setting']
     sharp_DN_transition = model['sharp_DN_transition']
+    log_P_slope_phot = model['log_P_slope_phot'] 
+    log_P_slope_arr = model['log_P_slope_arr']
     aerosol_species = model['aerosol_species']
+    Na_K_fixed_ratio = model['Na_K_fixed_ratio']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -906,7 +925,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
-                           T_input, X_input, P_param_set, constant_gravity,
+                           T_input, X_input, P_param_set, log_P_slope_phot, log_P_slope_arr, constant_gravity,
                            chemistry_grid)
 
     #***** Store cloud / haze / aerosol properties *****#

@@ -16,7 +16,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
-                       aerosol_species):
+                       aerosol_species, log_P_slope_arr, Na_K_fixed_ratio):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -101,6 +101,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
         aerosol (string):
             Either 'free' or a specific aerosol
+        log_P_slope_array (np.array of float):
+            Log pressures where the temperature difference parameters are 
+            defined (Piette & Madhusudhan 2020 profile only)
+        Na_K_fixed_ratio (bool):
+            If True, sets log_K = 0.1 * log_Na
 
     Returns:
         params (np.array of str):
@@ -205,9 +210,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             elif (PT_profile == 'Madhu'):     
                 PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_ref']
             elif (PT_profile == 'slope'):
-                PT_params += ['T_phot', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
-                            'Delta_T_1-0.1b', 'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 
-                            'Delta_T_32-10b', 'Delta_T_100-32b']
+                PT_params += ['T_phot_PT']
+                for i in range(len(log_P_slope_arr)):
+                    PT_params += ['Delta_T_' + str(i+1)]
             
         # 2D model (asymmetric terminator or day-night transition)
         elif (PT_dim == 2):
@@ -277,6 +282,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
         if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'chem_eq']):
             raise Exception("Error: unsupported mixing ratio profile.")
+        
+        if Na_K_fixed_ratio == True and X_profile != 'isochem':
+            raise Exception('Error: Na-K fixed ratio only supported for isochem profiles')
             
         if X_profile != 'chem_eq':
         
@@ -292,7 +300,12 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                             X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                         elif (X_profile == 'two-gradients'):  
                             X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']   
+
+                    # If Na-K ratio is true, do not give K a free parameter
+                    elif Na_K_fixed_ratio == True and species == 'K':
+                        continue
+
                     else:
                         X_params += ['log_' + species]
                 
