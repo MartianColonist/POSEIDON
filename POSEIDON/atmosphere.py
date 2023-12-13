@@ -1458,8 +1458,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              log_X_state, included_species, bulk_species, param_species, 
              active_species, CIA_pairs, ff_pairs, bf_species, N_sectors, 
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
-             He_fraction, T_input, X_input, P_param_set, 
-             constant_gravity = False, chemistry_grid = None, testing = False):
+             He_fraction, T_input, X_input, P_param_set, log_P_slope_phot, 
+             log_P_slope_arr, constant_gravity = False, chemistry_grid = None):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1531,6 +1531,11 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             Only used for the Madhusudhan & Seager (2009) P-T profile.
             Sets the pressure where the reference temperature parameter is 
             defined (P_param_set = 1.0e-6 corresponds to that paper's choice).
+        log_P_phot_slope (float):
+            Photosphere log pressure for the Piette & Madhusudhan (2020) P-T profile.
+        log_P_slope_array (np.array of float):
+            Log pressures where the Piette & Madhusudhan (2020) temperature difference 
+            parameters are defined (log bar).
         constant_gravity (bool):
             If True, disable inverse square law gravity (only for testing).
         chemistry_grid (dict):
@@ -1660,7 +1665,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         Delta_T_arr = np.array(PT_state[1:])
             
         # Compute unsmoothed temperature profile
-        T_rough = compute_T_slope(P, T_phot, Delta_T_arr)
+        T_rough = compute_T_slope(P, T_phot, Delta_T_arr, log_P_slope_phot,
+                                  log_P_slope_arr)
 
         # Find how many layers corresponds to 0.3 dex smoothing width
         smooth_width = round(0.3/(((np.log10(P[0]) - np.log10(P[-1]))/len(P))))
@@ -1676,7 +1682,6 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         
         # Gaussian smooth P-T profile
         T = T_rough   # No need to Gaussian smooth a user profile
-    
 
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
@@ -1784,12 +1789,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                                                            N_sectors, N_zones)
     else:
 
-        if (testing == True):
-            n, r, r_up, r_low, dr = radial_profiles_test(P, T, g_0, R_p, P_ref, 
-                                                    R_p_ref, mu, N_sectors, N_zones)
-        else:
-            n, r, r_up, r_low, dr = radial_profiles(P, T, g_0, R_p, P_ref, 
-                                                    R_p_ref, mu, N_sectors, N_zones)     
+        n, r, r_up, r_low, dr = radial_profiles(P, T, g_0, R_p, P_ref, 
+                                                R_p_ref, mu, N_sectors, N_zones)     
 
     
     return T, n, r, r_up, r_low, dr, mu, X, X_active, X_CIA, \

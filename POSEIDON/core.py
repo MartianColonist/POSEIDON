@@ -369,7 +369,10 @@ def define_model(model_name, bulk_species, param_species,
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
                  reference_parameter = 'R_p_ref', disable_atmosphere = False,
-                 aerosol_species = ['free'], scattering = False):
+                 aerosol_species = ['free'], scattering = False,
+                 log_P_slope_phot = 0.5,
+                 log_P_slope_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0]):
+
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -468,6 +471,12 @@ def define_model(model_name, bulk_species, param_species,
             If cloud_model = Mie and cloud_type = specific_aerosol 
         scattering (bool):
             If True, uses a two-stream multiple scattering model.
+        log_P_slope_phot (float):
+            Log pressure of the photosphere temperature parameter (only for the 
+            Piette & Madhusudhan 2020 P-T profile).
+        log_P_slope_arr (np.array of float):
+            Log pressures where the temperature difference parameters are 
+            defined (only for the Piette & Madhusudhan 2020 P-T profile).
 
     Returns:
         model (dict):
@@ -552,7 +561,8 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere, aerosol_species)
+                                      reference_parameter, disable_atmosphere, 
+                                      aerosol_species, log_P_slope_arr)
     
     # If cloud_model = Mie, load in the cross section 
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
@@ -592,7 +602,10 @@ def define_model(model_name, bulk_species, param_species,
              'disable_atmosphere': disable_atmosphere,
              'aerosol_species': aerosol_species,
              'aerosol_grid': aerosol_grid,
-             'scattering' : scattering}
+             'scattering': scattering,
+             'log_P_slope_phot': log_P_slope_phot,
+             'log_P_slope_arr': log_P_slope_arr,
+             }
 
     return model
 
@@ -771,7 +784,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_g = None, M_p = None, T_input = [], X_input = [], 
                     P_surf = None, P_param_set = 1.0e-2, He_fraction = 0.17, 
                     N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
-                    chemistry_grid = None, testing = False):
+                    chemistry_grid = None):
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
     full generality, this function generates 3D pressure-temperature and mixing 
@@ -850,6 +863,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     mass_setting = model['mass_setting']
     sharp_DN_transition = model['sharp_DN_transition']
     aerosol_species = model['aerosol_species']
+    log_P_slope_phot = model['log_P_slope_phot'] 
+    log_P_slope_arr = model['log_P_slope_arr']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -937,8 +952,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
-                           T_input, X_input, P_param_set, constant_gravity,
-                           chemistry_grid, testing)
+                           T_input, X_input, P_param_set, log_P_slope_phot, 
+                           log_P_slope_arr, constant_gravity, chemistry_grid)
     
     #***** Store cloud / haze / aerosol properties *****#
 
@@ -947,8 +962,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     theta_cloud_0, \
     a, gamma, \
     r_m, log_n_max, fractional_scale_height, \
-    r_i_real, r_i_complex, log_X_Mie, P_cloud_bottom = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
-                                                                           N_params_cum, TwoD_type)
+    r_i_real, r_i_complex, \
+    log_X_Mie, P_cloud_bottom = unpack_cloud_params(param_names, cloud_params, 
+                                                    cloud_model, cloud_dim, 
+                                                    N_params_cum, TwoD_type)
     
     # Temporary H for testing 
     if is_physical == False:
@@ -1159,7 +1176,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         enable_haze = 0
 
     # Check if a cloud deck is enabled in the cloud model
-    # The cloud deck is handled differently for Mie calclations
+    # The cloud deck is handled differently for Mie calculations
     if ('deck' in model['cloud_type'] and 'Mie' not in model['cloud_model']):
         enable_deck = 1
     else:
