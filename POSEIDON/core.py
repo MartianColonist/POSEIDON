@@ -474,7 +474,14 @@ def define_model(model_name, bulk_species, param_species,
             if (np.any(~np.isin(param_species, supported_chem_eq_species)) == True):
                 raise Exception("A chemical species you selected is not supported " +
                                 "for equilibrium chemistry models.\n")
-            
+    
+    # If Na_K_fixed_ratio, put K at the end of the list so that it's mixing ratio 
+    # Can be appended to the end of the X_param array in 
+    # profiles() in atmosphere.py 
+    if Na_K_fixed_ratio == True:
+        param_species = [i for i in param_species if i != 'K']
+        param_species.append('K')
+
     # Combine bulk species with parametrised species
     chemical_species = np.append(bulk_species, param_species)
 

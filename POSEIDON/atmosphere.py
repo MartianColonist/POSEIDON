@@ -1553,8 +1553,10 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             # Make an array with the same dimensions as the Na column of X_param times 0.1
             # Ratio = 0.1
             # We add an additional bracket so that np.append works 
+            
             K_X_state = [X_param[param_species.index("Na")]*0.1]
             X_param = np.append(X_param, K_X_state, axis = 0)
+            
         
         # Add bulk mixing ratios to form full mixing ratio array
         X = add_bulk_component(P, X_param, N_species, N_sectors, N_zones, 
