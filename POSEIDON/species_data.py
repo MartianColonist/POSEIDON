@@ -48,4 +48,16 @@ polarisabilities = {'H2':  0.80e-24,  'He':  0.21e-24, 'N2':   1.74e-24,  'O2': 
                     'H-':  30.5e-24,  'e-':  0.00e-24, 'Mg':   10.6e-24,  'Mg+': 10.6e-24,
                     'Mn':  9.40e-24,  'Ca':  22.8e-24, 'Ca+':  22.8e-24}   
 
-
+# List of masses in atomic mass units (multiply by 1u = 1.66053904e-27 to convert to kg)
+# Exohazes an Tholins have the weight of one PAN (CH2CHCN)
+aerosol_masses = {'Al2O3' : 101.96, 'C' : 12.011, 'CH4' : 16.031300, 'CaTiO3' : 135.94, 
+                  'Cr' : 52, 'ExoHaze_1000xSolar_300K' : 53.06, 'ExoHaze_1000xSolar_400K' : 53.06,'Fe' : 55.934942, 
+                  'Fe2O3' : 159.69, 'Fe2SiO4' : 203.77, 'FeO' : 71.84, 'FeS' : 87.91,
+                  'FeSiO3' : 131.93, 'H2O' : 18.010565, 'Hexene' : 84.16, 'KCl': 74.55,
+                  'Mg2SiO4' : 140.69, 'Mg2SiO4_amorph_sol_gel' : 140.69, 'Mg2SiO4_Fe_poor' : 140.69, 'Mg4Fe6SiO3_amorph_glass' : 508.37, 
+                  'Mg5Fe5SiO3_amorph_glass' : 476.83, 'Mg8Fe12SiO4_amorph_glass' : 956.66, 'Mg8Fe2SiO3_amorph_glass' : 382.21, 'MgAl2O4' : 142.27,
+                  'MgFeSiO4_amorph_glass' : 172.23, 'MgO' : 40.3, 'MgSiO3' : 100.39, 'MgSiO3_amorph_glass' : 100.39, 
+                  'MgSiO3_sol_gel' : 100.39, 'MnS' : 87, 'Na2S' : 78.04, 'NaCl' : 58.44, 
+                  'NH3' : 17.026549, 'SiC' : 40.10, 'SiO' : 44.08, 'SiO2': 60.08, 
+                  'SiO2_amorph' : 60.08, 'Tholin' : 53.06, 'Tholin-CO-0625' : 53.06, 'TiC' : 59.88, 
+                  'TiO2' : 79.87, 'TiO2_anatase' : 79.87, 'ZnS' : 97.46, 'Ethane' : 30.07}
