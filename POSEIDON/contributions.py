@@ -2472,7 +2472,8 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
                             fix_mu = True,
                             scattering_contribution = False,
                             reflection_contribution = False,
-                            total_pressure_contribution = False):
+                            total_pressure_contribution = False,
+                            verbose = False):
 
 
     '''
@@ -2518,6 +2519,9 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     norm = np.zeros(shape=(contribution_length,len(wl)))   # Running sum for contribution
 
     for i in range(len(P)):
+
+        if verbose == True:
+            print(i)
 
         spectrum, spectrum_contribution_list_names, spectrum_contribution_list = pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                                                                                         spectrum_type = spectrum_type, save_spectrum = save_spectrum,

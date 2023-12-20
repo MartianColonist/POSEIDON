@@ -899,6 +899,11 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             ydata_adjusted = ydata.copy()
             ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
             ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
+        elif (offsets_applied == 'three_datasets'):
+            ydata_adjusted = ydata.copy()
+            ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
+            ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
+            ydata_adjusted[offset_start[2]:offset_end[2]] -= offset_params[2]*1e-6
         else: 
             ydata_adjusted = ydata
         

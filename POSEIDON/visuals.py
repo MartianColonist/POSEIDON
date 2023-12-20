@@ -3274,13 +3274,25 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             #    ax.xaxis.set_major_locator(xmajorLocator)
             #    ax.xaxis.set_minor_locator(xminorLocator)
 
-            if (param == 'log_r_m_SiO2') or (param == 'log_r_m_Fe2O3'):
+            #if (param == 'log_r_m_SiO2') or (param == 'log_r_m_Fe2O3'):
+            #    xmajorLocator = MultipleLocator(1)
+            #    xminorLocator = MultipleLocator(0.5)
+            #    ax.xaxis.set_major_locator(xmajorLocator)
+            #    ax.xaxis.set_minor_locator(xminorLocator)
+            
+            if('log_r_m' in param):
                 xmajorLocator = MultipleLocator(1)
                 xminorLocator = MultipleLocator(0.5)
                 ax.xaxis.set_major_locator(xmajorLocator)
                 ax.xaxis.set_minor_locator(xminorLocator)
 
-            if (param == 'log_X_SiO2') or (param == 'log_X_Fe2O3'):
+            #if (param == 'log_X_SiO2') or (param == 'log_X_Fe2O3'):
+            #    xmajorLocator = MultipleLocator(5)
+            #    xminorLocator = MultipleLocator(2.5)
+            #    ax.xaxis.set_major_locator(xmajorLocator)
+            #    ax.xaxis.set_minor_locator(xminorLocator)
+
+            if ('log_X' in param):
                 xmajorLocator = MultipleLocator(5)
                 xminorLocator = MultipleLocator(2.5)
                 ax.xaxis.set_major_locator(xmajorLocator)
@@ -3443,10 +3455,18 @@ def plot_histograms(planet_name, models, plot_parameters,
             param = plot_parameters[q]
 
             # QUICK FIX DO NOT KEEP THIS
-            if param == 'log_P_cloud_SiO2':
-                param = 'log_P_top_slab_SiO2'
+            # This is to compare old Grant et al 2023 results to new results
+            # I changed the parameter name
+            if param == 'log_P_top_slab_SiO2':
+                try:
+                    param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
+                except:
+                    param = 'log_P_cloud_SiO2'
+                    param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
 
-            param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
+            
+            else:
+                param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
       #      for j in range(len(chemical_species)):
       #          if (chemical_species[j] in param):
 

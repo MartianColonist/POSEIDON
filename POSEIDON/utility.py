@@ -1110,7 +1110,7 @@ def generate_latex_param_names(param_names):
                     'Delta_T_100-32b']):
             latex_names += ['$\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
             continue
-        
+
         # Temporary fix for aerosol parameter names 
         '$\\log \\, \\mathrm{Na}$'
         if ('Pbase' in param):
@@ -1150,6 +1150,10 @@ def generate_latex_param_names(param_names):
                 string = '$\\log \\, \\mathrm{Fe_2O_3}$'
                 latex_names += [string]
                 continue
+            if('MgSiO3' in param):
+                string = '$\\log \\, \\mathrm{MgSiO_3}$'
+                latex_names += [string]
+                continue
             else:
                 string = '$\\log \\, \\mathrm{' + aerosol_name + '}$'
                 latex_names += [string]
@@ -1169,6 +1173,16 @@ def generate_latex_param_names(param_names):
                 string = '$\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{Fe_2O_3}$'
                 latex_names += [string]
                 continue
+            if('MgSiO3' in param):
+                string = '$\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{MgSiO_3}$'
+                latex_names += [string]
+                continue
+            else:
+                aerosol_name = param.split('_')[3]
+                string = '$\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{' + aerosol_name + '}$'
+                latex_names += [string]
+                continue
+
         if ('log_P_cloud_' in param):
             if('SiO2' in param):
                 string = '$\\log \\, \\mathrm{P_{cloud}} \\, \\mathrm{SiO_2}$'
@@ -1178,6 +1192,27 @@ def generate_latex_param_names(param_names):
                 string = '$\\log \\, \\mathrm{P_{cloud}} \\, \\mathrm{Fe_2O_3}$'
                 latex_names += [string]
                 continue
+
+        if ('log_P_top_slab' in param):
+            if('SiO2' in param):
+                string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{SiO_2}$'
+                latex_names += [string]
+                continue
+            if('MgSiO3' in param):
+                string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{MgSiO_3}$'
+                latex_names += [string]
+                continue
+            else:
+                aerosol_name = param.split('_')[4]
+                string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{' + aerosol_name + '}$'
+                latex_names += [string]
+                continue
+
+        # Quick fix for log_Na + K
+        #if ('log_Na' in param):
+        #    string = '$\\log \\, \mathrm{Na} \\, (+ 0.1 \\, \mathrm{K})$'
+        #    latex_names += [string]
+        #    continue
 
         # Find which components are in this parameter's name, and where they occur
         if ('log' in param):
