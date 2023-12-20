@@ -425,19 +425,19 @@ def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half',
     return wl_data, half_bin, spectrum, err
 
     
-def read_spectrum(planet_name, fname, wl_unit = 'micron'):
+def read_spectrum(fname, wl_unit = 'micron', skiprows = None):
     '''
     Read a previously computed spectrum from the POSEIDON output folder
     (POSEIDON_output/planet_name/spectra).
 
     Args:
-        planet_name (str):
-            Identifier for planet object (e.g. HD209458b).
         fname (str):
-            Name of spectrum file.
+            File path and name of spectrum file (e.g. './my_file.txt')
         wl_unit (str):
             Unit of wavelength column (first column in file)
-            (Options: micron (or equivalent) / nm / A / m)
+            (Options: micron (or equivalent) / nm / A / m).
+        skiprows (int):
+            The number of rows to skip (e.g. use 1 if file has a header line).
 
     Returns:
         wavelength (np.array of float): 
@@ -448,11 +448,11 @@ def read_spectrum(planet_name, fname, wl_unit = 'micron'):
     '''
 
     # Load POSEIDON directory location where the spectrum is stored
-    input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
+  #  input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
     
     # Open file
-    data = pd.read_csv(input_dir + fname, sep = '[\\s]{1,20}', 
-                       engine = 'python', header=None)
+    data = pd.read_csv(fname, sep = '[\\s]{1,20}', 
+                       header=None, skiprows = skiprows, engine = 'python')
 
     # Load wavelength then convert to μm
     if (wl_unit in ['micron', 'um', 'μm']):
