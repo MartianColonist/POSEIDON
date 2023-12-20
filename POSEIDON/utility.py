@@ -1102,7 +1102,7 @@ def generate_latex_param_names(param_names):
         idxs = []          # Indices where each component starts
         lens= []           # Number of characters in each component
         
-        captured_characters = np.zeros(len(param)).astype(np.int32)  # Stays zero for entries with solo letters (e.g. 'H' in 'H2O')
+        captured_characters = np.zeros(len(param)).astype(np.int64)  # Stays zero for entries with solo letters (e.g. 'H' in 'H2O')
                 
         # Find which components are in this parameter's name, and where they occur
         if ('log' in param):

@@ -767,7 +767,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
         cia_file = h5py.File(input_file_path + '/opacity/Opacity_database_cia.hdf5', 'r')
         
         # Initialise array of indices on pre-calculated pressure opacity grid prior to defined atmosphere layer pressures
-        x = np.zeros(N_P_fine, dtype=int)
+        x = np.zeros(N_P_fine, dtype=np.int64)
         
         # Weights
         w_P = np.zeros(N_P_fine)
@@ -819,7 +819,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             nu_cia_q = np.array(cia_file[cia_pair_q + '/nu'])
         
             # Evaluate temperature interpolation weighting factor
-            y_cia_q = np.zeros(N_T_fine, dtype=int)   # Index of T in CIA arrays prior to fine temperature value
+            y_cia_q = np.zeros(N_T_fine, dtype=np.int64)   # Index of T in CIA arrays prior to fine temperature value
             w_T_cia_q = T_interpolation_init(N_T_fine, T_grid_cia_q, T_fine, y_cia_q)   # Weighting factor
             
             # Read in log10(binary cross section) for specified CIA pair
@@ -892,7 +892,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
                 nu_q = np.array(opac_file[species_q + '/nu'])
                     
                 # Evaluate temperature interpolation weighting factor
-                y_q = np.zeros(N_T_fine, dtype=int)  # Index of T in cross section arrays prior to fine temperature value
+                y_q = np.zeros(N_T_fine, dtype=np.int64)  # Index of T in cross section arrays prior to fine temperature value
                 w_T_q = T_interpolation_init(N_T_fine, T_grid_q, T_fine, y_q)   # Weighting factor
         
                 # Read in log10(cross section) of specified molecule (only need float 32 accuracy for exponents)
@@ -1335,7 +1335,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
     log_P = np.log10(P)  # Log of model pressure grid
     
     # Array of indices on opacity pressure opacity grid prior to model atmosphere layer pressures
-    x = np.zeros(N_layers).astype(int) 
+    x = np.zeros(N_layers).astype(np.int64) 
     
     w_P = np.zeros(N_layers)  # Pressure weights
     
@@ -1691,7 +1691,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                 N_T_cia_q = len(T_grid_cia_q)  # Number of temperatures in this grid
             
                 # Evaluate temperature interpolation weighting factor
-                y_cia_q = np.zeros(N_layers, dtype=int)   # Layer idex in cia arrays prior to layer temperature value
+                y_cia_q = np.zeros(N_layers, dtype=np.int64)   # Layer idex in cia arrays prior to layer temperature value
                 w_T_cia_q = T_interpolation_init(N_layers, T_grid_cia_q, T[:,j,k], y_cia_q)   # Weighting factor
                 
                 # Read in log10(binary cross section) for specified CIA pair
@@ -1768,7 +1768,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                 N_P_q = len(log_P_grid_q)  # Number of pressures in this grid
                 
                 # Evaluate temperature interpolation weighting factor
-                y_q = np.zeros(N_layers, dtype=int)  # Layer index in cross section arrays prior to layer temperature value
+                y_q = np.zeros(N_layers, dtype=np.int64)  # Layer index in cross section arrays prior to layer temperature value
                 w_T_q = T_interpolation_init(N_layers, T_grid_q, T[:,j,k], y_q)   # Weighting factor
                 
                 # Read in log10(cross section) of specified molecule (only need float 32 accuracy for exponents)
