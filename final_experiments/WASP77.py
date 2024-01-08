@@ -15,12 +15,10 @@ log_g_s = 4.56  # Stellar log surface gravity (log10(cm/s^2) by convention)
 planet_name = "WASP-77Ab"  # Planet name used for plots, output files etc.
 
 R_p = 1.21 * R_J  # Planetary radius (m)
-M_p = 0.07 * M_J  # Mass of planet (kg)
-g_p = 4.3712  # Gravitational field of planet (m/s^2)
-T_eq = 1043.8  # Equilibrium temperature (K)
+M_p = 1.76 * M_J  # Mass of planet (kg)
 
 # Create the planet object
-planet = create_planet(planet_name, R_p, mass=M_p, gravity=g_p, T_eq=T_eq)
+planet = create_planet(planet_name, R_p, mass=M_p)
 
 # If distance not specified, use fiducial value
 if planet["system_distance"] is None:
@@ -33,14 +31,12 @@ from POSEIDON.utility import read_high_res_data_deprecate
 
 # ***** Define model *****#
 
-model_name = "H2O, CO, CH4, NH3 pca"  # Model name used for plots, output files etc.
+model_name = "H2O, CO, CH4, NH3"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["H2O", "CO", "CH4", "NH3"]  # H2O, CO as in Brogi & Line
-# param_species = []
+param_species = ["H2O", "CO", "CH4", "NH3"]
 
-method = "PCA"
-# high_res_params = ['a', 'b', 'dPhi', 'K_p', 'V_sys', 'W_conv']
+method = "sysrem"
 high_res_params = ["K_p", "V_sys", "log_alpha", "W_conv"]
 
 model = define_model(
@@ -49,7 +45,7 @@ model = define_model(
     param_species,
     PT_profile="Madhu",
     high_res_params=high_res_params,
-    reference_parameter="None",
+    reference_parameter="None",  # not retrieve for R_p_ref of P_ref
 )
 
 # Check the free parameters defining this model
@@ -61,9 +57,8 @@ wl_min = 1.3  # Minimum wavelength (um)
 wl_max = 2.6  # Maximum wavelength (um)
 R = 250000  # Spectral resolution of grid
 
-model["R"] = R
-model["R_instrument"] = 66000  # Resolution of instrument
-model["method"] = "PCA"
+# model["R_instrument"] = 45000  # only need this using PCA to reproduce Line 2021 (otherwise we use W_conv as a parameter for broadening)
+model["method"] = "sysrem"
 model["spectrum_type"] = "emission"
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
@@ -72,26 +67,23 @@ star = create_star(R_s, T_s, log_g_s, Met_s, wl=wl, stellar_grid="phoenix")
 F_s = star["F_star"]
 wl_s = star["wl_star"]
 
-data_dir = "./data/WASP-77Ab-injection/"
+data_dir = "./data/WASP-77Ab/"
 from POSEIDON.high_res import read_high_res_data
 
 data = read_high_res_data(
     data_dir,
-    ["H2O_CO_CH4_NH3_pca"],
+    ["IGRINS"],
+    # this should be the data folder name that you chose in data preparation step. Support multiple datasets.
 )
 # %%
 from POSEIDON.core import set_priors
 
-# ***** Set priors for retrieval *****#
-
-# Initialise prior type dictionary
 prior_types = {}
 
 # Specify whether priors are linear, Gaussian, etc.
 prior_types["T_ref"] = "uniform"
 prior_types["R_p_ref"] = "uniform"
-prior_types["log_H2O"] = "uniform"
-prior_types["log_CO"] = "uniform"
+prior_types["log_X"] = "uniform"
 prior_types["a1"] = "uniform"
 prior_types["a2"] = "uniform"
 prior_types["log_P1"] = "uniform"
@@ -100,32 +92,31 @@ prior_types["log_P3"] = "uniform"
 prior_types["K_p"] = "uniform"
 prior_types["V_sys"] = "uniform"
 prior_types["log_alpha"] = "uniform"
+prior_types["alpha"] = "uniform"
 prior_types["b"] = "uniform"
 prior_types["dPhi"] = "uniform"
 prior_types["W_conv"] = "uniform"
 
-# Initialise prior range dictionary
+
 prior_ranges = {}
 
 # Specify prior ranges for each free parameter
 prior_ranges["T_ref"] = [400, 3000]
 prior_ranges["R_p_ref"] = [0.5 * R_p, 1.5 * R_p]
-prior_ranges["log_H2O"] = [-15, 0]
-prior_ranges["log_CO"] = [-15, 0]
+prior_ranges["log_X"] = [-15, 0]
 prior_ranges["a1"] = [0.02, 1]
 prior_ranges["a2"] = [0.02, 1]
 prior_ranges["log_P1"] = [-5, 2]
 prior_ranges["log_P2"] = [-5, 2]
 prior_ranges["log_P3"] = [-2, 2]
-prior_ranges["K_p"] = [-300, -100]
+prior_ranges["K_p"] = [0, 300]  # set prior according centered around published value
 prior_ranges["V_sys"] = [-50, 50]
 prior_ranges["log_alpha"] = [-3, 2]
-prior_ranges["a"] = [0.01, 2]
+prior_ranges["alpha"] = [0.01, 10]
 prior_ranges["b"] = [0.01, 100]
 prior_ranges["dPhi"] = [-0.1, 0.1]
 prior_ranges["W_conv"] = [0, 10]
 
-# Create prior object for retrieval
 priors = set_priors(planet, star, model, data, prior_types, prior_ranges)
 
 # %%
@@ -153,10 +144,8 @@ log_P_fine = np.arange(
 )
 
 if mode == "retrieval":
-    # Now we can pre-interpolate the sampled opacities (may take up to a minute)
     opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
-# ***** Specify fixed atmospheric settings for retrieval *****#
 # Specify the pressure grid of the atmosphere
 P_min = 1.0e-5  # 0.1 ubar
 P_max = 100  # 100 bar
@@ -164,8 +153,6 @@ N_layers = 100  # 100 layers
 
 # We'll space the layers uniformly in log-pressure
 P = np.logspace(np.log10(P_max), np.log10(P_min), N_layers)
-
-# Specify the reference pressure and radius
 P_ref = 1e-2  # Reference pressure (bar)
 
 # %%
@@ -190,16 +177,10 @@ if mode == "retrieval":
         sampling_algorithm="MultiNest",
         N_live=400,
         verbose=True,
-        P_param_set=1e-5,
+        P_param_set=1e-2,
         N_output_samples=1000,
-        resume=True,
+        resume=False,
     )
-
-
-# %% [markdown]
-# Now that the retrieval is finished, you're eager and ready to see what WASP-999b's atmosphere is hiding.
-#
-# You first plot confidence intervals of the retrieved spectrum from this model compared to WASP-999b's observed transmission spectrum. You also generate a corner plot showing the retrieved probability distributions of the model parameters.
 
 # %%
 from POSEIDON.utility import read_retrieved_PT, read_retrieved_log_X
@@ -217,10 +198,7 @@ Fp_colors = cmr.take_cmap_colors(
 
 color = Fp_colors[5]
 
-# ***** Plot retrieved transmission spectrum *****#
-
 # Read retrieved spectrum confidence regions
-
 P, T_low2, T_low1, T_median, T_high1, T_high2 = read_retrieved_PT(
     planet_name, model_name, retrieval_name=None
 )
@@ -287,10 +265,8 @@ fig_corner = generate_cornerplot(
         "log_NH3",
         "K_p",
         "V_sys",
-        "log_alpha",
+        "alpha",
         "W_conv",
     ],
     colour_scheme=color,
 )
-
-# %%
