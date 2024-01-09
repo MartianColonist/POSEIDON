@@ -196,7 +196,13 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             specgrid = open_pymsg_grid(stellar_grid)
 
             # Interpolate stellar grid to compute photosphere intensity
-            I_phot = load_stellar_pymsg(wl_star, specgrid, T_eff, Met, log_g)
+            I_phot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_eff, Met, log_g)
+
+            # Extrapolate stellar spectrum as a black body beyond pymsg's upper limit of 5.5 um
+            I_phot_2 = planck_lambda(T_eff, wl_star[wl_star >= 5.499])
+
+            # Combine spectra segments
+            I_phot = np.concatenate([I_phot_1, I_phot_2])
 
     # For uniform stellar surfaces
     if (stellar_contam == None): 
@@ -224,7 +230,9 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
         if (interp_backend == 'pysynphot'):
             I_het = load_stellar_pysynphot(wl_star, T_het, Met, log_g_het, stellar_grid)
         elif (interp_backend == 'pymsg'):
-            I_het = load_stellar_pymsg(wl_star, specgrid, T_het, Met, log_g_het)
+            I_het_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_het, Met, log_g_het)
+            I_het_2 = planck_lambda(T_het, wl_star[wl_star >= 5.499])
+            I_het = np.concatenate([I_het_1, I_het_2])
 
         # Evaluate total stellar flux as a weighted sum of each region 
         F_star = np.pi * ((f_het * I_het) + (1.0 - f_het) * I_phot)
@@ -254,8 +262,12 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             I_spot = load_stellar_pysynphot(wl_star, T_spot, Met, log_g_spot, stellar_grid)
             I_fac = load_stellar_pysynphot(wl_star, T_fac, Met, log_g_fac, stellar_grid)
         elif (interp_backend == 'pymsg'):
-            I_spot = load_stellar_pymsg(wl_star, specgrid, T_spot, Met, log_g_spot)
-            I_fac = load_stellar_pymsg(wl_star, specgrid, T_fac, Met, log_g_fac)
+            I_spot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_spot, Met, log_g_spot)
+            I_spot_2 = planck_lambda(T_spot, wl_star[wl_star >= 5.499])
+            I_spot = np.concatenate([I_spot_1, I_spot_2])
+            I_fac_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_fac, Met, log_g_fac)
+            I_fac_2 = planck_lambda(T_fac, wl_star[wl_star >= 5.499])
+            I_fac = np.concatenate([I_fac_1, I_fac_2])
 
         # Evaluate total stellar flux as a weighted sum of each region 
         F_star = np.pi * ((f_spot * I_spot) + (f_fac * I_fac) + 
@@ -357,7 +369,10 @@ def define_model(model_name, bulk_species, param_species,
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
                  reference_parameter = 'R_p_ref', disable_atmosphere = False,
-                 aerosol_species = ['free'], scattering = False):
+                 aerosol_species = ['free'], scattering = False,
+                 log_P_slope_phot = 0.5,
+                 log_P_slope_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0]):
+
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -378,7 +393,7 @@ def define_model(model_name, bulk_species, param_species,
              file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / file_read / chem_eq).
+            (Options: isochem / gradient / two-gradients / lever / file_read / chem_eq).
         cloud_model (str):
             Chosen cloud parametrisation 
             (Options: cloud-free / MacMad17 / Iceberg / Mie).
@@ -467,6 +482,12 @@ def define_model(model_name, bulk_species, param_species,
             If cloud_model = Mie and cloud_type = specific_aerosol 
         scattering (bool):
             If True, uses a two-stream multiple scattering model.
+        log_P_slope_phot (float):
+            Log pressure of the photosphere temperature parameter (only for the 
+            Piette & Madhusudhan 2020 P-T profile).
+        log_P_slope_arr (np.array of float):
+            Log pressures where the temperature difference parameters are 
+            defined (only for the Piette & Madhusudhan 2020 P-T profile).
 
     Returns:
         model (dict):
@@ -551,7 +572,8 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere, aerosol_species)
+                                      reference_parameter, disable_atmosphere, 
+                                      aerosol_species, log_P_slope_arr)
     
     # If cloud_model = Mie, load in the cross section 
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
@@ -592,7 +614,10 @@ def define_model(model_name, bulk_species, param_species,
              'disable_atmosphere': disable_atmosphere,
              'aerosol_species': aerosol_species,
              'aerosol_grid': aerosol_grid,
-             'scattering' : scattering}
+             'scattering': scattering,
+             'log_P_slope_phot': log_P_slope_phot,
+             'log_P_slope_arr': log_P_slope_arr,
+             }
 
     return model
 
@@ -850,6 +875,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     mass_setting = model['mass_setting']
     sharp_DN_transition = model['sharp_DN_transition']
     aerosol_species = model['aerosol_species']
+    log_P_slope_phot = model['log_P_slope_phot'] 
+    log_P_slope_arr = model['log_P_slope_arr']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -869,7 +896,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             g_p = np.power(10.0, log_g)/100   # Convert log cm/s^2 to m/s^2
     else:
         raise Exception("Invalid gravity / mass setting")
-
+    
     # Unpack lists of chemical species in this model
     chemical_species = model['chemical_species']
     active_species = model['active_species']
@@ -937,9 +964,9 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
-                           T_input, X_input, P_param_set, constant_gravity,
-                           chemistry_grid)
-
+                           T_input, X_input, P_param_set, log_P_slope_phot, 
+                           log_P_slope_arr, constant_gravity, chemistry_grid)
+    
     #***** Store cloud / haze / aerosol properties *****#
 
     kappa_cloud_0, P_cloud, \
@@ -947,8 +974,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     theta_cloud_0, \
     a, gamma, \
     r_m, log_n_max, fractional_scale_height, \
-    r_i_real, r_i_complex, log_X_Mie, P_cloud_bottom = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
-                                                                           N_params_cum, TwoD_type)
+    r_i_real, r_i_complex, \
+    log_X_Mie, P_cloud_bottom = unpack_cloud_params(param_names, cloud_params, 
+                                                    cloud_model, cloud_dim, 
+                                                    N_params_cum, TwoD_type)
     
     # Temporary H for testing 
     if is_physical == False:
@@ -1159,7 +1188,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         enable_haze = 0
 
     # Check if a cloud deck is enabled in the cloud model
-    # The cloud deck is handled differently for Mie calclations
+    # The cloud deck is handled differently for Mie calculations
     if ('deck' in model['cloud_type'] and 'Mie' not in model['cloud_model']):
         enable_deck = 1
     else:

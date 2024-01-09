@@ -503,7 +503,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         # Convert single atmosphere spectrum to a dictionary of (possibly stellar-contaminated) spectra
         spectrum = spectrum_all_datasets
 
-    #***** Step 5: nightside contamination *****#
+    #***** Step 5: nightside contamination (credit to John Kappelmeier) *****#
     
     # Nightside contamination is only relevant for transmission spectra
     if ('transmission' in spectrum_type):

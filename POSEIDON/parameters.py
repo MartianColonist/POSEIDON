@@ -16,7 +16,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
-                       aerosol_species):
+                       aerosol_species, log_P_slope_arr):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -34,7 +34,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
              file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / file_read).
+            (Options: isochem / gradient / two-gradients / lever / file_read).
         cloud_model (str):
             Chosen cloud parametrisation 
             (Options: cloud-free / MacMad17 / Iceberg / Mie).
@@ -110,8 +110,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
-        aerosol (string):
-            Either 'free' or a specific aerosol
+        aerosol_species (string):
+            Either 'free' or a specific aerosol.
+        log_P_slope_array (np.array of float):
+            Log pressures where the temperature difference parameters are 
+            defined (Piette & Madhusudhan 2020 profile only).
 
     Returns:
         params (np.array of str):
@@ -193,7 +196,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** PT profile parameters *****#
 
         if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
-                            'slope', 'file_read']):
+                               'slope', 'file_read']):
             raise Exception("Error: unsupported P-T profile.")
 
         # Check profile settings are supported
@@ -218,9 +221,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             elif (PT_profile == 'Madhu'):     
                 PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_ref']
             elif (PT_profile == 'slope'):
-                PT_params += ['T_phot_PT', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
-                            'Delta_T_1-0.1b', 'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 
-                            'Delta_T_32-10b', 'Delta_T_100-32b']
+                PT_params += ['T_phot_PT']
+                for i in range(len(log_P_slope_arr)):
+                    PT_params += ['Delta_T_' + str(i+1)]
             
         # 2D model (asymmetric terminator or day-night transition)
         elif (PT_dim == 2):
@@ -288,8 +291,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         
         #***** Mixing ratio parameters *****#
 
-        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'chem_eq']):
+        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'lever', 'chem_eq']):
             raise Exception("Error: unsupported mixing ratio profile.")
+        
+        if (X_profile == 'lever') and (X_dim != 1):
+            raise Exception("Error: Level profile currently only implemented for 1D atmospheres.")
             
         if X_profile != 'chem_eq':
         
@@ -305,7 +311,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                             X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                         elif (X_profile == 'two-gradients'):  
                             X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                        elif (X_profile == 'lever'):
+                            X_params += ['log_' + species + '_iso', 'log_P_' + species, 'Upsilon_' + species]
                     else:
                         X_params += ['log_' + species]
                 
@@ -878,6 +886,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_X = 4      # (log_X_bar_term_high, Delta_log_X_term_high, Delta_log_X_DN_high, log_X_deep)    
     elif (X_profile == 'two-gradients'):
         len_X = 8
+    elif (X_profile == 'lever'):
+        len_X = 3                     # (log_X_iso, log_P_X, Upsilon_X)
     elif (X_profile == 'isochem'):
         len_X = 4      # To cover multi-D cases, we use same log_X format as gradient profile
     elif (X_profile == 'file_read'):   # User provided file
@@ -1068,6 +1078,23 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                         log_X_state[q,5] = 0.0                   # No Day-Night gradient
                         log_X_state[q,6] = -2.0                  # Fix P (X_mid) to 10 mbar for isochem
                         log_X_state[q,7] = log_X_in[count]       # log_X_deep
+                        count += 1
+
+            elif (X_profile == 'lever'):  
+                
+                count = 0  # Counter to make tracking location in log_X_in easier
+                
+                # Loop over parametrised chemical species
+                for q, species in enumerate(param_species):
+                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                        log_X_state[q,0] = log_X_in[count]       # log_X_iso
+                        log_X_state[q,1] = log_X_in[count+1]     # log_P_X
+                        log_X_state[q,2] = log_X_in[count+2]     # Upsilon_X
+                        count += 3
+                    else:   # No altitude variation for this species
+                        log_X_state[q,0] = log_X_in[count]       # log_X_iso
+                        log_X_state[q,1] = -2.0                  # Fix P_X to 10 mbar for isochem
+                        log_X_state[q,2] = 0.0                   # Upsilon_X = 0 for isochem
                         count += 1
 
         # 2D atmosphere
