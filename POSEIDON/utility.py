@@ -712,19 +712,23 @@ def write_retrieved_spectrum(retrieval_name, wl, spec_low2,
 
     # Identify output directory location where the retrieved spectrum will be saved
     output_dir = '../samples/'
+
+    # Iterate over datasets
+    for j_dataset in range(len(spec_median)):
     
-    # Write retrieved spectrum
-    f = open(output_dir + retrieval_name + '_spectrum_retrieved.txt', 'w')
-    
-    # Write top line
-    f.write('wl (μm) | spectrum: -2σ | spectrum: -1σ | spectrum: median ' + 
-            '| spectrum: +1σ | spectrum: +2σ \n')
-    
-    for i in range(len(wl)):
-        f.write('%.8e %.8e %.8e %.8e %.8e %.8e \n' %(wl[i], spec_low2[i], spec_low1[i], 
-                                                     spec_median[i], spec_high1[i], spec_high2[i]))
-        
-    f.close()
+        # Write retrieved spectrum
+        f = open(output_dir + retrieval_name + '_spectrum_retrieved_set{}.txt'.format(j_dataset), 'w')
+
+        # Write top line
+        f.write('wl (μm) | spectrum: -2σ | spectrum: -1σ | spectrum: median ' +
+                '| spectrum: +1σ | spectrum: +2σ \n')
+
+        for i in range(len(wl)):
+            f.write('%.8e %.8e %.8e %.8e %.8e %.8e \n' %(wl[i], spec_low2[j_dataset][i], spec_low1[j_dataset][i],
+                                                         spec_median[j_dataset][i], spec_high1[j_dataset][i],
+                                                         spec_high2[j_dataset][i]))
+
+        f.close()
 
 
 def write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
@@ -803,19 +807,30 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     # Identify output directory location where the retrieved spectrum is located
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
-    # Find retrieved spectrum file
-    fname = output_dir + retrieval_name + '_spectrum_retrieved.txt'
+    i_dataset = 0
+    wl, spec_low2, spec_low1, spec_median, spec_high1, spec_high2 = [], [], [], [], [], []
 
-    # Read retrieved spectrum confidence intervals
-    spec_file = pd.read_csv(fname, sep = '[\\s]{1,20}', engine = 'python', 
-                            header = None, skiprows = 1)
+    while True:
 
-    wl = np.array(spec_file[0])           # Wavelengths (um)
-    spec_low2 = np.array(spec_file[1])    # -2σ
-    spec_low1 = np.array(spec_file[2])    # -1σ
-    spec_median = np.array(spec_file[3])  # Median
-    spec_high1 = np.array(spec_file[4])   # +1σ
-    spec_high2 = np.array(spec_file[5])   # +2σ
+        # Find retrieved spectrum file
+        fname = output_dir + retrieval_name + '_spectrum_retrieved_set{}.txt'.format(i_dataset)
+
+        # If we reached the last dataset, break
+        if not os.path.isfile(fname):
+            break
+
+        # Read retrieved spectrum confidence intervals
+        spec_file = pd.read_csv(fname, sep = '[\\s]{1,20}', engine = 'python',
+                                header = None, skiprows = 1)
+
+        wl.append(np.array(spec_file[0]))           # Wavelengths (um)
+        spec_low2.append(np.array(spec_file[1]))    # -2σ
+        spec_low1.append(np.array(spec_file[2]))    # -1σ
+        spec_median.append(np.array(spec_file[3]))  # Median
+        spec_high1.append(np.array(spec_file[4]))   # +1σ
+        spec_high2.append(np.array(spec_file[5]))   # +2σ
+
+        i_dataset += 1
     
     return wl, spec_low2, spec_low1, spec_median, spec_high1, spec_high2
 
@@ -1091,6 +1106,7 @@ def generate_latex_param_names(param_names):
     # Define key parameters used in subscripts of parameter names
     phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 
                'Night', 'cloud', 'rel', '0', 'het', 'phot', 'fac', 'spot', 'surf', 'p']
+    phrases = phrases + ['set{}'.format(i) for i in range(99)]  # TODO: Temporary fix
     
     # Initialise output array
     latex_names = []
@@ -1219,6 +1235,8 @@ def generate_latex_param_names(param_names):
                     captured_characters[idx:idx+len(phrase)] = 1
             else:
                 if (phrase in param):
+                    if phrase == '0' and param[-len('set0'):] == 'set0':  # TODO Temporary fix
+                        continue  # TODO Temporary fix
                     idx = find_str(param, phrase)   # Find index where phrase starts
                     idxs += [idx]
                     components += ['phrase']
@@ -1236,7 +1254,7 @@ def generate_latex_param_names(param_names):
                 components += ['charge']
                 lens += [1]
                 captured_characters[idx:idx+1] = 1
-            if ((char.isdigit()) and (param[idx-1] != '_')):
+            if ((char.isdigit()) and (param[idx - 1] != '_') and param[idx - 3:idx] != 'set' and not param[idx - 1].isdigit()):  # TODO Temporary fix
                 idxs += [idx]
                 components += ['digit']
                 lens += [1]
@@ -1596,6 +1614,10 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     ydata = data['ydata']
     instruments = data['instruments']
     datasets = data['datasets']
+
+    # Concatenate data properties
+    err_data = np.concatenate(err_data)
+    ydata = np.concatenate(ydata)
 
     # Unpack model properties
     radius_unit = model['radius_unit']

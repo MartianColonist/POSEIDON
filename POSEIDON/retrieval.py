@@ -2,6 +2,7 @@
 Functions related to atmospheric retrieval.
 
 '''
+import pdb
 
 import numpy as np
 import time
@@ -65,6 +66,34 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     disable_atmosphere = model['disable_atmosphere']
     X_profile = model['X_profile']
 
+    # Before starting anything, do a sanity check to ensure that all data sets are consistent in whether they want
+    #  to fit/fix log_g (and therefore log_g_phot, because log_g_phot must be the same across all datasets).
+    fix_log_g_phot = None
+    for i_dataset, stellar_contam_i in enumerate(stellar_contam):
+        if stellar_contam_i is not None:
+            if fix_log_g_phot is None:  # First dataset with stellar contamination
+                fix_log_g_phot = 'free_log_g' in stellar_contam_i  # Set to True if log_g_phot is a free parameter
+            else:
+                if fix_log_g_phot != ('free_log_g' in stellar_contam_i):
+                    raise Exception("Error: All datasets must be consistent in whether they want to fit/fix log(g): "
+                                    "photospheric log(g) must be the same across all datasets.")
+
+    # Also check that different visits with the same instrument do not share their stellar contamination parameters
+    # Iterate over datasets
+    for i_dataset, instrument_i in enumerate(data['instruments']):
+        if stellar_contam[i_dataset] is None:
+            continue
+        # Iterate over datasets
+        for j_dataset, instrument_j in enumerate(data['instruments']):
+            if stellar_contam[j_dataset] is None or i_dataset == j_dataset or instrument_i != instrument_j:
+                continue
+            # If we get here, then we have two different visits with the same instrument, and both have stellar
+            #  contamination parameters. Check that they are not the same.
+            if model["shared_stellar_contam"][i_dataset] == j_dataset or model["shared_stellar_contam"][j_dataset] == i_dataset:
+                # If we get here, then the two datasets share their stellar contamination parameters
+                raise Exception("Error: Different visits with the same instrument cannot share their "
+                                "stellar contamination parameters.")
+
     # Unpack stellar properties
     if (star is not None):
         R_s = star['R_s']
@@ -96,7 +125,12 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
         chemistry_grid = None
 
     # Pre-compute stellar spectra for models with unocculted spots / faculae
-    if (stellar_contam != None):
+    precompute = False
+    for stellar_contam_i in stellar_contam:
+        if stellar_contam_i is not None:
+            precompute = True
+            break
+    if precompute:
 
         if (rank == 0):
             print("Pre-computing stellar spectra before starting retrieval...")
@@ -250,6 +284,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     N_params_cum = model['N_params_cum']
     surface = model['surface']
     stellar_contam = model['stellar_contam']
+    shared_stellar_contam = model['shared_stellar_contam']
     nightside_contam = model['nightside_contam']
     disable_atmosphere = model['disable_atmosphere']
 
@@ -379,71 +414,94 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     # Stellar contamination is only relevant for transmission spectra
     if ('transmission' in spectrum_type):
 
-        if (stellar_contam != None):
+        # Initialise dictionary containing spectrum of each dataset
+        spectrum_all_datasets = []
 
-            if ('one_spot' in stellar_contam):
+        # Unpack stellar contamination parameters
+        (f_het, f_spot, f_fac, T_het, T_spot, T_fac, T_phot, log_g_het, log_g_spot, log_g_fac, log_g_phot) \
+            = unpack_stellar_params(param_names, star, stellar_params, stellar_contam, N_params_cum)
 
-                # Unpack stellar contamination parameters
-                f_het, _, _, T_het, _, \
-                _, T_phot, log_g_het, \
-                _, _, log_g_phot = unpack_stellar_params(param_names, star, 
-                                                         stellar_params, 
-                                                         stellar_contam, 
-                                                         N_params_cum)
-                
-                # Find stellar intensities at closest T and log g
-                I_het = I_het_grid[closest_index(T_het, T_het_grid[0], 
-                                                 T_het_grid[-1], len(T_het_grid)),
-                                   closest_index(log_g_het, log_g_het_grid[0], 
-                                                 log_g_het_grid[-1], len(log_g_het_grid)),
-                                   :]
-                I_phot = I_phot_grid[closest_index(T_phot, T_phot_grid[0], 
-                                                   T_phot_grid[-1], len(T_phot_grid)),
-                                     closest_index(log_g_phot, log_g_phot_grid[0], 
-                                                   log_g_phot_grid[-1], len(log_g_phot_grid)),
-                                     :]
-                
-                # Package heterogeneity properties for general contamination formula
-                f_het = np.array([f_het])
-                I_het = np.array([I_het])
-                
-            elif ('two_spots' in stellar_contam):
+        for i_dataset in range(len(data["datasets"])):
 
-                # Unpack stellar contamination parameters
-                _, f_spot, f_fac, _, \
-                T_spot, T_fac, T_phot, \
-                _, log_g_spot, log_g_fac, \
-                log_g_phot = unpack_stellar_params(param_names, star, 
-                                                   stellar_params, 
-                                                   stellar_contam, 
-                                                   N_params_cum)
-                
-                # Find stellar intensities at closest T and log g
-                I_spot = I_het_grid[closest_index(T_spot, T_het_grid[0], 
-                                                  T_het_grid[-1], len(T_het_grid)),
-                                    closest_index(log_g_spot, log_g_het_grid[0], 
-                                                  log_g_het_grid[-1], len(log_g_het_grid)),
-                                    :]
-                I_fac = I_het_grid[closest_index(T_fac, T_het_grid[0], 
-                                                 T_het_grid[-1], len(T_het_grid)),
-                                   closest_index(log_g_fac, log_g_het_grid[0], 
-                                                 log_g_het_grid[-1], len(log_g_het_grid)),
-                                   :]
-                I_phot = I_phot_grid[closest_index(T_phot, T_phot_grid[0], 
-                                                   T_phot_grid[-1], len(T_phot_grid)),
-                                     closest_index(log_g_phot, log_g_phot_grid[0], 
-                                                   log_g_phot_grid[-1], len(log_g_phot_grid)),
-                                     :]
-                
-                # Package spot and faculae properties for general contamination formula
-                f_het = np.array([f_spot, f_fac])
-                I_het = np.vstack((I_spot, I_fac))
-            
-            # Compute wavelength-dependant stellar contamination factor
-            epsilon = stellar_contamination_general(f_het, I_het, I_phot)
+            # Stellar contamination type for this dataset
+            stellar_contam_i = stellar_contam[i_dataset]
 
-            # Apply multiplicative stellar contamination to spectrum
-            spectrum = epsilon * spectrum
+            # Index of the dataset with which this dataset shares stellar contamination parameters
+            # (shared_stellar_contam_i = i_dataset if no shared parameters)
+            shared_stellar_contam_i = shared_stellar_contam[i_dataset]
+
+            if (stellar_contam_i != None):
+
+                if ('one_spot' in stellar_contam_i):
+
+                    # Get stellar contamination parameters for this dataset
+                    f_het_i = f_het[shared_stellar_contam_i]
+                    T_het_i = T_het[shared_stellar_contam_i]
+                    T_phot_i = np.copy(T_phot)
+                    log_g_het_i = log_g_het[shared_stellar_contam_i]
+                    log_g_phot_i = np.copy(log_g_phot)
+
+                    # Find stellar intensities at closest T and log g
+                    I_het_i = I_het_grid[closest_index(T_het_i, T_het_grid[0],
+                                                       T_het_grid[-1], len(T_het_grid)),
+                                         closest_index(log_g_het_i, log_g_het_grid[0],
+                                                       log_g_het_grid[-1], len(log_g_het_grid)),
+                                         :]
+                    I_phot_i = I_phot_grid[closest_index(T_phot_i, T_phot_grid[0],
+                                                         T_phot_grid[-1], len(T_phot_grid)),
+                                           closest_index(log_g_phot_i, log_g_phot_grid[0],
+                                                         log_g_phot_grid[-1], len(log_g_phot_grid)),
+                                           :]
+
+                    # Package heterogeneity properties for general contamination formula
+                    f_het_i = np.array([f_het_i])
+                    I_het_i = np.array([I_het_i])
+
+                elif ('two_spots' in stellar_contam_i):
+
+                    # Get stellar contamination parameters for this dataset
+                    f_spot_i = f_spot[shared_stellar_contam_i]
+                    f_fac_i = f_fac[shared_stellar_contam_i]
+                    T_spot_i = T_spot[shared_stellar_contam_i]
+                    T_fac_i = T_fac[shared_stellar_contam_i]
+                    T_phot_i = np.copy(T_phot)
+                    log_g_spot_i = log_g_spot[shared_stellar_contam_i]
+                    log_g_fac_i = log_g_fac[shared_stellar_contam_i]
+                    log_g_phot_i = np.copy(log_g_phot)
+
+                    # Find stellar intensities at closest T and log g
+                    I_spot_i = I_het_grid[closest_index(T_spot_i, T_het_grid[0],
+                                                        T_het_grid[-1], len(T_het_grid)),
+                                          closest_index(log_g_spot_i, log_g_het_grid[0],
+                                                        log_g_het_grid[-1], len(log_g_het_grid)),
+                                          :]
+                    I_fac_i = I_het_grid[closest_index(T_fac_i, T_het_grid[0],
+                                                       T_het_grid[-1], len(T_het_grid)),
+                                         closest_index(log_g_fac_i, log_g_het_grid[0],
+                                                       log_g_het_grid[-1], len(log_g_het_grid)),
+                                         :]
+                    I_phot_i = I_phot_grid[closest_index(T_phot_i, T_phot_grid[0],
+                                                         T_phot_grid[-1], len(T_phot_grid)),
+                                           closest_index(log_g_phot_i, log_g_phot_grid[0],
+                                                         log_g_phot_grid[-1], len(log_g_phot_grid)),
+                                           :]
+
+                    # Package spot and faculae properties for general contamination formula
+                    f_het_i = np.array([f_spot_i, f_fac_i])
+                    I_het_i = np.vstack((I_spot_i, I_fac_i))
+
+                # Compute wavelength-dependant stellar contamination factor
+                epsilon_i = stellar_contamination_general(f_het_i, I_het_i, I_phot_i)
+
+                # Apply multiplicative stellar contamination to spectrum
+                spectrum_all_datasets.append(epsilon_i * spectrum)
+
+            # No stellar contamination
+            else:
+                spectrum_all_datasets.append(spectrum)
+
+        # Convert single atmosphere spectrum to a dictionary of (possibly stellar-contaminated) spectra
+        spectrum = spectrum_all_datasets
 
     #***** Step 5: nightside contamination *****#
     
@@ -460,12 +518,13 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             psi = (1.0 / (1.0 + Fp_Fs_night))
 
             # Apply multiplicative nightside contamination to spectrum
-            spectrum = psi * spectrum
+            for i_dataset in range(len(data['datasets'])):
+                spectrum[i_dataset] = psi * spectrum[i_dataset]
             
     #***** Step 6: convolve spectrum with instrument PSF and bin to data resolution ****#
 
     if ('transmission' in spectrum_type):
-        ymodel = bin_spectrum_to_data(spectrum, wl, data)
+        ymodel = bin_spectrum_to_data(spectrum, wl, data)  # ymodel is a concatenation of all models
     else:
         F_p_binned = bin_spectrum_to_data(spectrum, wl, data)
         if ('direct' in spectrum_type):
@@ -551,6 +610,9 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     error_inflation = model['error_inflation']
     offsets_applied = model['offsets_applied']
     stellar_contam = model['stellar_contam']
+    shared_stellar_contam = model['shared_stellar_contam']
+
+    print("Unpacked model properties")
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
@@ -559,8 +621,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     n_dims = N_params
     
     # Pre-compute normalisation for log-likelihood 
-    err_data = data['err_data']
-    norm_log_default = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+    err_data = data['err_data']  # List of error arrays, one array per dataset
+    norm_log_default = 0.  # Initialise normalisation
+    for i_dataset in range(len(data["datasets"])):  # Iterate over datasets
+        norm_log_default += (-0.5*np.log(2.0*np.pi*err_data[i_dataset]*err_data[i_dataset])).sum()  # Add normalisation
+
+    print("Pre-computed normalisation for log-likelihood")
 
     # Create variable governing if a mixing ratio parameter combination lies in 
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
@@ -828,7 +894,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         # Immediately reject samples falling outside of mixing ratio simplex (CLR prior only)
         global allowed_simplex
         if (allowed_simplex == 0):
-            loglikelihood = -1.0e100   
+            loglikelihood = -1.0e100
             return loglikelihood
         
         # Unpack stellar parameters
@@ -836,69 +902,92 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         _, stellar_params, \
         _, _ = split_params(cube, N_params_cum)
 
-        # Reject models with spots hotter than faculae (by definition)
-        if ((stellar_contam != None) and ('two_spots' in stellar_contam)):
-
-            # Unpack stellar contamination parameters
-            _, _, _, _, \
+        # Unpack stellar contamination parameters
+        _, _, _, _, \
             T_spot, T_fac, T_phot, \
-            _, _, _, _ = unpack_stellar_params(param_names, star, stellar_params, 
+            _, _, _, _ = unpack_stellar_params(param_names, star, stellar_params,
                                                stellar_contam, N_params_cum)
-                            
-            if ((T_spot > T_phot) or (T_fac < T_phot) or (T_spot > T_fac)):
-                loglikelihood = -1.0e100   
-                return loglikelihood
-                
-        
+
+        # Reject models with spots hotter than faculae, or spots hotter than photosphere, or faculae colder than
+        # photosphere (by definition)
+        for i_dataset, stellar_contam_i in enumerate(stellar_contam):
+            if ((stellar_contam_i != None) and ('two_spots' in stellar_contam_i) and
+                    shared_stellar_contam[i_dataset] == i_dataset):
+                if ((T_spot[i_dataset] > T_phot) or (T_fac[i_dataset] < T_phot) or
+                        (T_spot[i_dataset] > T_fac[i_dataset])):
+                    loglikelihood = -1.0e100
+                    return loglikelihood
+
+
         #***** For valid parameter combinations, run forward model *****#
 
-        ymodel, spectrum, _ = forward_model(cube, planet, star, model, opac, data, 
-                                            wl, P, P_ref_set, R_p_ref_set, P_param_set, 
-                                            He_fraction, N_slice_EM, N_slice_DN, 
-                                            spectrum_type, T_phot_grid, T_het_grid, 
+        ymodel, spectrum, _ = forward_model(cube, planet, star, model, opac, data,
+                                            wl, P, P_ref_set, R_p_ref_set, P_param_set,
+                                            He_fraction, N_slice_EM, N_slice_DN,
+                                            spectrum_type, T_phot_grid, T_het_grid,
                                             log_g_phot_grid, log_g_het_grid,
                                             I_phot_grid, I_het_grid, y_p, F_s_obs,
                                             constant_gravity, chemistry_grid)
-        
+
         # Reject unphysical spectra (forced to be NaN by function above)
-        if (np.any(np.isnan(spectrum))):
-            
-            # Assign penalty to likelihood => point ignored in retrieval
-            loglikelihood = -1.0e100
-            
-            # Quit if given parameter combination is unphysical
-            return loglikelihood
-        
-        
+        if type(spectrum) == list:  # If spectrum is a list, it contains multiple spectra (one per dataset)
+
+            for i_dataset in range(len(spectrum)):
+
+                if (np.any(np.isnan(spectrum[i_dataset]))):
+
+                    # Assign penalty to likelihood => point ignored in retrieval
+                    loglikelihood = -1.0e100
+
+                    # Quit if given parameter combination is unphysical
+                    return loglikelihood
+
+        else:  # If spectrum is a single array, it contains only one spectrum
+
+            if (np.any(np.isnan(spectrum))):
+
+                # Assign penalty to likelihood => point ignored in retrieval
+                loglikelihood = -1.0e100
+
+                # Quit if given parameter combination is unphysical
+                return loglikelihood
+
+
         #***** Handle error bar inflation and offsets (if optionally enabled) *****#
 
         _, _, _, _, _, _, \
         offset_params, err_inflation_params = split_params(cube, N_params_cum)
-        
+
         # Load error bars specified in data files
-        err_data = data['err_data']
-        
+        err_data = data['err_data']  # List of arrays, one array per dataset
+
+        # Concatenate arrays in err_data to get a flat, 1D array.
+        # Now that the forward model has been computed for each dataset separately, the array of error bars from each
+        # dataset can be concatenated to compute the effective error because the log-likelihoods will be added anyway.
+        err_data = np.concatenate(err_data)
+
         # Compute effective error, if unknown systematics included
         if (error_inflation == 'Line_2015'):
             err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
             norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
-        else: 
+        else:
             err_eff_sq = err_data*err_data
             norm_log = norm_log_default
 
         # Load transit depth data points and indices of any offset ranges
-        ydata = data['ydata']
-        offset_start = data['offset_start']
-        offset_end = data['offset_end']
+        ydata = data['ydata']  # List of arrays, one array per dataset
+        offset_dataset_idx = data['offset_dataset_idx']  # Index of the dataset to which the offset is applied
 
         # Apply relative offset between datasets
         if (offsets_applied == 'single_dataset'):
             ydata_adjusted = ydata.copy()
-            ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
-        else: 
+            ydata_adjusted[offset_dataset_idx] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
+        else:
             ydata_adjusted = ydata
-        
-        
+
+        # Concatenate arrays in ydata_adjusted to get a flat, 1D array.
+        ydata_adjusted = np.concatenate(ydata_adjusted)
+
         #***** Calculate ln(likelihood) ****#
     
         loglikelihood = (-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq).sum()
@@ -982,7 +1071,12 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                 T_stored = np.zeros(shape=(N_sample_draws, N_D, N_sectors, N_zones))
                 log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
 
-            spectrum_stored = np.zeros(shape=(N_sample_draws, len(wl)))
+            if type(spectrum) == list:
+                # Create one sample array per dataset
+                spectrum_stored = [np.zeros(shape=(N_sample_draws, len(wl))) for _ in range(len(data['datasets']))]
+            else:
+                # Create a single sample array (datasets are concatenated or there is only one dataset)
+                spectrum_stored = np.zeros(shape=(N_sample_draws, len(wl)))
 
         if (disable_atmosphere == False):
 
@@ -990,8 +1084,12 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
             T_stored[i,:,:,:] = atmosphere['T']
             log_X_stored[i,:,:,:,:] = np.log10(atmosphere['X'])
 
-        # Store spectrum in sample array
-        spectrum_stored[i,:] = spectrum
+        # Store spectrum in sample array for each dataset
+        if type(spectrum) == list:
+            for j_dataset in range(len(data['datasets'])):
+                spectrum_stored[j_dataset][i,:] = spectrum[j_dataset]
+        else:
+            spectrum_stored[i,:] = spectrum
             
     # Compute 1 and 2 sigma confidence intervals for P-T and mixing ratio profiles and spectrum
         
@@ -1025,9 +1123,29 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
         log_X_high1, log_X_high2 = None, None, None, None, None
     
     # Spectrum
-    _, spec_low2, spec_low1, spec_median, \
-    spec_high1, spec_high2, _ = confidence_intervals(N_sample_draws, 
-                                                     spectrum_stored, len(wl))
+    if type(spectrum_stored) == list:
+        # Initialise arrays to store confidence intervals for each dataset
+        spec_low2, spec_low1, spec_median, spec_high1, spec_high2 = ([] for _ in range(5))
+
+        # Compute confidence intervals for each dataset
+        for i_dataset in range(len(data['datasets'])):
+            _, spec_low2_i, spec_low1_i, spec_median_i, \
+            spec_high1_i, spec_high2_i, _ = confidence_intervals(N_sample_draws, spectrum_stored[i_dataset], len(wl))
+            spec_low2.append(spec_low2_i)
+            spec_low1.append(spec_low1_i)
+            spec_median.append(spec_median_i)
+            spec_high1.append(spec_high1_i)
+            spec_high2.append(spec_high2_i)
+    else:
+        _, spec_low2, spec_low1, spec_median, \
+        spec_high1, spec_high2, _ = confidence_intervals(N_sample_draws,
+                                                         spectrum_stored, len(wl))
+        # Convert arrays to lists of one array for consistency with multiple datasets
+        spec_low2 = [spec_low2]
+        spec_low1 = [spec_low1]
+        spec_median = [spec_median]
+        spec_high1 = [spec_high1]
+        spec_high2 = [spec_high2]
     
     return T_low2, T_low1, T_median, T_high1, T_high2, \
            log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2, \

@@ -302,7 +302,12 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
     T_phot_grid = np.linspace(T_start, T_end, N_spec_T_phot)
 
     # For free log g, we also need to interpolate over a range of stellar log g
-    if ('free_log_g' in stellar_contam):
+    interp_log_g = False
+    for stellar_contam_i in stellar_contam:
+        if ('free_log_g' in stellar_contam_i):
+            interp_log_g = True
+            break
+    if interp_log_g:
 
         # Set range for log_g_phot according to whether prior is uniform or Gaussian
         if (prior_types['log_g_phot'] == 'uniform'):
@@ -378,22 +383,49 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
 
     #***** Find heterogeneity grid ranges *****#
 
-    if ('one_spot' in stellar_contam):
+    T_het_min, T_het_max = np.inf, -np.inf  # Initialise min and max heterogeneity temperatures
+    # Iterate over datasets to ensure the grid covers all values allowed by the possibly different priors
+    for i_dataset, stellar_contam_i in enumerate(stellar_contam):
 
-        T_het_min = prior_ranges['T_het'][0]
-        T_het_max = prior_ranges['T_het'][1]
+        # If the dataset either does not have stellar contamination or shares its stellar contamination parameters with
+        # another dataset, skip this iteration
+        if ('f_het_set{}'.format(i_dataset) not in prior_ranges and
+                'f_spot_set{}'.format(i_dataset) not in prior_ranges):
+            continue
 
-    elif ('two_spots' in stellar_contam):
+        if ('one_spot' in stellar_contam_i):
 
-        T_spot_min = prior_ranges['T_spot'][0]
-        T_spot_max = prior_ranges['T_spot'][1]
-        T_fac_min = prior_ranges['T_fac'][0]
-        T_fac_max = prior_ranges['T_fac'][1]
+            T_het_min_i = prior_ranges['T_het_set{}'.format(i_dataset)][0]
+            T_het_max_i = prior_ranges['T_het_set{}'.format(i_dataset)][1]
 
-        T_het_min = min(T_spot_min, T_fac_min)
-        T_het_max = max(T_spot_max, T_fac_max)
+        elif ('two_spots' in stellar_contam_i):
+
+            T_spot_min = prior_ranges['T_spot_set{}'.format(i_dataset)][0]
+            T_spot_max = prior_ranges['T_spot_set{}'.format(i_dataset)][1]
+            T_fac_min = prior_ranges['T_fac_set{}'.format(i_dataset)][0]
+            T_fac_max = prior_ranges['T_fac_set{}'.format(i_dataset)][1]
+
+            T_het_min_i = min(T_spot_min, T_fac_min)
+            T_het_max_i = max(T_spot_max, T_fac_max)
+
+        else:  # No stellar contamination
+            T_het_min_i, T_het_max_i = np.inf, -np.inf  # T_het_min and T_het_max will not be updated
+
+        # Update min and max heterogeneity temperatures if needed
+        if T_het_min_i < T_het_min:
+            T_het_min = np.copy(T_het_min_i)
+        if T_het_max_i > T_het_max:
+            T_het_max = np.copy(T_het_max_i)
         
     T_het_step = T_step_interp    # Default interpolation step of 20 K
+
+    # If none of the visits have stellar contamination, delete T_het_min and T_het_max
+    # TODO: Temporary fix to avoid errors when no stellar contamination is present. Should be thought through more
+    #  carefully. Maybe do something similar to what is done for log(g)?
+    if T_het_min == np.inf:
+        del T_het_min
+    if T_het_max == -np.inf:
+        del T_het_max
 
     # Find number of spectra needed to span desired range (rounding up)
     N_spec_T_het = np.ceil((T_het_max - T_het_min)/T_het_step).astype(np.int64) + 1
@@ -406,32 +438,54 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
     T_het_grid = np.linspace(T_start, T_end, N_spec_T_het)
 
     # For free log g, we also need to interpolate over a range of stellar log g
-    if ('free_log_g' in stellar_contam):
+    free_log_g = False  # Initialise free log(g) flag
+    log_g_het_min, log_g_het_max = np.inf, -np.inf  # Initialise min and max heterogeneity log(g)
+    # Iterate over visits to ensure the grid covers all values allowed by the possibly different priors
+    for i_dataset, stellar_contam_i in enumerate(stellar_contam):
 
-        if ('one_spot' in stellar_contam):
+        # If the dataset either does not have stellar contamination or shares its stellar contamination parameters with
+        # another dataset, skip this iteration
+        if ('f_het_set{}'.format(i_dataset) not in prior_ranges and
+                'f_spot_set{}'.format(i_dataset) not in prior_ranges):
+            continue
 
-            log_g_het_min = prior_ranges['log_g_het'][0]
-            log_g_het_max = prior_ranges['log_g_het'][1]
+        if ('free_log_g' in stellar_contam_i):
+            free_log_g = True  # Set free log(g) flag
 
-        elif ('two_spots' in stellar_contam):
+            if ('one_spot' in stellar_contam_i):
 
-            log_g_spot_min = prior_ranges['log_g_spot'][0]
-            log_g_spot_max = prior_ranges['log_g_spot'][1]
-            log_g_fac_min = prior_ranges['log_g_fac'][0]
-            log_g_fac_max = prior_ranges['log_g_fac'][1]
+                log_g_het_min_i = prior_ranges['log_g_het_set{}'.format(i_dataset)][0]
+                log_g_het_max_i = prior_ranges['log_g_het_set{}'.format(i_dataset)][1]
 
-            log_g_het_min = min(log_g_spot_min, log_g_fac_min)
-            log_g_het_max = max(log_g_spot_max, log_g_fac_max)
-            
+            elif ('two_spots' in stellar_contam_i):
+
+                log_g_spot_min = prior_ranges['log_g_spot_set{}'.format(i_dataset)][0]
+                log_g_spot_max = prior_ranges['log_g_spot_set{}'.format(i_dataset)][1]
+                log_g_fac_min = prior_ranges['log_g_fac_set{}'.format(i_dataset)][0]
+                log_g_fac_max = prior_ranges['log_g_fac_set{}'.format(i_dataset)][1]
+
+                log_g_het_min_i = min(log_g_spot_min, log_g_fac_min)
+                log_g_het_max_i = max(log_g_spot_max, log_g_fac_max)
+
+        else:  # No free log(g)
+            log_g_het_min_i, log_g_het_max_i = np.inf, -np.inf  # log_g_het_min and log_g_het_max will not be updated
+
+        # Update min and max heterogeneity log(g) if needed
+        if log_g_het_min_i < log_g_het_min:
+            log_g_het_min = np.copy(log_g_het_min_i)
+        if log_g_het_max_i > log_g_het_max:
+            log_g_het_max = np.copy(log_g_het_max_i)
+
+    if free_log_g:
         log_g_het_step = log_g_step_interp    # Default interpolation step of 0.1
 
         # Find number of spectra needed to span desired range (rounding up)
         N_spec_log_g_het = np.ceil((log_g_het_max - log_g_het_min)/log_g_het_step).astype(np.int64) + 1
 
         # Specify starting and ending grid points
-        log_g_start = log_g_het_min                      
-        log_g_end = log_g_het_min + ((N_spec_log_g_het-1) * log_g_het_step)   # Slightly > log_g_max if log_g_step doesn't divide exactly 
-        
+        log_g_start = log_g_het_min
+        log_g_end = log_g_het_min + ((N_spec_log_g_het-1) * log_g_het_step)   # Slightly > log_g_max if log_g_step doesn't divide exactly
+
         # Initialise heterogeneity log_g array
         log_g_het_grid = np.linspace(log_g_start, log_g_end, N_spec_log_g_het)
 

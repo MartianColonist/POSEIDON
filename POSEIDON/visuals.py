@@ -4,6 +4,8 @@ Plotting routines to visualise POSEIDON output.
 '''
 
 import os
+import pdb
+
 import numpy as np
 import scipy.constants as sc
 import colorsys
@@ -1849,23 +1851,43 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
        
     # If the user did not specify a wavelength range, find min and max from input data
     if (wl_min == None):
-        wl_min = np.min(wl_data - 4*bin_size)  # Minimum at twice the bin width for the shortest wavelength data
+        wl_min = np.inf  # Initialise wl_min to a large number
+        # Iterate over datasets
+        for i_dataset in range(N_datasets):
+            wl_min_i = np.min(wl_data[i_dataset] - 4 * bin_size[i_dataset])  # Minimum at twice the bin width for the shortest wavelength data
+            if wl_min_i < wl_min:
+                wl_min = wl_min_i  # Update wl_min
     else:
         wl_min = wl_min
  
     if (wl_max == None):
-        wl_max = np.max(wl_data + 4*bin_size)  # Maximum at twice the bin width for the longest wavelength data
+        wl_max = -np.inf  # Initialise wl_max to a small number
+        # Iterate over datasets
+        for i_dataset in range(N_datasets):
+            wl_max_i = np.max(wl_data[i_dataset] + 4 * bin_size[i_dataset])  # Maximum at twice the bin width for the longest wavelength data
+            if wl_max_i > wl_max:
+                wl_max = wl_max_i  # Update wl_max
     else:
         wl_max = wl_max
 
     # If the user did not specify a y range, find min and max from data
     if (y_min == None):
-        y_min_plt = 0.995 * np.min(ydata - err_data) # Extend slightly below
+        y_min_plt = np.inf  # Initialise y_min_plt to a large number
+        # Iterate over datasets
+        for i_dataset in range(N_datasets):
+            y_min_plt_i = 0.995 * np.min(ydata[i_dataset] - err_data[i_dataset]) # Extend slightly below
+            if y_min_plt_i < y_min_plt:
+                y_min_plt = y_min_plt_i  # Update y_min_plt
     else:
         y_min_plt = y_min
 
     if (y_max == None):
-        y_max_plt = 1.005 * np.max(ydata + err_data) # Extend slightly above
+        y_max_plt = -np.inf  # Initialise y_max_plt to a small number
+        # Iterate over datasets
+        for i_dataset in range(N_datasets):
+            y_max_plt_i = 1.005 * np.max(ydata[i_dataset] + err_data[i_dataset])  # Extend slightly above
+            if y_max_plt_i > y_max_plt:
+                y_max_plt = y_max_plt_i  # Update y_max_plt
     else:
         y_max_plt = y_max
         
@@ -1953,16 +1975,12 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             label_i = instruments[i]
         else:
             label_i = data_labels[i]
-        
-        # Find start and end indices of dataset_i in dataset property arrays
-        idx_start = data['len_data_idx'][i]
-        idx_end = data['len_data_idx'][i+1]
 
         # Extract the ith dataset
-        wl_data_i = wl_data[idx_start:idx_end]
-        ydata_i = ydata[idx_start:idx_end]
-        err_data_i = err_data[idx_start:idx_end]
-        bin_size_i = bin_size[idx_start:idx_end]
+        wl_data_i = wl_data[i]
+        ydata_i = ydata[i]
+        err_data_i = err_data[i]
+        bin_size_i = bin_size[i]
 
         # Plot dataset
         if (show_data_bin_width == True):
@@ -2269,14 +2287,20 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         for i in range(N_spectra):
 
             (spec_low2, wl) = spectra_low2[i]
-            _, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
+            wl_spec_low2_binned, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
 
-            y_min_i = np.min(spec_low2_binned)
+            if len(wl_data[i]) > 1:
+                # Look only at the wavelength range of the dataset that the current model is being compared to
+                idx = np.where((wl_spec_low2_binned >= np.min(wl_data[i])) * (wl_spec_low2_binned <= np.max(wl_data[i])))
+                y_min_i = np.min(spec_low2_binned[idx])
+            else:
+                # Find nearest model point to dataset point
+                y_min_i = spec_low2_binned[np.argmin(np.abs(wl_spec_low2_binned - wl_data[i]))]
             y_min_plt = min(y_min_plt, y_min_i)
             
         # Check if the lowest data point falls below the current y-limit
-        if (y_min_plt > min(ydata - err_data)):
-            y_min_plt = min(ydata - err_data)
+        if (y_min_plt > min(np.concatenate(ydata) - np.concatenate(err_data))):
+            y_min_plt = min(np.concatenate(ydata) - np.concatenate(err_data))
             
         y_min_plt = 0.995*y_min_plt  # Extend slightly below
         
@@ -2291,14 +2315,20 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         for i in range(N_spectra):
 
             (spec_high2, wl) = spectra_high2[i]
-            _, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
+            wl_spec_high2_binned, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
 
-            y_max_i = np.max(spec_high2_binned)
+            if len(wl_data[i]) > 1:
+                # Look only at the wavelength range of the dataset that the current model is being compared to
+                idx = np.where((wl_spec_high2_binned >= np.min(wl_data[i])) * (wl_spec_high2_binned <= np.max(wl_data[i])))
+                y_max_i = np.max(spec_high2_binned[idx])
+            else:
+                # Find nearest model point to dataset point
+                y_max_i = spec_high2_binned[np.argmin(np.abs(wl_spec_high2_binned - wl_data[i]))]
             y_max_plt = max(y_max_plt, y_max_i)
             
         # Check if the highest data point falls above the current y-limit
-        if (y_max_plt < max(ydata + err_data)):
-            y_max_plt = max(ydata + err_data)
+        if (y_max_plt < max(np.concatenate(ydata) + np.concatenate(err_data))):
+            y_max_plt = max(np.concatenate(ydata) + np.concatenate(err_data))
             
         y_max_plt = 1.040*y_max_plt  # Extend slightly above
         
@@ -2412,6 +2442,15 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         wl_binned, spec_low2_binned, _ = bin_spectrum(wl, spec_low2, R_to_bin)
         wl_binned, spec_high1_binned, _ = bin_spectrum(wl, spec_high1, R_to_bin)
         wl_binned, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
+
+        # Keep only the wavelength range of the dataset that the current model is being compared to
+        idx = np.where((wl_binned >= np.min(wl_data[i])) * (wl_binned <= np.max(wl_data[i])))
+        wl_binned = wl_binned[idx]
+        spec_med_binned = spec_med_binned[idx]
+        spec_low1_binned = spec_low1_binned[idx]
+        spec_low2_binned = spec_low2_binned[idx]
+        spec_high1_binned = spec_high1_binned[idx]
+        spec_high2_binned = spec_high2_binned[idx]
         
         # Only add sigma intervals to legend for one model (avoids clutter)
         if (N_spectra == 1):
@@ -2444,7 +2483,14 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         if (show_ymodel == True):
             ymodel_median = bin_spectrum_to_data(spec_med, wl, data_properties)
 
-            ax1.scatter(wl_data, ymodel_median, color = binned_colours[i], 
+            # Keep only the wavelength range of the dataset that the current model is being compared to
+            wl_ymodel_median_dataset_i = np.concatenate(wl_data)
+            idx = np.where((wl_ymodel_median_dataset_i >= np.min(wl_data[i]))
+                           * (wl_ymodel_median_dataset_i <= np.max(wl_data[i])))
+            wl_ymodel_median_dataset_i = wl_ymodel_median_dataset_i[idx]
+            ymodel_median = ymodel_median[idx]
+
+            ax1.scatter(wl_ymodel_median_dataset_i, ymodel_median, color = binned_colours[i],
                         s=5, marker='D', lw=0.5, alpha=0.8, edgecolor='black',
                         label = label_i + r' (Binned)', zorder = 200)
             
@@ -2456,16 +2502,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             label_i = instruments[i]
         else:
             label_i = data_labels[i]
-        
-        # Find start and end indices of dataset_i in dataset property arrays
-        idx_start = data_properties['len_data_idx'][i]
-        idx_end = data_properties['len_data_idx'][i+1]
 
         # Extract the ith dataset
-        wl_data_i = wl_data[idx_start:idx_end]
-        ydata_i = ydata[idx_start:idx_end]
-        err_data_i = err_data[idx_start:idx_end]
-        bin_size_i = bin_size[idx_start:idx_end]
+        wl_data_i = wl_data[i]
+        ydata_i = ydata[i]
+        err_data_i = err_data[i]
+        bin_size_i = bin_size[i]
 
         # Plot dataset
         if (show_data_bin_width == True):

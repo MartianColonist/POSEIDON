@@ -389,8 +389,9 @@ def bin_spectrum_to_data(spectrum, wl, data_properties):
     binning for each instrument separately.
 
     Args:
-        spectrum (np.array of float):
-            Model spectrum.
+        spectrum (np.array of float or list of np.array of floats):
+            Model spectrum. If a list, each element of the list is the model spectrum
+            for a specific dataset.
         wl (np.array of float):
             Model wavelength grid (μm).
         data_properties (dict):
@@ -413,18 +414,20 @@ def bin_spectrum_to_data(spectrum, wl, data_properties):
             photometric = True
         else: 
             photometric = False
-            
-        # Find start and end indices of dataset_i in dataset property arrays
-        idx_1 = data_properties['len_data_idx'][i]
-        idx_2 = data_properties['len_data_idx'][i+1]
+
+        # Get spectrum for dataset_i (in case model spectrum is different for each dataset, e.g. stellar contamination)
+        if type(spectrum) == list:
+            spectrum_i = spectrum[i]
+        else:
+            spectrum_i = spectrum
         
         # Compute binned transit depths for dataset_i
-        ymodel_i = make_model_data(spectrum, wl, data_properties['psf_sigma'][idx_1:idx_2], 
-                                   data_properties['sens'][i*len(wl):(i+1)*len(wl)], 
-                                   data_properties['bin_left'][idx_1:idx_2], 
-                                   data_properties['bin_cent'][idx_1:idx_2], 
-                                   data_properties['bin_right'][idx_1:idx_2],
-                                   data_properties['norm'][idx_1:idx_2], photometric)
+        ymodel_i = make_model_data(spectrum_i, wl, data_properties['psf_sigma'][i],
+                                   data_properties['sens'][i],
+                                   data_properties['bin_left'][i],
+                                   data_properties['bin_cent'][i],
+                                   data_properties['bin_right'][i],
+                                   data_properties['norm'][i], photometric)
                                                 
         # Combine binned model points for each instrument
         ymodel = np.concatenate([ymodel, ymodel_i])    
@@ -635,22 +638,18 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
         else: 
             photometric = False
 
-        # Find start and end indices of dataset_i in dataset property arrays
-        idx_1 = data_properties['len_data_idx'][i]
-        idx_2 = data_properties['len_data_idx'][i+1]
-
         # Unpack data properties for this dataset 
-        err_data = data_properties['err_data'][idx_1:idx_2]
-        wl_data = data_properties['wl_data'][idx_1:idx_2]
-        half_bin = data_properties['half_bin'][idx_1:idx_2]
+        err_data = data_properties['err_data'][i]
+        wl_data = data_properties['wl_data'][i]
+        half_bin = data_properties['half_bin'][i]
 
         # Compute binned transit depths for dataset_i
-        syn_ymodel = make_model_data(spectrum, wl_model, data_properties['psf_sigma'][idx_1:idx_2], 
-                                     data_properties['sens'][i*len(wl_model):(i+1)*len(wl_model)], 
-                                     data_properties['bin_left'][idx_1:idx_2], 
-                                     data_properties['bin_cent'][idx_1:idx_2], 
-                                     data_properties['bin_right'][idx_1:idx_2],
-                                     data_properties['norm'][idx_1:idx_2], photometric)
+        syn_ymodel = make_model_data(spectrum, wl_model, data_properties['psf_sigma'][i],
+                                     data_properties['sens'][i],
+                                     data_properties['bin_left'][i],
+                                     data_properties['bin_cent'][i],
+                                     data_properties['bin_right'][i],
+                                     data_properties['norm'][i], photometric)
 
         # If simulated data will be further binned down
         if (R_to_bin_i != None):

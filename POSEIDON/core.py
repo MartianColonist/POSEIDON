@@ -349,7 +349,7 @@ def define_model(model_name, bulk_species, param_species,
                  X_profile = 'isochem', cloud_model = 'cloud-free', 
                  cloud_type = 'deck', opaque_Iceberg = False,
                  gravity_setting = 'fixed', mass_setting = 'fixed',
-                 stellar_contam = None, nightside_contam = False,
+                 stellar_contam = None, shared_stellar_contam = None, nightside_contam = False,
                  offsets_applied = None, error_inflation = None, 
                  radius_unit = 'R_J', mass_unit = 'M_J', distance_unit = 'pc',
                  PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
@@ -393,10 +393,21 @@ def define_model(model_name, bulk_species, param_species,
         mass_setting (str):
             Whether the planetary mass is fixed or a free parameter.
             (Options: fixed / free).
-        stellar_contam (str):
-            Chosen prescription for modelling unocculted stellar contamination
+        stellar_contam (list of str):
+            Chosen prescription for modelling unocculted stellar contamination for each dataset.
             (Options: one_spot / one_spot_free_log_g / two_spots / 
              two_spots_free_log_g).
+        shared_stellar_contam (dict):
+            Whether the stellar contamination parameters are shared between
+            datasets. The dictionary should be read as "Dataset <key> shares the same
+            stellar contamination parameters as dataset <value>", or alternatively,
+            "For dataset <key>, use the same stellar contamination parameters as
+            dataset <value>". Keys and values should be integers. If a dataset has no
+            stellar contamination, its value should be set to either None or its
+            dataset number.
+            E.g. {0:0, 1:1} means that none of the datasets share stellar contamination
+            parameters, whereas {0:0, 1:0} means that the second dataset shares stellar
+            contamination parameters with the first dataset.
         nightside_contam (bool):
             If True, include the impact of nightside thermal emission on a 
             transmission spectrum (nightside contamination).   
@@ -534,7 +545,7 @@ def define_model(model_name, bulk_species, param_species,
     stellar_param_names, \
     N_params_cum = assign_free_params(param_species, object_type, PT_profile,
                                       X_profile, cloud_model, cloud_type, 
-                                      gravity_setting, mass_setting, stellar_contam, 
+                                      gravity_setting, mass_setting, stellar_contam, shared_stellar_contam,
                                       offsets_applied, error_inflation, PT_dim, 
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                                       species_EM_gradient, species_DN_gradient, 
@@ -564,7 +575,8 @@ def define_model(model_name, bulk_species, param_species,
              'species_EM_gradient': species_EM_gradient,
              'species_DN_gradient': species_DN_gradient,
              'species_vert_gradient': species_vert_gradient,
-             'stellar_contam': stellar_contam, 'nightside_contam': nightside_contam, 
+             'stellar_contam': stellar_contam, 'shared_stellar_contam': shared_stellar_contam,
+             'nightside_contam': nightside_contam,
              'offsets_applied': offsets_applied, 
              'error_inflation': error_inflation, 'param_names': param_names,
              'physical_param_names': physical_param_names, 
@@ -2573,12 +2585,11 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
     instruments = np.array(instruments)
     datasets = np.array(datasets)
     
-    # Initialise arrays containing input properties of the data
-    wl_data, half_bin, ydata, err_data, len_data = (np.array([]) for _ in range(5))
+    # Initialise lists containing input properties of the data
+    wl_data, half_bin, ydata, err_data, len_data = ([] for _ in range(5))
     
     # Initialise arrays containing instrument function properties
-    psf_sigma, fwhm, sens, norm = (np.array([]) for _ in range(4))
-    bin_left, bin_cent, bin_right, norm = (np.array([]).astype(np.int64) for _ in range(4))
+    psf_sigma, fwhm, sens, bin_left, bin_cent, bin_right, norm = ([] for _ in range(7))
     
     # For each dataset
     for i in range(len(datasets)):
@@ -2588,59 +2599,57 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
         ydata_i, err_data_i = read_data(data_dir, datasets[i], wl_unit,
                                         bin_width, spectrum_unit, skiprows)
         
-        # Combine datasets
-        wl_data = np.concatenate([wl_data, wl_data_i])
-        half_bin = np.concatenate([half_bin, half_bin_i])  
-        ydata = np.concatenate([ydata, ydata_i])
-        err_data = np.concatenate([err_data, err_data_i])
+        # Append dataset to lists
+        wl_data.append(wl_data_i)
+        half_bin.append(half_bin_i)
+        ydata.append(ydata_i)
+        err_data.append(err_data_i)
         
         # Length of each dataset (used for indexing the combined dataset, if necessary to extract one specific dataset later)
-        len_data = np.concatenate([len_data, np.array([len(ydata_i)])])
+        len_data.append(len(ydata_i))
         
         # Read instrument transmission functions, compute PSF std dev, and identify locations of each data bin on model grid
         psf_sigma_i, fwhm_i, sens_i, bin_left_i, \
         bin_cent_i, bin_right_i, norm_i = init_instrument(wl_model, wl_data_i, half_bin_i, instruments[i])
         
-        # Combine instrument properties into single arrays for convenience (can index by len_data[i] to extract each later)
-        psf_sigma = np.concatenate([psf_sigma, psf_sigma_i])  # Length for each dataset: len_data[i]
-        fwhm = np.concatenate([fwhm, fwhm_i])                 # Length for each dataset: len_data[i]
-        sens = np.concatenate([sens, sens_i])                 # Length for each dataset: N_wl
-        bin_left = np.concatenate([bin_left, bin_left_i])     # Length for each dataset: len_data[i]
-        bin_cent = np.concatenate([bin_cent, bin_cent_i])     # Length for each dataset: len_data[i]
-        bin_right = np.concatenate([bin_right, bin_right_i])  # Length for each dataset: len_data[i]
-        norm = np.concatenate([norm, norm_i])                 # Length for each dataset: len_data[i]
+        # Append instrument properties to lists
+        psf_sigma.append(psf_sigma_i)  # Length for each dataset: len_data[i]
+        fwhm.append(fwhm_i)            # Length for each dataset: len_data[i]
+        sens.append(sens_i)            # Length for each dataset: N_wl
+        bin_left.append(bin_left_i)    # Length for each dataset: len_data[i]
+        bin_cent.append(bin_cent_i)    # Length for each dataset: len_data[i]
+        bin_right.append(bin_right_i)  # Length for each dataset: len_data[i]
+        norm.append(norm_i)            # Length for each dataset: len_data[i]
         
     # Cumulative sum of data lengths for indexing later
     len_data_idx = np.append(np.array([0]), np.cumsum(len_data)).astype(np.int64)       
 
-    # For relative offsets, find which data indices the offset applies to
+    # For relative offsets, find which dataset index the offset applies to
     if (offset_datasets is not None):
         offset_datasets = np.array(offset_datasets)
         if (len(offset_datasets) > 1):
             raise Exception("Error: only one dataset can have a free offset.")
         if (offset_datasets[0] in datasets):
             offset_dataset_idx = np.where(datasets == offset_datasets[0])[0][0]
-            offset_data_start = len_data_idx[offset_dataset_idx]  # Data index of first point with offset
-            offset_data_end = len_data_idx[offset_dataset_idx+1]  # Data index of last point with offset + 1
-        else: 
+        else:
             raise Exception("Dataset chosen for relative offset is not included.")
     else:
-        offset_data_start = 0    # Dummy values when no offsets included
-        offset_data_end = 0
-        
-    # Check that the model wavelength grid covers all the data bins
-    if (np.any((wl_data - half_bin) < wl_model[0])):
-        raise Exception("Some data lies below the lowest model wavelength, reduce wl_min.")
-    elif (np.any((wl_data + half_bin) > wl_model[-1])):
-        raise Exception("Some data lies above the highest model wavelength, increase wl_max.")
+        offset_dataset_idx = None  # Dummy value when no offsets included
+
+    # Check that the model wavelength grid covers all the data bins, for all data sets
+    for i in range(len(datasets)):
+        if (np.any((wl_data[i] - half_bin[i]) < wl_model[0])):
+            raise Exception("Some data lies below the lowest model wavelength, reduce wl_min.")
+        elif (np.any((wl_data[i] + half_bin[i]) > wl_model[-1])):
+            raise Exception("Some data lies above the highest model wavelength, increase wl_max.")
     
     # Package data properties
     data = {'datasets': datasets, 'instruments': instruments, 'wl_data': wl_data,
             'half_bin': half_bin, 'ydata': ydata, 'err_data': err_data, 
             'sens': sens, 'len_data_idx': len_data_idx, 'psf_sigma': psf_sigma,
             'norm': norm, 'bin_left': bin_left, 'bin_cent': bin_cent, 
-            'bin_right': bin_right, 'offset_start': offset_data_start,
-            'offset_end': offset_data_end, 'fwhm': fwhm
+            'bin_right': bin_right, 'offset_dataset_idx': offset_dataset_idx,
+            'fwhm': fwhm
            }
 
     return data
@@ -2671,7 +2680,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
             Collection of data properties in POSEIDON format.
         prior_types (dict):
             User-provided dictionary containing the prior type for each 
-            free parameter in the retrieval moel
+            free parameter in the retrieval model
             (Options: uniform, gaussian, sine, CLR).
         prior_ranges (dict):
             User-provided dictionary containing numbers defining the prior range
@@ -2757,17 +2766,19 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_kappa_cloud': [-10, -4], 'f_cloud': [0, 1],
                              'phi_0': [-180, 180], 'theta_0': [-35, 35],
                              'alpha': [0.1, 180], 'beta': [0.1, 70],
-                             'f_het': [0.0, 0.5], 'T_het': [0.6*T_phot, 1.2*T_phot],
-                             'f_spot': [0.0, 0.5], 'T_spot': [0.6*T_phot, T_phot],
-                             'f_fac': [0.0, 0.5], 'T_fac': [T_phot, 1.2*T_phot],
-                             'log_g_het': [log_g_phot-0.5, log_g_phot+0.5],
-                             'log_g_spot': [log_g_phot-0.5, log_g_phot+0.5],
-                             'log_g_fac': [log_g_phot-0.5, log_g_phot+0.5],
-                             'T_phot': [T_phot, err_T_phot], 
+                             # 'f_het': [0.0, 0.5], 'T_het': [0.6*T_phot, 1.2*T_phot],  # added for each dataset below
+                             # 'f_spot': [0.0, 0.5], 'T_spot': [0.6*T_phot, T_phot],  # added for each dataset below
+                             # 'f_fac': [0.0, 0.5], 'T_fac': [T_phot, 1.2*T_phot],  # added for each dataset below
+                             # 'log_g_het': [log_g_phot-0.5, log_g_phot+0.5],  # added for each dataset below
+                             # 'log_g_spot': [log_g_phot-0.5, log_g_phot+0.5],  # added for each dataset below
+                             # 'log_g_fac': [log_g_phot-0.5, log_g_phot+0.5],  # added for each dataset below
+                             'T_phot': [T_phot, err_T_phot],
                              'log_g_phot': [log_g_phot, err_log_g_phot], 
                              'delta_rel': [-1.0e-3, 1.0e-3],
-                             'log_b': [np.log10(0.001*np.min(err_data**2)),
-                                       np.log10(100.0*np.max(err_data**2))],
+                             'log_b': [np.log10(0.001*np.min(np.concatenate(err_data)**2)),
+                                       np.log10(100.0*np.max(np.concatenate(err_data)**2))],
+                             # TODO err_data is a list of arrays. For now, we just take the min and max of the
+                             #  concatenated array to define the default prior on log(b).
                              'C_to_O': [0.3,1.9],
                              'log_Met' : [-0.9,3.9],
                              'log_r_m': [-3,1],       
@@ -2777,7 +2788,22 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'r_i_complex': [1e-6,100], 
                              'log_X_Mie' : [-30,-1],
                              'Delta_log_P' : [0,9],
-                            }   
+                            }
+    # Iterate over datasets to add default priors for stellar contamination parameters
+    # Note: Default priors are added for each dataset, regardless of whether the dataset has stellar contamination or
+    # not, and regardless of whether the dataset shares its stellar contamination parameters with another dataset or
+    # not. If a dataset does not have stellar contamination or shares its stellar contamination parameters with another
+    # dataset, the default priors added here will be ignored.
+    for i_dataset in range(len(data['datasets'])):
+        prior_ranges_defaults['f_het_vis{}'.format(i_dataset)] = [0.0, 0.5]
+        prior_ranges_defaults['T_het_vis{}'.format(i_dataset)] = [0.6*T_phot, 1.2*T_phot]
+        prior_ranges_defaults['f_spot_vis{}'.format(i_dataset)] = [0.0, 0.5]
+        prior_ranges_defaults['T_spot_vis{}'.format(i_dataset)] = [0.6 * T_phot, T_phot]
+        prior_ranges_defaults['f_fac_vis{}'.format(i_dataset)] = [0.0, 0.5]
+        prior_ranges_defaults['T_fac_vis{}'.format(i_dataset)] = [T_phot, 1.2 * T_phot]
+        prior_ranges_defaults['log_g_het_vis{}'.format(i_dataset)] = [log_g_phot-0.5, log_g_phot+0.5]
+        prior_ranges_defaults['log_g_spot_vis{}'.format(i_dataset)] = [log_g_phot - 0.5, log_g_phot + 0.5]
+        prior_ranges_defaults['log_g_fac_vis{}'.format(i_dataset)] = [log_g_phot - 0.5, log_g_phot + 0.5]
 
     # Iterate through parameters, ensuring we have a full set of priors
     for parameter in param_names:
@@ -2836,6 +2862,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     prior_ranges[parameter] = prior_ranges['T']
                 else:
                     prior_ranges[parameter] = prior_ranges_defaults['T']
+                    # TODO This could be dangerous if parameter = 'T_het_vis0' and the user did not specify a prior range.
+                    #  Why not use the default range for T_het_vis0 instead of the default range for T?
 
             # Check if user didn't specify a distance prior for an imaged object 
             elif (parameter == 'd'):
@@ -2903,6 +2931,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
             elif ('T_' in parameter):
                 if ('T' in prior_types):
                     prior_types[parameter] = prior_types['T']
+                    # TODO This could be dangerous if parameter = 'T_het_vis0' and the user did not specify a prior type.
+                    #  Why not use the default type for T_het_vis0 instead of the default type for T?
                 else:
                     prior_types[parameter] = 'uniform'
 
@@ -2965,9 +2995,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         # Check that centred-log ratio is being employed in a 1D model
         if ((prior_types[parameter] == 'CLR') and (Atmosphere_dimension != 1)):
             raise Exception("CLR prior only supported for 1D models.")
-        
-        if ((parameter in ['T_spot', 'T_fac', 'log_g_spot', 'log_g_fac']) and 
-            (prior_types[parameter] == 'gaussian')):
+
+        # TODO: Should we also include T_het and log_g_het here?
+        if (('T_spot' in parameter or 'T_fac' in parameter or 'log_g_spot' in parameter or 'log_g_fac' in parameter) and
+                (prior_types[parameter] == 'gaussian')):  # parameter also contains the dataset number (e.g. '_set0') hence the long if statement
             raise Exception("Gaussian priors can only be used on T_phot or log_g_phot.")
 
         # Check mixing ratio parameter have valid settings

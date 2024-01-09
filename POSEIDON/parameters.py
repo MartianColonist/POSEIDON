@@ -9,9 +9,9 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def assign_free_params(param_species, object_type, PT_profile, X_profile, 
+def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        cloud_model, cloud_type, gravity_setting, mass_setting,
-                       stellar_contam, offsets_applied, error_inflation, 
+                       stellar_contam, shared_stellar_contam, offsets_applied, error_inflation,
                        PT_dim, X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
@@ -51,6 +51,17 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots / 
              two_spots_free_log_g).
+        shared_stellar_contam (dict):
+            Whether the stellar contamination parameters are shared between
+            datasets. The dictionary should be read as "Dataset <key> shares the same
+            stellar contamination parameters as dataset <value>", or alternatively,
+            "For dataset <key>, use the same stellar contamination parameters as
+            dataset <value>". Keys and values should be integers. If a dataset has no
+            stellar contamination, its value should be set to either None or its
+            dataset number.
+            E.g. {0:0, 1:1} means that none of the datasets share stellar contamination
+            parameters, whereas {0:0, 1:0} means that the second dataset shares stellar
+            contamination parameters with the first dataset.
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
             (Options: single_dataset).
@@ -649,21 +660,48 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         params += geometry_params                  # Add geometry parameter names to combined list
     
     #***** Stellar contamination parameters *****#
-    
-    if (stellar_contam == 'one_spot'):
-        stellar_params += ['f_het', 'T_het', 'T_phot']
-    elif (stellar_contam == 'one_spot_free_log_g'):
-        stellar_params += ['f_het', 'T_het', 'T_phot', 'log_g_het', 'log_g_phot']
-    elif (stellar_contam == 'two_spots'):
-        stellar_params += ['f_spot', 'f_fac', 'T_spot', 'T_fac', 'T_phot']
-    elif (stellar_contam == 'two_spots_free_log_g'):
-        stellar_params += ['f_spot', 'f_fac', 'T_spot', 'T_fac', 'T_phot', 
-                           'log_g_spot', 'log_g_fac', 'log_g_phot']
-    elif (stellar_contam == None):
-        stellar_params = []
-    else:
-        raise Exception("Error: unsupported stellar contamination model.")
-        
+    # Iterate over datasets to generate stellar contamination parameters for each dataset (if needed)
+    for i_dataset, stellar_contam_i in enumerate(stellar_contam):
+
+        # Dataset does not share contamination parameters with any other datasets
+        if shared_stellar_contam[i_dataset] == i_dataset:
+            if (stellar_contam_i == 'one_spot'):
+                stellar_params += ['f_het_set{}'.format(i_dataset), 'T_het_set{}'.format(i_dataset)]
+                if 'T_phot' not in stellar_params:
+                    stellar_params += ['T_phot']
+            elif (stellar_contam_i == 'one_spot_free_log_g'):
+                stellar_params += ['f_het_set{}'.format(i_dataset), 'T_het_set{}'.format(i_dataset),
+                                   'log_g_het_set{}'.format(i_dataset)]
+                if 'T_phot' not in stellar_params:
+                    stellar_params += ['T_phot']
+                if 'log_g_phot' not in stellar_params:
+                    stellar_params += ['log_g_phot']
+            elif (stellar_contam_i == 'two_spots'):
+                stellar_params += ['f_spot_set{}'.format(i_dataset), 'f_fac_set{}'.format(i_dataset),
+                                   'T_spot_set{}'.format(i_dataset), 'T_fac_set{}'.format(i_dataset)]
+                if 'T_phot' not in stellar_params:
+                    stellar_params += ['T_phot']
+            elif (stellar_contam_i == 'two_spots_free_log_g'):
+                stellar_params += ['f_spot_set{}'.format(i_dataset), 'f_fac_set{}'.format(i_dataset),
+                                   'T_spot_set{}'.format(i_dataset), 'T_fac_set{}'.format(i_dataset),
+                                   'log_g_spot_set{}'.format(i_dataset), 'log_g_fac_set{}'.format(i_dataset)]
+                if 'T_phot' not in stellar_params:
+                    stellar_params += ['T_phot']
+                if 'log_g_phot' not in stellar_params:
+                    stellar_params += ['log_g_phot']
+            elif (stellar_contam_i == None):
+                _ = 0  # Do not add any stellar contamination parameters
+                # stellar_params = []
+            else:
+                raise Exception("Error: unsupported stellar contamination model.")
+
+        # Dataset either shares contamination parameters with another dataset, or has no stellar contamination
+        else:
+            # Do not add any stellar contamination parameters
+            # (If this dataset shares its stellar contamination parameters with another dataset, those parameters will
+            # be added at the iteration of that other dataset.)
+            _ = 0
+
     N_stellar_params = len(stellar_params)   # Store number of stellar parameters
     params += stellar_params                 # Add stellar parameter names to combined list
              
@@ -1762,7 +1800,7 @@ def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):
     return alpha, beta
 
 
-def unpack_stellar_params(param_names, star, stellar_in, stellar_contam, 
+def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
                           N_params_cumulative):
     '''
     Extract the stellar properties from the drawn stellar parameters, according 
@@ -1819,52 +1857,66 @@ def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
     Met_phot_obs = star['Met']
     log_g_phot_obs = star['log_g']
 
-    # Extract parameters for a single stellar heterogeneity
-    if ('one_spot' in stellar_contam):
+    # Initialise dictionaries for drawn stellar contamination parameters
+    f_het, f_spot, f_fac, T_het, T_spot, T_fac, log_g_het, log_g_spot, log_g_fac = ({} for _ in range(9))
 
-        f_het = np.array(stellar_in[np.where(stellar_param_names == 'f_het')[0][0]])
-        T_het = np.array(stellar_in[np.where(stellar_param_names == 'T_het')[0][0]])
-        T_phot = np.array(stellar_in[np.where(stellar_param_names == 'T_phot')[0][0]])
+    # Iterate over datasets
+    for i_dataset, stellar_contam_i in enumerate(stellar_contam):
 
-        # Extract log g parameters 
-        if ('free_log_g' in stellar_contam):
-            log_g_het = np.array(stellar_in[np.where(stellar_param_names == 'log_g_het')[0][0]])
-            log_g_phot = np.array(stellar_in[np.where(stellar_param_names == 'log_g_phot')[0][0]])
-        else:
-            log_g_het = log_g_phot_obs
-            log_g_phot = log_g_phot_obs
+        # If the dataset either does not have stellar contamination or shares its stellar contamination parameters with
+        # another dataset, skip this iteration
+        if ('f_het_set{}'.format(i_dataset) not in stellar_param_names and
+                'f_spot_set{}'.format(i_dataset) not in stellar_param_names):
+            continue
 
-        # The below parameters are not used for a one heterogeneity model
-        f_spot = 0.0
-        f_fac = 0.0
-        T_spot = T_phot_obs
-        T_fac = T_phot_obs
-        log_g_spot = log_g_phot_obs
-        log_g_fac = log_g_phot_obs
+        # Extract parameters for a single stellar heterogeneity
+        if ('one_spot' in stellar_contam_i):
 
-    # Extract parameters for two stellar heterogeneities
-    elif ('two_spots' in stellar_contam):
+            f_het[i_dataset] = np.array(stellar_in[np.where(stellar_param_names == 'f_het_set{}'.format(i_dataset))[0][0]])
+            T_het[i_dataset] = np.array(stellar_in[np.where(stellar_param_names == 'T_het_set{}'.format(i_dataset))[0][0]])
+            T_phot = np.array(stellar_in[np.where(stellar_param_names == 'T_phot')[0][0]])
 
-        f_spot = np.array(stellar_in[np.where(stellar_param_names == 'f_spot')[0][0]])
-        f_fac = np.array(stellar_in[np.where(stellar_param_names == 'f_fac')[0][0]])
-        T_spot = np.array(stellar_in[np.where(stellar_param_names == 'T_spot')[0][0]])
-        T_fac = np.array(stellar_in[np.where(stellar_param_names == 'T_fac')[0][0]])
-        T_phot = np.array(stellar_in[np.where(stellar_param_names == 'T_phot')[0][0]])
+            # Extract log g parameters
+            if ('free_log_g' in stellar_contam_i):
+                log_g_het[i_dataset] = np.array(stellar_in[np.where(stellar_param_names == 'log_g_het_set{}'.format(i_dataset))[0][0]])
+                log_g_phot = np.array(stellar_in[np.where(stellar_param_names == 'log_g_phot')[0][0]])
+            else:
+                log_g_het[i_dataset] = log_g_phot_obs
+                log_g_phot = log_g_phot_obs
 
-        # Extract log g parameters 
-        if ('free_log_g' in stellar_contam):
-            log_g_spot = np.array(stellar_in[np.where(stellar_param_names == 'log_g_spot')[0][0]])
-            log_g_fac = np.array(stellar_in[np.where(stellar_param_names == 'log_g_fac')[0][0]])
-            log_g_phot = np.array(stellar_in[np.where(stellar_param_names == 'log_g_phot')[0][0]])
-        else:
-            log_g_spot = log_g_phot_obs
-            log_g_fac = log_g_phot_obs
-            log_g_phot = log_g_phot_obs
+            # The below parameters are not used for a one heterogeneity model
+            # This is unnecessary, so commented:
+            # f_spot[i_dataset] = 0.0
+            # f_fac[i_dataset] = 0.0
+            # T_spot[i_dataset] = T_phot_obs
+            # T_fac[i_dataset] = T_phot_obs
+            # log_g_spot[i_dataset] = log_g_phot_obs
+            # log_g_fac[i_dataset] = log_g_phot_obs
 
-        # The below parameters are not used for a two heterogeneity model
-        f_het = 0.0
-        T_het = T_phot_obs
-        log_g_het = log_g_phot_obs
+        # Extract parameters for two stellar heterogeneities
+        elif ('two_spots' in stellar_contam_i):
+
+            f_spot[i_dataset] = np.array(stellar_in[np.where(stellar_param_names == 'f_spot_set{}'.format(i_dataset))[0][0]])
+            f_fac[i_dataset] = np.array(stellar_in[np.where(stellar_param_names == 'f_fac_set{}'.format(i_dataset))[0][0]])
+            T_spot[i_dataset] = np.array(stellar_in[np.where(stellar_param_names == 'T_spot_set{}'.format(i_dataset))[0][0]])
+            T_fac[i_dataset] = np.array(stellar_in[np.where(stellar_param_names == 'T_fac_set{}'.format(i_dataset))[0][0]])
+            T_phot = np.array(stellar_in[np.where(stellar_param_names == 'T_phot')[0][0]])
+
+            # Extract log g parameters
+            if ('free_log_g' in stellar_contam_i):
+                log_g_spot[i_dataset] = np.array(stellar_in[np.where(stellar_param_names == 'log_g_spot_set{}'.format(i_dataset))[0][0]])
+                log_g_fac[i_dataset] = np.array(stellar_in[np.where(stellar_param_names == 'log_g_fac_set{}'.format(i_dataset))[0][0]])
+                log_g_phot = np.array(stellar_in[np.where(stellar_param_names == 'log_g_phot')[0][0]])
+            else:
+                log_g_spot[i_dataset] = log_g_phot_obs
+                log_g_fac[i_dataset] = log_g_phot_obs
+                log_g_phot = log_g_phot_obs
+
+            # The below parameters are not used for a two heterogeneity model
+            # This is unnecessary, so commented:
+            # f_het[i_dataset] = 0.0
+            # T_het[i_dataset] = T_phot_obs
+            # log_g_het[i_dataset] = log_g_phot_obs
 
     return f_het, f_spot, f_fac, T_het, T_spot, T_fac, T_phot, log_g_het, \
            log_g_spot, log_g_fac, log_g_phot
