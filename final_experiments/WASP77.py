@@ -1,7 +1,6 @@
 # %%
 from POSEIDON.core import create_star, create_planet
 from POSEIDON.constants import R_Sun, R_J, M_J
-import pickle
 
 # ***** Define stellar properties *****#
 mode = "retrieval"
@@ -31,10 +30,10 @@ from POSEIDON.utility import read_high_res_data_deprecate
 
 # ***** Define model *****#
 
-model_name = "H2O, CO, CH4, NH3"  # Model name used for plots, output files etc.
+model_name = "H2O, CO"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["H2O", "CO", "CH4", "NH3"]
+param_species = ["H2O", "CO"]
 
 method = "sysrem"
 high_res_params = ["K_p", "V_sys", "log_alpha", "W_conv"]
@@ -44,6 +43,7 @@ model = define_model(
     bulk_species,
     param_species,
     PT_profile="Madhu",
+    high_res_method="sysrem",
     high_res_params=high_res_params,
     reference_parameter="None",  # not retrieve for R_p_ref of P_ref
 )
@@ -58,8 +58,6 @@ wl_max = 2.6  # Maximum wavelength (um)
 R = 250000  # Spectral resolution of grid
 
 # model["R_instrument"] = 45000  # only need this using PCA to reproduce Line 2021 (otherwise we use W_conv as a parameter for broadening)
-model["method"] = "sysrem"
-model["spectrum_type"] = "emission"
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 # Create the stellar object
@@ -94,7 +92,7 @@ prior_types["V_sys"] = "uniform"
 prior_types["log_alpha"] = "uniform"
 prior_types["alpha"] = "uniform"
 prior_types["b"] = "uniform"
-prior_types["dPhi"] = "uniform"
+prior_types["Delta_phi"] = "uniform"
 prior_types["W_conv"] = "uniform"
 
 
@@ -109,12 +107,12 @@ prior_ranges["a2"] = [0.02, 1]
 prior_ranges["log_P1"] = [-5, 2]
 prior_ranges["log_P2"] = [-5, 2]
 prior_ranges["log_P3"] = [-2, 2]
-prior_ranges["K_p"] = [0, 300]  # set prior according centered around published value
+prior_ranges["K_p"] = [0, 400]  # set prior according centered around published value
 prior_ranges["V_sys"] = [-50, 50]
-prior_ranges["log_alpha"] = [-3, 2]
-prior_ranges["alpha"] = [0.01, 10]
+prior_ranges["log_alpha"] = [-2, 2]
+prior_ranges["a"] = [0.01, 100]
 prior_ranges["b"] = [0.01, 100]
-prior_ranges["dPhi"] = [-0.1, 0.1]
+prior_ranges["Delta_phi"] = [-0.1, 0.1]
 prior_ranges["W_conv"] = [0, 10]
 
 priors = set_priors(planet, star, model, data, prior_types, prior_ranges)
@@ -261,8 +259,8 @@ fig_corner = generate_cornerplot(
     params_to_plot=[
         "log_H2O",
         "log_CO",
-        "log_CH4",
-        "log_NH3",
+        # "log_CH4",
+        # "log_NH3",
         "K_p",
         "V_sys",
         "alpha",
