@@ -677,17 +677,16 @@ def cornerplot(
                 "log" not in param_name
             ):
                 title_fmt = ".0f"
-            elif (param_name == "alpha") or (
-                param_name == "beta"
-            ):  # avoid log_alpha, beta
-                title_fmt = ".0f"
+            elif (param_name == "a") or (
+                param_name == "b"
+            ):  # for high res scaling parameters
+                title_fmt = ".2f"
             elif "delta_rel" in param_name:
                 title_fmt = ".0f"
             elif "R_p_ref" in param_name:
                 label_exponent = round_sig_figs(
                     np.floor(np.log10(np.abs(0.5 * (qh - ql)))), 1
                 )
-
                 if label_exponent == -2.0:
                     title_fmt = ".2f"
                 elif label_exponent == -3.0:

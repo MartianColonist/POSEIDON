@@ -3400,7 +3400,7 @@ def plot_PT_retrieved(
             )
 
         # Plot actual (true) P-T profile
-        if T_true != None:
+        if T_true is not None:
             ax.semilogy(T_true, P, lw=1.5, color="crimson", label="True")
 
     # Common plot settings for all profiles

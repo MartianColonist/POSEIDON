@@ -159,9 +159,9 @@ def prepare_high_res_data(
 
         elif spectrum_type == "transmission":
             if method == "sysrem_2022":
-                median = fit_spec(
-                    flux_blaze_corrected, spec="median"
-                )  # TODO: check order, phase, wl
+                median = fit_out_transit_spec(
+                    flux_blaze_corrected, transit_weight, spec="median"
+                )
                 flux_blaze_corrected /= median
                 uncertainties /= median
                 residuals, Us = fast_filter(flux_blaze_corrected, uncertainties, niter)
@@ -182,9 +182,9 @@ def prepare_high_res_data(
                 # residuals = flux_blaze_corrected - np.median(flux_blaze_corrected, axis=2)[:, :, None] # mean normalize the data
                 residuals = flux_blaze_corrected - 1  # mean normalize the data
             elif method == "PCA":
-                median = fit_spec(
-                    flux_blaze_corrected, spec="median"
-                )  # TODO: check order, phase, wl
+                median = fit_out_transit_spec(
+                    flux_blaze_corrected, transit_weight, spec="median"
+                )
                 flux_blaze_corrected /= median
                 rebuilt = PCA_rebuild(flux_blaze_corrected, n_components=10)
                 flux_blaze_corrected /= rebuilt
@@ -406,34 +406,22 @@ def PCA_rebuild(flux, n_components=5):
     return rebuilt
 
 
-def fit_spec(flux, degree=2, spec="median", Print=True):
-    if Print:
-        print("Fitting out {} spectrum from each exposure".format(spec))
+def fit_out_transit_spec(flux, transit_weight, degree=2, spec="median", Print=True):
     nord, nphi, npix = flux.shape
     spec_fit = np.zeros_like(flux)
+    out_transit = transit_weight == 1
 
     for i in range(nord):
         # construct a mean spectrum
         if spec == "mean":
-            mean_spec = np.mean(flux[i], axis=0)
+            mean_spec = np.mean(flux[i][out_transit], axis=0)
         elif spec == "median":
-            mean_spec = np.median(flux[i], axis=0)
+            mean_spec = np.median(flux[i][out_transit], axis=0)
         else:
             raise Exception('Error: Please select "mean", "median"')
 
         for j in range(nphi):
-            # fit the mean spectrum to each exposure (typically with a second order polynomial)
-            mean_spec_poly_coeffs = np.polynomial.polynomial.polyfit(
-                mean_spec,
-                flux[i, j, :],
-                degree,
-            )
-            # reconstruct that polynomial
-            polynomial = np.polynomial.polynomial.polyval(
-                mean_spec, mean_spec_poly_coeffs
-            ).T
-            # fit as a polynomial of the mean spectrum and AFTER fit a slope
-            spec_fit[i, j, :] = polynomial
+            spec_fit[i, j, :] = mean_spec
 
     return spec_fit
 
@@ -867,22 +855,20 @@ def loglikelihood_sysrem(
 
         for j in range(nphi):
             wl_shifted = wl_slice * (1.0 - delta_lambda[j])
-            F_p = np.interp(wl_shifted, wl, planet_spectrum)
+            F_p = np.interp(wl_shifted, wl, planet_spectrum * a)
             if star_spectrum is None:
                 models_shifted[j] = (1 - transit_weight[j]) / max_transit_depth * (
                     -F_p
                 ) + 1
                 models_shifted[j] /= np.median(
                     models_shifted[j]
-                )  # divide by the median over wavelength to mimic blaze correction (doubt this is necessary)
+                )  # divide by the median over wavelength
             else:
-                F_s = np.interp(wl_shifted, wl, star_spectrum)
+                F_s = np.interp(wl_shifted, wl, star_spectrum * a)
                 models_shifted[j] = F_p / F_s * flux_star[i, j]
 
         B = Bs[i]
-        models_filtered = (
-            models_shifted - B @ models_shifted
-        ) * a  # filter the model and scale by alpha
+        models_filtered = models_shifted - B @ models_shifted  # filter the model
 
         if b is not None:
             for j in range(nphi):
@@ -966,8 +952,10 @@ def loglikelihood_high_res(
 
     if "log_alpha" in high_res_param_names:
         a = 10 ** high_res_params[np.where(high_res_param_names == "log_alpha")[0][0]]
+    elif "a" in high_res_param_names:
+        a = high_res_params[np.where(high_res_param_names == "a")[0][0]]
     else:
-        a = 10 ** model["log_alpha"]
+        a = model["a"]
 
     if "d_phi" in high_res_param_names:
         d_phi = high_res_params[np.where(high_res_param_names == "d_phi")[0][0]]
@@ -979,10 +967,10 @@ def loglikelihood_high_res(
     else:
         W_conv = model.get("W_conv")
 
-    if "beta" in high_res_param_names:
-        b = high_res_params[np.where(high_res_param_names == "beta")[0][0]]
+    if "b" in high_res_param_names:
+        b = high_res_params[np.where(high_res_param_names == "b")[0][0]]
     else:
-        b = model.get("beta")  # Set a value or else we null b
+        b = model.get("b")  # Set a value or else we null b
 
     if spectrum_type is "emission":
         if W_conv is not None:
