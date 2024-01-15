@@ -1226,7 +1226,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  annotation_pos = [], wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
-                 show_data_bin_width = True, line_widths = []):
+                 show_data_bin_width = True,
+                 line_widths = []):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2636,8 +2637,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
     # Quick validity checks for plotting
     if (N_PT == 0):
         raise Exception("Must provide at least one P-T profile to plot!")
-    if (N_PT > 3):
-        raise Exception("Max number of concurrent retrieved P-T profiles to plot is 3.")
+    if (N_PT > 4):
+        raise Exception("Max number of concurrent retrieved P-T profiles to plot is 4.")
     if ((colour_list != []) and (N_PT != len(colour_list))):
         raise Exception("Number of colours does not match number of P-T profiles.")
     if ((PT_labels != []) and (N_PT != len(PT_labels))):

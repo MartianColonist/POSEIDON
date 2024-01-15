@@ -274,6 +274,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
                             n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
                             n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+                        else:
+                            n_n_cia = 0
 
                     # If bulk is true or cloud contribution is true, we are only interested in the bulk species contribution 
                     if bulk_species == True or cloud_contribution == True:
@@ -281,6 +283,9 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
                             n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
                             n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+                    
+                        else:
+                            n_n_cia = 0
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -1215,7 +1220,11 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                                full_spectrum_first = True, y_unit='transit_depth',
                                brightness_temperature = False, star = [],
                                stellar_spectrum = False,
-                               y_min = None, y_max = None,):
+                               y_min = None, y_max = None,
+                               figure_shape = 'wide',
+                               save_fig = False,
+                               line_widths = [],
+                               return_fig = False):
 
     from POSEIDON.utility import plot_collection
     from POSEIDON.visuals import plot_spectra
@@ -1272,11 +1281,14 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                     plt_label = 'Spectral Contribution Plot',
                     spectra_labels = labels,
                     plot_full_res = False, 
-                    save_fig = False,
+                    save_fig = save_fig,
                     colour_list = colour_list,
                     y_unit = y_unit,
                     y_min = y_min,
-                    y_max = y_max)
+                    y_max = y_max,
+                    figure_shape = figure_shape,
+                    line_widths = line_widths
+                    )
         
     else: 
         
@@ -1301,11 +1313,16 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                     plt_label = 'Cloud Contribution Plot',
                     spectra_labels = labels,
                     plot_full_res = False, 
-                    save_fig = False,
+                    save_fig = save_fig,
                     colour_list = colour_list,
                     y_unit = y_unit,
                     y_min = y_min,
-                    y_max = y_max)
+                    y_max = y_max,
+                    figure_shape = figure_shape,
+                    line_widths = line_widths)
+        
+    if return_fig == True:
+        return fig
         
 #################################
 # Pressure Contribution Functions
