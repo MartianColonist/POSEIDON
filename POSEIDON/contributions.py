@@ -569,6 +569,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     R_p = planet['planet_radius']
     b_p = planet['planet_impact_parameter']
     d = planet['system_distance']
+    a_p = planet['planet_semi_major_axis']
 
     if (star is not None):
         R_s = star['R_s']
@@ -1017,7 +1018,6 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             raise Exception("Error: Invalid scattering option")
 
         # Add in the seperate reflection  
-        # FOR DEBUGGING PURPOSES, THIS JUST RETURNS THE ALBEDO RIGHT NOW
         if (reflection == True):
 
             albedo = reflection_Toon(P, wl, dtau_tot,
@@ -1027,8 +1027,6 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                                     frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                     Gauss_quad = 5, numt = 1,
                                     toon_coefficients=0, tridiagonal=0, b_top=0)
-            
-            return P, wl, dtau_tot, kappa_Ray, kappa_cloud, kappa_tot, w_cloud, g_cloud, zone_idx
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -1095,6 +1093,33 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             # Final spectrum is the planet-star flux ratio
             spectrum = F_p_obs / F_s_obs
 
+        if (reflection == True):
+            
+            try:
+                FpFs_reflected = albedo*(R_p_eff/a_p)**2
+            except:
+                raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
+            
+            if ('direct' in spectrum_type):
+
+                # Load stellar spectrum
+                F_s = star['F_star']
+                wl_s = star['wl_star']
+
+                if (np.array_equiv(wl_s, wl) is False):
+                    raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                    "not match wavelength grid of planet spectrum. " +
+                                    "Did you forget to provide 'wl' to create_star?")
+
+                F_s_obs = (R_s / d)**2 * F_s
+                Fp_reflected_obs = FpFs_reflected*F_s_obs
+                
+                spectrum += Fp_reflected_obs
+
+            else:
+                #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                spectrum += FpFs_reflected
+
         # Then do the contribution functions 
         spectrum_contribution_list = []
 
@@ -1136,7 +1161,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                 # Compute planet flux including scattering (PICASO implementation), see emission.py for details
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                            kappa_Ray, kappa_cloud, kappa_tot,
+                                            kappa_Ray, kappa_cloud_temp, kappa_tot,
                                             w_cloud, g_cloud, zone_idx,
                                             hard_surface = 0, tridiagonal = 0, 
                                             Gauss_quad = 5, numt = 1)
@@ -1146,6 +1171,17 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
             else:
                 raise Exception("Error: Invalid scattering option")
+            
+                    # Add in the seperate reflection  
+            if (reflection == True):
+
+                albedo = reflection_Toon(P, wl, dtau_tot,
+                                        kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                        w_cloud, g_cloud, zone_idx,
+                                        single_phase = 3, multi_phase = 0,
+                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                        Gauss_quad = 5, numt = 1,
+                                        toon_coefficients=0, tridiagonal=0, b_top=0)
 
             # Calculate effective photosphere radius at tau = 2/3
             if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -1211,6 +1247,33 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                 # Final spectrum is the planet-star flux ratio
                 spectrum_temp = F_p_obs / F_s_obs
+            
+            if (reflection == True):
+            
+                try:
+                    FpFs_reflected = albedo*(R_p_eff/a_p)**2
+                except:
+                    raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
+                
+                if ('direct' in spectrum_type):
+
+                    # Load stellar spectrum
+                    F_s = star['F_star']
+                    wl_s = star['wl_star']
+
+                    if (np.array_equiv(wl_s, wl) is False):
+                        raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                        "not match wavelength grid of planet spectrum. " +
+                                        "Did you forget to provide 'wl' to create_star?")
+
+                    F_s_obs = (R_s / d)**2 * F_s
+                    Fp_reflected_obs = FpFs_reflected*F_s_obs
+                    
+                    spectrum_temp += Fp_reflected_obs
+
+                else:
+                    #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                    spectrum_temp += FpFs_reflected
 
             spectrum_contribution_list.append(spectrum_temp)
   
@@ -1796,6 +1859,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
     scattering = model['scattering']
+    reflection = model['reflection']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1812,6 +1876,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     R_p = planet['planet_radius']
     b_p = planet['planet_impact_parameter']
     d = planet['system_distance']
+    a_p = planet['planet_semi_major_axis']
 
     if (star is not None):
         R_s = star['R_s']
@@ -2193,8 +2258,6 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
                 spectrum_contribution_list_names.append('Total Pressure Contribution')
 
-
-
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):
             raise Exception("GPU transmission spectra not yet supported.")
@@ -2286,6 +2349,17 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
         else:
             raise Exception("Error: Invalid scattering option")
+        
+        # Add in the seperate reflection  
+        if (reflection == True):
+
+            albedo = reflection_Toon(P, wl, dtau_tot,
+                                    kappa_Ray, kappa_cloud, kappa_tot,
+                                    w_cloud, g_cloud, zone_idx,
+                                    single_phase = 3, multi_phase = 0,
+                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                    Gauss_quad = 5, numt = 1,
+                                    toon_coefficients=0, tridiagonal=0, b_top=0)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -2351,6 +2425,33 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
             # Final spectrum is the planet-star flux ratio
             spectrum = F_p_obs / F_s_obs
+        
+        if (reflection == True):
+            
+            try:
+                FpFs_reflected = albedo*(R_p_eff/a_p)**2
+            except:
+                raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
+            
+            if ('direct' in spectrum_type):
+
+                # Load stellar spectrum
+                F_s = star['F_star']
+                wl_s = star['wl_star']
+
+                if (np.array_equiv(wl_s, wl) is False):
+                    raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                    "not match wavelength grid of planet spectrum. " +
+                                    "Did you forget to provide 'wl' to create_star?")
+
+                F_s_obs = (R_s / d)**2 * F_s
+                Fp_reflected_obs = FpFs_reflected*F_s_obs
+                
+                spectrum += Fp_reflected_obs
+
+            else:
+                #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                spectrum += FpFs_reflected
 
         # Then do the contribution functions 
         spectrum_contribution_list = []
@@ -2404,6 +2505,17 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
             else:
                 raise Exception("Error: Invalid scattering option")
+            
+                    # Add in the seperate reflection  
+            if (reflection == True):
+
+                albedo = reflection_Toon(P, wl, dtau_tot,
+                                        kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                        w_cloud, g_cloud, zone_idx,
+                                        single_phase = 3, multi_phase = 0,
+                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                        Gauss_quad = 5, numt = 1,
+                                        toon_coefficients=0, tridiagonal=0, b_top=0)
 
             # Calculate effective photosphere radius at tau = 2/3
             if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -2469,6 +2581,33 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
                 # Final spectrum is the planet-star flux ratio
                 spectrum_temp = F_p_obs / F_s_obs
+
+            if (reflection == True):
+            
+                try:
+                    FpFs_reflected = albedo*(R_p_eff/a_p)**2
+                except:
+                    raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
+                
+                if ('direct' in spectrum_type):
+
+                    # Load stellar spectrum
+                    F_s = star['F_star']
+                    wl_s = star['wl_star']
+
+                    if (np.array_equiv(wl_s, wl) is False):
+                        raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                        "not match wavelength grid of planet spectrum. " +
+                                        "Did you forget to provide 'wl' to create_star?")
+
+                    F_s_obs = (R_s / d)**2 * F_s
+                    Fp_reflected_obs = FpFs_reflected*F_s_obs
+                    
+                    spectrum_temp += Fp_reflected_obs
+
+                else:
+                    #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                    spectrum_temp += FpFs_reflected
 
             spectrum_contribution_list.append(spectrum_temp)
     
