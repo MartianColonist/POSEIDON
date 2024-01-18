@@ -682,6 +682,8 @@ def compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones):
         # Unpack the abundance
         log_X_q, log_P_q, upsilon_q = log_X_state[q, :]
 
+        upsilon_q = upsilon_q * (np.pi/180.0)
+
         # For angles between 0 and pi/2
         if np.abs(upsilon_q) <= np.pi/2:
 

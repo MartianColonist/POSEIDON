@@ -2806,6 +2806,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'r_i_complex': [1e-6,100], 
                              'log_X_Mie' : [-30,-1],
                              'Delta_log_P' : [0,9],
+                             'Upsilon': [-180, 180],
+                             'log_P_X_i': [-5, 1],
                             }   
 
     # Iterate through parameters, ensuring we have a full set of priors
@@ -2821,8 +2823,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 if ('log_P_' in parameter):
                     if ('log_P_X_mid' in prior_ranges):
                         prior_ranges[parameter] = prior_ranges['log_P_X_mid']
+                    elif ('log_P_X_i' in prior_ranges):
+                        prior_ranges[parameter] = prior_ranges['log_P_X_i']
                     else:
-                        prior_ranges[parameter] = prior_ranges_defaults['log_P_mid']
+                        prior_ranges[parameter] = prior_ranges_defaults['log_P_X_i']
 
                 # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
                 elif ('Delta_log_' in parameter):
@@ -2887,6 +2891,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 if ('log_P_' in parameter):
                     if ('log_P_X_mid' in prior_types):
                         prior_types[parameter] = prior_types['log_P_X_mid']
+                    elif ('log_P_X_i' in prior_types):
+                        prior_types[parameter] = prior_types['log_P_X_i']
                     else:
                         prior_types[parameter] = 'uniform'
 
@@ -2949,6 +2955,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Remove group prior range for mixing ratio and temperature parameters
     if ('log_P_X_mid' in prior_ranges):
         del prior_ranges['log_P_X_mid']
+    if ('log_P_X_i' in prior_ranges):
+        del prior_ranges['log_P_X_i']
     if ('log_X' in prior_ranges):
         del prior_ranges['log_X']
     if ('Delta_log_X' in prior_ranges):
@@ -2965,6 +2973,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Remove group prior types for mixing ratio and temperature parameters
     if ('log_P_X_mid' in prior_types):
         del prior_types['log_P_X_mid']
+    if ('log_P_X_i' in prior_types):
+        del prior_types['log_P_X_i']
     if ('log_X' in prior_types):
         del prior_types['log_X']
     if ('Delta_log_X' in prior_types):
