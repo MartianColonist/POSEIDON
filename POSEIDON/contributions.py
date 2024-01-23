@@ -1287,6 +1287,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                                figure_shape = 'wide',
                                save_fig = False,
                                line_widths = [],
+                               colour_list = [],
                                return_fig = False):
 
     from POSEIDON.utility import plot_collection
@@ -1326,7 +1327,12 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
 
     if full_spectrum_first == True:
-        colour_list = ['black','dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
+
+        # If the user didn't provide a color list
+        if colour_list == []:
+
+            # Black is the full spectrum 
+            colour_list = ['black','dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
 
         spectra = plot_collection(spectrum, wl, collection = spectra)
         labels = spectrum_contribution_list_names.copy()
@@ -1336,8 +1342,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         for s in spectrum_contribution_list:
             spectra = plot_collection(s, wl, collection = spectra)
 
-        # Plot the full spectrum last so its on top 
-
+        # Cut the list to the number of spectra you have 
         colour_list = colour_list[:len(spectrum_contribution_list)+1]
         
         fig = plot_spectra(spectra, planet, R_to_bin = 100,
@@ -1355,7 +1360,10 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         
     else: 
         
-        colour_list = ['dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
+        # If the user didn't provide a color list
+        if colour_list == []:
+
+            colour_list = ['dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
 
         spectra = []
         # Loop through the contribution spectra 
@@ -1365,6 +1373,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         # Plot the full spectrum last so its on top 
         spectra = plot_collection(spectrum, wl, collection = spectra)
 
+        # Cut the spectrum to the number of spectra you have, and add black for the full spectrum
         colour_list = colour_list[:len(spectrum_contribution_list)]
         colour_list.append('black')
 
@@ -1373,7 +1382,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
         
         fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                    plt_label = 'Cloud Contribution Plot',
+                    plt_label = 'Spectral Contribution Plot',
                     spectra_labels = labels,
                     plot_full_res = False, 
                     save_fig = save_fig,
@@ -2716,7 +2725,8 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
 def plot_pressure_contribution(wl,P,
                                Contribution,
                                spectrum_contribution_list_names, 
-                               R = 100):
+                               R = 100,
+                               return_fig = False):
 
     # Plots out the pressure contribution functions. Only displays them, doesn't save them.
     
@@ -2736,7 +2746,6 @@ def plot_pressure_contribution(wl,P,
             plt.show()
 
             # Trying Ryan's Binning 
-
             fig = plt.figure()  
             fig.set_size_inches(14, 7)
             ax = plt.gca()
@@ -2768,6 +2777,8 @@ def plot_pressure_contribution(wl,P,
             ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
             ax.set_title(title)
 
+            fig1 = fig
+
             plt.colorbar()
             plt.show()
 
@@ -2790,8 +2801,13 @@ def plot_pressure_contribution(wl,P,
             title = 'LOG Contribution Function : ' + str(spectrum_contribution_list_names[i])
             ax.set_title(title)
 
+            fig2 = fig
+
             plt.colorbar()
             plt.show()
+    
+    if return_fig == True:
+        return fig1, fig2
 
 import matplotlib.pyplot as plt
 
@@ -2865,7 +2881,8 @@ def photometric_contribution_function(wl, P, Contribution,
 def plot_photometric_contribution(wl,P,
                                   photometric_contribution, photometric_total,
                                   spectrum_contribution_list_names,
-                                  bins = []):
+                                  bins = [],
+                                  return_fig = False):
 
     # Loop over each molecule
     labels = []
@@ -2896,6 +2913,8 @@ def plot_photometric_contribution(wl,P,
         ax.set_xlabel('Contribution')
         title = 'Photometric Contribution Function : ' + str(labels[i])
         ax.set_title(title)
+
+        fig1 = fig
         plt.show()
         
         fig, ax = plt.subplots(figsize=(10, 10))
@@ -2929,3 +2948,6 @@ def plot_photometric_contribution(wl,P,
         ax.plot(np.log10(photometric_total[i]),np.log10(P), label = labels[i])
     ax.legend()
     plt.show()
+
+    if return_fig == True:
+        return fig1
