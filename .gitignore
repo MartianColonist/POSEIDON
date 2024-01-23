@@ -17,7 +17,6 @@ run/
 .vscode
 /testing_new_functions
 /refractive_indices_txt
-<<<<<<< HEAD
 /Wasp-17b
 /Wasp-17b-Final-ExoTiC-Temp
 /Wasp17b-Petit-Poseidon
@@ -30,7 +29,6 @@ run/
 /BIC copy 
 /DATA-FOLDER
 /WD1856b
-=======
 /HD209
 /HD189-Transit
 /Make-Database-Final
@@ -42,4 +40,4 @@ run/
 /VULCAN-HD189 Gradient
 /VULCAN-master
 /VULCAN2
->>>>>>> 1619cac (GitIgnore PEGASI)
+/final_experiments
