@@ -1226,7 +1226,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  annotation_pos = [], wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
-                 show_data_bin_width = True):
+                 show_data_bin_width = True, line_widths = []):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1294,6 +1294,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             If True, saves a PDF in the POSEIDON output folder.
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
+        line_widths (list of float, optional):
+            Line widths for binned spectra (defaults to 2.0 if not specified).
 
     Returns:
         fig (matplotlib figure object):
@@ -1337,6 +1339,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         raise Exception("Number of model labels does not match number of spectra.")
     if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
+    if ((line_widths != []) and (N_spectra != len(line_widths))):
+        raise Exception("Number of line widths does not match number of spectra.")
         
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
@@ -1582,6 +1586,9 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             else:
                 colour_binned = colours[i]
                 lw_binned = 2.0
+
+            if line_widths != []:
+                lw_binned = line_widths[i]
 
             # Plot binned spectrum
             ax1.plot(wl_binned, spec_binned, lw = lw_binned, alpha = 0.8, 
@@ -2055,7 +2062,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            wl_axis = 'log', figure_shape = 'default',
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
-                           show_data_bin_width = True,
+                           show_data_bin_width = True, line_widths = [],
                            sigma_to_plot = 2):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2133,6 +2140,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             If True, saves a PDF in the POSEIDON output folder.
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
+        line_widths (list of float, optional):
+            Line widths for median spectra (defaults to 1.0 if not specified).
         sigma_to_plot (int, optional):
             How many sigma contours to plot (0 for only median, 1 for median and 
             1 sigma, or 2 for median, 1 sigma, and 2 sigma).
@@ -2172,6 +2181,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         raise Exception("Number of binned model colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
         raise Exception("Number of model labels does not match number of spectra.")
+    if ((line_widths != []) and (N_spectra != len(line_widths))):
+        raise Exception("Number of line widths does not match number of spectra.")
 
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
@@ -2415,8 +2426,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             label_one_sig = ''
             label_two_sig = ''
 
+        if line_widths != []:
+            lw_binned = line_widths[i]
+        else:
+            lw_binned = 1.0
+
         # Plot median retrieved spectrum
-        ax1.plot(wl_binned, spec_med_binned, lw = 1.0,  
+        ax1.plot(wl_binned, spec_med_binned, lw = lw_binned,  
                  color = scale_lightness(colours[i], 1.0), 
                  label = label_med)
         
