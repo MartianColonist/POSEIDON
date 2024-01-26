@@ -2849,6 +2849,12 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     else:
                         prior_ranges[parameter] = prior_ranges_defaults['log_X']
 
+                elif ('Upsilon_' in parameter):
+                    if ('Upsilon' in prior_ranges):
+                        prior_ranges[parameter] = prior_ranges['Upsilon']
+                    else:
+                        prior_ranges[parameter] = prior_ranges_defaults['Upsilon']
+
             # Set non-specified temperature difference parameters to that for 'Delta_T'
             elif ('Delta_T_' in parameter):
                 if ('Delta_T' in prior_ranges):
@@ -2920,6 +2926,12 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                         else:
                             prior_types[parameter] = 'uniform'
                 
+                elif ('Upsilon_' in parameter):
+                    if ('Upsilon' in prior_types):
+                        prior_types[parameter] = prior_types['Upsilon']
+                    else:
+                        prior_types[parameter] = 'uniform'
+                
             # Set non-specified temperature difference parameters to that for 'Delta_T'
             elif ('Delta_T_' in parameter):
                 if ('Delta_T' in prior_types):
@@ -2963,6 +2975,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_ranges['Delta_log_X']
     if ('Grad_log_X' in prior_ranges):
         del prior_ranges['Grad_log_X']
+    if (('Upsilon' in prior_ranges)):
+        del prior_ranges['Upsilon']
     if (('T' in prior_ranges) and (PT_profile != 'isotherm')):
         del prior_ranges['T']
     if (('Delta_T' in prior_ranges) and (PT_profile != 'gradient')):
@@ -2981,6 +2995,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_types['Delta_log_X']
     if ('Grad_log_X' in prior_types):
         del prior_types['Grad_log_X']
+    if ('Upsilon' in prior_types):
+        del prior_types['Upsilon']
     if (('T' in prior_types) and (PT_profile != 'isotherm')):
         del prior_types['T']
     if (('Delta_T' in prior_types) and (PT_profile != 'gradient')):
