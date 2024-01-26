@@ -2057,8 +2057,9 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            wl_axis = 'log', figure_shape = 'default',
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
-                           show_data_bin_width = True, 
-                           sigma_to_plot = 2):
+                           show_data_bin_width = True, show_data_cap = True,
+                           sigma_to_plot = 2, data_alpha = 0.8,
+                        ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -2463,22 +2464,29 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         err_data_i = err_data[idx_start:idx_end]
         bin_size_i = bin_size[idx_start:idx_end]
 
+        if (show_data_cap == True):
+            capsize = 2
+        else:
+            capsize = 0
+
         # Plot dataset
         if (show_data_bin_width == True):
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                xerr=bin_size_i, marker=data_markers[i], 
                                                markersize=data_markers_size[i], 
-                                               capsize=2, ls='none', elinewidth=0.8, 
-                                               color=data_colours[i], alpha = 0.8,
+                                               capsize=capsize, ls='none', elinewidth=0.8, 
+                                               color=data_colours[i], alpha = data_alpha,
                                                ecolor = err_colour, label=label_i,
+                                               markeredgewidth = 0.8,
                                                zorder = 100)
         else:
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                marker=data_markers[i], 
                                                markersize=data_markers_size[i], 
-                                               capsize=2, ls='none', elinewidth=0.8, 
-                                               color=data_colours[i], alpha = 0.8,
+                                               capsize=capsize, ls='none', elinewidth=0.8, 
+                                               color=data_colours[i], alpha = data_alpha,
                                                ecolor = err_colour, label=label_i,
+                                               markeredgewidth = 0.8,
                                                zorder = 100)
 
         [markers.set_alpha(1.0)]
@@ -2561,7 +2569,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       PT_labels = [], colour_list = [], log_P_min = None,
                       log_P_max = None, T_min = None, T_max = None,
                       legend_location = 'lower left',
-                      ax = None, save_fig = True):
+                      ax = None, save_fig = True,
+                      sigma_to_plot = 2):
     '''
     Plot retrieved Pressure-Temperature (P-T) profiles.
     
@@ -2740,12 +2749,14 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                         label = label_med)
             
             # Plot +/- 1σ confidence region
-            ax1.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
-                            facecolor = colours[i], label = label_one_sig)
+            if sigma_to_plot == 1 or sigma_to_plot == 2:
+                ax1.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
+                                facecolor = colours[i], label = label_one_sig)
 
             # Plot +/- 2σ sigma confidence region
-            ax1.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
-                            facecolor = colours[i], label = label_two_sig)
+            if sigma_to_plot == 2:
+                ax1.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
+                                facecolor = colours[i], label = label_two_sig)
 
         # Plot actual (true) P-T profile
         if (T_true != None):
@@ -2753,15 +2764,15 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
 
     # Common plot settings for all profiles
     ax1.invert_yaxis()            
-    ax1.set_xlabel(r'Temperature (K)', fontsize = 20)
+    ax1.set_xlabel(r'Temperature (K)', fontsize = 16)
     ax1.set_xlim(T_min, T_max)
-    ax1.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax1.set_ylabel(r'Pressure (bar)', fontsize = 16)
     ax1.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))
 
     ax1.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
+    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, ncol=1, 
                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
@@ -3203,8 +3214,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 param_max = span[q][1]
 
             x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
-                                alpha=0.4, edgecolor='None', density=True, stacked=True)
-            
+                                  alpha=0.0, edgecolor='None', density=True, stacked=True)
             
             x_max_array.append(x.max())
 
