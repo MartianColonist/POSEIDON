@@ -47,11 +47,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         mass_setting (str):
             Whether the planetary mass is fixed or a free parameter.
             (Options: fixed / free).
-        stellar_contam (str):
+        stellar_contam (str/None or list of str/None):
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots / 
              two_spots_free_log_g).
-        shared_stellar_contam (dict):
+        shared_stellar_contam (dict or None):
             Whether the stellar contamination parameters are shared between
             datasets. The dictionary should be read as "Dataset <key> shares the same
             stellar contamination parameters as dataset <value>", or alternatively,
@@ -670,6 +670,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     #***** Stellar contamination parameters *****#
     # Iterate over datasets to generate stellar contamination parameters for each dataset (if needed)
     for i_dataset, stellar_contam_i in enumerate(stellar_contam):
+
+        if stellar_contam_i is None:
+            continue
 
         # Dataset does not share contamination parameters with any other datasets
         if shared_stellar_contam[i_dataset] == i_dataset:
@@ -1840,7 +1843,7 @@ def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
             Collection of stellar properties used by POSEIDON.
         stellar_in (list of float | np.array of float):
             Drawn values of the stellar parameters.
-        stellar_contam (str):
+        stellar_contam (str/None or list of str/None):
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots / 
              two_spots_free_log_g).
@@ -1875,9 +1878,23 @@ def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
             Stellar photosphere log g (log10(cm/s^2)).
 
     '''
+    # Make sure stellar_contam is a list, even if it only contains one element
+    assert type(stellar_contam) in [str, list] or stellar_contam is None, ("ERROR! 'stellar_contam' must be a string "
+                                                                           "or None, or a list of strings or Nones.")
+    if type(stellar_contam) == str or stellar_contam is None:
+        stellar_contam = [stellar_contam]  # TODO: If [None] but there are multiple datasets, should be [None, None, ...]
     
     # Unpack names of stellar parameters
     stellar_param_names = param_names[N_params_cumulative[4]:N_params_cumulative[5]]
+
+    # If the user provided stellar contamination parameters with no '_set{}' at the end, warn the user, and add it,
+    # assuming the stellar contamination parameters are for dataset 0.
+    for i, stellar_param_name_i in enumerate(stellar_param_names):
+        if stellar_param_name_i in ['f_spot', 'f_fac', 'f_het', 'T_spot', 'T_fac', 'T_het', 'log_g_spot',
+                                    'log_g_fac', 'log_g_het']:
+            print('WARNING: Must provide dataset number in parameter name {}. Assume this parameter is for '
+                  'dataset 0.'.format(stellar_param_name_i))
+            stellar_param_names[i] = stellar_param_name_i + '_set0'
 
     # Unpack stellar properties
     T_phot_obs = star['T_eff']
@@ -1886,12 +1903,15 @@ def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
 
     # Initialise dictionaries for drawn stellar contamination parameters
     f_het, f_spot, f_fac, T_het, T_spot, T_fac, log_g_het, log_g_spot, log_g_fac = ({} for _ in range(9))
+    T_phot, log_g_phot = None, None
 
     # Iterate over datasets
     for i_dataset, stellar_contam_i in enumerate(stellar_contam):
 
         # If the dataset either does not have stellar contamination or shares its stellar contamination parameters with
         # another dataset, skip this iteration
+        if stellar_contam_i is None:
+            continue
         if ('f_het_set{}'.format(i_dataset) not in stellar_param_names and
                 'f_spot_set{}'.format(i_dataset) not in stellar_param_names):
             continue

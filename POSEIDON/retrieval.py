@@ -2,8 +2,6 @@
 Functions related to atmospheric retrieval.
 
 '''
-import pdb
-
 import numpy as np
 import time
 import os
@@ -66,8 +64,32 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     disable_atmosphere = model['disable_atmosphere']
     X_profile = model['X_profile']
 
-    # Before starting anything, do a sanity check to ensure that all data sets are consistent in whether they want
-    #  to fit/fix log_g (and therefore log_g_phot, because log_g_phot must be the same across all datasets).
+    # Before starting anything, do some sanity checks.
+    # Make sure stellar_contam is a string or None, or a list of strings or Nones
+    assert type(stellar_contam) in [str, list] or stellar_contam is None, ("ERROR! 'stellar_contam' must be a string "
+                                                                           "or None, or a list of strings or Nones.")
+    # Make sure stellar_contam is a list, even if it only contains one element
+    if type(stellar_contam) == str or stellar_contam is None:
+        stellar_contam = [stellar_contam]
+        model['stellar_contam'] = stellar_contam
+
+    # If no stellar contamination and the user only provided 'None' but there are multiple datasets, then assume that
+    # none of the datasets have stellar contamination.
+    if stellar_contam == [None] and len(data['datasets']) > 1:
+        stellar_contam = [None] * len(data['datasets'])
+        model['stellar_contam'] = stellar_contam
+
+    # If 'shared_stellar_contam' is not defined in 'model', warn the user, and create a default assuming each dataset
+    # has its own stellar contamination parameter.
+    if 'shared_stellar_contam' not in model:
+        print("Warning: 'shared_stellar_contam' not defined in 'model'. Assuming each dataset has its own stellar "
+              "contamination parameter.")
+        model["shared_stellar_contam"] = {}
+        for i_dataset in range(data['datasets']):
+            model["shared_stellar_contam"][i_dataset] = i_dataset
+
+    # Make sure that all data sets are consistent in whether they want to fit/fix log_g (and therefore log_g_phot,
+    # because log_g_phot must be the same across all datasets).
     fix_log_g_phot = None
     for i_dataset, stellar_contam_i in enumerate(stellar_contam):
         if stellar_contam_i is not None:
@@ -284,9 +306,25 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     N_params_cum = model['N_params_cum']
     surface = model['surface']
     stellar_contam = model['stellar_contam']
+    if 'shared_stellar_contam' not in model:
+        print("Warning: 'shared_stellar_contam' not defined in 'model'. Assuming each dataset has its own stellar "
+              "contamination parameter.")
+        model["shared_stellar_contam"] = {}
+        for i_dataset in range(data['datasets']):
+            model["shared_stellar_contam"][i_dataset] = i_dataset
     shared_stellar_contam = model['shared_stellar_contam']
     nightside_contam = model['nightside_contam']
     disable_atmosphere = model['disable_atmosphere']
+
+    # Make sure stellar_contam is a list, even if it only contains one element
+    assert type(stellar_contam) in [str, list] or stellar_contam is None, ("ERROR! 'stellar_contam' must be a string "
+                                                                           "or None, or a list of strings or Nones.")
+    if type(stellar_contam) == str or stellar_contam is None:
+        stellar_contam = [stellar_contam]
+
+    if stellar_contam == [None] and len(data['datasets']) > 1:
+        stellar_contam = [None] * len(data['datasets'])
+        model['stellar_contam'] = stellar_contam
 
     # Unpack planet and star properties
     R_p = planet['planet_radius']
@@ -414,7 +452,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     # Stellar contamination is only relevant for transmission spectra
     if ('transmission' in spectrum_type):
 
-        # Initialise dictionary containing spectrum of each dataset
+        # Initialise list containing spectrum of each dataset
         spectrum_all_datasets = []
 
         # Unpack stellar contamination parameters
@@ -426,11 +464,11 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             # Stellar contamination type for this dataset
             stellar_contam_i = stellar_contam[i_dataset]
 
-            # Index of the dataset with which this dataset shares stellar contamination parameters
-            # (shared_stellar_contam_i = i_dataset if no shared parameters)
-            shared_stellar_contam_i = shared_stellar_contam[i_dataset]
-
             if (stellar_contam_i != None):
+
+                # Index of the dataset with which this dataset shares stellar contamination parameters
+                # (shared_stellar_contam_i = i_dataset if no shared parameters)
+                shared_stellar_contam_i = shared_stellar_contam[i_dataset]
 
                 if ('one_spot' in stellar_contam_i):
 
@@ -500,7 +538,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             else:
                 spectrum_all_datasets.append(spectrum)
 
-        # Convert single atmosphere spectrum to a dictionary of (possibly stellar-contaminated) spectra
+        # Convert single atmosphere spectrum to a list of (possibly stellar-contaminated) spectra
         spectrum = spectrum_all_datasets
 
     #***** Step 5: nightside contamination (credit to John Kappelmeier) *****#
@@ -610,7 +648,24 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     error_inflation = model['error_inflation']
     offsets_applied = model['offsets_applied']
     stellar_contam = model['stellar_contam']
+    if 'shared_stellar_contam' not in model:
+        print("Warning: 'shared_stellar_contam' not defined in 'model'. Assuming each dataset has its own stellar "
+              "contamination parameter.")
+        model["shared_stellar_contam"] = {}
+        for i_dataset in range(data['datasets']):
+            model["shared_stellar_contam"][i_dataset] = i_dataset
     shared_stellar_contam = model['shared_stellar_contam']
+
+    # Make sure stellar_contam is a list, even if it only contains one element
+    assert type(stellar_contam) in [str, list] or stellar_contam is None, ("ERROR! 'stellar_contam' must be a string "
+                                                                           "or None, or a list of strings/Nones.")
+    if type(stellar_contam) == str or stellar_contam is None:
+        stellar_contam = [stellar_contam]
+        model['stellar_contam'] = stellar_contam
+
+    if stellar_contam == [None] and len(data['datasets']) > 1:
+        stellar_contam = [None] * len(data['datasets'])
+        model['stellar_contam'] = stellar_contam
 
     print("Unpacked model properties")
 
@@ -1072,7 +1127,7 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                 log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
 
             if type(spectrum) == list:
-                # Create one sample array per dataset
+                # Create a list of sample arrays, one sample array per dataset
                 spectrum_stored = [np.zeros(shape=(N_sample_draws, len(wl))) for _ in range(len(data['datasets']))]
             else:
                 # Create a single sample array (datasets are concatenated or there is only one dataset)

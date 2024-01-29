@@ -299,7 +299,7 @@ if __name__ == '__main__':
 
     # Read retrieved spectrum confidence regions
     wl, spec_low2, spec_low1, spec_median, \
-        spec_high1, spec_high2 = read_retrieved_spectrum(planet_name, model_name)
+        spec_high1, spec_high2 = read_retrieved_spectrum(planet_name, model_name, concatenate_wl=False)
     fprint(["Read retrieved spectrum."], fname=outfname)
 
     # Iterate over figures
@@ -308,11 +308,11 @@ if __name__ == '__main__':
         spectra_median, spectra_low1, spectra_low2, spectra_high1, spectra_high2 = ([] for _ in range(5))
         for dataset_j in retrieved_spec_figs[i_fig]:
             # Append composite spectra objects to appropriate collections
-            plot_collection(spec_median[dataset_j], wl[dataset_j], collection=spectra_median)
-            plot_collection(spec_low1[dataset_j], wl[dataset_j], collection=spectra_low1)
-            plot_collection(spec_low2[dataset_j], wl[dataset_j], collection=spectra_low2)
-            plot_collection(spec_high1[dataset_j], wl[dataset_j], collection=spectra_high1)
-            plot_collection(spec_high2[dataset_j], wl[dataset_j], collection=spectra_high2)
+            plot_collection(spec_median[dataset_j], wl[dataset_j], collection=spectra_median, concatenate_new=False)
+            plot_collection(spec_low1[dataset_j], wl[dataset_j], collection=spectra_low1, concatenate_new=False)
+            plot_collection(spec_low2[dataset_j], wl[dataset_j], collection=spectra_low2, concatenate_new=False)
+            plot_collection(spec_high1[dataset_j], wl[dataset_j], collection=spectra_high1, concatenate_new=False)
+            plot_collection(spec_high2[dataset_j], wl[dataset_j], collection=spectra_high2, concatenate_new=False)
         fprint(["Created composite spectra objects."], fname=outfname)
 
         # Produce figures

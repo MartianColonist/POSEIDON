@@ -794,7 +794,7 @@ def write_retrieved_log_X(retrieval_name, chemical_species, P, log_X_low2,
     f.close()
     
 
-def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
+def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None, concatenate_wl = True):
     '''
     ADD DOCSTRING
     '''
@@ -831,6 +831,10 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
         spec_high2.append(np.array(spec_file[5]))   # +2σ
 
         i_dataset += 1
+
+    # Concatenate wavelength array if requested  # TODO Temporary fix
+    if concatenate_wl:
+        wl = np.unique(np.concatenate(wl))
     
     return wl, spec_low2, spec_low1, spec_median, spec_high1, spec_high2
 
@@ -932,15 +936,30 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
            log_X_high1, log_X_high2
  
 
-def plot_collection(new_y, new_x, collection = []):
+def plot_collection(new_y, new_x, collection = [], concatenate_new = True):
     
     ''' Convenient function to combine distinct spectra and wavelength
         grids into a single object for plotting purposes.
     
     '''
-        
-    collection.append((new_y, new_x))
-    
+
+    if type(new_x) == list and type(new_y) == list:
+        if concatenate_new:
+            collection.append((np.concatenate(new_y), np.concatenate(new_x)))
+        else:
+            for i in range(len(new_x)):
+                collection.append((new_y[i], new_x[i]))
+    elif type(new_x) == np.ndarray and type(new_y) == list:
+        for i in range(len(new_y)):
+            assert new_x.size == new_y[i].size, "ERROR! x and y arrays must be the same size!"
+        if concatenate_new:
+            collection.append((np.concatenate(new_y), np.concatenate([new_x] * len(new_y))))
+        else:
+            for i in range(len(new_y)):
+                collection.append((new_y[i], new_x))
+    else:
+        collection.append((new_y, new_x))
+
     return collection
     
     

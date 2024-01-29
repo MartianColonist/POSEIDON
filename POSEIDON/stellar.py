@@ -221,7 +221,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
         prior_ranges (dict):
             User-provided dictionary containing numbers defining the prior range
             for each free parameter in the retrieval model.
-        stellar_contam (str):
+        stellar_contam (str/None or list of str/None):
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots).
         stellar_grid (str):
@@ -258,6 +258,12 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
     # Find MPI rank and size
     rank = comm.Get_rank()    # Core number
     size = comm.Get_size()    # Number of cores
+
+    # Make sure stellar_contam is a list, even if it only contains one element
+    assert type(stellar_contam) in [str, list] or stellar_contam is None, ("ERROR! 'stellar_contam' must be a string "
+                                                                           "or None, or a list of strings or Nones.")
+    if type(stellar_contam) == str or stellar_contam is None:
+        stellar_contam = [stellar_contam]
 
     # Unpack stellar properties
     Met_phot = star['Met']
@@ -304,6 +310,8 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
     # For free log g, we also need to interpolate over a range of stellar log g
     interp_log_g = False
     for stellar_contam_i in stellar_contam:
+        if stellar_contam_i is None:
+            continue
         if ('free_log_g' in stellar_contam_i):
             interp_log_g = True
             break
@@ -385,17 +393,30 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
 
     #***** Find heterogeneity grid ranges *****#
 
+    # If the user provided stellar contamination parameter prior ranges with no '_set{}' at the end, warn the user, and
+    # add it, assuming the stellar contamination parameters are for dataset 0.
+    for i, param_name_i in enumerate(prior_ranges):
+        if param_name_i in ['f_spot', 'f_fac', 'f_het', 'T_spot', 'T_fac', 'T_het', 'log_g_spot', 'log_g_fac',
+                            'log_g_het']:
+            print("WARNING: Must provide dataset number in parameter name {} of 'prior_ranges'. Assuming this "
+                  "parameter is for dataset 0.".format(param_name_i))
+            prior_ranges[i] = param_name_i + '_set0'
+
     T_het_min, T_het_max = np.inf, -np.inf  # Initialise min and max heterogeneity temperatures
     # Iterate over datasets to ensure the grid covers all values allowed by the possibly different priors
     for i_dataset, stellar_contam_i in enumerate(stellar_contam):
 
-        # If the dataset either does not have stellar contamination or shares its stellar contamination parameters with
-        # another dataset, skip this iteration
-        if ('f_het_set{}'.format(i_dataset) not in prior_ranges and
-                'f_spot_set{}'.format(i_dataset) not in prior_ranges):
-            continue
+        # If the dataset either does not have stellar contamination, do not update T_het_min and T_het_max
+        if stellar_contam_i is None:
+            T_het_min_i, T_het_max_i = np.inf, -np.inf  # T_het_min and T_het_max will not be updated
 
-        if ('one_spot' in stellar_contam_i):
+        # If the dataset does have stellar contamination parameters, but shares them with another dataset, do not update
+        # T_het_min and T_het_max
+        elif ('f_het_set{}'.format(i_dataset) not in prior_ranges and
+              'f_spot_set{}'.format(i_dataset) not in prior_ranges):
+            T_het_min_i, T_het_max_i = np.inf, -np.inf  # T_het_min and T_het_max will not be updated
+
+        elif ('one_spot' in stellar_contam_i):
 
             T_het_min_i = prior_ranges['T_het_set{}'.format(i_dataset)][0]
             T_het_max_i = prior_ranges['T_het_set{}'.format(i_dataset)][1]
@@ -410,6 +431,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
             T_het_min_i = min(T_spot_min, T_fac_min)
             T_het_max_i = max(T_spot_max, T_fac_max)
 
+        # TODO The case below should be unnecessary (should be caught by the first if statement) but I leave it in case (?)
         else:  # No stellar contamination
             T_het_min_i, T_het_max_i = np.inf, -np.inf  # T_het_min and T_het_max will not be updated
 
@@ -447,6 +469,8 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
 
         # If the dataset either does not have stellar contamination or shares its stellar contamination parameters with
         # another dataset, skip this iteration
+        if stellar_contam_i is None:
+            continue
         if ('f_het_set{}'.format(i_dataset) not in prior_ranges and
                 'f_spot_set{}'.format(i_dataset) not in prior_ranges):
             continue
@@ -561,7 +585,7 @@ def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
         prior_ranges (dict):
             User-provided dictionary containing numbers defining the prior range
             for each free parameter in the retrieval model.
-        stellar_contam (str):
+        stellar_contam (str or None):
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots).
         stellar_grid (str):

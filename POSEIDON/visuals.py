@@ -2443,14 +2443,15 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         wl_binned, spec_high1_binned, _ = bin_spectrum(wl, spec_high1, R_to_bin)
         wl_binned, spec_high2_binned, _ = bin_spectrum(wl, spec_high2, R_to_bin)
 
-        # Keep only the wavelength range of the dataset that the current model is being compared to
-        idx = np.where((wl_binned >= np.min(wl_data[i])) * (wl_binned <= np.max(wl_data[i])))
-        wl_binned = wl_binned[idx]
-        spec_med_binned = spec_med_binned[idx]
-        spec_low1_binned = spec_low1_binned[idx]
-        spec_low2_binned = spec_low2_binned[idx]
-        spec_high1_binned = spec_high1_binned[idx]
-        spec_high2_binned = spec_high2_binned[idx]
+        if len(wl_data) == len(spectra_median):
+            # Keep only the wavelength range of the dataset that the current model is being compared to
+            idx = np.where((wl_binned >= np.min(wl_data[i])) * (wl_binned <= np.max(wl_data[i])))
+            wl_binned = wl_binned[idx]
+            spec_med_binned = spec_med_binned[idx]
+            spec_low1_binned = spec_low1_binned[idx]
+            spec_low2_binned = spec_low2_binned[idx]
+            spec_high1_binned = spec_high1_binned[idx]
+            spec_high2_binned = spec_high2_binned[idx]
         
         # Only add sigma intervals to legend for one model (avoids clutter)
         if (N_spectra == 1):

@@ -408,11 +408,11 @@ def define_model(model_name, bulk_species, param_species,
         mass_setting (str):
             Whether the planetary mass is fixed or a free parameter.
             (Options: fixed / free).
-        stellar_contam (list of str):
+        stellar_contam (str/None or list of str/None):
             Chosen prescription for modelling unocculted stellar contamination for each dataset.
             (Options: one_spot / one_spot_free_log_g / two_spots / 
              two_spots_free_log_g).
-        shared_stellar_contam (dict):
+        shared_stellar_contam (dict or None):
             Whether the stellar contamination parameters are shared between
             datasets. The dictionary should be read as "Dataset <key> shares the same
             stellar contamination parameters as dataset <value>", or alternatively,
@@ -557,6 +557,26 @@ def define_model(model_name, bulk_species, param_species,
 
     # Find dimensionality of background atmosphere
     Atmosphere_dimension = max(PT_dim, X_dim)
+
+    #***** Stellar contamination sanity checks *****#
+    # Make sure stellar_contam is a string or None, or a list of strings or Nones
+    assert type(stellar_contam) in [str, list] or stellar_contam is None, ("ERROR! 'stellar_contam' must be a string "
+                                                                           "or None, or a list of strings or Nones.")
+    # Make sure stellar_contam is a list, even if it only contains one element
+    if type(stellar_contam) == str or stellar_contam is None:
+        stellar_contam = [stellar_contam]
+
+    # If 'shared_stellar_contam' is not defined and at least one dataset has stellar contamination, warn the user, and
+    # create a default assuming each dataset has its own stellar contamination parameter.
+    if shared_stellar_contam is None:
+        for stellar_contam_i in stellar_contam:
+            if stellar_contam_i is not None:
+                print("Warning: 'shared_stellar_contam' not defined and at least one dataset has stellar contamination. "
+                      "Assuming each dataset has its own stellar contamination parameter.")
+                break
+        shared_stellar_contam = {}
+        for i_dataset in range(len(stellar_contam)):
+            shared_stellar_contam[i_dataset] = i_dataset
 
     #***** Finally, identify the free parameters defining this model *****#
 
@@ -2891,8 +2911,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                     prior_ranges[parameter] = prior_ranges['T']
                 else:
                     prior_ranges[parameter] = prior_ranges_defaults['T']
-                    # TODO This could be dangerous if parameter = 'T_het_vis0' and the user did not specify a prior range.
-                    #  Why not use the default range for T_het_vis0 instead of the default range for T?
+                    # TODO This could be dangerous if parameter = 'T_het_set0' and the user did not specify a prior range.
+                    #  Why not use the default range for T_het_set0 instead of the default range for T?
 
             # Check if user didn't specify a distance prior for an imaged object 
             elif (parameter == 'd'):
@@ -2960,8 +2980,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
             elif ('T_' in parameter):
                 if ('T' in prior_types):
                     prior_types[parameter] = prior_types['T']
-                    # TODO This could be dangerous if parameter = 'T_het_vis0' and the user did not specify a prior type.
-                    #  Why not use the default type for T_het_vis0 instead of the default type for T?
+                    # TODO This could be dangerous if parameter = 'T_het_set0' and the user did not specify a prior type.
+                    #  Why not use the default type for T_het_set0 instead of the default type for T?
                 else:
                     prior_types[parameter] = 'uniform'
 
