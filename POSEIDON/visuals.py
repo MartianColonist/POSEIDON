@@ -2058,7 +2058,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
                            show_data_bin_width = True, show_data_cap = True,
-                           sigma_to_plot = 2, data_alpha = 0.8,
+                           sigma_to_plot = 2, data_alpha = 0.8, data_edge_width = 0.8,
                         ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2477,7 +2477,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                                                capsize=capsize, ls='none', elinewidth=0.8, 
                                                color=data_colours[i], alpha = data_alpha,
                                                ecolor = err_colour, label=label_i,
-                                               markeredgewidth = 0.8,
+                                               markeredgewidth = data_edge_width,
                                                zorder = 100)
         else:
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
@@ -2486,7 +2486,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                                                capsize=capsize, ls='none', elinewidth=0.8, 
                                                color=data_colours[i], alpha = data_alpha,
                                                ecolor = err_colour, label=label_i,
-                                               markeredgewidth = 0.8,
+                                               markeredgewidth = data_edge_width,
                                                zorder = 100)
 
         [markers.set_alpha(1.0)]
