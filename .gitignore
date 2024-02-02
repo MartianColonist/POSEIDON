@@ -38,10 +38,32 @@ run/
 /Make-Database-Final
 /Make-Database-Final-Less-Important
 /refractive_indices_txt
+
 /Wasp-17b
 /thermo_sonora_2020
 /Vulcan Output 3:20
 /VULCAN-HD189 Gradient
 /VULCAN-master
 /VULCAN2
-/final_experiments
+/HAT-P-26b-Emission
+/HAT-P-26b-Emission-High-Res
+/HD-189-Emission-AAS
+/HD-189-NewOpacity-Reflection
+/HD-189-No-Reflection
+/HD-189-Reflection-Emission-AAS
+/HD-189-Reflection-Emission-AAS-end-early
+/HD-189-Reflection-tests
+/HD-189-Transit-AAS
+/HD-189-Transit-AAS-100ppm-uniform
+/HD-189-Transit-New
+/HD189-Transit
+/HD209
+/HIP41378f
+/Saturn
+/Saturn-Final
+/Wasp-17b-Emission-Reflection
+/Wasp-17b-Full-Transit
+/WD-1856b
+/Wolf-503b
+/Wolf-503b-Instrument-Testing
+.gitignore
