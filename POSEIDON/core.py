@@ -62,6 +62,10 @@ import warnings
 
 warnings.filterwarnings("ignore") # Suppress numba performance warning
 
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
 
 def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
                 stellar_grid = 'blackbody', stellar_contam = None, 
@@ -373,7 +377,8 @@ def define_model(model_name, bulk_species, param_species,
                  aerosol_species = [], scattering = False, reflection = False,
                  log_P_slope_phot = 0.5,
                  log_P_slope_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0],
-                 Na_K_fixed_ratio = False):
+                 Na_K_fixed_ratio = False,
+                 reflection_up_to_5um = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -626,7 +631,8 @@ def define_model(model_name, bulk_species, param_species,
              'reflection' : reflection,
              'log_P_slope_phot': log_P_slope_phot,
              'log_P_slope_arr': log_P_slope_arr,
-             'Na_K_fixed_ratio': Na_K_fixed_ratio
+             'Na_K_fixed_ratio': Na_K_fixed_ratio,
+             'reflection_up_to_5um' : reflection_up_to_5um
              }
 
     return model
@@ -1136,6 +1142,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     cloud_dim = model['cloud_dim']
     scattering = model['scattering']
     reflection = model['reflection']
+    reflection_up_to_5um = model['reflection_up_to_5um']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1557,14 +1564,41 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # Add in the seperate reflection  
         if (reflection == True):
 
-            albedo = reflection_Toon(P, wl, dtau_tot,
-                        kappa_Ray, kappa_cloud, kappa_tot,
-                        w_cloud, g_cloud, zone_idx,
-                        single_phase = 3, multi_phase = 0,
-                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                        Gauss_quad = 5, numt = 1,
-                        toon_coefficients=0, tridiagonal=0, b_top=0)
+            if reflection_up_to_5um == True:
+                
+                try:
+                    index_5um = find_nearest(wl,5)
+                except:
+                    raise Exception('Does the wavelength object go up to 5um? (reflection_up_to_5um = True)')
+                
+                wl_cut = wl[:index_5um]
+                dtau_tot_cut = dtau_tot[:,:index_5um]
+                kappa_Ray_cut = kappa_Ray[:,:,:,:index_5um]
+                kappa_cloud_cut = kappa_cloud[:,:,:,:index_5um]
+                kappa_tot_cut = kappa_tot[:,:index_5um]
+                w_cloud_cut = w_cloud[:,:,:,:index_5um]
+                g_cloud_cut = g_cloud[:,:,:,:index_5um]
+
+                albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
+                                            kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
+                                            w_cloud_cut, g_cloud_cut, zone_idx,
+                                            single_phase = 3, multi_phase = 0,
+                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                            Gauss_quad = 5, numt = 1,
+                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                
+                albedo_zeros = np.zeros(len(wl[index_5um:]))
+                albedo = np.concatenate((albedo_cut, albedo_zeros))
             
+            else:
+                albedo = reflection_Toon(P, wl, dtau_tot,
+                            kappa_Ray, kappa_cloud, kappa_tot,
+                            w_cloud, g_cloud, zone_idx,
+                            single_phase = 3, multi_phase = 0,
+                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                            Gauss_quad = 5, numt = 1,
+                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                
             #from line_profiler import LineProfiler
             #lp = LineProfiler()
             #lp_wrapper = lp(reflection_Toon)
