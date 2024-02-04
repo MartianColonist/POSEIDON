@@ -879,7 +879,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         err_data = data['err_data']
         
         # Compute effective error, if unknown systematics included
-        if (error_inflation == 'Line_2015'):
+        if (error_inflation == 'Line15'):
             err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
             norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
         else: 

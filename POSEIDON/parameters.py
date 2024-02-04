@@ -688,7 +688,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     #***** Error adjustment parameters *****#
 
     if (error_inflation == 'Line15'): 
-        params += ['log_b']                  # TBD: CHECK definition
+        params += ['b']
         N_error_params = 1
     elif (error_inflation == None):    
         N_error_params = 0
