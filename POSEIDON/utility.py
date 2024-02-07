@@ -668,10 +668,11 @@ def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
         # Cut out first and last values to avoid SpectRes boundary NaNs
         wl_binned = wl_binned[1:-1]
         spectrum_binned = spectrum_binned[1:-1]
+        err_binned = err_binned[1:-1]
 
         # Replace Spectres boundary NaNs with second and penultimate values
-        err_binned[0] = err_binned[1]
-        err_binned[-1] = err_binned[-2]
+     #   err_binned[0] = err_binned[1]
+     #   err_binned[-1] = err_binned[-2]
 
     # Call Spectres routine
     else:
