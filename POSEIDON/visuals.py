@@ -1729,7 +1729,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
               data_marker_list = [], data_marker_size_list = [],
               err_colour = 'black', wl_axis = 'log', figure_shape = 'default', 
               legend_location = 'upper right', legend_box = False,
-              show_data_bin_width = True):
+              show_data_bin_width = True, show_data_cap = True,
+              data_alpha = 0.8, data_edge_width = 0.8):
     ''' 
     Plot a collection of datasets. This function can plot transmission or 
     emission datasets, according to the user's choice of 'y_unit'.
@@ -1961,21 +1962,29 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         err_data_i = err_data[idx_start:idx_end]
         bin_size_i = bin_size[idx_start:idx_end]
 
+        if (show_data_cap == True):
+            capsize = 2
+        else:
+            capsize = 0
+
         # Plot dataset
         if (show_data_bin_width == True):
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                xerr=bin_size_i, marker=data_markers[i], 
                                                markersize=data_markers_size[i], 
-                                               capsize=2, ls='none', elinewidth=0.8, 
-                                               color=colours[i], alpha = 0.8,
-                                               ecolor = err_colour, label=label_i)
+                                               capsize=capsize, ls='none', elinewidth=0.8, 
+                                               color=colours[i], alpha = data_alpha,
+                                               ecolor = err_colour, label=label_i,
+                                               markeredgewidth = data_edge_width,)
+
         else:
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                marker=data_markers[i], 
                                                markersize=data_markers_size[i], 
-                                               capsize=2, ls='none', elinewidth=0.8, 
-                                               color=colours[i], alpha = 0.8,
-                                               ecolor = err_colour, label=label_i)
+                                               capsize=capsize, ls='none', elinewidth=0.8, 
+                                               color=colours[i], alpha = data_alpha,
+                                               ecolor = err_colour, label=label_i,
+                                               markeredgewidth = data_edge_width)
 
         [markers.set_alpha(1.0)]
             
