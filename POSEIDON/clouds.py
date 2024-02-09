@@ -1486,7 +1486,7 @@ def Mie_cloud(P,wl,r, H, n,
         # Fuzzy Deck Model 
         if (cloud_type == 'fuzzy_deck'):
             # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-            n_aerosol = np.empty_like(r)
+            n_aerosol = np.zeros_like(r)
             P_cloud_index = find_nearest(P,P_cloud)
             # Find the radius corresponding to the cloud top pressure 
             cloud_top_height = r[P_cloud_index]
@@ -1511,7 +1511,7 @@ def Mie_cloud(P,wl,r, H, n,
         elif (cloud_type == 'fuzzy_deck_plus_slab'):
             # The first index will be the fuzzy deck 
             if q == 0:
-                n_aerosol = np.empty_like(r)
+                n_aerosol = np.zeros_like(r)
                 P_cloud_index = find_nearest(P,P_cloud[q])
                 cloud_top_height = r[P_cloud_index]
                 h = r[P_cloud_index:] - cloud_top_height
@@ -1531,7 +1531,7 @@ def Mie_cloud(P,wl,r, H, n,
         elif (cloud_type == 'opaque_deck_plus_slab'):
             
             if q == 0:
-                n_aerosol = np.empty_like(r)
+                n_aerosol = np.zeros_like(r)
                 P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
                 n_aerosol[:P_cloud_index] = 1.0e250
                 n_aerosol_array.append(n_aerosol)
@@ -1542,9 +1542,22 @@ def Mie_cloud(P,wl,r, H, n,
             n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
             n_aerosol_array.append(n_aerosol)
 
+        # For opaque deck + uniform x, we add opaque deck as the first element 
+        elif (cloud_type == 'opaque_deck_plus_uniform_X'):
+
+            if q == 0:
+                n_aerosol = np.zeros_like(r)
+                P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
+                n_aerosol[:P_cloud_index] = 1.0e250
+                n_aerosol_array.append(n_aerosol)
+                
+            n_aerosol = np.zeros_like(r)
+            n_aerosol = (n)*np.float_power(10,log_X_Mie[q])
+            n_aerosol_array.append(n_aerosol)
+
         # Uniform X Model 
         else:
-            n_aerosol = np.empty_like(r)
+            n_aerosol = np.zeros_like(r)
             n_aerosol = (n)*np.float_power(10,log_X_Mie[q])
             n_aerosol_array.append(n_aerosol)
 
@@ -2066,7 +2079,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     # Fuzzy Deck Model 
     if cloud_type == 'fuzzy_deck':
         # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-        n_aerosol = np.empty_like(r)
+        n_aerosol = np.zeros_like(r)
         P_cloud_index = find_nearest(P,P_cloud)
         # Find the radius corresponding to the cloud top pressure 
         cloud_top_height = r[P_cloud_index]
@@ -2100,10 +2113,21 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
         P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
         n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie)
 
+    # Opaque Deck + Uniform X Model 
+    # In this model, the P_cloud has the deck pressure and the slab pressure. For the others, its a int 
+    elif cloud_type == 'opaque_deck_plus_uniform_X':
+
+        # Unifrom X First
+        n_aerosol = np.zeros_like(r)
+        n_aerosol = (n)*np.float_power(10,log_X_Mie)
+
+        # Deck next
+        P_cloud_index = find_nearest(P,P_cloud[0])
+        n_aerosol[:P_cloud_index] = 1.0e250
 
     # Uniform X
     elif cloud_type == 'uniform_X':
-        n_aerosol = np.empty_like(r)
+        n_aerosol = np.zeros_like(r)
         n_aerosol = (n)*np.float_power(10,log_X_Mie)
 
     # At this point, the r_i_real, r_i_complex is either a float or an array (free vs file_read)

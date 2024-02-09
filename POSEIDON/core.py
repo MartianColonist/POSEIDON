@@ -1343,6 +1343,25 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      cloud_type = model['cloud_type'],
                                                      aerosol_grid = aerosol_grid,
                                                      log_X_Mie = log_X_Mie)
+                        
+                # If its an opaque deck + uniform X run
+                elif (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
+
+                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
+                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
+                                                          log_X_Mie = log_X_Mie,
+                                                          P_cloud = P_cloud)
+
+                    else: 
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
+                                                     r_m, aerosol_species,
+                                                     cloud_type = model['cloud_type'],
+                                                     aerosol_grid = aerosol_grid,
+                                                     log_X_Mie = log_X_Mie,
+                                                     P_cloud = P_cloud)
 
                 # If its a opaque_deck_plus_slab run 
                 elif (model['cloud_type'] == 'opaque_deck_plus_slab'):

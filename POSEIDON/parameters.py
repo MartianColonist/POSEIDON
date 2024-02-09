@@ -625,8 +625,20 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_X_' + aerosol]
 
-            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab']):
-                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab.")
+            elif (cloud_type == 'opaque_deck_plus_uniform_X'):
+
+                cloud_params += ['log_P_top_deck']
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    cloud_params += ['log_r_m']
+                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+
+            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab', 'opaque_deck_plus_uniform_X']):
+                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X.")
         
         elif (cloud_model == 'eddysed'):
             cloud_params += ['kappa_cloud_eddysed']
@@ -1693,6 +1705,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
                             log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
                             P_slab_bottom = np.power(10.0, (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
+
                 
                 # Otherwise, it is just a slab model 
                 else:
@@ -1711,27 +1724,49 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                     log_n_max = 0
                     fractional_scale_height = 0
             
-            # Otherwise, its just a fuzzy deck with no slabs 
+            # Otherwise, its just a fuzzy deck with no slabs or opaque_deck_plus_uniform_X
             else:
-            
-                try:
-                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
-                    P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
-                    log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
-                    fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
-                except:
-                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
-                    P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
-                    log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
-                    fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
 
-                # Need to set the slab parameters to dummy values to pass into the cloud object 
-                log_X_Mie = 100
-                P_slab_bottom = 100.0
- 
+                # Fuzzy deck 
+                if any ('log_n_max' in s for s in cloud_param_names):
+                
+                    try:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
+                        log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
+                        fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+                    except:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
+                        log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
+                        fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+
+                    # Need to set the slab parameters to dummy values to pass into the cloud object 
+                    log_X_Mie = 100
+                    P_slab_bottom = 100.0
+                
+                # opaque_deck_plus_uniform_x
+                else:
+
+                    try:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                        
+                    except:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_top')[0][0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
+
+                    # If uniform_X, you set the slab and deck parameters to dummy values to pass into the cloud object
+                    log_n_max = 0
+                    fractional_scale_height = 0
+                    P_slab_bottom = 100.0
+
         
-        # If the aerosol is a uniform_haze model 
+        # If the aerosol is a uniform_X
         else:
+
             try:
                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
