@@ -52,7 +52,7 @@ If you use POSEIDON in your work, please cite `MacDonald & Madhusudhan (2017)
 License
 -------
 
-Copyright 2023 Ryan J. MacDonald
+Copyright 2023-2024 Ryan J. MacDonald
 
 POSEIDON is available under the BSD 3-Clause License.
 Please see the LICENSE file for more information.
