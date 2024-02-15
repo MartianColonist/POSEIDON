@@ -172,6 +172,47 @@ def compute_T_slope(P, T_phot, Delta_T_arr, log_P_phot = 0.5,
     return T
 
 
+def compute_T_Pelletier(P, T_points):
+    '''
+    Computes the temperature profile for an atmosphere using the 'spline' P-T 
+    profile parametrisation defined in Pelletier (2021).
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T_points (np.array of float):
+            Array of temperatures specified at the knots 
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K).
+            Only the first axis is used for this 1D profile.
+    
+    '''
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Store the minimum and maximum P in logspace
+    P_min = np.min(np.log10(P))
+    P_max = np.max(np.log10(P))
+
+    # Length of the temperature point array (which equals the number of knots)
+    number_P_knots = len(T_points)
+    
+    # Define the log_P_points where the temperatures are 
+    # These are defined as equal in pressure space with number of spline points 
+    # This includes the top and bottom of the pressure array 
+    log_P_points = np.linspace(P_min,P_max,num=number_P_knots)
+
+    # Initialise interpolated temperature array
+    T = np.zeros(shape=(N_layers, 1, 1)) # 1D profile => N_sectors = N_zones = 1
+
+    # Apply monotonic cubic interpolation to compute P-T profile from T points
+    T[:,0,0] = pchip_interpolate(log_P_points, T_points, np.log10(P))
+
+    return T
+
 @jit(nopython = True)
 def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
                              N_sectors, N_zones, alpha, beta, phi, theta,
@@ -1250,7 +1291,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
              He_fraction, T_input, X_input, P_param_set, 
              log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio,
-             constant_gravity = False, chemistry_grid = None):
+             constant_gravity = False, chemistry_grid = None,
+             PT_penalty = False):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1466,6 +1508,27 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
 
         # Gaussian smooth P-T profile
         T = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
+        
+    # For the Pelletier (2021) profile (1D only)
+    elif (PT_profile == 'Pelletier'):
+        
+        # Unpack P-T profile parameters
+        if PT_penalty == False:
+            T_points = PT_state
+        
+        # If PT_penalty = True, then the last parameter is sigma_s
+        else:
+            T_points = PT_state[:-1]
+            
+        # Compute unsmoothed temperature profile
+        T_rough = compute_T_Pelletier(P, T_points)
+        T = T_rough
+
+        # Find how many layers corresponds to 0.3 dex smoothing width
+        #smooth_width = round(0.3/(((np.log10(P[0]) - np.log10(P[-1]))/len(P))))
+
+        # Gaussian smooth P-T profile
+        #T = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
 
     # Read user provided P-T profile
     elif (PT_profile == 'file_read'):

@@ -2174,8 +2174,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick spectra validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 4):
-        raise Exception("Max number of concurrent retrieved spectra to plot is 4.")
+    if (N_spectra > 5):
+        raise Exception("Max number of concurrent retrieved spectra to plot is 5.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((binned_colour_list != []) and (N_spectra != len(binned_colour_list))):

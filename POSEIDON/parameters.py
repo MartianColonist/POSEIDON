@@ -16,7 +16,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
-                       aerosol_species, log_P_slope_arr):
+                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -104,6 +104,10 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         log_P_slope_array (np.array of float):
             Log pressures where the temperature difference parameters are 
             defined (Piette & Madhusudhan 2020 profile only)
+        number_P_knots (float):
+            Number of uniform knots in pressure space (only for Pelletier 2021 P-T profile)
+        PT_penalty (bool):
+            If True, introduces the sigma_smooth parameter for retrievals (only for Pelletier 2021 P-T profile)
 
     Returns:
         params (np.array of str):
@@ -183,7 +187,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** PT profile parameters *****#
 
         if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
-                            'slope', 'file_read']):
+                            'slope', 'Pelletier', 'file_read']):
             raise Exception("Error: unsupported P-T profile.")
 
         # Check profile settings are supported
@@ -192,6 +196,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             
         if ((PT_profile == 'Madhu') and (PT_dim > 1)):
             raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Pelletier') and (PT_dim > 1)):
+            raise Exception("Pelletier (2021) profile only supported for 1D models")
 
         if ((PT_profile == 'slope') and (PT_dim > 1)):
             raise Exception("Slope profile only supported for 1D models")
@@ -211,6 +218,14 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 PT_params += ['T_phot_PT']
                 for i in range(len(log_P_slope_arr)):
                     PT_params += ['Delta_T_' + str(i+1)]
+            elif (PT_profile == 'Pelletier'):
+                if number_P_knots < 3:
+                    raise Exception('number_P_knots must be at least 3. (Captures top, bottom, middle pressures in log space)')
+                for i in range(number_P_knots):
+                    PT_params += ['T_' + str(i+1)]
+                if PT_penalty == True:
+                    PT_params += ['sigma_s']
+            
             
         # 2D model (asymmetric terminator or day-night transition)
         elif (PT_dim == 2):
@@ -855,6 +870,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_PT = 8     
     elif (PT_profile == 'Madhu'):   # Madhusudhan & Seager (2009) profile
         len_PT = 6
+    elif (PT_profile == 'Pelletier'):
+        len_PT = len(PT_in)
     elif (PT_profile == 'slope'):   # Piette & Madhusudhan (2020) profile
         len_PT = 8
     elif (PT_profile == 'file_read'):   # User provided file
@@ -903,6 +920,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             PT_state = PT_in                # Assign 6 parameters defining this profile
         elif (PT_profile == 'slope'):
             PT_state = PT_in                # Assign 8 parameters defining this profile
+        elif (PT_profile == 'Pelletier'):
+            PT_state = PT_in
                
     # 2D atmosphere
     elif (PT_dim == 2):

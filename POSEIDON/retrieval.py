@@ -252,6 +252,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     stellar_contam = model['stellar_contam']
     nightside_contam = model['nightside_contam']
     disable_atmosphere = model['disable_atmosphere']
+    PT_penalty = model['PT_penalty']
 
     # Unpack planet and star properties
     R_p = planet['planet_radius']
@@ -354,6 +355,33 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
                                      log_g, M_p, T_input, X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN, 
                                      constant_gravity, chemistry_grid)
+        
+        # If PT_penalty is true, then you compute the PT penalty
+        # Only for Pelletier 2021 profiles
+        if PT_penalty == True:
+
+            # Unpack Ptop and Pbottom 
+            log_P_min = np.min(np.log10(P))
+            log_P_max = np.max(np.log10(P))
+
+            # Unpack the number of knots, T points, and sigma smooth
+            num_of_knots = len(PT_params) - 1
+            T_points = PT_params[:-1]
+            sigma_s = PT_params[-1]
+
+            # Delta log p goes in denominator of the sum
+            # restep here just returns the spacing 
+            deltalogp = np.linspace(log_P_min,log_P_max,num=num_of_knots,retstep=True)[1]
+
+            # Sum in Equation 11, with the addition of a 1/2 ln (2 pi sigma_smooth**2) from Line et al 2011
+            sum = np.sum(((T_points[2:] - 2*T_points[1:-1] + T_points[:-2])**2)/(deltalogp**3) ) - 0.5 * np.log(2*np.pi*sigma_s**2)
+            
+            # Prefix remains the same from Equation 11
+            lnprior_TP = (-1.0/(2.0*sigma_s**2)) * (1/(log_P_min-log_P_max)) * sum
+        
+        else:
+            lnprior_TP = 0
+        
 
         #***** Step 3: generate spectrum of atmosphere ****#
 
@@ -474,7 +502,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             F_s_binned = bin_spectrum_to_data(F_s_obs, wl, data)
             ymodel = F_p_binned/F_s_binned
 
-    return ymodel, spectrum, atmosphere 
+    return ymodel, spectrum, atmosphere, lnprior_TP
 
 
 @jit(nopython = True)
@@ -551,6 +579,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     error_inflation = model['error_inflation']
     offsets_applied = model['offsets_applied']
     stellar_contam = model['stellar_contam']
+    PT_penalty = model['PT_penalty']
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
@@ -852,13 +881,13 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         
         #***** For valid parameter combinations, run forward model *****#
 
-        ymodel, spectrum, _ = forward_model(cube, planet, star, model, opac, data, 
-                                            wl, P, P_ref_set, R_p_ref_set, P_param_set, 
-                                            He_fraction, N_slice_EM, N_slice_DN, 
-                                            spectrum_type, T_phot_grid, T_het_grid, 
-                                            log_g_phot_grid, log_g_het_grid,
-                                            I_phot_grid, I_het_grid, y_p, F_s_obs,
-                                            constant_gravity, chemistry_grid)
+        ymodel, spectrum, _, lnprior_TP = forward_model(cube, planet, star, model, opac, data, 
+                                                        wl, P, P_ref_set, R_p_ref_set, P_param_set, 
+                                                        He_fraction, N_slice_EM, N_slice_DN, 
+                                                        spectrum_type, T_phot_grid, T_het_grid, 
+                                                        log_g_phot_grid, log_g_het_grid,
+                                                        I_phot_grid, I_het_grid, y_p, F_s_obs,
+                                                        constant_gravity, chemistry_grid)
         
         # Reject unphysical spectra (forced to be NaN by function above)
         if (np.any(np.isnan(spectrum))):
@@ -912,6 +941,9 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     
         loglikelihood = (-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq).sum()
         loglikelihood += norm_log
+
+        # Add the PT penalty 
+        loglikelihood += lnprior_TP
                     
         return loglikelihood
     

@@ -377,6 +377,7 @@ def define_model(model_name, bulk_species, param_species,
                  aerosol_species = [], scattering = False, reflection = False,
                  log_P_slope_phot = 0.5,
                  log_P_slope_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0],
+                 number_P_knots = 0, PT_penalty = False,
                  Na_K_fixed_ratio = False,
                  reflection_up_to_5um = False):
     '''
@@ -485,8 +486,14 @@ def define_model(model_name, bulk_species, param_species,
         log_P_slope_arr (np.array of float):
             Log pressures where the temperature difference parameters are 
             defined (only for the Piette & Madhusudhan 2020 P-T profile).
+        number_P_knots (float):
+            Number of uniform knots in pressure space (only for Pelletier 2021 P-T profile)
+        PT_penalty (bool):
+            If True, introduces the sigma_smooth parameter for retrievals (only for Pelletier 2021 P-T profile)
         Na_K_fixed_ratio (bool):
             If True, sets log_K = 0.1 * log_Na
+        reflection_up_to_5um (bool):
+            If True, only computes albedo up to 5 um (in order to speed up computations)
 
     Returns:
         model (dict):
@@ -587,7 +594,8 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere, aerosol_species, log_P_slope_arr,)
+                                      reference_parameter, disable_atmosphere, aerosol_species, log_P_slope_arr,
+                                      number_P_knots, PT_penalty)
     
     # If cloud_model = Mie, load in the cross section 
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
@@ -632,7 +640,8 @@ def define_model(model_name, bulk_species, param_species,
              'log_P_slope_phot': log_P_slope_phot,
              'log_P_slope_arr': log_P_slope_arr,
              'Na_K_fixed_ratio': Na_K_fixed_ratio,
-             'reflection_up_to_5um' : reflection_up_to_5um
+             'reflection_up_to_5um' : reflection_up_to_5um,
+             'PT_penalty' : PT_penalty
              }
 
     return model
@@ -894,6 +903,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     log_P_slope_arr = model['log_P_slope_arr']
     aerosol_species = model['aerosol_species']
     Na_K_fixed_ratio = model['Na_K_fixed_ratio']
+    PT_penalty = model['PT_penalty']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -982,7 +992,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
                            T_input, X_input, P_param_set, log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio, constant_gravity,
-                           chemistry_grid)
+                           chemistry_grid, PT_penalty)
 
     #***** Store cloud / haze / aerosol properties *****#
 
