@@ -400,7 +400,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         if (np.any(np.isnan(spectrum))):
             
             # Quit if given parameter combination is unphysical
-            return 0, spectrum, atmosphere
+            return 0, spectrum, atmosphere, lnprior_TP
 
     #***** Step 4: stellar contamination *****#
     
