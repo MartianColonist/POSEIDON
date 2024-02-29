@@ -920,19 +920,62 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         offset_start = data['offset_start']
         offset_end = data['offset_end']
 
+        offset_1_start = data['offset_1_start']
+        offset_1_end = data['offset_1_end']
+        offset_2_start = data['offset_2_start']
+        offset_2_end = data['offset_2_end']
+        offset_3_start = data['offset_3_start']
+        offset_3_end = data['offset_3_end']
+
         # Apply relative offset between datasets
         if (offsets_applied == 'single_dataset'):
+
             ydata_adjusted = ydata.copy()
-            ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
+
+            # One offset for one dataset
+            if offset_1_start == 0:
+                ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
+            
+            # Else, you have multiple datasets lumped together with a single offset
+            else:
+                for n in range(len(offset_1_start)):
+                    ydata_adjusted[offset_1_start[n]:offset_1_end[n]] -= offset_params[0]*1e-6 
+
         elif (offsets_applied == 'two_datasets'):
+
             ydata_adjusted = ydata.copy()
-            ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
-            ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
+
+            # Two offsets for two datasets
+            if offset_1_start == 0:
+                ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
+                ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
+            
+            # Else, you have multiple datasets lumped together in both or either offset
+            else:
+                for n in range(len(offset_1_start)):
+                    ydata_adjusted[offset_1_start[n]:offset_1_end[n]] -= offset_params[0]*1e-6 
+                for m in range(len(offset_2_start)):
+                    ydata_adjusted[offset_2_start[m]:offset_2_end[m]] -= offset_params[1]*1e-6 
+
         elif (offsets_applied == 'three_datasets'):
+
             ydata_adjusted = ydata.copy()
-            ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
-            ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
-            ydata_adjusted[offset_start[2]:offset_end[2]] -= offset_params[2]*1e-6
+
+            # Three offsets for three dataseets
+            if offset_1_start == 0:
+                ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
+                ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
+                ydata_adjusted[offset_start[2]:offset_end[2]] -= offset_params[2]*1e-6
+
+            # Else, you have multiple datasets lumped together in both or either offset
+            else:
+                for n in range(len(offset_1_start)):
+                    ydata_adjusted[offset_1_start[n]:offset_1_end[n]] -= offset_params[0]*1e-6 
+                for m in range(len(offset_2_start)):
+                    ydata_adjusted[offset_2_start[m]:offset_2_end[m]] -= offset_params[1]*1e-6 
+                for s in range(len(offset_3_start)):
+                    ydata_adjusted[offset_3_start[s]:offset_3_end[s]] -= offset_params[2]*1e-6 
+            
         else: 
             ydata_adjusted = ydata
         

@@ -2720,7 +2720,10 @@ def compute_spectrum_p(planet, star, model, atmosphere, opac, wl,
 
 def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
               wl_unit = 'micron', bin_width = 'half', spectrum_unit = '(Rp/Rs)^2', 
-              skiprows = None):
+              skiprows = None,
+              offset_1_datasets = None,
+              offset_2_datasets = None,
+              offset_3_datasets = None):
     '''
     Load the user provided datasets into the format expected by POSEIDON. 
     Also generate the functions required for POSEIDON to later calculate 
@@ -2740,7 +2743,7 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
         offset_datasets (list of str):
             If applying a relative offset to one or more datasets, this list
             gives the file names of the datasets that will have free offsets
-            applied (note: currently only supports *one* offset dataset).
+            applied (note: currently only supports *two* offset datasets).
         wl_unit (str):
             Unit of wavelength column (first column in file)
             (Options: micron (or equivalent) / nm / A / m)
@@ -2752,6 +2755,12 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
             (Options: (Rp/Rs)^2 / Rp/Rs / Fp/Fs / Fp (or equivalent units)).
         skiprows (int):
             The number of rows to skip (e.g. use 1 if file has a header line).
+        offset_1_datasets (list of str):
+            Specifially lumps together multiple datasets to have one offset applied (delta_rel_1)
+        offset_2_datasets (list of str):
+            Specifially lumps together multiple datasets to have one offset applied (delta_rel_2)
+        offset_3_datasets (list of str):
+            Specifially lumps together multiple datasets to have one offset applied (delta_rel_3)
 
     Returns:
         data (dict):
@@ -2839,9 +2848,86 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
                     offset_data_end.append(len_data_idx[offset_dataset_idx+1])  # Data index of last point with offset + 1
                 else: 
                     raise Exception("Dataset chosen for relative offset is not included.")
+                
+        offset_1_data_start = 0
+        offset_1_data_end = 0
+        offset_2_data_start = 0
+        offset_2_data_end = 0
+        offset_3_data_start = 0
+        offset_3_data_end = 0
+    
+    # For including multiple datasets in one offset
+    elif (offset_1_datasets is not None):
+
+        offset_1_datasets = np.array(offset_1_datasets)
+
+        offset_1_data_start = []
+        offset_1_data_end = []
+        
+        for n in range(len(offset_1_datasets)):
+            if (offset_1_datasets[n] in datasets):
+                offset_1_dataset_idx = np.where(datasets == offset_1_datasets[n])[0][0]
+                offset_1_data_start.append(len_data_idx[offset_1_dataset_idx])  # Data index of first point with offset
+                offset_1_data_end.append(len_data_idx[offset_1_dataset_idx+1])  # Data index of last point with offset + 1
+            else: 
+                raise Exception("Dataset chosen for relative offset 1 is not included.")
+            
+        # For including multiple datasets in a second offset
+        if (offset_2_datasets is not None):
+
+            offset_2_datasets = np.array(offset_2_datasets)
+
+            offset_2_data_start = []
+            offset_2_data_end = []
+            
+            for n in range(len(offset_2_datasets)):
+                if (offset_2_datasets[n] in datasets):
+                    offset_2_dataset_idx = np.where(datasets == offset_2_datasets[n])[0][0]
+                    offset_2_data_start.append(len_data_idx[offset_2_dataset_idx])  # Data index of first point with offset
+                    offset_2_data_end.append(len_data_idx[offset_2_dataset_idx+1])  # Data index of last point with offset + 1
+                else: 
+                    raise Exception("Dataset chosen for relative offset 2 is not included.")
+        
+        else:
+            offset_2_data_start = 0
+            offset_2_data_end = 0
+        
+        # For including multiple datasets in a third offset
+        if (offset_3_datasets is not None):
+
+            if offset_2_datasets is None:
+                raise Exception('Need to have a dataset in offset_2_datasets when using 3 offsets')
+
+            offset_3_datasets = np.array(offset_3_datasets)
+
+            offset_3_data_start = []
+            offset_3_data_end = []
+            
+            for n in range(len(offset_3_datasets)):
+                if (offset_3_datasets[n] in datasets):
+                    offset_3_dataset_idx = np.where(datasets == offset_3_datasets[n])[0][0]
+                    offset_3_data_start.append(len_data_idx[offset_3_dataset_idx])  # Data index of first point with offset
+                    offset_3_data_end.append(len_data_idx[offset_3_dataset_idx+1])  # Data index of last point with offset + 1
+                else: 
+                    raise Exception("Dataset chosen for relative offset 3 is not included.")
+                
+        else:
+            offset_3_data_start = 0
+            offset_3_data_end = 0
+                
+        offset_data_start = 0    # Dummy values when no offsets included
+        offset_data_end = 0
+
+
     else:
         offset_data_start = 0    # Dummy values when no offsets included
         offset_data_end = 0
+        offset_1_data_start = 0
+        offset_1_data_end = 0
+        offset_2_data_start = 0
+        offset_2_data_end = 0
+        offset_3_data_start = 0
+        offset_3_data_end = 0
         
     # Check that the model wavelength grid covers all the data bins
     if (np.any((wl_data - half_bin) < wl_model[0])):
@@ -2855,7 +2941,10 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
             'sens': sens, 'len_data_idx': len_data_idx, 'psf_sigma': psf_sigma,
             'norm': norm, 'bin_left': bin_left, 'bin_cent': bin_cent, 
             'bin_right': bin_right, 'offset_start': offset_data_start,
-            'offset_end': offset_data_end, 'fwhm': fwhm
+            'offset_end': offset_data_end, 'fwhm': fwhm,
+            'offset_1_start': offset_1_data_start, 'offset_1_end': offset_1_data_end,
+            'offset_2_start': offset_2_data_start, 'offset_2_end': offset_2_data_end,
+            'offset_3_start': offset_3_data_start, 'offset_3_end': offset_3_data_end,
            }
 
     return data
