@@ -366,7 +366,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
 
             # Unpack the number of knots, T points, and sigma smooth
             num_of_knots = len(PT_params) - 1
-            T_points = PT_params[:-1]
+            T_points = np.array(PT_params[:-1])
             sigma_s = PT_params[-1]
 
             # Delta log p goes in denominator of the sum
@@ -377,8 +377,8 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             sum = np.sum(((T_points[2:] - 2*T_points[1:-1] + T_points[:-2])**2)/(deltalogp**3) ) - 0.5 * np.log(2*np.pi*sigma_s**2)
             
             # Prefix remains the same from Equation 11
-            lnprior_TP = (-1.0/(2.0*sigma_s**2)) * (1/(log_P_min-log_P_max)) * sum
-        
+            lnprior_TP = (-1.0/(2.0*sigma_s**2)) * (1/(log_P_max-log_P_min)) * sum
+
         else:
             lnprior_TP = 0
         
@@ -400,7 +400,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         if (np.any(np.isnan(spectrum))):
             
             # Quit if given parameter combination is unphysical
-            return 0, spectrum, atmosphere
+            return 0, spectrum, atmosphere, lnprior_TP
 
     #***** Step 4: stellar contamination *****#
     
@@ -996,7 +996,7 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
         param_vector = samples[sample[i],:]
 
         ymodel, spectrum, \
-        atmosphere = forward_model(param_vector, planet, star, model, opac, data, 
+        atmosphere, _ = forward_model(param_vector, planet, star, model, opac, data, 
                                    wl, P, P_ref_set, R_p_ref_set, P_param_set, 
                                    He_fraction, N_slice_EM, N_slice_DN, 
                                    spectrum_type, T_phot_grid, T_het_grid, 
