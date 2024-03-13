@@ -1587,6 +1587,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             
             dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
+            if cloud_dim == 2:
+                print('Put this into POSEIDON - HERE')
+
         else:
             raise Exception("Error: Invalid scattering option")
 
@@ -1627,6 +1630,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                             frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                             Gauss_quad = 5, numt = 1,
                             toon_coefficients=0, tridiagonal=0, b_top=0)
+                
+            if cloud_dim == 2:
+                print('Put this into POSEIDON - HERE')
                 
             #from line_profiler import LineProfiler
             #lp = LineProfiler()

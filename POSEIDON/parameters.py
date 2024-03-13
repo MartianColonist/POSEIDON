@@ -567,6 +567,10 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         # Mie scattering        
         elif (cloud_model == 'Mie'):
 
+            # If working with a 2D patchy cloud model
+            if (cloud_dim == 2):
+                cloud_params += ['f_cloud']
+
             if (cloud_type =='fuzzy_deck'):
 
                 if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
@@ -656,9 +660,14 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X.")
         
         elif (cloud_model == 'eddysed'):
+            # If working with a 2D patchy cloud model
+            if (cloud_dim == 2):
+                cloud_params += ['f_cloud']
+
             cloud_params += ['kappa_cloud_eddysed']
             cloud_params += ['g_cloud_eddysed']
             cloud_params += ['w_cloud_eddysed']
+
 
         else:
             raise Exception("Error: unsupported cloud model.")
@@ -1619,23 +1628,14 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         
         if (cloud_dim == 1):
             f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
-
         elif (cloud_dim == 2):
-            if (TwoD_type == 'E-M'):
+            try:
                 f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
-                phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
-                theta_0 = -90.0                # Cloud spans full day to night zones
-            if (TwoD_type == 'D-N'):
-                f_cloud, phi_0 = 1.0, -90.0    # Uniform axially, not-uniform along ray
-                theta_0 = clouds_in[np.where(cloud_param_names == 'theta_0')[0][0]]
-        
-        elif (cloud_dim == 3):
-            f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
-            phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
-            theta_0 = clouds_in[np.where(cloud_param_names == 'theta_0')[0][0]]
-             
-        else:   # Set dummy parameter values for angles if cloud dimension not specified 
-            f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+            except:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0]] 
+
+            phi_0 = -90
+            theta_0 = -90.0       
 
         # Set the Mie parameters 
         
@@ -1818,7 +1818,16 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         P_cloud = 100.0
         P_slab_bottom = 100.0
         a, gamma = 1.0, -4.0  
-        f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+        if (cloud_dim == 1):
+            f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
+        elif (cloud_dim == 2):
+            try:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
+            except:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0]] 
+            phi_0 = -90
+            theta_0 = -90.0   
 
         # Mie scattering parameters not needed
         r_m = []

@@ -1081,7 +1081,8 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
 
         model = define_model(model_name,bulk_species,param_species,
                                 PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
+                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                cloud_dim = model['cloud_dim'])
 
     else:
         aerosol_species = model['aerosol_species']
@@ -1089,6 +1090,7 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
         model = define_model(model_name,bulk_species,param_species,
                         PT_profile = model['PT_profile'], X_profile = model['X_profile'],
                         cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                        cloud_dim = model['cloud_dim'],
                         aerosol_species = aerosol_species)
 
 
@@ -1136,8 +1138,8 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
 
         for i in range(len(vary_list)):
 
-            cloud_params = np.copy(cloud_params_og)
-            cloud_params[index] = vary_list[i]
+            cloud_params = np.copy(cloud_params_og).astype(float)
+            cloud_params[index] = float(vary_list[i])
             
             atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
 

@@ -1817,8 +1817,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Quick validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 7):
-        raise Exception("Max number of concurrent datasets to plot is 7.")
+    if (N_datasets > 10):
+        raise Exception("Max number of concurrent datasets to plot is 10.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1830,19 +1830,19 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black']
+        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black', 'black', 'black', 'black']
     else:
         colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p','p']
+        data_markers = ['o', 's', 'D', '*', 'X', 'p','p', 'p', 'p', 'p']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3,3]
+        data_markers_size = [3, 3, 3, 3, 3, 3,3,3 , 3, 3]
     else:
         data_markers_size = data_marker_size_list
        
@@ -3179,7 +3179,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     # For each species
     for q in range(len(plot_parameters)):
 
-
         param = plot_parameters[q]
         param_label = param_labels[q]
         
@@ -3358,8 +3357,8 @@ def plot_histograms(planet_name, models, plot_parameters,
     N_models = len(models)
     N_params = len(plot_parameters)
 
-    if (N_models > 4):
-        raise Exception("Max supported number of retrieval models is 4.")
+    if (N_models > 10):
+        raise Exception("Max supported number of retrieval models is 10.")
 
     if (N_models == 1) and (parameter_colour_list == []):
         parameter_colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
@@ -3484,6 +3483,8 @@ def plot_histograms(planet_name, models, plot_parameters,
             
             else:
                 param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
+                print(param)
+                print(param_samples_m[:,q])
       #      for j in range(len(chemical_species)):
       #          if (chemical_species[j] in param):
 
