@@ -1567,6 +1567,12 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # Store differential extinction optical depth across each layer
         dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
 
+        if cloud_dim == 2:
+            kappa_cloud_clear = np.zeroslike(kappa_cloud)
+            kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_clear[:,0,zone_idx,:])
+            dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+
         # Without scattering, compute single steam radiative transfer
         if (scattering == False):
 
@@ -1588,7 +1594,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
             if cloud_dim == 2:
-                print('Put this into POSEIDON - HERE')
+                
+                F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                        kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                        w_cloud, g_cloud, zone_idx,
+                                                        hard_surface = 0, tridiagonal = 0, 
+                                                        Gauss_quad = 5, numt = 1)
+                
+                F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+                
+
 
         else:
             raise Exception("Error: Invalid scattering option")
@@ -1621,8 +1636,30 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 
                 albedo_zeros = np.zeros(len(wl[index_5um:]))
                 albedo = np.concatenate((albedo_cut, albedo_zeros))
+
+                if cloud_dim == 2:
+
+                    dtau_tot_clear_cut = dtau_tot_clear_cut[:,:,:,:index_5um]
+                    kappa_cloud_clear_cut = kappa_cloud_clear_cut[:,:,:,:index_5um]
+                    kappa_tot_clear_cut = kappa_tot_clear_cut[:,:,:,:index_5um]
+
+                    albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
+                                                    kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
+                                                    w_cloud_cut, g_cloud_cut, zone_idx,
+                                                    single_phase = 3, multi_phase = 0,
+                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                    Gauss_quad = 5, numt = 1,
+                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+
+                    albedo_clear = np.concatenate((albedo_clear_cut, albedo_zeros))
+                    
+                    albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+
+
             
             else:
+                
                 albedo = reflection_Toon(P, wl, dtau_tot,
                             kappa_Ray, kappa_cloud, kappa_tot,
                             w_cloud, g_cloud, zone_idx,
@@ -1631,9 +1668,19 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                             Gauss_quad = 5, numt = 1,
                             toon_coefficients=0, tridiagonal=0, b_top=0)
                 
-            if cloud_dim == 2:
-                print('Put this into POSEIDON - HERE')
-                
+                if cloud_dim == 2:
+                    albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
+                                            kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                            w_cloud, g_cloud, zone_idx,
+                                            single_phase = 3, multi_phase = 0,
+                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                            Gauss_quad = 5, numt = 1,
+                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+                        
+
+                                    
             #from line_profiler import LineProfiler
             #lp = LineProfiler()
             #lp_wrapper = lp(reflection_Toon)
