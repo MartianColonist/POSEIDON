@@ -3483,8 +3483,6 @@ def plot_histograms(planet_name, models, plot_parameters,
             
             else:
                 param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
-                print(param)
-                print(param_samples_m[:,q])
       #      for j in range(len(chemical_species)):
       #          if (chemical_species[j] in param):
 

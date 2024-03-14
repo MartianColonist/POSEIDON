@@ -1060,7 +1060,8 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
     plt.show()
 
 def vary_one_parameter(model, planet, star, param_name, vary_list,
-                       wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og):
+                       wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og,
+                       spectrum_type = 'transmission'):
 
     from POSEIDON.core import define_model
     from POSEIDON.core import make_atmosphere
@@ -1091,7 +1092,9 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
                         PT_profile = model['PT_profile'], X_profile = model['X_profile'],
                         cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
                         cloud_dim = model['cloud_dim'],
-                        aerosol_species = aerosol_species)
+                        aerosol_species = aerosol_species, 
+                        scattering = model['scattering'],
+                        reflection = model['reflection'])
 
 
     # Try to find the variable they want to vary 
@@ -1108,7 +1111,7 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
             atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params_og, cloud_params_og)
 
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                      spectrum_type = 'transmission')
+                                      spectrum_type = spectrum_type)
             
             spectra_array.append(spectrum)
             label = param_name + ' = ' + str(vary_list[i])
@@ -1126,7 +1129,7 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
             atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
 
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                      spectrum_type = 'transmission')
+                                      spectrum_type = spectrum_type)
             
             spectra_array.append(spectrum)
             label = param_name + ' = ' + str(vary_list[i])
@@ -1144,7 +1147,7 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
             atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
 
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                      spectrum_type = 'transmission')
+                                      spectrum_type = spectrum_type)
             
             spectra_array.append(spectrum)
             label = param_name + ' = ' + str(vary_list[i])

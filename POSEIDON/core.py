@@ -1568,7 +1568,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
 
         if cloud_dim == 2:
-            kappa_cloud_clear = np.zeroslike(kappa_cloud)
+            kappa_cloud_clear = np.zeros_like(kappa_cloud)
             kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
                                 kappa_cloud_clear[:,0,zone_idx,:])
             dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
@@ -1659,7 +1659,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
             
             else:
-                
+
                 albedo = reflection_Toon(P, wl, dtau_tot,
                             kappa_Ray, kappa_cloud, kappa_tot,
                             w_cloud, g_cloud, zone_idx,
@@ -1669,6 +1669,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                             toon_coefficients=0, tridiagonal=0, b_top=0)
                 
                 if cloud_dim == 2:
+
                     albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
                                             kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
                                             w_cloud, g_cloud, zone_idx,
@@ -1677,6 +1678,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                             Gauss_quad = 5, numt = 1,
                                             toon_coefficients=0, tridiagonal=0, b_top=0)
                     
+
                     albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
                         
 
