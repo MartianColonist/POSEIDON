@@ -187,7 +187,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** PT profile parameters *****#
 
         if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
-                            'slope', 'Pelletier', 'file_read']):
+                            'slope', 'Pelletier', 'Guillot', 'file_read']):
             raise Exception("Error: unsupported P-T profile.")
 
         # Check profile settings are supported
@@ -199,6 +199,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         
         if ((PT_profile == 'Pelletier') and (PT_dim > 1)):
             raise Exception("Pelletier (2021) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Guillot') and (PT_dim > 1)):
+            raise Exception("Guillot (2010) (pRT implementation) profile only supported for 1D models")
 
         if ((PT_profile == 'slope') and (PT_dim > 1)):
             raise Exception("Slope profile only supported for 1D models")
@@ -225,6 +228,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                     PT_params += ['T_' + str(i+1)]
                 if PT_penalty == True:
                     PT_params += ['sigma_s']
+            elif (PT_profile == 'Guillot'):
+                PT_params += ['kappa_IR', 'gamma', 'T_int', 'T_equ']
             
             
         # 2D model (asymmetric terminator or day-night transition)
@@ -879,8 +884,10 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_PT = 8     
     elif (PT_profile == 'Madhu'):   # Madhusudhan & Seager (2009) profile
         len_PT = 6
-    elif (PT_profile == 'Pelletier'):
+    elif (PT_profile == 'Pelletier'): # Pelletier (2021)
         len_PT = len(PT_in)
+    elif (PT_profile == 'Guillot'): # Guillot (2010)
+        len_PT = 4
     elif (PT_profile == 'slope'):   # Piette & Madhusudhan (2020) profile
         len_PT = 8
     elif (PT_profile == 'file_read'):   # User provided file
@@ -930,6 +937,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         elif (PT_profile == 'slope'):
             PT_state = PT_in                # Assign 8 parameters defining this profile
         elif (PT_profile == 'Pelletier'):
+            PT_state = PT_in
+        elif (PT_profile == 'Guillot'):
             PT_state = PT_in
                
     # 2D atmosphere

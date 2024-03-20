@@ -213,6 +213,62 @@ def compute_T_Pelletier(P, T_points):
 
     return T
 
+def compute_T_Guillot(P,g,kappa_IR,gamma,T_int,T_equ):
+
+    '''
+    Computes the temperature profile for an atmosphere using the P-T 
+    profile parametrisation defined in Guillot (2010).
+    Specifically, the pRT implementation ('guillot_global') :
+    https://petitradtrans.readthedocs.io/en/latest/content/notebooks/nat_cst_utility.html#Guillot-temperature-model
+    https://gitlab.com/mauricemolli/petitRADTRANS/-/blob/master/petitRADTRANS/physics.py?ref_type=heads
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        g (np.array of float):
+            gravity at each pressure point in m/s
+        kappa_IR (float):
+            The infrared opacity in units of :math:`\\rm cm^2/s`.
+        gamma (float):
+            The ratio between the visual and infrated opacity.
+        T_int (float):
+            The planetary internal temperature (in units of K).
+        T_equ (float):
+            The planetary equilibrium temperature (in units of K). (is a free parameter)
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K).
+            Only the first axis is used for this 1D profile.
+    '''
+
+    # Convert to cgs
+    g = g*100 
+    # Compute tau (P in bars, so convert to cgs)
+    tau = ((P*1e6)*kappa_IR)/g
+    # sqrt(2) :  
+    # Teq assumes isotropic irradiation from the whole planet, 
+    # while Tirr is based on irradiation of one hemisphere.
+    T_irr = T_equ*np.sqrt(2.)
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Initialise temperature arrays
+    T = np.zeros(shape=(N_layers, 1, 1)) # 1D profile => N_sectors = N_zones = 1
+    
+    # Equation 20 from 
+    # https://www.aanda.org/articles/aa/pdf/2010/12/aa13396-09.pdf
+    # with f = 0.25 for an average over the planetary surface
+
+    T[:,0,0] = (0.75 * T_int**4. * (2. / 3. + tau) + \
+      0.75 * T_irr**4. / 4. * (2. / 3. + 1. / gamma / 3.**0.5 + \
+      (gamma / 3.**0.5 - 1. / 3.**0.5 / gamma)* \
+      np.exp(-gamma * tau *3.**0.5)))**0.25
+    
+    return T
+
+
 @jit(nopython = True)
 def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
                              N_sectors, N_zones, alpha, beta, phi, theta,
@@ -1530,6 +1586,15 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # Gaussian smooth P-T profile
         #T = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
 
+    # For the Guillot (2010) profile (1D only)
+    if PT_profile == 'Guillot':
+
+        kappa_IR,gamma,T_int,T_equ = PT_state
+
+        T_rough = compute_T_Guillot(P,g_0,kappa_IR,gamma,T_int,T_equ)
+
+        T = T_rough
+
     # Read user provided P-T profile
     elif (PT_profile == 'file_read'):
 
@@ -1659,7 +1724,6 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
 
         n, r, r_up, r_low, dr = radial_profiles(P, T, g_0, R_p, P_ref, 
                                                 R_p_ref, mu, N_sectors, N_zones)
-        
 
     
      # Check if any of the values in r are negative
@@ -1668,6 +1732,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # Quit computations if model rejected
         return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
 
-    else: 
+    else:    
+
         return T, n, r, r_up, r_low, dr, mu, X, X_active, X_CIA, \
             X_ff, X_bf, True

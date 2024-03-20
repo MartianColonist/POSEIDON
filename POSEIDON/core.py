@@ -396,8 +396,8 @@ def define_model(model_name, bulk_species, param_species,
             (Options: transiting / directly_imaged).
         PT_profile (str):
             Chosen P-T profile parametrisation 
-            (Options: isotherm / gradient / two-gradients / Madhu / slope /
-             file_read).
+            (Options: isotherm / gradient / two-gradients / Madhu / Pelletier / Guillot /
+            slope / file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
             (Options: isochem / gradient / two-gradients / file_read / chem_eq).
