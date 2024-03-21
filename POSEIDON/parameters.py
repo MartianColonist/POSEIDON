@@ -229,7 +229,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 if PT_penalty == True:
                     PT_params += ['sigma_s']
             elif (PT_profile == 'Guillot'):
-                PT_params += ['kappa_IR', 'gamma', 'T_int', 'T_equ']
+                PT_params += ['log_kappa_IR', 'log_gamma', 'T_int', 'T_equ']
             
             
         # 2D model (asymmetric terminator or day-night transition)

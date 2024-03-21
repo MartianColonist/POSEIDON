@@ -213,7 +213,7 @@ def compute_T_Pelletier(P, T_points):
 
     return T
 
-def compute_T_Guillot(P,g,kappa_IR,gamma,T_int,T_equ):
+def compute_T_Guillot(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
 
     '''
     Computes the temperature profile for an atmosphere using the P-T 
@@ -228,7 +228,7 @@ def compute_T_Guillot(P,g,kappa_IR,gamma,T_int,T_equ):
         g (np.array of float):
             gravity at each pressure point in m/s
         kappa_IR (float):
-            The infrared opacity in units of :math:`\\rm cm^2/s`.
+            The infrared opacity in units of m^2/kg
         gamma (float):
             The ratio between the visual and infrated opacity.
         T_int (float):
@@ -242,8 +242,10 @@ def compute_T_Guillot(P,g,kappa_IR,gamma,T_int,T_equ):
             Only the first axis is used for this 1D profile.
     '''
 
-    # Convert to cgs
-    g = g*100 
+    # Unpack logs
+    kappa_IR = np.power(10,log_kappa_IR)
+    gamma = np.power(10,log_gamma)
+
     # Compute tau (P in bars, so convert to cgs)
     tau = ((P*1e6)*kappa_IR)/g
     # sqrt(2) :  

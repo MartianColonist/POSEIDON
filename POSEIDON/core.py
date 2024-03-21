@@ -3140,6 +3140,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'r_i_complex': [1e-6,100], 
                              'log_X_Mie' : [-30,-1],
                              'Delta_log_P' : [0,9],
+                             'log_kappa_ir' : [-5,0],
+                             'log_gamma' : [-4,1],
+                             'T_eq' : [400,3000],
+                             'T_int' : [400,3000],
                             }   
 
     # Iterate through parameters, ensuring we have a full set of priors
