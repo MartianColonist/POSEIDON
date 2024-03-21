@@ -904,6 +904,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     aerosol_species = model['aerosol_species']
     Na_K_fixed_ratio = model['Na_K_fixed_ratio']
     PT_penalty = model['PT_penalty']
+    T_eq = planet['planet_T_eq']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -946,6 +947,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     if ((geometry_params == []) and (Atmosphere_dimension > 1) and
         (sharp_DN_transition == False)):
             raise Exception("Geometry parameters must be provided for 2D or 3D models.")
+    
+    # Line profile requires T_eq
+    if (PT_profile == 'Line') and (T_eq == None):
+        raise Exception('Line profile requires T_eq in create_planet.')
 
     #***** Establish model geometry *****# 
 
@@ -992,7 +997,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
                            T_input, X_input, P_param_set, log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio, constant_gravity,
-                           chemistry_grid, PT_penalty)
+                           chemistry_grid, PT_penalty, T_eq)
 
     #***** Store cloud / haze / aerosol properties *****#
 
@@ -3142,8 +3147,11 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'Delta_log_P' : [0,9],
                              'log_kappa_ir' : [-5,0],
                              'log_gamma' : [-4,1],
-                             'T_eq' : [400,3000],
+                             'log_gamma_2' : [-4,1],
+                             'T_equ' : [400,3000],
                              'T_int' : [400,3000],
+                             'alpha' : [0,1],
+                             'beta' : [0.25,2]
                             }   
 
     # Iterate through parameters, ensuring we have a full set of priors

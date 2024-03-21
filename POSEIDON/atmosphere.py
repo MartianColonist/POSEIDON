@@ -4,6 +4,7 @@ Functions for calculating atmospheric temperature, mixing ratio, and other profi
 '''
 
 import numpy as np
+import scipy
 import scipy.constants as sc
 from scipy.ndimage import gaussian_filter1d as gauss_conv
 from scipy.interpolate import pchip_interpolate
@@ -213,6 +214,7 @@ def compute_T_Pelletier(P, T_points):
 
     return T
 
+
 def compute_T_Guillot(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
 
     '''
@@ -222,14 +224,77 @@ def compute_T_Guillot(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
     https://petitradtrans.readthedocs.io/en/latest/content/notebooks/nat_cst_utility.html#Guillot-temperature-model
     https://gitlab.com/mauricemolli/petitRADTRANS/-/blob/master/petitRADTRANS/physics.py?ref_type=heads
 
+    Sets f = 0.25, which is the value for the terminator and directly imaged brown darfs
+
     Args:
         P (np.array of float):
             Atmosphere pressure array (bar).
         g (np.array of float):
             gravity at each pressure point in m/s
-        kappa_IR (float):
+        log_kappa_IR (float):
             The infrared opacity in units of m^2/kg
-        gamma (float):
+        log_gamma (float):
+            The ratio between the visual and infrated opacity.
+        T_int (float):
+            The planetary internal temperature (in units of K).
+        T_equ (float):
+            The planetary equilibrium temperature (in units of K). (is a free parameter)
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K).
+            Only the first axis is used for this 1D profile.
+    '''
+
+    # Unpack logs
+    kappa_IR = np.power(10,log_kappa_IR)
+    gamma = np.power(10,log_gamma)
+
+    # Compute tau (P in bars)
+    tau = ((P*1e6)*kappa_IR)/g
+    # sqrt(2) is a geometric factory (Teq = Tirr/sqrt(2))
+    # Teq assumes isotropic irradiation from the whole planet, 
+    # while Tirr is based on irradiation of one hemisphere.
+    T_irr = T_equ*np.sqrt(2.)
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Initialise temperature arrays
+    T = np.zeros(shape=(N_layers, 1, 1)) # 1D profile => N_sectors = N_zones = 1
+    
+    # Equation 20 from 
+    # https://www.aanda.org/articles/aa/pdf/2010/12/aa13396-09.pdf
+    # with f = 0.25 for an average over the planetary surface
+    # appropriate for transit terminators or directly imaged brown dwarfs
+
+    T[:,0,0] = (0.75 * T_int**4. * (2. / 3. + tau) + \
+      0.75 * T_irr**4. / 4. * (2. / 3. + 1. / gamma / 3.**0.5 + \
+      (gamma / 3.**0.5 - 1. / 3.**0.5 / gamma)* \
+      np.exp(-gamma * tau *3.**0.5)))**0.25
+    
+    return T
+
+
+def compute_T_Guillot_dayside(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
+
+    '''
+    Computes the temperature profile for an atmosphere using the P-T 
+    profile parametrisation defined in Guillot (2010).
+    Specifically, the pRT implementation ('guillot_global') :
+    https://petitradtrans.readthedocs.io/en/latest/content/notebooks/nat_cst_utility.html#Guillot-temperature-model
+    https://gitlab.com/mauricemolli/petitRADTRANS/-/blob/master/petitRADTRANS/physics.py?ref_type=heads
+
+    Sets f = 0.5, which is the value for the dayside
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        g (np.array of float):
+            gravity at each pressure point in m/s
+        log_kappa_IR (float):
+            The infrared opacity in units of m^2/kg
+        log_gamma (float):
             The ratio between the visual and infrated opacity.
         T_int (float):
             The planetary internal temperature (in units of K).
@@ -248,7 +313,7 @@ def compute_T_Guillot(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
 
     # Compute tau (P in bars, so convert to cgs)
     tau = ((P*1e6)*kappa_IR)/g
-    # sqrt(2) :  
+    # sqrt(2) is a geometric factory (Teq = Tirr/sqrt(2))
     # Teq assumes isotropic irradiation from the whole planet, 
     # while Tirr is based on irradiation of one hemisphere.
     T_irr = T_equ*np.sqrt(2.)
@@ -261,13 +326,83 @@ def compute_T_Guillot(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
     
     # Equation 20 from 
     # https://www.aanda.org/articles/aa/pdf/2010/12/aa13396-09.pdf
-    # with f = 0.25 for an average over the planetary surface
+    # with f = 0.5 for the dayside
 
     T[:,0,0] = (0.75 * T_int**4. * (2. / 3. + tau) + \
-      0.75 * T_irr**4. / 4. * (2. / 3. + 1. / gamma / 3.**0.5 + \
+      0.75 * T_irr**4. / 2. * (2. / 3. + 1. / gamma / 3.**0.5 + \
       (gamma / 3.**0.5 - 1. / 3.**0.5 / gamma)* \
       np.exp(-gamma * tau *3.**0.5)))**0.25
     
+    return T
+
+
+def compute_T_Line(P, g, T_eq, log_kappa_IR, log_gamma, log_gamma_2, alpha, beta, T_int):
+
+    '''From Line et al. 2013: http://adsabs.harvard.edu/abs/2013ApJ...775..137L, Equation 13 - 16'
+
+    Computes the temperature profile for an atmosphere using the P-T 
+    profile parametrisation defined in Line et al (2013).
+    http://adsabs.harvard.edu/abs/2013ApJ...775..137L, Equation 13 - 16'
+    Specifically, the platon implementation ('set_from_radiative_solution') :
+    https://platon.readthedocs.io/en/latest/source/platon.html?highlight=line#platon.TP_profile.Profile.set_from_radiative_solution
+
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        g (np.array of float):
+            gravity at each pressure point in m/s
+        T_eq (float):
+            The planetary equilibrium temperature (in units of K). (is NOT a free parameter, like in Guillot)
+        log_kappa_IR (float):
+            The infrared opacity in units of m^2/kg
+        log_gamma (float):
+            The ratio between the visual and infrated opacity (channel 1) (kappa_vis_1 is baked into this)
+        log_gamma_2 (float):
+            The ratio between the visual and infrated opacity (channel 2) (kappa_vis_2 is baked into this)
+        alpha (float):
+            Ranges 0-1. Partitions flux between two visible streams
+        beta (float) :
+            Catch all term that accounts for 
+        T_int (float):
+            The planetary internal temperature (in units of K).
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K).
+            Only the first axis is used for this 1D profile.
+    '''
+
+    # Unpack logs
+    kappa_IR = np.power(10,log_kappa_IR)
+    gamma = np.power(10, log_gamma)
+    gamma2 = np.power(10, log_gamma_2)
+    
+    # T_irr is the irradiation temperature 
+    # In guillot : T_irr = f * sqrt(2) * T_eq where T_eq is the 'free' parameter,
+    #              f = 1/2 for dayside and 1/4 for transmission/directly imaged, sqrt(2) = geometric argument
+    # Here, beta is a catch all and is what you retrieve on (T_eq is input to planet object)
+    # It accounts for heat redistribution (f), geometric argument (sqrt2), emissitivity, albedo, and errors in T_eq
+    T_irr = beta * T_eq
+
+    # Compute tau (P in bars)
+    tau = ((P*1e6)*kappa_IR)/g
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Initialise temperature arrays
+    T = np.zeros(shape=(N_layers, 1, 1)) # 1D profile => N_sectors = N_zones = 1
+
+    # Equation that computers second and third term of equation 13
+    def incoming_stream_contribution(gamma):
+        return 3.0/4 * T_irr**4 * (2.0/3 + 2.0/3/gamma * (1 + (gamma*tau/2 - 1)*np.exp(-gamma * tau)) + 2.0*gamma/3 * (1 - tau**2/2) * scipy.special.expn(2, gamma*tau))
+
+    e1 = incoming_stream_contribution(gamma)
+    e2 = incoming_stream_contribution(gamma2)
+
+    T[:,0,0] = (3.0/4 * T_int**4 * (2.0/3 + tau) + (1 - alpha) * e1 + (alpha*e2))**0.25
+
     return T
 
 
@@ -1350,7 +1485,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              He_fraction, T_input, X_input, P_param_set, 
              log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio,
              constant_gravity = False, chemistry_grid = None,
-             PT_penalty = False):
+             PT_penalty = False, T_eq = None):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1434,6 +1569,11 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         chemistry_grid (dict):
             For models with a pre-computed chemistry grid only, this dictionary
             is produced in chemistry.py.
+        PT_penalty (bool):
+            For Pelletier profile. Only here so that PT input works
+        T_eq (float):
+            Equilibrium temperature of planet. For Line PT profile
+            Not the same as T_equ, the free parameter in Guillot profile
     
     Returns:
         T (3D np.array of float):
@@ -1589,11 +1729,33 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         #T = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
 
     # For the Guillot (2010) profile (1D only)
-    if PT_profile == 'Guillot':
+    elif PT_profile == 'Guillot':
 
-        kappa_IR,gamma,T_int,T_equ = PT_state
+        log_kappa_IR,log_gamma,T_int,T_equ = PT_state
 
-        T_rough = compute_T_Guillot(P,g_0,kappa_IR,gamma,T_int,T_equ)
+        # T_equ is NOT T_eq
+
+        T_rough = compute_T_Guillot(P,g_0,log_kappa_IR,log_gamma,T_int,T_equ)
+
+        T = T_rough
+
+    # For the Guillot dayside (2010) profile (1D only)
+    elif PT_profile == 'Guillot_dayside':
+
+        log_kappa_IR, log_gamma, T_int, T_equ = PT_state
+
+        # T_equ is NOT T_eq
+
+        T_rough = compute_T_Guillot_dayside(P,g_0,log_kappa_IR,log_gamma,T_int,T_equ)
+
+        T = T_rough
+
+    # For the Line (2013) profile (1D only)
+    elif PT_profile == 'Line':
+
+        log_kappa_IR, log_gamma, log_gamma_2, alpha, beta, T_int = PT_state
+
+        T_rough = compute_T_Line(P, g_0, T_eq, log_kappa_IR, log_gamma, log_gamma_2, alpha, beta, T_int)
 
         T = T_rough
 

@@ -187,7 +187,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** PT profile parameters *****#
 
         if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
-                            'slope', 'Pelletier', 'Guillot', 'file_read']):
+                            'slope', 'Pelletier', 'Guillot', 'Guillot_dayside', 'Line', 'file_read']):
             raise Exception("Error: unsupported P-T profile.")
 
         # Check profile settings are supported
@@ -202,6 +202,12 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         
         if ((PT_profile == 'Guillot') and (PT_dim > 1)):
             raise Exception("Guillot (2010) (pRT implementation) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Guillot_dayside') and (PT_dim > 1)):
+            raise Exception("Guillot (dayside) (2010) (pRT implementation) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Line') and (PT_dim > 1)):
+            raise Exception("Line (2013) (platon implementation) profile only supported for 1D models")
 
         if ((PT_profile == 'slope') and (PT_dim > 1)):
             raise Exception("Slope profile only supported for 1D models")
@@ -230,6 +236,10 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                     PT_params += ['sigma_s']
             elif (PT_profile == 'Guillot'):
                 PT_params += ['log_kappa_IR', 'log_gamma', 'T_int', 'T_equ']
+            elif (PT_profile == 'Guillot_dayside'):
+                PT_params += ['log_kappa_IR', 'log_gamma', 'T_int', 'T_equ']
+            elif (PT_profile == 'Line'):
+                PT_params += ['log_kappa_IR', 'log_gamma', 'log_gamma_2', 'alpha', 'beta', 'T_int']
             
             
         # 2D model (asymmetric terminator or day-night transition)
@@ -888,6 +898,10 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_PT = len(PT_in)
     elif (PT_profile == 'Guillot'): # Guillot (2010)
         len_PT = 4
+    elif (PT_profile == 'Guillot_dayside'): # Guillot with f = 0.5 (2010)
+        len_PT = 4
+    elif (PT_profile == 'Line'): # Line (2013)
+        len_PT = 6
     elif (PT_profile == 'slope'):   # Piette & Madhusudhan (2020) profile
         len_PT = 8
     elif (PT_profile == 'file_read'):   # User provided file
@@ -939,6 +953,10 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         elif (PT_profile == 'Pelletier'):
             PT_state = PT_in
         elif (PT_profile == 'Guillot'):
+            PT_state = PT_in
+        elif (PT_profile == 'Guillot_dayside'):
+            PT_state = PT_in
+        elif (PT_profile == 'Line'):
             PT_state = PT_in
                
     # 2D atmosphere
