@@ -3308,7 +3308,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             #    ax.xaxis.set_major_locator(xmajorLocator)
             #    ax.xaxis.set_minor_locator(xminorLocator)
 
-            if ('log_X' in param):
+            if ('log_X' in param) and ('base' not in param):
                 xmajorLocator = MultipleLocator(5)
                 xminorLocator = MultipleLocator(2.5)
                 ax.xaxis.set_major_locator(xmajorLocator)
