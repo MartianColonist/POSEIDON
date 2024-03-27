@@ -1644,9 +1644,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
                 if cloud_dim == 2:
 
-                    dtau_tot_clear_cut = dtau_tot_clear_cut[:,:,:,:index_5um]
-                    kappa_cloud_clear_cut = kappa_cloud_clear_cut[:,:,:,:index_5um]
-                    kappa_tot_clear_cut = kappa_tot_clear_cut[:,:,:,:index_5um]
+                    dtau_tot_clear_cut = dtau_tot_clear[:,:,:,:index_5um]
+                    kappa_cloud_clear_cut = kappa_cloud_clear[:,:,:,:index_5um]
+                    kappa_tot_clear_cut = kappa_tot_clear[:,:,:,:index_5um]
 
                     albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
                                                     kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
