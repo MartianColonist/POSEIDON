@@ -2232,7 +2232,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p','p']
     else:
         data_markers = data_marker_list
 
