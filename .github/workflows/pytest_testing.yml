@@ -43,7 +43,7 @@ jobs:
 
     - name: Create conda environment
       run: |
-        echo "begin: PATH=$PATH;"
+        echo "begin: PATH=$PATH;" 
         conda create --name test_install python=${{ matrix.python-version }} -y
 
     - name: Install mpi4py and pymultinest
