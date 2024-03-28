@@ -192,6 +192,8 @@ def init_instrument(wl, wl_data, half_width, instrument):
         sens_file = inst_dir + '/STIS/G430L_sensitivity.dat'
     elif (instrument == 'STIS_G750'):
         sens_file = inst_dir + '/STIS/G750L_sensitivity.dat'
+    elif (instrument == 'STIS_G750M'):
+        sens_file = inst_dir + '/STIS/G750M_sensitivity.dat'
     elif (instrument == 'WFC3_G280'):
         sens_file = inst_dir + '/WFC3/G280_sensitivity.dat'
     elif (instrument == 'WFC3_G102'):
