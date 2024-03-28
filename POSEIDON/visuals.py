@@ -3207,6 +3207,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 colour = retrieval_colour_list[m]   # Each retrieval has a different colour
 
             # Set minimum and maximum mixing ratio plot limits
+            # FIX : This throws up an error when you're only plotting one parameter...
             try:
                 param_min, param_max = span[q]
             except:

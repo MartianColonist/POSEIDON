@@ -202,6 +202,14 @@ def init_instrument(wl, wl_data, half_width, instrument):
         sens_file = inst_dir + '/Spitzer/IRAC1_sensitivity.dat'
     elif (instrument == 'IRAC2'): 
         sens_file = inst_dir + '/Spitzer/IRAC2_sensitivity.dat'
+    elif (instrument == 'IRAC3'): 
+        sens_file = inst_dir + '/Spitzer/IRAC3_sensitivity.dat'
+    elif (instrument == 'IRAC4'): 
+        sens_file = inst_dir + '/Spitzer/IRAC4_sensitivity.dat'
+    elif (instrument == 'IRS'): 
+        sens_file = inst_dir + '/Spitzer/IRS_sensitivity.dat'
+    elif (instrument == 'MIPS'): 
+        sens_file = inst_dir + '/Spitzer/MIPS_sensitivity.dat'
     elif (instrument.startswith('JWST')): 
         if (instrument == 'JWST_NIRSpec_Prism'): # Catch common misspelling of PRISM
             instrument = 'JWST_NIRSpec_PRISM'
