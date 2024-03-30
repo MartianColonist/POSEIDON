@@ -33,10 +33,10 @@ supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2',
 # Species treated as spectrally inactive (in standard cross section treatment)
 inactive_species = np.array(['H2', 'He', 'e-', 'H-'])  # H- handled separately
 
-# Aerosol Supported Species
+# Aerosol Supported Species#
 aerosol_supported_species = np.array(['Al2O3', 'Al2O3_KH', 'C', 'CH4', 'CaTiO3', 'CaTiO3_KH', 'Cr', 'ExoHaze_1000xSolar_300K', 
                                       'ExoHaze_1000xSolar_400K','Fe', 'Fe2O3', 'Fe2SiO4', 'FeO', 'FeS',
-                                      'FeSiO3', 'H2O', 'Hexene', 'Hibonite', 'KCl', 'Mg2SiO4', 'Mg2SiO4_amorph_sol_gel', 'Mg2SiO4_Fe_poor',
+                                      'FeSiO3', 'H2O', 'Hexene', 'Hibonite', 'KCl', 'Mg2SiO4_amorph_sol_gel', 'Mg2SiO4_Fe_poor', 'Mg2SiO4_Fe_rich', 
                                       'Mg4Fe6SiO3_amorph_glass', 'Mg5Fe5SiO3_amorph_glass', 'Mg8Fe12SiO4_amorph_glass',
                                       'Mg8Fe2SiO3_amorph_glass', 'MgAl2O4', 'MgFeSiO4_amorph_glass', 'MgO',
                                       'MgSiO3', 'MgSiO3_amorph_glass', 'MgSiO3_sol_gel', 'MnS', 'MnS_KH', 'Na2S', 'NaCl', 'NH3',
