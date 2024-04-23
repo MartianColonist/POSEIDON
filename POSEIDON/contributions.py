@@ -228,6 +228,13 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
             if contribution_species == pair_1 or contribution_species == pair_2:
                 cia_indices.append(i)
 
+    # If the species is H-, include the bf_index
+    if contribution_species == 'H-':
+        bound_free = True
+    else:
+        bound_free = False
+
+
 
     N_wl = len(wl)     # Number of wavelengths on model grid
     N_layers = len(P)  # Number of layers
@@ -309,7 +316,10 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 # For each source of bound-free absorption (photodissociation)
                 for q in range(N_bf_species): 
                     
-                    n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    if bound_free == True:
+                        n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    else:
+                        n_q = 0
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -322,7 +332,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 for q in range(N_species_active): 
                     
                     # If we are not doing the bulk species, we just want the species 
-                    if bulk_species == False and cloud_contribution == False:
+                    if bulk_species == False and cloud_contribution == False and bound_free == False:
                         if q == contribution_molecule_active_index:
                             n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
                 
@@ -330,7 +340,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_q = 0
                     
                     else:
-                        # If bulk is true or cloud is true, then everything in active is turned off 
+                        # If bulk is true, cloud is true, or bound_free is True, then everything in active is turned off 
                         n_q = 0
                     
                     # For each wavelength
@@ -342,7 +352,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 # For each molecular / atomic species
                 for q in range(N_species):  
                     
-                    if bulk_species == False and cloud_contribution == False:
+                    if bulk_species == False and cloud_contribution == False and bound_free == False:
                         if q == contribution_molecule_species_index:
                             n_q = n_level*X[q,i,j,k]   # Number density of given species
                         elif q in bulk_species_indices:
@@ -351,7 +361,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_q = 0
 
                     else:
-                        # If bulk is true or cloud is true, only keep the bulk species on 
+                        # If bulk is true, cloud is true, and bound_free is true, only keep the bulk species on 
                         if q in bulk_species_indices:
                             n_q = n_level*X[q,i,j,k]   # Number density of given species
                         else:
