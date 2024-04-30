@@ -1494,6 +1494,12 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
             if contribution_species == pair_1 or contribution_species == pair_2:
                 cia_indices.append(i)
 
+    # If we are looking at H-
+    if contribution_species == 'H-':
+        bound_free = True
+    else:
+        bound_free = False
+
 
     N_wl = len(wl)     # Number of wavelengths on model grid
     N_layers = len(P)  # Number of layers
@@ -1570,12 +1576,18 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         kappa_gas[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
                         
                 # For each free-free absorption pair
+                # NOTE : Need to be updated like cia
                 for q in range(N_ff_pairs): 
-                    
-                    n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
-                    n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
-                    n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
-                    
+
+                    # If its the total pressure contribution, we turn everything off no matter what 
+                    if (total_pressure_contribution == True) and (i == layer_to_ignore):
+                        n_n_f = 0
+
+                    else:
+                        n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
+                        n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
+                        n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
+                        
                     # For each wavelength
                     for l in range(N_wl):
                         
@@ -1584,8 +1596,17 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         
                 # For each source of bound-free absorption (photodissociation)
                 for q in range(N_bf_species): 
+
+                    # If its the total pressure contribution, we turn everything off no matter what 
+                    if (total_pressure_contribution == True) and (i == layer_to_ignore):
+                        n_q = 0
+
+                    # We are looking at H- only
+                    elif (bound_free == True) and (i == layer_to_ignore):
+                        n_q
                     
-                    n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    else:
+                        n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
                     
                     # For each wavelength
                     for l in range(N_wl):
