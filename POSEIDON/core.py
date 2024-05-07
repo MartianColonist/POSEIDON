@@ -2798,7 +2798,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_g_fac': [log_g_phot-0.5, log_g_phot+0.5],
                              'T_phot': [T_phot, err_T_phot], 
                              'log_g_phot': [log_g_phot, err_log_g_phot], 
-                             'delta_rel': [-1.0e-3, 1.0e-3],
+                             'delta_rel': [-1000, 1000],
                              'b': [np.log10(0.001*np.min(err_data**2)),
                                    np.log10(100.0*np.max(err_data**2))],
                              'C_to_O': [0.3,1.9],
