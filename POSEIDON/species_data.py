@@ -49,7 +49,7 @@ polarisabilities = {'H2':   0.80e-24, 'He':   0.21e-24, 'N2':    1.74e-24, 'O2':
                     'Fe+':  9.47e-24, 'Ti':   14.8e-24, 'Ti+':   14.8e-24, 'H':     0.67e-24,
                     'H-':   30.5e-24, 'e-':   0.00e-24, 'Mg':    10.6e-24, 'Mg+':   10.6e-24,
                     'Mn':   9.40e-24, 'Ca':   22.8e-24, 'Ca+':   22.8e-24, 'CH3':   2.59e-24,   # No literature value for CH3, so ~ CH4
-                    'C2H4': 4.25e-24, 'C2H6': 4.47e-24, 'CH3CN': 4.40e-24, 'CH3OH': 3.29e-24,
-                    'GeH4': 5.84e-24}                                                           # No data for GeH4, so ~ Ge
+                    'CS2':  8.74e-24, 'C2H4': 4.25e-24, 'C2H6':  4.47e-24, 'CH3CN': 4.40e-24, 
+                    'CH3OH': 3.29e-24, 'GeH4': 5.84e-24}                                        # No data for GeH4, so ~ Ge
 
 
