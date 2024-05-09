@@ -2518,7 +2518,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
             idx_end = find_nearest(wl_Mie, wl_max)
 
             # Find nearest pulls the closest value below the given value, so we go up one index
-            wl_Mie = wl_Mie[idx_start+1:idx_end]
+            wl_Mie = wl_Mie[idx_start:idx_end]
 
             print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to '+  str(np.max(wl_Mie)))
 
