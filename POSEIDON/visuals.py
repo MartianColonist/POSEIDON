@@ -1226,7 +1226,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  annotation_pos = [], err_colour = 'black', wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
-                 show_data_bin_width = True):
+                 show_data_bin_width = True, show_data_cap = True,
+                 data_alpha = 0.8, data_edge_width = 0.8):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1614,22 +1615,29 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             err_data_i = err_data[idx_start:idx_end]
             bin_size_i = bin_size[idx_start:idx_end]
 
+            if (show_data_cap == True):
+                capsize = 2
+            else:
+                capsize = 0
+
             # Plot dataset
             if (show_data_bin_width == True):
                 markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                    xerr=bin_size_i, marker=data_markers[i], 
                                                    markersize=data_markers_size[i], 
                                                    capsize = 2, ls = 'none', elinewidth = 0.8, 
-                                                   color=data_colours[i], alpha = 0.8,
+                                                   color=data_colours[i], alpha = data_alpha,
                                                    ecolor = err_colour, label=label_i,
+                                                   markeredgewidth = data_edge_width,
                                                    zorder = 100)
             else:
                 markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                    marker=data_markers[i], 
                                                    markersize=data_markers_size[i], 
                                                    capsize=2, ls='none', elinewidth=0.8, 
-                                                   color=data_colours[i], alpha = 0.8,
+                                                   color=data_colours[i], alpha = data_alpha,
                                                    ecolor = err_colour, label=label_i,
+                                                   markeredgewidth = data_edge_width,
                                                    zorder = 100)
 
             [markers.set_alpha(1.0)]
