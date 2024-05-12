@@ -1622,21 +1622,21 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
             # Plot dataset
             if (show_data_bin_width == True):
-                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                                   xerr=bin_size_i, marker=data_markers[i], 
-                                                   markersize=data_markers_size[i], 
-                                                   capsize = 2, ls = 'none', elinewidth = 0.8, 
-                                                   color=data_colours[i], alpha = data_alpha,
-                                                   ecolor = err_colour, label=label_i,
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                                   xerr = bin_size_i, marker = data_markers[i], 
+                                                   markersize = data_markers_size[i], 
+                                                   capsize = capsize, ls = 'none', elinewidth = 0.8, 
+                                                   color = data_colours[i], alpha = data_alpha,
+                                                   ecolor = err_colour, label = label_i,
                                                    markeredgewidth = data_edge_width,
                                                    zorder = 100)
             else:
-                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                                   marker=data_markers[i], 
-                                                   markersize=data_markers_size[i], 
-                                                   capsize=2, ls='none', elinewidth=0.8, 
-                                                   color=data_colours[i], alpha = data_alpha,
-                                                   ecolor = err_colour, label=label_i,
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                                   marker = data_markers[i], 
+                                                   markersize = data_markers_size[i], 
+                                                   capsize = capsize, ls='none', elinewidth=0.8, 
+                                                   color = data_colours[i], alpha = data_alpha,
+                                                   ecolor = err_colour, label = label_i,
                                                    markeredgewidth = data_edge_width,
                                                    zorder = 100)
 
