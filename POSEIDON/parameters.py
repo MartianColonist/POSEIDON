@@ -53,7 +53,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
              two_spots_free_log_g).
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
-            (Options: single_dataset).
+            (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
             (Options: Line15).
@@ -680,6 +680,12 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     if (offsets_applied == 'single_dataset'):
         params += ['delta_rel']
         N_offset_params = 1
+    elif (offsets_applied == 'two_datasets'):
+        params += ['delta_rel_1', 'delta_rel_2']
+        N_offset_params = 2
+    elif (offsets_applied == 'three_datasets'):
+        params += ['delta_rel_1', 'delta_rel_2', 'delta_rel_3']
+        N_offset_params = 3
     elif (offsets_applied == None):
         N_offset_params = 0
     else:

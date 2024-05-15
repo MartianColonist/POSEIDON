@@ -421,7 +421,7 @@ def define_model(model_name, bulk_species, param_species,
             transmission spectrum (nightside contamination).   
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
-            (Options: single_dataset).
+            (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
             (Options: Line15).
@@ -2577,7 +2577,7 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
         offset_datasets (list of str):
             If applying a relative offset to one or more datasets, this list
             gives the file names of the datasets that will have free offsets
-            applied (note: currently only supports *one* offset dataset).
+            applied (note: currently only supports up to three offset dataset).
         wl_unit (str):
             Unit of wavelength column (first column in file)
             (Options: micron (or equivalent) / nm / A / m)
@@ -2648,18 +2648,51 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
 
     # For relative offsets, find which data indices the offset applies to
     if (offset_datasets is not None):
+
+        # Initialise the offset datasets
         offset_datasets = np.array(offset_datasets)
-        if (len(offset_datasets) > 1):
-            raise Exception("Error: only one dataset can have a free offset.")
-        if (offset_datasets[0] in datasets):
-            offset_dataset_idx = np.where(datasets == offset_datasets[0])[0][0]
-            offset_data_start = len_data_idx[offset_dataset_idx]  # Data index of first point with offset
-            offset_data_end = len_data_idx[offset_dataset_idx+1]  # Data index of last point with offset + 1
-        else: 
-            raise Exception("Dataset chosen for relative offset is not included.")
+
+        # If there is only one dataset with an offset, record start and end indices as integers
+        if len(offset_datasets) == 1:
+
+            if (offset_datasets[0] in datasets):
+
+                offset_dataset_idx = np.where(datasets == offset_datasets[0])[0][0]
+                offset_data_start = len_data_idx[offset_dataset_idx]  # Data index of first point with offset
+                offset_data_end = len_data_idx[offset_dataset_idx+1]  # Data index of last point with offset + 1
+            else: 
+                raise Exception("Dataset chosen for relative offset is not included.")
+
+        # Else, if there are more than one dataset the start and end indices are lists 
+        else:
+            offset_data_start = []
+            offset_data_end = []
+            
+            for n in range(len(offset_datasets)):
+                if (offset_datasets[n] in datasets):
+                    offset_dataset_idx = np.where(datasets == offset_datasets[n])[0][0]
+                    offset_data_start.append(len_data_idx[offset_dataset_idx])  # Data index of first point with offset
+                    offset_data_end.append(len_data_idx[offset_dataset_idx+1])  # Data index of last point with offset + 1
+                else: 
+                    raise Exception("Dataset chosen for relative offset is not included.")
+                
+        offset_1_data_start = 0
+        offset_1_data_end = 0
+        offset_2_data_start = 0
+        offset_2_data_end = 0
+        offset_3_data_start = 0
+        offset_3_data_end = 0
+
+
     else:
         offset_data_start = 0    # Dummy values when no offsets included
         offset_data_end = 0
+        offset_1_data_start = 0
+        offset_1_data_end = 0
+        offset_2_data_start = 0
+        offset_2_data_end = 0
+        offset_3_data_start = 0
+        offset_3_data_end = 0
         
     # Check that the model wavelength grid covers all the data bins
     if (np.any((wl_data - half_bin) < wl_model[0])):
@@ -2673,7 +2706,10 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
             'sens': sens, 'len_data_idx': len_data_idx, 'psf_sigma': psf_sigma,
             'norm': norm, 'bin_left': bin_left, 'bin_cent': bin_cent, 
             'bin_right': bin_right, 'offset_start': offset_data_start,
-            'offset_end': offset_data_end, 'fwhm': fwhm
+            'offset_end': offset_data_end, 'fwhm': fwhm,
+            'offset_1_start': offset_1_data_start, 'offset_1_end': offset_1_data_end,
+            'offset_2_start': offset_2_data_start, 'offset_2_end': offset_2_data_end,
+            'offset_3_start': offset_3_data_start, 'offset_3_end': offset_3_data_end,
            }
 
     return data
@@ -2798,7 +2834,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_g_fac': [log_g_phot-0.5, log_g_phot+0.5],
                              'T_phot': [T_phot, err_T_phot], 
                              'log_g_phot': [log_g_phot, err_log_g_phot], 
-                             'delta_rel': [-1000, 1000],
+                             'delta_rel': [-1.0e-3, 1.0e-3],
+                             'delta_rel_1': [-1.0e-3, 1.0e-3],
+                             'delta_rel_2': [-1.0e-3, 1.0e-3],
+                             'delta_rel_3': [-1.0e-3, 1.0e-3],
                              'b': [np.log10(0.001*np.min(err_data**2)),
                                    np.log10(100.0*np.max(err_data**2))],
                              'C_to_O': [0.3,1.9],
