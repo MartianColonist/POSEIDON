@@ -2844,10 +2844,15 @@ import matplotlib.pyplot as plt
 
 def photometric_contribution_function(wl, P, Contribution, 
                                       spectrum_contribution_list_names,
-                                      binsize = 0
+                                      binsize = 0,
+                                      treat_wlmin_as_zero = False
                                       ):
 
-    wl_min = np.min(wl)
+    if treat_wlmin_as_zero == False:
+        wl_min = np.min(wl)
+    else:
+        wl_min = 0
+
     wl_max = np.max(wl)
 
     if binsize == 0:
@@ -2855,6 +2860,10 @@ def photometric_contribution_function(wl, P, Contribution,
 
     # Bin Stuff from minimum wavelength to maximum wavelength by 0.1 
     bins = np.arange(wl_min,wl_max+binsize,binsize)
+
+    # Replace first bin with actual wl_min 
+    if treat_wlmin_as_zero == True:
+        bins[0] = np.min(wl)
 
     # Make it so the last bin includes the max wavelength (if not it will be a seperate bin)
     bins[-1] += binsize
