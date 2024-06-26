@@ -2211,8 +2211,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick data validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 8):
-        raise Exception("Max number of concurrent datasets to plot is 8.")
+    if (N_datasets > 10):
+        raise Exception("Max number of concurrent datasets to plot is 10.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -2226,19 +2226,19 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black', 'darkgreen']
+        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black', 'darkgreen', 'yellow', 'red']
     else:
         data_colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p','p']
+        data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p','p', 'p', 'p']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3]
+        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3,3,3]
     else:
         data_markers_size = data_marker_size_list
                 
