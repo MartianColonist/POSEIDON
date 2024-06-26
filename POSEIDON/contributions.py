@@ -228,6 +228,13 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
             if contribution_species == pair_1 or contribution_species == pair_2:
                 cia_indices.append(i)
 
+    # If the species is H-, include the bf_index
+    if contribution_species == 'H-':
+        bound_free = True
+    else:
+        bound_free = False
+
+
 
     N_wl = len(wl)     # Number of wavelengths on model grid
     N_layers = len(P)  # Number of layers
@@ -309,7 +316,10 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 # For each source of bound-free absorption (photodissociation)
                 for q in range(N_bf_species): 
                     
-                    n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    if bound_free == True:
+                        n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    else:
+                        n_q = 0
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -322,7 +332,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 for q in range(N_species_active): 
                     
                     # If we are not doing the bulk species, we just want the species 
-                    if bulk_species == False and cloud_contribution == False:
+                    if bulk_species == False and cloud_contribution == False and bound_free == False:
                         if q == contribution_molecule_active_index:
                             n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
                 
@@ -330,7 +340,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_q = 0
                     
                     else:
-                        # If bulk is true or cloud is true, then everything in active is turned off 
+                        # If bulk is true, cloud is true, or bound_free is True, then everything in active is turned off 
                         n_q = 0
                     
                     # For each wavelength
@@ -342,7 +352,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 # For each molecular / atomic species
                 for q in range(N_species):  
                     
-                    if bulk_species == False and cloud_contribution == False:
+                    if bulk_species == False and cloud_contribution == False and bound_free == False:
                         if q == contribution_molecule_species_index:
                             n_q = n_level*X[q,i,j,k]   # Number density of given species
                         elif q in bulk_species_indices:
@@ -351,7 +361,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_q = 0
 
                     else:
-                        # If bulk is true or cloud is true, only keep the bulk species on 
+                        # If bulk is true, cloud is true, and bound_free is true, only keep the bulk species on 
                         if q in bulk_species_indices:
                             n_q = n_level*X[q,i,j,k]   # Number density of given species
                         else:
@@ -1484,6 +1494,12 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
             if contribution_species == pair_1 or contribution_species == pair_2:
                 cia_indices.append(i)
 
+    # If we are looking at H-
+    if contribution_species == 'H-':
+        bound_free = True
+    else:
+        bound_free = False
+
 
     N_wl = len(wl)     # Number of wavelengths on model grid
     N_layers = len(P)  # Number of layers
@@ -1560,12 +1576,18 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         kappa_gas[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
                         
                 # For each free-free absorption pair
+                # NOTE : Need to be updated like cia
                 for q in range(N_ff_pairs): 
-                    
-                    n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
-                    n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
-                    n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
-                    
+
+                    # If its the total pressure contribution, we turn everything off no matter what 
+                    if (total_pressure_contribution == True) and (i == layer_to_ignore):
+                        n_n_f = 0
+
+                    else:
+                        n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
+                        n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
+                        n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
+                        
                     # For each wavelength
                     for l in range(N_wl):
                         
@@ -1574,8 +1596,17 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         
                 # For each source of bound-free absorption (photodissociation)
                 for q in range(N_bf_species): 
+
+                    # If its the total pressure contribution, we turn everything off no matter what 
+                    if (total_pressure_contribution == True) and (i == layer_to_ignore):
+                        n_q = 0
+
+                    # We are looking at H- only
+                    elif (bound_free == True) and (i == layer_to_ignore):
+                        n_q
                     
-                    n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    else:
+                        n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -2813,10 +2844,15 @@ import matplotlib.pyplot as plt
 
 def photometric_contribution_function(wl, P, Contribution, 
                                       spectrum_contribution_list_names,
-                                      binsize = 0
+                                      binsize = 0,
+                                      treat_wlmin_as_zero = False
                                       ):
 
-    wl_min = np.min(wl)
+    if treat_wlmin_as_zero == False:
+        wl_min = np.min(wl)
+    else:
+        wl_min = 0
+
     wl_max = np.max(wl)
 
     if binsize == 0:
@@ -2824,6 +2860,10 @@ def photometric_contribution_function(wl, P, Contribution,
 
     # Bin Stuff from minimum wavelength to maximum wavelength by 0.1 
     bins = np.arange(wl_min,wl_max+binsize,binsize)
+
+    # Replace first bin with actual wl_min 
+    if treat_wlmin_as_zero == True:
+        bins[0] = np.min(wl)
 
     # Make it so the last bin includes the max wavelength (if not it will be a seperate bin)
     bins[-1] += binsize

@@ -912,6 +912,9 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
             label = free_string
         else:
             label = aerosol_species[0]
+
+        print('Max mixing ratio : ', np.max(mixing_ratio[P_cloud_index:]))
+        print('Min mixing ratio : ', np.min(mixing_ratio[P_cloud_index:]))
     
         ax.plot(mixing_ratio[P_cloud_index:], log_P[P_cloud_index:], label = label, color = colours[0])
         ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
@@ -2515,7 +2518,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
             idx_end = find_nearest(wl_Mie, wl_max)
 
             # Find nearest pulls the closest value below the given value, so we go up one index
-            wl_Mie = wl_Mie[idx_start+1:idx_end]
+            wl_Mie = wl_Mie[idx_start:idx_end]
 
             print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to '+  str(np.max(wl_Mie)))
 

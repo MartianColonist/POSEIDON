@@ -1366,8 +1366,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Quick validity checks for plotting
         if (N_datasets == 0):
             raise Exception("Must provide at least one dataset to plot!")
-        if (N_datasets > 7):
-            raise Exception("Max number of concurrent datasets to plot is 7.")
+        if (N_datasets > 10):
+            raise Exception("Max number of concurrent datasets to plot is 10.")
         if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
             raise Exception("Number of colours does not match number of datasets.")
         if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -2174,8 +2174,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick spectra validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 5):
-        raise Exception("Max number of concurrent retrieved spectra to plot is 5.")
+    if (N_spectra > 10):
+        raise Exception("Max number of concurrent retrieved spectra to plot is 10.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((binned_colour_list != []) and (N_spectra != len(binned_colour_list))):
@@ -2226,7 +2226,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black', 'darkgreen', 'yellow', 'red']
+        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black', 'darkgreen', 'pink', 'purple']
     else:
         data_colours = data_colour_list
 
@@ -2238,7 +2238,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3,3,3]
+        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3, 3 , 3]
     else:
         data_markers_size = data_marker_size_list
                 
@@ -3149,7 +3149,7 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
 def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_colour_list, 
                               retrieval_colour_list, retrieval_labels, span, truths, 
                               N_rows, N_columns, N_bins,
-                              vertical_lines, vertical_lines_colors):
+                              vertical_lines, vertical_lines_colors, tick_labelsize = 8, title_fontsize = 12):
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3264,8 +3264,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
                 title = "{0} = {1}".format(param_label, title)
                 title = "{0}".format(title)
-                # Change back to 12
-                ax.set_title(title, fontsize = 11)
+                ax.set_title(title, fontsize = title_fontsize)
 
             # Create sub-axis for error bar
       #      newax = plt.gcf().add_axes(ax.get_position(), sharex=ax, frameon=False)
@@ -3283,7 +3282,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
       #      newax.tick_params(axis='both', which='major', labelsize=8)
 
             ax.set_yticks([])
-            ax.tick_params(axis='both', which='major', labelsize=8)
+            ax.tick_params(axis='both', which='major', labelsize= tick_labelsize)
 
             #if (param == 'T'):
             #    xmajorLocator = MultipleLocator(250)
@@ -3325,7 +3324,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 ax.axvline(x=vertical_lines[n][q], linewidth=1.5, linestyle='-', color=vertical_lines_colors[n], alpha=0.8)
 
 
-        # Add parameter label
+        # Add parameter 
       #  ax.text(0.06, 0.94, param_label, color=colour, 
       #          fontsize = 10, horizontalalignment='left', 
       #          verticalalignment='top', transform=ax.transAxes)
@@ -3347,7 +3346,7 @@ def plot_histograms(planet_name, models, plot_parameters,
                     axes = [], retrieval_codes = [], external_samples = [],
                     external_param_names = [], plt_label = None, 
                     save_fig = True,
-                    vertical_lines = [], vertical_line_colors = []):
+                    vertical_lines = [], vertical_line_colors = [], tick_labelsize = 8, title_fontsize = 12):
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -3498,7 +3497,7 @@ def plot_histograms(planet_name, models, plot_parameters,
                                     parameter_colour_list, retrieval_colour_list, 
                                     retrieval_labels, span, truths, 
                                     N_rows, N_columns, N_bins,
-                                    vertical_lines, vertical_line_colors)
+                                    vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize)
     
     # Save figure to file
     if (save_fig == True):
