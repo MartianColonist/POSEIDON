@@ -39,7 +39,14 @@ aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4', 'C
                                       'FeSiO3', 'H2O', 'H2SO4', 'Hexene', 'Hibonite', 'IceTholin', 'KCl', 'Mg2SiO4_amorph_sol_gel', 'Mg2SiO4_amorph',
                                       'Mg2SiO4_Fe_poor', 'Mg2SiO4_Fe_rich', 'Mg2SiO4_crystalline',
                                       'Mg4Fe6SiO3_amorph_glass', 'Mg5Fe5SiO3_amorph_glass', 'Mg8Fe12SiO4_amorph_glass',
-                                      'Mg8Fe2SiO3_amorph_glass', 'MgAl2O4', 'MgFeSiO4_amorph_glass', 'MgO', 'MgSiO3_amorph', 'MgSiO3_crstalline',
+                                      'Mg8Fe2SiO3_amorph_glass', 'MgAl2O4', 'MgFeSiO4_amorph_glass', 'MgO', 'MgSiO3_amorph', 'MgSiO3_crystalline',
                                       'MgSiO3', 'MgSiO3_amorph_glass', 'MgSiO3_sol_gel', 'MnS', 'MnS_KH', 'MnS_Mor', 'Na2S', 'NaCl', 'NH3', 'NH4SH', 'S8',
                                       'Saturn-Phosphorus-Haze', 'SiC', 'SiO', 'SiO2', 'SiO2_amorph', 'Soot', 'Soot_6mm', 'Tholin', 'Tholin-CO-0625', 'Tholin-CO-1',
-                                      'TiC', 'TiO2', 'TiO2_anatase', 'TiO2_rutile', 'VO', 'ZnS', 'Ethane'])
+                                      'TiC', 'TiO2', 'TiO2_anatase', 'TiO2_rutile', 'VO', 'ZnS', 'Ethane',
+                                      'SiO2_alpha_crystal_A2_295K', 'SiO2_alpha_crystal_E_295K', 'SiO2_alpha_crystal_E_346K', 'SiO2_alpha_crystal_E_480K', 'SiO2_alpha_crystal_E_600K', 'SiO2_alpha_crystal_E_705K', 'SiO2_alpha_crystal_E_790K',
+                                    'SiO2_beta_crystal_E_1010K', 'SiO2_beta_crystal_E_1125K', 'SiO2_beta_crystal_E_1170K', 'SiO2_beta_crystal_E_1310K', 'SiO2_beta_crystal_E_1394K', 'SiO2_beta_crystal_E_1520K', 'SiO2_beta_crystal_E_1590K',
+                                    'SiO2_beta_crystal_E_1646K',
+                                    'SiO2_beta_cristobalite_E_1810K','SiO2_beta_cristobalite_E_1880K',
+                                    'SiO2_alpha_crystal_300K_extraordinary',
+                                    'SiO2_alpha_crystal_300K_ordinary',
+                                    'Mg2SiO4_295K_B1U', 'Mg2SiO4_295K_B2U', 'Mg2SiO4_295K_B3U','SiO2_crystalline_2023'])
