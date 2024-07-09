@@ -1738,7 +1738,9 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
               err_colour = 'black', wl_axis = 'log', figure_shape = 'default', 
               legend_location = 'upper right', legend_box = False,
               show_data_bin_width = True, show_data_cap = True,
-              data_alpha = 0.8, data_edge_width = 0.8):
+              data_alpha = 0.8, data_edge_width = 0.8,
+              ax = None, save_fig = True,
+              ):
     ''' 
     Plot a collection of datasets. This function can plot transmission or 
     emission datasets, according to the user's choice of 'y_unit'.
@@ -1938,7 +1940,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         fig.set_size_inches(12, 8.0) 
 
     
-    ax1 = plt.gca()
+    if (ax == None):
+        ax1 = plt.gca()
+    else:
+        ax1 = ax
     
     # Set x axis to be linear or logarithmic
     ax1.set_xscale(wl_axis)
@@ -2049,14 +2054,15 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         legline.set_linewidth(1.0)
 
     # Write figure to file
-    if (plt_label == None):
-        file_name = (output_dir + planet_name +
-                     '_data.pdf')
-    else:
-        file_name = (output_dir + planet_name + '_' + plt_label + 
-                     '_data.pdf')
+    if (save_fig == True):
+        if (plt_label == None):
+            file_name = (output_dir + planet_name +
+                        '_data.pdf')
+        else:
+            file_name = (output_dir + planet_name + '_' + plt_label + 
+                        '_data.pdf')
 
-    plt.savefig(file_name, bbox_inches='tight')
+        plt.savefig(file_name, bbox_inches = 'tight')
 
     return fig
 
