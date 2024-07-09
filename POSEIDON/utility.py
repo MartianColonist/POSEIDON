@@ -1209,10 +1209,10 @@ def generate_latex_param_names(param_names):
                 continue
 
         # Quick fix for log_Na + K
-        if ('log_Na' in param):
-            string = '$\\log \\, \mathrm{Na} \\, (+ 0.1 \\, \mathrm{K})$'
-            latex_names += [string]
-            continue
+        #if ('log_Na' in param):
+        #    string = '$\\log \\, \mathrm{Na} \\, (+ 0.1 \\, \mathrm{K})$'
+        #    latex_names += [string]
+        #    continue
 
         if ('T_equ' in param):
             string = '$\\mathrm{T_{equ}}$'

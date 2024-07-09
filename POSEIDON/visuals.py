@@ -3820,7 +3820,7 @@ def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
                 low1, median, high1 = plot_parameter_panel(ax, ratio_vals, N_bins, ratio,
                                                         x_min, x_max, colour, x_max_array)
 
-            print(0.5*((median-low1) + (high1 - median)))
+            #print(0.5*((median-low1) + (high1 - median)))
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
