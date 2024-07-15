@@ -2854,7 +2854,7 @@ def make_aerosol_database():
                         "POSEIDON input folder.")
 
     # Load in the aerosol list
-    mydir = input_file_path + "opacity/refractive_indices/"
+    mydir = input_file_path + "opacity/aerosol_Mie_properties/"
     file_list = glob.glob(mydir + "jumbo*.npy")
     file_list.sort()
 
