@@ -2774,6 +2774,8 @@ def plot_pressure_contribution(wl,P,
     
     for i in range(len(spectrum_contribution_list_names)):
 
+            title = 'Contribution Function : ' + str(spectrum_contribution_list_names[i])
+
             # Trying Ryan's Binning 
             fig = plt.figure()  
             fig.set_size_inches(14, 7)
