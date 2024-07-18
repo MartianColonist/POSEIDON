@@ -762,7 +762,7 @@ def contribution_clouds_transmission(model, planet, star, wl, opac, P, P_ref, R_
                 model_one_species = define_model(model_name,bulk_species,param_species,
                                                 PT_profile = model['PT_profile'], X_profile = model['X_profile'])
 
-                log_X_params = np.array([log_X_params_og[0][i]])
+                log_X_params = np.array([log_X_params_og[i]])
 
                 atmosphere_one_species = make_atmosphere(planet, model_one_species, P, P_ref, R_p_ref, PT_params_og, log_X_params)
 

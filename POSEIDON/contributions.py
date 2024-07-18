@@ -448,7 +448,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                         
 
                 # Opaque Deck is the first element in n_aerosol_array
-                # I will decide for now to add the opaque deck to each species. I think that won't hurt to keep them together 
+                # This is set up so that the opaque deck is not appended to any of the compositionally specific aerosols
+                # And will only show up if cloud_total_contribution is set to True 
                 else:
                     for aerosol in range(len(n_aerosol_array)):
                             
@@ -464,7 +465,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             elif cloud_contribution == True and cloud_total_contribution == False:
 
                                 if aerosol == 0:
-                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += 1.0e250
+                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += 0
 
                                 else:
                                     for i in range(i_bot,N_layers):
@@ -781,6 +782,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                                                     log_X_Mie = log_X_Mie,
                                                     P_cloud = P_cloud,
                                                     P_cloud_bottom = P_cloud_bottom)
+
+
                         
                 # If its a fuzzy_deck_plus_slab run 
                 elif (model['cloud_type'] == 'fuzzy_deck_plus_slab'):
@@ -1298,10 +1301,16 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                                save_fig = False,
                                line_widths = [],
                                colour_list = [],
-                               return_fig = False):
+                               return_fig = False,
+                               ax = None):
 
     from POSEIDON.utility import plot_collection
     from POSEIDON.visuals import plot_spectra
+
+    if (ax == None):
+        ax = plt.gca()
+    else:
+        ax = ax
 
     spectra = []
 
@@ -1365,7 +1374,8 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                     y_min = y_min,
                     y_max = y_max,
                     figure_shape = figure_shape,
-                    line_widths = line_widths
+                    line_widths = line_widths,
+                    ax = ax
                     )
         
     else: 
@@ -1401,7 +1411,8 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                     y_min = y_min,
                     y_max = y_max,
                     figure_shape = figure_shape,
-                    line_widths = line_widths)
+                    line_widths = line_widths,
+                    ax = ax)
         
     if return_fig == True:
         return fig
@@ -2763,19 +2774,6 @@ def plot_pressure_contribution(wl,P,
     
     for i in range(len(spectrum_contribution_list_names)):
 
-            fig, ax = plt.subplots(figsize=(10, 10))
-
-            a = ax.contourf(wl, np.log10(P), Contribution[i,:,:],cmap='plasma')
-
-            ax.set_ylabel('Log Pressure (bar)')
-            ax.invert_yaxis()
-            ax.set_xlabel('Wavelength ($\mu$m)')
-            title = 'Contribution Function : ' + str(spectrum_contribution_list_names[i])
-            
-            ax.set_title(title)
-            plt.colorbar(a, label='Contribution')
-            plt.show()
-
             # Trying Ryan's Binning 
             fig = plt.figure()  
             fig.set_size_inches(14, 7)
@@ -2810,7 +2808,7 @@ def plot_pressure_contribution(wl,P,
 
             fig1 = fig
 
-            plt.colorbar()
+            #plt.colorbar()
             plt.show()
 
             fig = plt.figure()  
@@ -2834,7 +2832,7 @@ def plot_pressure_contribution(wl,P,
 
             fig2 = fig
 
-            plt.colorbar()
+            #plt.colorbar()
             plt.show()
     
     if return_fig == True:

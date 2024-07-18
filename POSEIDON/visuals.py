@@ -3877,3 +3877,86 @@ def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
       #      newax.text(0.96, 0.96, overlay, color='navy', fontsize = 10,
       #                 horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
 
+
+# For the PT profiles tutorial notebook
+# Helper function that shows what varying different
+# variables does to resultant PT profiles
+def vary_one_parameter_PT(model, planet, param_name, vary_list,
+                           P, P_ref, R_p_ref,
+                       PT_params_og, log_X_params_og, cloud_params_og,
+                       ax = None,legend_location = 'upper right'):
+
+    from POSEIDON.core import define_model
+    from POSEIDON.core import make_atmosphere
+    from POSEIDON.core import compute_spectrum
+    from POSEIDON.visuals import plot_spectra
+    from POSEIDON.utility import plot_collection
+    import matplotlib.pyplot as plt
+
+    spectra_array = []
+    spectra_labels = []
+
+    colour_list = ['red','orange','yellow','green','blue','purple']
+
+    # create figure
+    fig = plt.figure()
+
+    if (ax == None):
+        ax = plt.gca()
+    else:
+        ax = ax
+
+    # Real spectrum 
+    model_name = 'Vary-One-Thing'
+    bulk_species = ['H2','He']
+    species_list = model['param_species']
+    param_species = species_list
+
+    if model['cloud_model'] != 'Mie':
+
+        model = define_model(model_name,bulk_species,param_species,
+                                PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                cloud_dim = model['cloud_dim'])
+
+    else:
+        aerosol_species = model['aerosol_species']
+
+        model = define_model(model_name,bulk_species,param_species,
+                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                        cloud_dim = model['cloud_dim'],
+                        aerosol_species = aerosol_species, 
+                        scattering = model['scattering'],
+                        reflection = model['reflection'])
+
+
+    index = np.argwhere(model['PT_param_names'] == param_name)[0][0]
+
+    for i in range(len(vary_list)):
+
+        PT_params = np.copy(PT_params_og)
+        PT_params[index] = vary_list[i]
+
+        PT_label = param_name + ' = ' + str(vary_list[i])
+        
+        atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params_og, cloud_params_og)
+
+        P = atmosphere['P']
+        T = atmosphere['T']
+
+        ax.semilogy(T[:,0,0], P, lw=1.5, color = colour_list[i], label = PT_label)
+   
+    #Common plot settings for all profiles
+    ax.invert_yaxis()            
+    ax.set_xlabel(r'Temperature (K)', fontsize = 16)
+    #ax.set_xlim(T_min, T_max)
+    ax.set_ylabel(r'Pressure (bar)', fontsize = 16)
+    #ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))  
+    ax.tick_params(labelsize=12)
+    
+    # Add legend
+    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':10}, ncol=1, 
+                       frameon=False, columnspacing=1.0)
+    
+    fig.set_size_inches(9.0, 9.0)

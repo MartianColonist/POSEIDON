@@ -75,7 +75,10 @@ aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4', 'C
                                     'Mg19Fe01SiO4_crystal_natural_Ex','Mg19Fe01SiO4_crystal_natural_Ey','Mg19Fe01SiO4_crystal_natural_Ez',
                                     'Al2O3_amorph_compact','Al2O3_amorph_porous',
                                     'Fe2SiO4_crystal_synthetic_Ex','Fe2SiO4_crystal_synthetic_Ey','Fe2SiO4_crystal_synthetic_Ez',
-                                    'CaAl12O19_crystal_natural_extraordinary','CaAl12O19_crystal_natural_ordinary'])
+                                    'CaAl12O19_crystal_natural_extraordinary','CaAl12O19_crystal_natural_ordinary',
+                                    'SiO2_alpha_crystal_300K_averaged','SiO2_beta_crystal_928K_averaged',
+                                    'Mg2SiO4_295K_averaged','Mg2SiO4_1000K_averaged',
+                                    'Mg092Fe009SiO3_crystal_300K_averaged','Mg092Fe009SiO3_crystal_928K_averaged'])
 
 
 directional_temperature_aerosols =  np.array(['SiO2_alpha_crystal_A2_295K', 'SiO2_alpha_crystal_E_295K', 'SiO2_alpha_crystal_E_346K', 'SiO2_alpha_crystal_E_480K', 'SiO2_alpha_crystal_E_600K', 'SiO2_alpha_crystal_E_705K', 'SiO2_alpha_crystal_E_790K',
@@ -109,4 +112,8 @@ directional_temperature_aerosols =  np.array(['SiO2_alpha_crystal_A2_295K', 'SiO
                                     'TiO2_rutile_extraordinary','TiO2_rutile_ordinary',
                                     'Mg19Fe01SiO4_crystal_natural_Ex','Mg19Fe01SiO4_crystal_natural_Ey','Mg19Fe01SiO4_crystal_natural_Ez',
                                     'Al2O3_amorph_compact','Al2O3_amorph_porous',
-                                    'Fe2SiO4_crystal_synthetic_Ex','Fe2SiO4_crystal_synthetic_Ey','Fe2SiO4_crystal_synthetic_Ez'])
+                                    'Fe2SiO4_crystal_synthetic_Ex','Fe2SiO4_crystal_synthetic_Ey','Fe2SiO4_crystal_synthetic_Ez',
+                                    'CaAl12O19_crystal_natural_extraordinary','CaAl12O19_crystal_natural_ordinary',
+                                    'SiO2_alpha_crystal_300K_averaged','SiO2_beta_crystal_928K_averaged',
+                                    'Mg2SiO4_295K_averaged','Mg2SiO4_1000K_averaged',
+                                    'Mg092Fe009SiO3_crystal_300K_averaged','Mg092Fe009SiO3_crystal_928K_averaged'])

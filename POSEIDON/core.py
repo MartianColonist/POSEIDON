@@ -396,7 +396,7 @@ def define_model(model_name, bulk_species, param_species,
             (Options: transiting / directly_imaged).
         PT_profile (str):
             Chosen P-T profile parametrisation 
-            (Options: isotherm / gradient / two-gradients / Madhu / Pelletier / Guillot /
+            (Options: isotherm / gradient / two-gradients / Madhu / Pelletier / Guillot / Line /
             slope / file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
@@ -540,6 +540,10 @@ def define_model(model_name, bulk_species, param_species,
         if 'K' not in param_species or 'Na' not in param_species:
             raise Exception('If Na_K_fixed_ratio = True, please include Na and K in the param species')
         param_species = [i for i in param_species if i != 'K']
+
+    # If PT_penalty = True but PT_profile != Pelletier, need to throw up an error
+    if PT_penalty == True and PT_profile != 'Pelletier':
+        raise Exception('PT penalty only set up for Pelletier profile')
 
     # Identify chemical species with active spectral features
     active_species = chemical_species[~np.isin(chemical_species, inactive_species)]
