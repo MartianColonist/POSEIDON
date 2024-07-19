@@ -3149,7 +3149,8 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
 def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_colour_list, 
                               retrieval_colour_list, retrieval_labels, span, truths, 
                               N_rows, N_columns, N_bins,
-                              vertical_lines, vertical_lines_colors, tick_labelsize = 8, title_fontsize = 12):
+                              vertical_lines, vertical_lines_colors, tick_labelsize = 8, title_fontsize = 12,
+                              custom_labels = []):
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3167,7 +3168,11 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     fig.set_size_inches(2.5*N_columns, 2.5*N_rows)
     
     # Latex code for parameter labels
-    param_labels = generate_latex_param_names(plot_parameters)
+
+    if custom_labels == []:
+        param_labels = generate_latex_param_names(plot_parameters)
+    else:
+        param_labels = custom_labels
 
     # Determine histogram bounds (defaults to +/- 5σ)
     if (span == []):
@@ -3346,7 +3351,8 @@ def plot_histograms(planet_name, models, plot_parameters,
                     axes = [], retrieval_codes = [], external_samples = [],
                     external_param_names = [], plt_label = None, 
                     save_fig = True,
-                    vertical_lines = [], vertical_line_colors = [], tick_labelsize = 8, title_fontsize = 12):
+                    vertical_lines = [], vertical_line_colors = [], tick_labelsize = 8, title_fontsize = 12,
+                    custom_labels = []):
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -3497,7 +3503,8 @@ def plot_histograms(planet_name, models, plot_parameters,
                                     parameter_colour_list, retrieval_colour_list, 
                                     retrieval_labels, span, truths, 
                                     N_rows, N_columns, N_bins,
-                                    vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize)
+                                    vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize,
+                                    custom_labels = custom_labels)
     
     # Save figure to file
     if (save_fig == True):

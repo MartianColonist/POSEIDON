@@ -1316,7 +1316,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
     # If brightness_temperature is true, convert from FpFs (or Fp) to brightness temeperature 
     if brightness_temperature == True:
-
+        
         y_unit = 'T_bright'
         h = sc.h
         c = sc.c 
@@ -2840,6 +2840,8 @@ def plot_pressure_contribution(wl,P,
     if return_fig == True:
         return fig1, fig2
 
+
+
 import matplotlib.pyplot as plt
 
 def photometric_contribution_function(wl, P, Contribution, 
@@ -2848,6 +2850,9 @@ def photometric_contribution_function(wl, P, Contribution,
                                       treat_wlmin_as_zero = False
                                       ):
 
+    # This parameter is to make the bins look a bit better
+    # I.e. if you are using 1 um sized bins 
+    # It will go from 0 to 1, instead of 0.2 to 1.2 
     if treat_wlmin_as_zero == False:
         wl_min = np.min(wl)
     else:
@@ -2872,7 +2877,6 @@ def photometric_contribution_function(wl, P, Contribution,
 
     bincount = np.bincount(bin_indices)
     
-
     # Finds the indices to loop over in the wavelength ranges
     indices_for_loop = []
     for n in range(len(bincount)):
@@ -2889,23 +2893,21 @@ def photometric_contribution_function(wl, P, Contribution,
     # Loop over each molecule
     for i in range(len(spectrum_contribution_list_names)):
 
-        median_array_one_molecule = []
+        mean_array_one_molecule = []
         # Loop over each wavelength range 
         for j in range(len(indices_for_loop)-1):
             # Loop over each pressure range to get the median 
             temp_row = []
             for p in range(len(P)):
                 
+                temp_row.append(np.mean(Contribution[i,p,indices_for_loop[j]:indices_for_loop[j+1]]))
 
-                temp_row.append(np.nanmedian(Contribution[i,p,indices_for_loop[j]:indices_for_loop[j+1]]))
+            mean_array_one_molecule.append(temp_row)
 
-            
-            median_array_one_molecule.append(temp_row)
+        photometric_contribution.append(mean_array_one_molecule)
 
-        photometric_contribution.append(median_array_one_molecule)
-    
-    # Finding the total photometric contribution for each molecule by adding everything up    
-    photometric_total = []
+    # Finding the across all wavelengths by adding everything up  
+    photometric_all_wavelengths = []
     for i in range(len(photometric_contribution)):
         temp_row = np.zeros(len(photometric_contribution[i][0]))
         for j in range(len(photometric_contribution[i])):
@@ -2913,13 +2915,12 @@ def photometric_contribution_function(wl, P, Contribution,
             
         # Now to normalize the area to 1 
         temp_row = temp_row / np.trapz(temp_row)
-        photometric_total.append(temp_row)
+        photometric_all_wavelengths.append(temp_row)
 
-
-    return photometric_contribution, photometric_total, bins
+    return photometric_contribution, photometric_all_wavelengths, bins
 
 def plot_photometric_contribution(wl,P,
-                                  photometric_contribution, photometric_total,
+                                  photometric_contribution, photometric_all_wavelengths,
                                   spectrum_contribution_list_names,
                                   bins = [],
                                   return_fig = False):
@@ -2928,9 +2929,13 @@ def plot_photometric_contribution(wl,P,
     labels = []
     for i in spectrum_contribution_list_names:
         labels.append(i)
-    labels.append('Total')
+
 
     for i in range(len(spectrum_contribution_list_names)):
+
+        # Normalize to 1 
+        photometric_contribution[i] = np.array(photometric_contribution)[i,:]/np.max(np.array(photometric_contribution)[i,:])
+        photometric_all_wavelengths[i] = np.array(photometric_all_wavelengths)[i,:]/np.max(np.array(photometric_all_wavelengths)[i,:])
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
@@ -2947,6 +2952,7 @@ def plot_photometric_contribution(wl,P,
                     label = '[' + str(round(bins[b],1)) + ':' + str(round(bins[b+1],1)) + ']'
                 ax.plot(photometric_contribution[i][b],np.log10(P), label = label)
             ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            ax.get_legend().set_title("Wavelength (μm) Bins")
 
         ax.set_ylabel('Log Pressure (bar)')
         ax.invert_yaxis()
@@ -2961,33 +2967,10 @@ def plot_photometric_contribution(wl,P,
         ax.set_ylabel('Log Pressure (bar)')
         ax.invert_yaxis()
         ax.set_xlabel('Contribution')
-        title = 'Photometric Contribution Function All Wavelength : ' + str(labels[i])
+        title = 'Photometric Contribution Function All Wavelengths : ' + str(labels[i])
         ax.set_title(title)
-        ax.plot(photometric_total[i],np.log10(P))
+        ax.plot(photometric_all_wavelengths[i],np.log10(P))
         plt.show()
-
-    # Plots all of them together, and the log version as well 
-    fig, ax = plt.subplots(figsize=(10, 10))
-    ax.set_ylabel('Log Pressure (bar)')
-    ax.invert_yaxis()
-    ax.set_xlabel('Contribution')
-    title = 'Photometric Contribution Function All Wavelength All Molecules:'
-    ax.set_title(title)
-    for i in range(len(spectrum_contribution_list_names)):
-        ax.plot(photometric_total[i],np.log10(P), label = labels[i])
-    ax.legend()
-    plt.show()
-
-    fig, ax = plt.subplots(figsize=(10, 10))
-    ax.set_ylabel('Log Pressure (bar)')
-    ax.invert_yaxis()
-    ax.set_xlabel('Log Contribution')
-    title = 'Photometric Contribution Function All Wavelength All Molecules:'
-    ax.set_title(title)
-    for i in range(len(spectrum_contribution_list_names)):
-        ax.plot(np.log10(photometric_total[i]),np.log10(P), label = labels[i])
-    ax.legend()
-    plt.show()
 
     if return_fig == True:
         return fig1
