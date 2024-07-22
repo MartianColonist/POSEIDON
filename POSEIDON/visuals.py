@@ -1286,7 +1286,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
-            'lower left', 'lower right').
+            'lower left', 'lower right','outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
         ax (matplotlib axis object, optional):
@@ -1379,7 +1379,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             
         # Define colours for plotted spectra (default or user choice)
         if (data_colour_list == []):   # If user did not specify a custom colour list
-            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black']
+            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown']
         else:
             data_colours = data_colour_list
 
@@ -1771,7 +1771,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
-            'lower left', 'lower right').
+            'lower left', 'lower right', 'outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
         show_data_bin_width (bool, optional):
@@ -2132,7 +2132,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
-            'lower left', 'lower right').
+            'lower left', 'lower right', 'outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
         ax (matplotlib axis object, optional):
@@ -3885,13 +3885,47 @@ def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
       #                 horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
 
 
-# For the PT profiles tutorial notebook
-# Helper function that shows what varying different
-# variables does to resultant PT profiles
+
 def vary_one_parameter_PT(model, planet, param_name, vary_list,
                            P, P_ref, R_p_ref,
                        PT_params_og, log_X_params_og, cloud_params_og,
                        ax = None,legend_location = 'upper right'):
+    
+    '''
+    This function is utilized in tutorial noteooks to show how turning a knob on a parameter changes a resultant PT profile
+
+    Args:
+        model (dict):
+            A specific description of a given POSEIDON model.
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        param_name (string):
+            Name of the parameter to vary
+        vary_list (array of float):
+            Array containing values to test
+        P (np.array of float):
+            Model pressure grid (bar).
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        PT_params_og (np.array of float):
+            Original parameters defining the pressure-temperature field.
+        log_X_params_og (np.array of float):
+            Original parameters defining the log-mixing ratio field.
+        cloud_params_og (np.array of float):
+            Original parameters defining atmospheric aerosols.
+        legend_location (str, optional):
+            The location of the legend ('upper left', 'upper right', 
+            'lower left', 'lower right').
+        ax (matplotlib axis object, optional):
+            Matplotlib axis provided externally.
+
+
+    Returns: 
+        Outputs a plot of resultant spectra with the param_name at the vary_list values.
+
+    '''
 
     from POSEIDON.core import define_model
     from POSEIDON.core import make_atmosphere

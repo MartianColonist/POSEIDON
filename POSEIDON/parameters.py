@@ -1834,6 +1834,8 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             r_i_real = 0
             r_i_complex = 0
 
+    # This cloud model is to specifically take in kappa_cloud, g_cloud, and w_cloud from eddysed calculations
+    # i.e from PICASO, VIRGA
     elif (cloud_model =='eddysed'):
 
         kappa_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'kappa_cloud_eddysed')[0][0]]

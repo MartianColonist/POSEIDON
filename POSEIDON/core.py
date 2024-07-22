@@ -324,6 +324,8 @@ def create_planet(planet_name, R_p, mass = None, gravity = None,
             Measured error on system distance (m).
         b_p (float):
             Impact parameter of planetary orbit (m) -- NOT in stellar radii!
+        a_p (float):
+            Distance of planet from host star (m) -- NOT in AU
     
     Returns:
         planet (dict):
