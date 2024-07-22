@@ -1332,8 +1332,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Quick validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    #if (N_spectra > 9):
-    #    raise Exception("Max number of concurrent spectra to plot is 9.")
+    if (N_spectra > 8) and colour_list == []:
+        raise Exception("Max number of concurrent spectra to plot is 8 with default colour list")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
@@ -1366,8 +1366,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Quick validity checks for plotting
         if (N_datasets == 0):
             raise Exception("Must provide at least one dataset to plot!")
-        if (N_datasets > 10):
-            raise Exception("Max number of concurrent datasets to plot is 10.")
+        if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+            raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
         if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
             raise Exception("Number of colours does not match number of datasets.")
         if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1385,13 +1385,13 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
         # Define data marker symbols (default or user choice)
         if (data_marker_list == []):   # If user did not specify a custom colour list
-            data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p']
+            data_markers = ['o', 's', 'D', '*', 'X',]
         else:
             data_markers = data_marker_list
 
         # Define data marker sizes (default or user choice)
         if (data_marker_size_list == []):   # If user did not specify a custom colour list
-            data_markers_size = [3, 3, 3, 3, 3, 3, 3]
+            data_markers_size = [3, 3, 3, 3, 3,]
         else:
             data_markers_size = data_marker_size_list
         
@@ -1817,8 +1817,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Quick validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 10):
-        raise Exception("Max number of concurrent datasets to plot is 10.")
+    if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+        raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1830,19 +1830,19 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black', 'black', 'black', 'black']
+        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown']
     else:
         colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p','p', 'p', 'p', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3,3,3 , 3, 3]
+        data_markers_size = [3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
        
@@ -2174,8 +2174,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick spectra validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 10):
-        raise Exception("Max number of concurrent retrieved spectra to plot is 10.")
+    if (N_spectra > 3) and (colour_list == []):
+        raise Exception("Max number of concurrent retrieved spectra to plot is 3 with default colour list.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((binned_colour_list != []) and (N_spectra != len(binned_colour_list))):
@@ -2211,8 +2211,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick data validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 10):
-        raise Exception("Max number of concurrent datasets to plot is 10.")
+    if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+        raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -2226,19 +2226,19 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black', 'darkgreen', 'pink', 'purple']
+        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson']
     else:
         data_colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p','p', 'p', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3, 3 , 3]
+        data_markers_size = [3, 3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
                 
