@@ -952,7 +952,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     # Load in the aerosol species
     aerosol_species = np.array(aerosol_species)
     
-    # Open chemistry grid HDF5 file
+    # Open aerosol grid HDF5 file
     database = h5py.File(input_file_path + 'opacity/'  + grid + '_database_emission.hdf5', 'r')
 
     # Load the dimensions of the grid
@@ -2824,6 +2824,7 @@ def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
     all_Qbacks = []
     all_gs = []
     print('Remember to update aerosol_supported_species in supported_opac.py!')
+
 
 def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indices_array, r_m):
 

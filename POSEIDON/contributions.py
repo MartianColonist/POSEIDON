@@ -187,11 +187,12 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
     N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
     N_bf_species = len(bf_species)           # Number of bound-free species included
     
-    # Set up to find the bulk species indices (these are always turned on)
+    # Set up to find the bulk species indices (these are always turned on in spectral contribution plots)
     # Find the number and indices for the bulk species 
     N_bulk_species = N_species - N_species_active
-    # The bulk species are also the first few indices in the chemical species list
     bulk_species_indices = range(N_bulk_species)
+
+    # The bulk species are also the first few indices in the chemical species list
     bulk_species_names = chemical_species[:N_bulk_species]
 
     # Find the name of the bulk species and check to see if they are 
@@ -210,7 +211,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
         if pair_1_bool == True and pair_2_bool == True:
             bulk_cia_indices.append(i)
 
-    # Else, we are trying to find the contribution from a species
+    # If we are only trying to find contribution from a spectrally
+    # active gas species
     if bulk_species == False and cloud_contribution == False:
 
         # Find the index in the list of chemical species 
@@ -235,7 +237,6 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
         bound_free = True
     else:
         bound_free = False
-
 
 
     N_wl = len(wl)     # Number of wavelengths on model grid
@@ -354,6 +355,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 # For each molecular / atomic species
                 for q in range(N_species):  
                     
+                    # Same as N_species_active part 
                     if bulk_species == False and cloud_contribution == False and bound_free == False:
                         if q == contribution_molecule_species_index:
                             n_q = n_level*X[q,i,j,k]   # Number density of given species
@@ -417,6 +419,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 # All deck, slab, aerosol information is stored in the n_aerosol_array
                 # If its an opaque deck, then the length of sigma_Mie_array will be one more than n_aerosol_array
                 # Since the opaque deck is being counted as an extra aerosol 
+                # (in clouds.py, Mie_cloud(), opaque deck is the first element in sigma_Mie_array)
                 # Otherwise, it should be the same 
 
                 # If cloud contribution = True, we need to find the species we want the contribution of 
@@ -1402,7 +1405,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
             spectrum_contribution_list[s] = (h*c)/(kb * (wl_brightness) * np.log(1 + (2 * h * c**2 / ((Fp/np.pi) * (wl_brightness)**5))))
 
-
+    # This plots the full spectrum first, so that the contribution can be plotted on top of it
     if full_spectrum_first == True:
 
         # If the user didn't provide a color list
@@ -1524,6 +1527,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
     # Set up to find the bulk species indices (these are always turned on)
     # Find the number and indices for the bulk species 
     N_bulk_species = N_species - N_species_active
+
     # The bulk species are also the first few indices in the chemical species list
     bulk_species_indices = range(N_bulk_species)
     bulk_species_names = chemical_species[:N_bulk_species]
@@ -1544,7 +1548,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
         if pair_1_bool == True and pair_2_bool == True:
             bulk_cia_indices.append(i)
 
-    # Else, we are trying to find the contribution from a species
+    # Else, we are trying to find the contribution from a spectrally active gas species
     if bulk_species == False and cloud_contribution == False:
 
         # Find the index in the list of chemical species 
@@ -1822,7 +1826,8 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         
 
                 # Opaque Deck is the first element in n_aerosol_array
-                # I will decide for now to add the opaque deck to each species. I think that won't hurt to keep them together 
+                # This is set up so that the opaque deck is not appended to any of the compositionally specific aerosols
+                # And will only show up if cloud_total_contribution is set to True 
                 else:
                     for aerosol in range(len(n_aerosol_array)):
                             
@@ -1837,7 +1842,6 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                                             kappa_cloud[i,j,k,:] = 0
 
                                 else:
-
                                     for i in range(i_bot,N_layers):
                                         for q in range(len(wl)):
                                             if i == layer_to_ignore:
@@ -2857,7 +2861,7 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     # Define arrays where pressure contribution functions will live 
     Contribution = np.zeros(shape=(contribution_length,len(P), len(wl)))
 
-    # For denominator of contribution function 
+    # For denominator of contribution function (not used in current code, but returned just in case)
     norm = np.zeros(shape=(contribution_length,len(wl)))   # Running sum for contribution
 
     # Loop over each layer in the pressure array, and compute spectra by removing specific opacities in that layer 
