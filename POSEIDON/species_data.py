@@ -49,16 +49,23 @@ polarisabilities = {'H2':  0.80e-24,  'He':  0.21e-24, 'N2':   1.74e-24,  'O2': 
                     'Mn':  9.40e-24,  'Ca':  22.8e-24, 'Ca+':  22.8e-24}   
 
 # List of masses in atomic mass units (multiply by 1u = 1.66053904e-27 to convert to kg)
-# Exohazes an Tholins have the weight of one PAN (CH2CHCN)
-aerosol_masses = {'Al2O3' : 101.96, 'C' : 12.011, 'CH4' : 16.031300, 'CaTiO3' : 135.94, 
-                  'Cr' : 52, 'ExoHaze_1000xSolar_300K' : 53.06, 'ExoHaze_1000xSolar_400K' : 53.06,'Fe' : 55.934942, 
-                  'Fe2O3' : 159.69, 'Fe2SiO4' : 203.77, 'FeO' : 71.84, 'FeS' : 87.91,
-                  'FeSiO3' : 131.93, 'H2O' : 18.010565, 'Hexene' : 84.16, 'KCl': 74.55,
-                  'Mg2SiO4' : 140.69, 'Mg2SiO4_amorph_sol_gel' : 140.69, 'Mg2SiO4_Fe_poor' : 140.69, 
+# Exohazes, Tholins, IceTholins, Phosphorus-Haze, Soot have the weight of one PAN (CH2CHCN)
+# Not used in the code at the moment, just here as a reference for future code updates
+aerosol_masses = {'ADP': 97.02, 'Al2O3' : 101.96, 'Al2O3_KH' : 101.96, 'C' : 12.011, 'CH4' : 16.031300, 'CaTiO3' : 135.94, 'CaTiO3_KH' : 135.94, 
+                  'Cr' : 52, 'ExoHaze_1000xSolar_300K' : 53.06, 'ExoHaze_1000xSolar_400K' : 53.06, 'Fe' : 55.934942, 
+                  'Fe2O3' : 159.69, 'Fe2SiO4_KH' : 203.77, 'FeO' : 71.84, 'FeS' : 87.91,
+                  'FeSiO3' : 131.93, 'H2O' : 18.010565, 'H2SO4' : 98.08, 'Hexene' : 84.16, 'Hibonite': 668, 
+                  'IceTholin' : 53.06, 'KCl': 74.55,
+                  'Mg2SiO4_Fe_rich' : 140.69, 'Mg2SiO4_amorph_sol_gel' : 140.69, 'Mg2SiO4_Fe_poor' : 140.69,
+                  'Mg2SiO4_amorph' : 140.69, 'Mg2SiO4_crystalline' : 140.69, 
                   'Mg4Fe6SiO3_amorph_glass' : 508.37, 'Mg5Fe5SiO3_amorph_glass' : 476.83, 
                   'Mg8Fe12SiO4_amorph_glass' : 956.66, 'Mg8Fe2SiO3_amorph_glass' : 382.21, 'MgAl2O4' : 142.27,
                   'MgFeSiO4_amorph_glass' : 172.23, 'MgO' : 40.3, 'MgSiO3' : 100.39, 'MgSiO3_amorph_glass' : 100.39, 
-                  'MgSiO3_sol_gel' : 100.39, 'MnS' : 87, 'Na2S' : 78.04, 'NaCl' : 58.44, 
-                  'NH3' : 17.026549, 'SiC' : 40.10, 'SiO' : 44.08, 'SiO2': 60.08, 
-                  'SiO2_amorph' : 60.08, 'Tholin' : 53.06, 'Tholin-CO-0625' : 53.06, 'TiC' : 59.88, 
-                  'TiO2' : 79.87, 'TiO2_anatase' : 79.87, 'ZnS' : 97.46, 'Ethane' : 30.07}
+                  'MgSiO3_amorph' : 100.39, 'MgSiO3_crystalline' : 100.39, 
+                  'MgSiO3_sol_gel' : 100.39, 'MnS' : 87, 'MnS_KH' : 87, 'MnS_Mor' : 87, 'Na2S' : 78.04, 'NaCl' : 58.44, 
+                  'NanoDiamonds' : 12.01, 'NH4SH' : 42, 'S8' : 256, 'Saturn-Phosphorus-Haze' : 53.06,
+                  'NH3' : 17.026549, 'SiC' : 40.10, 'SiO' : 44.08, 'SiO2': 60.08, 'SiO2_crystalline_2023': 60.08,
+                  'SiO2_amorph' : 60.08, 'Soot' : 53.06, 'Soot_6mm' : 53.06,
+                  'Tholin' : 53.06, 'Tholin-CO-0625' : 53.06, 'TiC' : 59.88, 
+                  'TiO2_anatase' : 79.87, 'TiO2_rutile' : 79.87,'VO' : 67,'ZnS' : 97.46,}
+

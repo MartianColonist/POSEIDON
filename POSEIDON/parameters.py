@@ -579,7 +579,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             if ('haze' not in cloud_type) and ('deck' not in cloud_type):
                 raise Exception("Error: unsupported cloud model.")
 
-        # Mie scattering        
+        # Mie scattering     
         elif (cloud_model == 'Mie'):
 
             # If working with a 2D patchy cloud model
@@ -1685,6 +1685,10 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             theta_0 = -90.0       
 
         # Set the Mie parameters 
+        # Sorry that below is a bit of a mess if anyone is looking at this in the future
+        # There are a lot of different cloud models, and 
+        # numpy gets made depending on if the inputs are an array or a string (file read vs database aerosol)
+        # Details below
         
         # If the cloud is a fuzzy_deck, slab, fuzzy_deck_plus_slab, or opaque_deck_plus_slab model 
         # it will contain the string 'log_P_top' in its parameter names 
@@ -1854,6 +1858,8 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             r_i_real = 0
             r_i_complex = 0
 
+    # This cloud model is to specifically take in kappa_cloud, g_cloud, and w_cloud from eddysed calculations
+    # i.e from PICASO, VIRGA
     elif (cloud_model =='eddysed'):
 
         kappa_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'kappa_cloud_eddysed')[0][0]]

@@ -1227,7 +1227,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
                  show_data_bin_width = True,
-                 line_widths = []):
+                 line_widths = [],
+                 xlabels = True):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1286,7 +1287,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
-            'lower left', 'lower right').
+            'lower left', 'lower right','outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
         ax (matplotlib axis object, optional):
@@ -1297,6 +1298,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Flag indicating whether to plot x bin widths for data points.
         line_widths (list of float, optional):
             Line widths for binned spectra (defaults to 2.0 if not specified).
+        x_labels (bool):
+            If false, will remove x_ticks and x_label
 
     Returns:
         fig (matplotlib figure object):
@@ -1332,8 +1335,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Quick validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    #if (N_spectra > 9):
-    #    raise Exception("Max number of concurrent spectra to plot is 9.")
+    if (N_spectra > 8) and colour_list == []:
+        raise Exception("Max number of concurrent spectra to plot is 8 with default colour list")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
@@ -1366,8 +1369,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Quick validity checks for plotting
         if (N_datasets == 0):
             raise Exception("Must provide at least one dataset to plot!")
-        if (N_datasets > 10):
-            raise Exception("Max number of concurrent datasets to plot is 10.")
+        if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+            raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
         if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
             raise Exception("Number of colours does not match number of datasets.")
         if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1379,19 +1382,19 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             
         # Define colours for plotted spectra (default or user choice)
         if (data_colour_list == []):   # If user did not specify a custom colour list
-            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black']
+            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown']
         else:
             data_colours = data_colour_list
 
         # Define data marker symbols (default or user choice)
         if (data_marker_list == []):   # If user did not specify a custom colour list
-            data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p']
+            data_markers = ['o', 's', 'D', '*', 'X',]
         else:
             data_markers = data_marker_list
 
         # Define data marker sizes (default or user choice)
         if (data_marker_size_list == []):   # If user did not specify a custom colour list
-            data_markers_size = [3, 3, 3, 3, 3, 3, 3]
+            data_markers_size = [3, 3, 3, 3, 3,]
         else:
             data_markers_size = data_marker_size_list
         
@@ -1654,7 +1657,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
-    ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+    if xlabels == True:
+        ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
         if (y_min_plt < 0.10):
@@ -1685,7 +1689,11 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
     # Plot wl tick labels
-    ax1.set_xticks(wl_ticks)
+    if xlabels == True:
+        ax1.set_xticks(wl_ticks)
+    else:
+        ax1.set_xticks(wl_ticks)
+        ax1.tick_params(labelbottom=False)  
     
     # Switch to two columns if many spectra are being plotted
     if (N_spectra >= 6):
@@ -1771,7 +1779,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
-            'lower left', 'lower right').
+            'lower left', 'lower right', 'outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
         show_data_bin_width (bool, optional):
@@ -1817,8 +1825,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Quick validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 10):
-        raise Exception("Max number of concurrent datasets to plot is 10.")
+    if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+        raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1830,19 +1838,19 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black', 'black', 'black', 'black']
+        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown']
     else:
         colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p','p', 'p', 'p', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3,3,3 , 3, 3]
+        data_markers_size = [3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
        
@@ -2133,7 +2141,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
-            'lower left', 'lower right').
+            'lower left', 'lower right', 'outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
         ax (matplotlib axis object, optional):
@@ -2180,8 +2188,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick spectra validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 10):
-        raise Exception("Max number of concurrent retrieved spectra to plot is 10.")
+    if (N_spectra > 3) and (colour_list == []):
+        raise Exception("Max number of concurrent retrieved spectra to plot is 3 with default colour list.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((binned_colour_list != []) and (N_spectra != len(binned_colour_list))):
@@ -2217,8 +2225,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick data validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 10):
-        raise Exception("Max number of concurrent datasets to plot is 10.")
+    if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+        raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -2328,19 +2336,19 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black', 'darkgreen', 'pink', 'purple']
+        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson']
     else:
         data_colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p','p', 'p', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3, 3 , 3]
+        data_markers_size = [3, 3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
                 
@@ -3251,7 +3259,8 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
 def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_colour_list, 
                               retrieval_colour_list, retrieval_labels, span, truths, 
                               N_rows, N_columns, N_bins,
-                              vertical_lines, vertical_lines_colors, tick_labelsize = 8, title_fontsize = 12):
+                              vertical_lines, vertical_lines_colors, tick_labelsize = 8, title_fontsize = 12,
+                              custom_labels = []):
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3269,7 +3278,11 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     fig.set_size_inches(2.5*N_columns, 2.5*N_rows)
     
     # Latex code for parameter labels
-    param_labels = generate_latex_param_names(plot_parameters)
+
+    if custom_labels == []:
+        param_labels = generate_latex_param_names(plot_parameters)
+    else:
+        param_labels = custom_labels
 
     # Determine histogram bounds (defaults to +/- 5σ)
     if (span == []):
@@ -3448,7 +3461,8 @@ def plot_histograms(planet_name, models, plot_parameters,
                     axes = [], retrieval_codes = [], external_samples = [],
                     external_param_names = [], plt_label = None, 
                     save_fig = True,
-                    vertical_lines = [], vertical_line_colors = [], tick_labelsize = 8, title_fontsize = 12):
+                    vertical_lines = [], vertical_line_colors = [], tick_labelsize = 8, title_fontsize = 12,
+                    custom_labels = []):
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -3599,7 +3613,8 @@ def plot_histograms(planet_name, models, plot_parameters,
                                     parameter_colour_list, retrieval_colour_list, 
                                     retrieval_labels, span, truths, 
                                     N_rows, N_columns, N_bins,
-                                    vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize)
+                                    vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize,
+                                    custom_labels = custom_labels)
     
     # Save figure to file
     if (save_fig == True):
@@ -3980,13 +3995,47 @@ def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
       #                 horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
 
 
-# For the PT profiles tutorial notebook
-# Helper function that shows what varying different
-# variables does to resultant PT profiles
+
 def vary_one_parameter_PT(model, planet, param_name, vary_list,
                            P, P_ref, R_p_ref,
                        PT_params_og, log_X_params_og, cloud_params_og,
                        ax = None,legend_location = 'upper right'):
+    
+    '''
+    This function is utilized in tutorial noteooks to show how turning a knob on a parameter changes a resultant PT profile
+
+    Args:
+        model (dict):
+            A specific description of a given POSEIDON model.
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        param_name (string):
+            Name of the parameter to vary
+        vary_list (array of float):
+            Array containing values to test
+        P (np.array of float):
+            Model pressure grid (bar).
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        PT_params_og (np.array of float):
+            Original parameters defining the pressure-temperature field.
+        log_X_params_og (np.array of float):
+            Original parameters defining the log-mixing ratio field.
+        cloud_params_og (np.array of float):
+            Original parameters defining atmospheric aerosols.
+        legend_location (str, optional):
+            The location of the legend ('upper left', 'upper right', 
+            'lower left', 'lower right').
+        ax (matplotlib axis object, optional):
+            Matplotlib axis provided externally.
+
+
+    Returns: 
+        Outputs a plot of resultant spectra with the param_name at the vary_list values.
+
+    '''
 
     from POSEIDON.core import define_model
     from POSEIDON.core import make_atmosphere
