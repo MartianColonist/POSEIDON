@@ -2211,7 +2211,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     file_name (txt):
         file name of the txt file with the directory included
 
-    aerosoL_name (txt):
+    aerosol_name (txt):
         name that you want the npy file saved with
     '''
 
@@ -2498,6 +2498,332 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     all_gs = []
     print('Remember to update aerosol_supported_species in supported_opac.py!')
 
+
+def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
+                                                 r_m_std_dev = 0.5,
+                                                 log_r_m_min = -3,
+                                                 log_r_m_max = 1,
+                                                 g_w_calc = 'median'):
+
+    '''
+    Calculates .npy files from a refractive index txt file (lab data)
+    Takes ~ a day to generate the npy file that then can be easily added to the aerosol database  
+    Please ensure that the first two rows are skippable, or that the header is commented out (#) and that the columns are 
+    Wavelength (microns) | Real Index | Imaginary Index
+    Same as precompute_cross_sections_one_aerosol but allows for customization
+
+    For better commented code on how the LX-MIE/PLATON algorithm works, see Mie_cloud_free()
+
+    INPUTS 
+
+        file_name (txt):
+            file name of the txt file with the directory included
+
+        aerosol_name (txt):
+            name that you want the npy file saved with
+
+        r_m_std_dev (float, optional):
+            standard deviations of the lognormal distributions
+
+        log_r_m_min (float, optional):
+            mininum radii to be computed
+
+        log_r_m_max (float, optional):
+            maximum radii to be computed
+        
+        g_w_calc (string, optional):
+            how g and w are averaged. Options are 'median', 'mean', 'trap'
+    '''
+
+    global all_etas, all_xs, all_Qexts, all_Qscats, all_Qbacks, all_gs
+
+    if g_w_calc != 'median' and g_w_calc!= 'mean' and g_w_calc != 'trap':
+        raise Exception('Supported g and w calculations is median (default), mean, or trap (trapezoidal integration)')
+
+    # Constants for the Qext Calculation
+    z_max = 5
+    num_integral_points = 100
+    R_Mie = 1000
+
+    # Saved Arrays 
+    sigma_Mie_all = []
+    wl_Mie = []
+    ext_array = []
+    scat_array = []
+    abs_array = []
+    back_array = []
+    w_array = []
+    g_array = []
+    jumbo_array = []
+
+    # Reset the saved arrays, just in case
+    all_etas = []
+    all_xs = []
+    all_Qexts = []
+    all_Qscats = []
+    all_Qbacks = []
+    all_gs = []
+
+    # Create wl_Mie array which goes from 0.2 to 30 at R = 1000
+    wl_min = 0.2
+    wl_max = 30
+    wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
+
+    # Default indices for the cross section, g, and w arrays
+    # This only changes if the lab data doesn't span the entire wl range 
+    idx_start = 0
+    idx_end = 5011
+
+    # Radii 
+    r_m_array = 10**np.linspace(log_r_m_min,log_r_m_max,1000)
+
+    # Load in the input file path
+    input_file_path = os.environ.get("POSEIDON_input_data")
+
+    if input_file_path == None:
+        raise Exception("POSEIDON cannot locate the input folder.\n" +
+                        "Please set the 'POSEIDON_input_data' variable in " +
+                        "your .bashrc or .bash_profile to point to the " +
+                        "POSEIDON input folder.")
+
+    #########################
+    # Load in refractive indices (as function of wavelength)
+    #########################
+    try :
+        file_name = file_name
+        print('Loading in : ', file_name)
+        try:
+            file_as_numpy = np.loadtxt(file_name, comments = '#').T
+        except:
+            file_as_numpy = np.loadtxt(file_name, skiprows = 2).T
+
+        # If its index, wavelength, n, k we need to do something different. 
+        if len(file_as_numpy) == 4:
+            wavelengths = file_as_numpy[1]
+            real_indices = file_as_numpy[2]
+            imaginary_indices = file_as_numpy[3]
+            file_as_numpy = np.array([wavelengths,real_indices,imaginary_indices])
+
+    except :
+        raise Exception('Could not load in file. Make sure directory is included in the input')
+
+
+    wavelengths = file_as_numpy[0]
+
+    # Truncating wl grid if necessary 
+    # Any values not covered will be set to 0 in the database
+    if np.max(wavelengths) < 30 or np.min(wavelengths) > 0.2:
+
+        print('Wavelength column does not span 0.2 to 30 um')
+
+        # If less than 30 and greater than 0.2
+        if np.max(wavelengths) < 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = np.max(wavelengths)
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start:idx_end]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to '+  str(np.max(wl_Mie)))
+
+        # If less than 30 only
+        elif np.max(wavelengths) < 30 and np.min(wavelengths) <= 0.2:
+
+            wl_min = 0.2
+            wl_max = np.max(wavelengths)
+
+            idx_start = 0
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            wl_Mie = wl_Mie[:idx_end]
+            
+            print('Wavelength grid will be truncated to : 0.2 to ' + str(np.max(wl_Mie)))
+
+        # If more than 0.2 only 
+        elif np.max(wavelengths) >= 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = 30
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = 5011
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start:]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to 30')
+
+    # Loading in the refractive indices 
+    interp_reals = interp1d(wavelengths, file_as_numpy[1])
+    interp_complexes = interp1d(wavelengths, file_as_numpy[2])
+    eta_array = interp_reals(wl_Mie) + -1j *interp_complexes(wl_Mie)
+
+    # Counter is used to print out progress of precomputation, as well as reset caches every 250 entries
+    counter = 0
+
+    # Loop over radii in the radius array
+    for r_m in r_m_array:
+
+        #########################
+        # Caculate the  cross sections, single scattering albedo, and asymmetry parameter of the particles (as a function of wavelength)
+        #########################
+        
+        # Print the radius being computed every ten steps
+        if counter % 10 == 0:
+            print(r_m)
+
+        # Every 250 steps clear out LX-MIe caches
+        if counter % 250 == 0:
+            all_etas = []
+            all_xs = []
+            all_Qexts = []
+            all_Qscats = []
+            all_Qbacks = []
+            all_gs = []
+
+        # LX-MIE algorithm starts here. See Mie_cloud_free() for details
+        z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
+        z = np.append(z[::-1], -z)
+
+        probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
+        radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
+        geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
+
+        Qext_intpl_array = []
+        Qscat_intpl_array = []
+        Qback_intpl_array = []
+        w_intpl_array = []
+        g_intpl_array = []
+
+        # Loop through each wavelength 
+        for m in range(len(wl_Mie)):
+            
+            # Take the dense xs, but keep wavelength constant this time around
+            dense_xs = 2*np.pi*radii / wl_Mie[m]
+            dense_xs = dense_xs.flatten()
+
+            # Make xs more coarse
+            x_hist = np.histogram(dense_xs, bins='auto')[1]
+
+            # Pull the refractive index for the wavelength we are on 
+            eta = eta_array[m]
+
+            # Get the coarse Qext with the constant eta 
+            Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
+
+            # SSA and weighted g 
+            w_hist = Qscat_hist/Qext_hist
+            #g_hist = g_hist/Qscat_hist
+
+            # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
+            spl = scipy.interpolate.splrep(x_hist, Qext_hist)
+            Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
+            Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            spl = scipy.interpolate.splrep(x_hist, w_hist)
+            w_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            spl = scipy.interpolate.splrep(x_hist, Qback_hist)
+            Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            spl = scipy.interpolate.splrep(x_hist, g_hist)
+            g_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            # Append it to the array that will have all the Qext
+            Qext_intpl_array.append(Qext_intpl)
+            Qscat_intpl_array.append(Qscat_intpl)
+            Qback_intpl_array.append(Qback_intpl)
+            w_intpl_array.append(w_intpl)
+            g_intpl_array.append(g_intpl)
+
+        # Reshape the mega array so that the first index is wavelngth, second is radius 
+        Qext_intpl = np.reshape(Qext_intpl_array, (len(wl_Mie), len(radii)))
+        Qscat_intpl = np.reshape(Qscat_intpl_array, (len(wl_Mie), len(radii)))
+        Qback_intpl = np.reshape(Qback_intpl_array, (len(wl_Mie), len(radii)))
+        w_intpl = np.reshape(w_intpl_array, (len(wl_Mie), len(radii)))
+        g_intpl = np.reshape(g_intpl_array, (len(wl_Mie), len(radii)))
+
+        # Empty arrays to store the following values into 
+        eff_ext_cross_section = np.full(5011, 1e-250)
+        eff_scat_cross_section = np.full(5011, 1e-250)
+        eff_abs_cross_section = np.full(5011, 1e-250)
+        eff_back_cross_section = np.full(5011, 1e-250)
+        eff_w = np.full(5011, 1e-250)
+        eff_g = np.full(5011, 1e-250)
+
+        # Effective Cross section is a trapezoidal integral
+        eff_ext_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+
+        # Scattering Cross section 
+        eff_scat_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+
+        # Absorption Cross section
+        eff_abs_cross_section[idx_start:idx_end] = eff_ext_cross_section[idx_start:idx_end] - eff_scat_cross_section[idx_start:idx_end]
+
+        # BackScatter Cross section 
+        eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+
+        # Effective w and g
+        if g_w_calc == 'median':
+            eff_w[idx_start:idx_end] = np.median(w_intpl, axis=1)
+            eff_g[idx_start:idx_end] = np.median(g_intpl, axis=1)
+
+        elif g_w_calc == 'mean':
+            eff_w[idx_start:idx_end] = np.mean(w_intpl, axis=1)
+            eff_g[idx_start:idx_end] = np.mean(g_intpl, axis=1)     
+        
+        elif g_w_calc == 'trap':
+            eff_w[idx_start:idx_end] = np.trapz(probs*w_intpl, z)
+            eff_g[idx_start:idx_end] = nnp.trapz(probs*g_intpl, z) 
+
+        # Append everything to arrays to save
+        ext_array.append(eff_ext_cross_section)
+        scat_array.append(eff_scat_cross_section)
+        abs_array.append(eff_abs_cross_section)
+        back_array.append(eff_back_cross_section)
+        w_array.append(eff_w)
+        g_array.append(eff_g)
+
+        counter += 1
+
+    # Save each radiative property as a seperate numpy array for future 
+    title = input_file_path + 'opacity/refractive_indices/eff_ext_Mie_' + aerosol_name
+    np.save(title,ext_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/refractive_indices/eff_scat_Mie_' + aerosol_name
+    np.save(title,scat_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/refractive_indices/eff_abs_Mie_' + aerosol_name
+    np.save(title,abs_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/refractive_indices/eff_back_Mie_' + aerosol_name
+    np.save(title,back_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/refractive_indices/eff_w_Mie_' + aerosol_name
+    np.save(title,w_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/refractive_indices/eff_g_Mie_' + aerosol_name
+    np.save(title,g_array,allow_pickle = True)
+
+    # Save all of them together as the jumpbo array
+    title = input_file_path + 'opacity/refractive_indices/jumbo_Mie_' + aerosol_name
+    jumbo_array.append([ext_array,scat_array,abs_array,back_array,w_array,g_array])
+    np.save(title,jumbo_array,allow_pickle = True)
+
+    # Reset the cache arrays
+    all_etas = []
+    all_xs = []
+    all_Qexts = []
+    all_Qscats = []
+    all_Qbacks = []
+    all_gs = []
+    print('Remember to update aerosol_supported_species in supported_opac.py!')
 
 def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indices_array, r_m):
 
