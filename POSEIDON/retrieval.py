@@ -1118,6 +1118,170 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
            spec_low2, spec_low1, spec_median, spec_high1, spec_high2
 
 
+def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = None, 
+                             median=True, best_fit=False,
+                             P_param_set = 1.0e-2, He_fraction = 0.17,
+                             N_slice_EM = 2, N_slice_DN = 4, 
+                             constant_gravity = False, chemistry_grid = None):
+    """
+    Creates the atmosphere dictionary for the median or best fit spectrum of a retrieval.
+
+    Args:
+        planet (dict):
+            Collection of planetary properties used POSEIDON.
+        model (dict):
+            A specific description of a given POSEIDON model.
+        P (np.array of float):
+            Model pressure grid (bar).
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        median (optional, bool)
+            Option to create an atmosphere from the median retrieved spectrum.
+        best_fit (optional, bool)
+            Option to create an atmosphere from the best fit retrieved spectrum
+                He_fraction (float):
+            Assumed H2/He ratio (0.17 default corresponds to the solar ratio).
+        N_slice_EM (even int):
+            Number of azimuthal slices in the evening-morning transition region.
+        N_slice_DN (even int):
+            Number of zenith slices in the day-night transition region.
+        constant_gravity (bool):
+            If True, disable inverse square law gravity (only for testing).
+        chemistry_grid (dict):
+            For models with a pre-computed chemistry grid only, this dictionary
+            is produced in chemistry.py.
+
+    Returns:
+        atmosphere (dict):
+                Collection of atmospheric properties required to compute the
+                resultant spectrum of the planet.
+    """
+
+    # unpack planet
+    planet_name = planet['planet_name']
+
+    # unpack model
+    param_names = model['param_names']
+    N_params_cum = model['N_params_cum']
+    physical_param_names = model['physical_param_names']
+
+    radius_unit = model['radius_unit']
+    mass_unit = model['mass_unit']
+    surface = model['surface']
+
+    # no user defined T_input and X_input in retrievals
+    T_input = []
+    X_input = []
+
+    # Identify output directory location
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+
+    # Load relevant output directory
+    output_prefix = model['model_name'] + '-'
+
+    # Change directory into MultiNest result file folder
+    os.chdir(output_dir + 'MultiNest_raw/')
+
+    # Run PyMultiNest analyser to extract posterior samples
+    analyzer = pymultinest.Analyzer(len(param_names), outputfiles_basename = output_prefix,
+                                    verbose = False)
+    
+    # get parameter values for either the median or best fit model
+    if median == True and best_fit == False:
+
+        # get stats 
+        stats = analyzer.get_stats()
+
+        # create empty list to store parameter values
+        param_values = []
+        
+        # loop over all parameters in model
+        for i in range(len(param_names)):
+            param_values.append(stats['marginals'][i]['median'])
+
+    
+    elif median == False and best_fit == True:
+
+        # get best fit parameter values
+        best_fit = analyzer.get_best_fit()
+        param_values = best_fit['parameters']
+
+
+    # catch cases where median and best fit are both true or both false
+    elif (median == False and best_fit == False) or (median == True and best_fit == True):
+        # Change directory back to directory where user's python script is located
+        os.chdir('../../../../')
+        raise Exception("Please specify either median or best fit model as True")
+    
+
+    # Change directory back to directory where user's python script is located
+    os.chdir('../../../../')
+
+
+    # split parameters into each atmosphere category
+    physical_params, PT_params, log_X_params, \
+    cloud_params, geometry_params, _, _, _ = split_params(param_values, N_params_cum)
+    
+    # Unpack reference pressure if set as a free parameter
+    if ('log_P_ref' in physical_param_names):
+        P_ref = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_ref')[0][0]])
+    else:
+        P_ref = P_ref_set
+
+    # Unpack reference radius if set as a free parameter
+    if ('R_p_ref' in physical_param_names):
+        R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
+
+        # Convert normalised radius drawn by MultiNest back into SI
+        if (radius_unit == 'R_J'):
+            R_p_ref *= R_J
+        elif (radius_unit == 'R_E'):
+            R_p_ref *= R_E
+        else:
+            R_p_ref = R_p_ref_set
+
+    # Unpack planet mass if set as a free parameter
+    if ('M_p' in physical_param_names):
+        M_p = physical_params[np.where(physical_param_names == 'M_p')[0][0]]
+
+        # Convert normalised mass drawn by MultiNest back into SI
+        if (mass_unit == 'M_J'):
+            M_p *= M_J
+        elif (mass_unit == 'M_E'):
+            M_p *= M_E
+
+    else:
+        M_p = None
+
+    # Unpack log(gravity) if set as a free parameter
+    if ('log_g' in physical_param_names):
+        log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
+    else:
+        log_g = None
+
+    # Unpack surface pressure if set as a free parameter
+    if (surface == True):
+        P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+    else:
+        P_surf = None
+
+    
+    # make atmosphere 
+    atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
+                                 log_X_params, cloud_params, geometry_params,
+                                 log_g = log_g, M_p = M_p, T_input = T_input,
+                                 X_input = X_input, P_surf = P_surf,
+                                 P_param_set = P_param_set, He_fraction = He_fraction, 
+                                 N_slice_EM = N_slice_EM, N_slice_DN = N_slice_DN, 
+                                 constant_gravity = constant_gravity,
+                                 chemistry_grid = chemistry_grid)
+    
+    return atmosphere
+
+
+
 #***** Compute Bayes factors, sigma significance etc *****#
 
 def Z_to_sigma(ln_Z1, ln_Z2):
