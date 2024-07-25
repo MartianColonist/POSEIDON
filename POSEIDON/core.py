@@ -1325,7 +1325,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      fractional_scale_height = fractional_scale_height)
 
                 # If its a slab
-                elif (model['cloud_type'] == 'slab'):
+                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
 
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \

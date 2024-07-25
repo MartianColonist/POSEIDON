@@ -2244,6 +2244,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         # DON'T OVERWRITE YDATA!!!
         ydata_to_plot = np.array(ydata)
 
+        # add offsets for a single dataset 
         if offset_datasets == 'single_dataset':
             # unpack offset data properties
             offset_start, offset_end = data_properties['offset_start'], data_properties['offset_end']
@@ -2271,7 +2272,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for start, end  in zip(offset_start, offset_end):
                 # offsets are in ppm
                 ydata_to_plot[start:end] = ydata[start:end] - delta_rel*1e-6
-
+        
+        # add multiple offsets
         elif offset_datasets == 'two_datasets' or offset_datasets == 'three_datasets':
             print('in two datasets')     
             # unpack offset data properties
@@ -2294,8 +2296,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
             results_file_name = model_name + '_results.txt'
 
-            # create empty array for relative offsets
-            # currenly, max number of offsets is 3
+            # create empty array for relative offsets (max. number of offsets is currently 3)
             delta_rel_array = np.zeros(3)
 
             # open results file to find retrieved median offset value

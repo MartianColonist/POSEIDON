@@ -1202,11 +1202,25 @@ def generate_latex_param_names(param_names):
                 string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{MgSiO_3}$'
                 latex_names += [string]
                 continue
+            # @char: quick fix for cloud_type = 'one_slab'
+            if('log_P_top_slab' == param):
+                string = '$\\log \\, \\mathrm{P_{top,slab}}$'
+                latex_names += [string]
+                continue
             else:
                 aerosol_name = param.split('_')[4]
                 string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{' + aerosol_name + '}$'
                 latex_names += [string]
                 continue
+
+        # @char: quick fix for cloud_type = 'one_slab'
+        # 'Delta_log_P_' will not be recognised so new if statement can be made
+        if ('Delta_log_P' == param):
+            string = '$\Delta \\, \\log \\, \mathrm{P}$'
+            latex_names += [string]
+            continue
+
+
 
         # Quick fix for log_Na + K
         #if ('log_Na' in param):
