@@ -1227,7 +1227,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
                  show_data_bin_width = True,
-                 line_widths = []):
+                 line_widths = [],
+                 xlabels = True):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1297,6 +1298,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Flag indicating whether to plot x bin widths for data points.
         line_widths (list of float, optional):
             Line widths for binned spectra (defaults to 2.0 if not specified).
+        x_labels (bool):
+            If false, will remove x_ticks and x_label
 
     Returns:
         fig (matplotlib figure object):
@@ -1654,7 +1657,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
-    ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+    if xlabels == True:
+        ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
         if (y_min_plt < 0.10):
@@ -1685,7 +1689,11 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
     # Plot wl tick labels
-    ax1.set_xticks(wl_ticks)
+    if xlabels == True:
+        ax1.set_xticks(wl_ticks)
+    else:
+        ax1.set_xticks(wl_ticks)
+        ax1.tick_params(labelbottom=False)  
     
     # Switch to two columns if many spectra are being plotted
     if (N_spectra >= 6):
