@@ -1017,7 +1017,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
                                                                            N_params_cum, TwoD_type)
     
-    # Temporary H for testing 
+    # Compute the scale height (for fuzzy deck aerosol models)
     if is_physical == False:
         g = 0
         H = 0
@@ -1300,15 +1300,22 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
             
+            # If the cloud model is Mie, need to parse out 
+            # How the cloud type is defined and whether or not 
+            # aerosol grid is being used or not 
             if (model['cloud_model'] == 'Mie'):
 
+                # Load in the aerosol grid for compositionally specific aerosols
                 aerosol_grid = model['aerosol_grid']
 
+                # Create a wl_Mie array (which is at R = 1000) for file_read or cosntant
+                # refractive indices
                 wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
 
-                # If its a fuzzy deck run
+                # If its a fuzzy deck cloud type
                 if (model['cloud_type'] == 'fuzzy_deck'):
-
+                    
+                    # Check to see if it is file_read or constant refractive index
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \
                         g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
@@ -1317,6 +1324,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                           log_n_max = log_n_max, 
                                                           fractional_scale_height = fractional_scale_height)
 
+                    # Otherwise, use the aerosol_grid to and pull radiative properties
                     else: 
                         n_aerosol, sigma_ext_cloud, \
                         g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
@@ -1438,11 +1446,12 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
             # Calculate extinction coefficients in standard mode
 
-            # Numba will get mad if P_cloud is not an array (because you can have more than one cloud now)
+            # Numba will get mad if P_cloud is not an array (because you can have more than one cloud)
             # This line just makes sure that P_cloud is an array 
             if isinstance(P_cloud, np.ndarray) == False:
                 P_cloud = np.array([P_cloud])
 
+            # Create the kappa arrays
             kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
                                                            CIA_pairs, ff_pairs, bf_species,
                                                            n, T, P, wl, X, X_active, X_CIA, 
@@ -1455,14 +1464,15 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                            log_P_fine, P_surf, enable_Mie, 
                                                            n_aerosol, sigma_ext_cloud)
             
-            # If we read in an eddysed file 
+            # If we read in an eddysed file (from PICASO or VIRGA) that
+            # contains the single scattering albedo, asymmetry parameter, or kappa_cloud
             if model['cloud_model'] == 'eddysed':
                 w_cloud = w_cloud_eddysed
                 g_cloud = g_cloud_eddysed
                 kappa_cloud = kappa_cloud_eddysed
             
             # Else, we need to restructure w_cloud and g_cloud to span by layer 
-            # For Mie models with 1 species, the g and w can be help constant with each layer since
+            # For Mie models with 1 species, the g and w can be held constant with each layer since
             # Kappa cloud will encode where clouds are
             # For models that are cloud free, you still need a g and w thats just an array of 0s
             # For Mie models with more than one species, we need to be more careful with the g and w array
@@ -1472,6 +1482,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
                 # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+                # I have yet to implement this, but the relevant code to weigh g and w is found here 
+                # https://github.com/natashabatalha/virga/blob/ffa82d48ba77d841c73bb7b33793397d5a17413d/virga/justdoit.py#L191
                 else:
                     raise Exception('Only 1 aerosol species supported for scattering')
             
@@ -1594,6 +1606,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             elif (device == 'gpu'):
                 F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
 
+        # With scattering, compute emission using PICASO's Toon implementation
         elif (scattering == True):
 
             # Compute planet flux including scattering (PICASO implementation), see emission.py for details
@@ -1605,6 +1618,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             
             dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
+            # For 1 + 1D fractional clouds
             if cloud_dim == 2:
                 
                 F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
@@ -1620,16 +1634,20 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         else:
             raise Exception("Error: Invalid scattering option")
 
-        # Add in the seperate reflection  
+        # If reflection is being computed
         if (reflection == True):
-
+            
+            # This option will only compute reflection up to 5 um 
+            # to speed up retrievals 
             if reflection_up_to_5um == True:
                 
+                # Make sure the wavelength grid actually goes up to 5 um
                 try:
                     index_5um = find_nearest(wl,5)
                 except:
                     raise Exception('Does the wavelength object go up to 5um? (reflection_up_to_5um = True)')
                 
+                # Make new, temporary arrays of inputs only up to 5 um
                 wl_cut = wl[:index_5um]
                 dtau_tot_cut = dtau_tot[:,:index_5um]
                 kappa_Ray_cut = kappa_Ray[:,:,:,:index_5um]
@@ -1638,6 +1656,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 w_cloud_cut = w_cloud[:,:,:,:index_5um]
                 g_cloud_cut = g_cloud[:,:,:,:index_5um]
 
+                # Compute the albedo using PICASO's implenetation (see emission.py for details)
                 albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
                                             kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
                                             w_cloud_cut, g_cloud_cut, zone_idx,
@@ -1646,9 +1665,13 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                             Gauss_quad = 5, numt = 1,
                                             toon_coefficients=0, tridiagonal=0, b_top=0)
                 
+                # Create an albedo of 0's from 5um onwards
                 albedo_zeros = np.zeros(len(wl[index_5um:]))
+
+                # Joint both arrays together
                 albedo = np.concatenate((albedo_cut, albedo_zeros))
 
+                # For 1 + 1D patchy clouds
                 if cloud_dim == 2:
 
                     dtau_tot_clear_cut = dtau_tot_clear[:,:index_5um]
@@ -1669,9 +1692,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
 
 
-            
+            # Else, just use the default arrays
             else:
-
+                
                 albedo = reflection_Toon(P, wl, dtau_tot,
                             kappa_Ray, kappa_cloud, kappa_tot,
                             w_cloud, g_cloud, zone_idx,
@@ -1692,22 +1715,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     
 
                     albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
-                        
 
-                                    
-            #from line_profiler import LineProfiler
-            #lp = LineProfiler()
-            #lp_wrapper = lp(reflection_Toon)
-            #lp_wrapper(P, wl, dtau_tot,
-            #                            kappa_Ray, kappa_cloud, kappa_tot,
-            #                            w_cloud, g_cloud, zone_idx,
-            #                            single_phase = 3, multi_phase = 0,
-            #                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-            #                            Gauss_quad = 5, numt = 1,
-            #                            toon_coefficients=0, tridiagonal=0, b_top=0)
-            #lp.print_stats()
                     
-
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
             
@@ -1773,13 +1782,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # Final spectrum is the planet-star flux ratio
             spectrum = F_p_obs / F_s_obs
 
+        # If reflection is true, need to convert geometric albedo to observed flux
         if (reflection == True):
             
+            # Make sure user set a planetary distance 
             try:
                 FpFs_reflected = albedo*(R_p_eff/a_p)**2
             except:
                 raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
             
+            # If its a direct spectrum, convert to Fp
             if ('direct' in spectrum_type):
 
                 # Load stellar spectrum
@@ -1796,6 +1808,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 
                 spectrum += Fp_reflected_obs
 
+            # Else, just add the FpFs to the spectrum
             else:
                 #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
                 spectrum += FpFs_reflected
