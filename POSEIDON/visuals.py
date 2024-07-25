@@ -2051,7 +2051,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
 
 
 def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1, 
-                           spectra_high1, spectra_high2, planet_name, 
+                           spectra_high1, spectra_high2, planet_name,
                            data_properties, R_to_bin = 100, plt_label = None,
                            show_ymodel = True, wl_min = None, wl_max = None, 
                            y_min = None, y_max = None, y_unit = 'transit_depth', 
@@ -2064,7 +2064,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
                            show_data_bin_width = True, line_widths = [],
-                           sigma_to_plot = 2):
+                           sigma_to_plot = 2,
+                           model=None, add_retrieved_offsets=False):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -2146,7 +2147,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         sigma_to_plot (int, optional):
             How many sigma contours to plot (0 for only median, 1 for median and 
             1 sigma, or 2 for median, 1 sigma, and 2 sigma).
-
+        model (dict, optional):
+            POSEIDON model dictionary. Required to be defined for offsets to be added
+        add_retrieved_offsets (bool, optional):
+            Plots data with retrieved offset values
+        
+            
     Returns:
         fig (matplotlib figure object):
             The retrieved spectra plot.
@@ -2223,6 +2229,101 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         raise Exception("Number of dataset marker sizes does not match number of datasets.")
     if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
+    
+    # @char: add retrieved offsets to observed data
+
+    if add_retrieved_offsets:
+
+        # check model has been defined
+        if model == None:
+            raise Exception('Please provide model to plot offsets')
+        
+        offset_datasets = model['offsets_applied']
+        model_name = model['model_name']
+        
+        # DON'T OVERWRITE YDATA!!!
+        ydata_to_plot = np.array(ydata)
+
+        if offset_datasets == 'single_dataset':
+            # unpack offset data properties
+            offset_start, offset_end = data_properties['offset_start'], data_properties['offset_end']
+
+            # catch offsets for one dataset
+            if isinstance(offset_start, np.int64):
+                offset_start, offset_end = np.array([offset_start]), np.array([offset_end])
+
+            print('offset_start', offset_start)
+
+            # retrieve offset value from results file
+            results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+            results_file_name = model_name + '_results.txt'
+
+            # open results file to find retrieved median offset value
+            with open(results_dir + results_file_name, 'r') as f:
+                for line in f:
+                    if 'delta_rel' in line:
+                        delta_rel = float(line.split()[2])
+
+                    # stop reading file after 1 sigma constraints
+                    if '2 σ constraints' in line:
+                        break
+
+            for start, end  in zip(offset_start, offset_end):
+                # offsets are in ppm
+                ydata_to_plot[start:end] = ydata[start:end] - delta_rel*1e-6
+
+        elif offset_datasets == 'two_datasets' or offset_datasets == 'three_datasets':
+            print('in two datasets')     
+            # unpack offset data properties
+            offset_start_list = ['offset_1_start', 'offset_2_start', 'offset_3_start']
+            offset_end_list = ['offset_1_end', 'offset_2_end', 'offset_3_end']
+
+            offset_start_end = []
+
+            for start_name, end_name in zip(offset_start_list, offset_end_list):
+                offset_start, offset_end = data_properties[start_name], data_properties[end_name]
+
+                # catch zero offsets, not defined as arrays
+                if isinstance(offset_start, int):
+                    offset_start, offset_end = np.array([offset_start]), np.array([offset_end])
+                
+
+                offset_start_end.append((offset_start[0], offset_end[-1]))
+
+            # retrieve offset value from results file
+            results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+            results_file_name = model_name + '_results.txt'
+
+            # create empty array for relative offsets
+            # currenly, max number of offsets is 3
+            delta_rel_array = np.zeros(3)
+
+            # open results file to find retrieved median offset value
+            with open(results_dir + results_file_name, 'r') as f:
+                for line in f:
+                    if 'delta_rel_1' in line:
+                        delta_rel_array[0] = line.split()[2]
+                    if 'delta_rel_2' in line:
+                        delta_rel_array[1] = line.split()[2]
+                    if 'delta_rel_3' in line:
+                        delta_rel_array[2] = line.split()[2]
+
+                    # stop reading file after 1 sigma constraints
+                    if '2 σ constraints' in line:
+                        break
+
+            # add relative offset to ydata (note: offsets are subtracted)
+            for delta_rel, (offset_start, offset_end) in zip(delta_rel_array, offset_start_end):
+                # offsets are in ppm
+                ydata_to_plot[offset_start:offset_end] = ydata[offset_start:offset_end] - delta_rel*1e-6
+        
+        # continue plotting if no offsets are found
+        elif offset_datasets == None:
+            print('No offsets found, plotting data without offsets')
+        
+    else:
+        ydata_to_plot = ydata
+
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
@@ -2279,8 +2380,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             y_min_plt = min(y_min_plt, y_min_i)
             
         # Check if the lowest data point falls below the current y-limit
-        if (y_min_plt > min(ydata - err_data)):
-            y_min_plt = min(ydata - err_data)
+        if (y_min_plt > min(ydata_to_plot - err_data)):
+            y_min_plt = min(ydata_to_plot - err_data)
             
         y_min_plt = 0.995*y_min_plt  # Extend slightly below
         
@@ -2472,7 +2573,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
         # Extract the ith dataset
         wl_data_i = wl_data[idx_start:idx_end]
-        ydata_i = ydata[idx_start:idx_end]
+        ydata_i = ydata_to_plot[idx_start:idx_end]
         err_data_i = err_data[idx_start:idx_end]
         bin_size_i = bin_size[idx_start:idx_end]
 
