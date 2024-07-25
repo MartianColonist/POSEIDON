@@ -625,6 +625,40 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
             plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q], linewidth=5.0)
             ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--')
             ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[q], label = label)
+    
+    # @char: adding one_slab plotting
+    elif (cloud_type == 'one_slab'):
+
+        # only one slab location in model
+        # pineapple
+        print('P_cloud = ', P_cloud)
+        P_cloud_index_top = find_nearest(P,P_cloud)
+        P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+
+        # catch case where user specificed colours have not accounted for the cloud extent
+        if len(colour_list) == len(aerosol_species):
+            # plot cloud pressure extent
+            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color = 'silver', label = 'Cloud Pressure Extent')
+        else: 
+            # plot cloud pressure extent
+            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color = colours[-1], label = 'Cloud Pressure Extent')
+
+        # loop through aerosols
+        for q in range(len(aerosol_species)):
+
+            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+            n_aerosol = np.empty_like(r)
+
+            log_X = log_X_Mie[q]
+
+            if aerosol_species[0] == 'free':
+                label = free_string
+            else:
+                label = aerosol_species[q]
+        
+            # plot species mixing ratios
+            plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q], linewidth=5.0)
+            ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--', label = label)
 
     # Combined Models 
     elif (cloud_type == 'fuzzy_deck_plus_slab'):
