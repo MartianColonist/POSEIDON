@@ -34,7 +34,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
              file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / file_read).
+            (Options: isochem / gradient / two-gradients / lever / file_read).
         cloud_model (str):
             Chosen cloud parametrisation 
             (Options: cloud-free / MacMad17 / Iceberg / Mie).
@@ -53,7 +53,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
              two_spots_free_log_g).
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
-            (Options: single_dataset, two_datasets).
+            (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
             (Options: Line15).
@@ -99,15 +99,17 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
-        aerosol (string):
-            Either 'free' or a specific aerosol
+        aerosol_species (list of string):
+            Either 'free' or specific aerosol(s).
         log_P_slope_array (np.array of float):
             Log pressures where the temperature difference parameters are 
-            defined (Piette & Madhusudhan 2020 profile only)
+            defined (Piette & Madhusudhan 2020 profile only).
         number_P_knots (float):
-            Number of uniform knots in pressure space (only for Pelletier 2021 P-T profile)
+            Number of uniform knots in pressure space 
+            (only for the Pelletier 2021 P-T profile).
         PT_penalty (bool):
-            If True, introduces the sigma_smooth parameter for retrievals (only for Pelletier 2021 P-T profile)
+            If True, introduces the sigma_smooth parameter for retrievals
+            (only for the Pelletier 2021 P-T profile).
 
     Returns:
         params (np.array of str):
@@ -157,13 +159,15 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** Physical property parameters *****#
 
         if (reference_parameter == 'R_p_ref'):
-            physical_params += ['R_p_ref']        # Reference radius parameter (in R_J or R_E)
+            physical_params += ['R_p_ref']                  # Reference radius parameter (in R_J or R_E)
         elif (reference_parameter == 'P_ref'):
-            physical_params += ['log_P_ref']      # Reference pressure
+            physical_params += ['log_P_ref']                # Reference pressure
+        elif (reference_parameter == 'R_p_ref+P_ref'):
+            physical_params += ['R_p_ref', 'log_P_ref']     # Reference radius and pressure
         else:
             raise Exception("Error: Only R_p_ref or P_ref are supported reference parameters.")
         
-        if ((reference_parameter == 'log_P_ref') and (Atmosphere_dimension > 1)):
+        if (('log_P_ref' in reference_parameter) and (Atmosphere_dimension > 1)):
             raise Exception("Error: P_ref is not a valid parameter for multidimensional models.")
 
         if ((gravity_setting == 'free') and (mass_setting == 'free')):
@@ -187,7 +191,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** PT profile parameters *****#
 
         if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
-                            'slope', 'Pelletier', 'Guillot', 'Guillot_dayside', 'Line', 'file_read']):
+                               'slope', 'Pelletier', 'Guillot', 'Guillot_dayside',
+                               'Line', 'file_read']):
             raise Exception("Error: unsupported P-T profile.")
 
         # Check profile settings are supported
@@ -240,7 +245,6 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 PT_params += ['log_kappa_IR', 'log_gamma', 'T_int', 'T_equ']
             elif (PT_profile == 'Line'):
                 PT_params += ['log_kappa_IR', 'log_gamma', 'log_gamma_2', 'alpha', 'beta', 'T_int']
-            
             
         # 2D model (asymmetric terminator or day-night transition)
         elif (PT_dim == 2):
@@ -308,8 +312,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         
         #***** Mixing ratio parameters *****#
 
-        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'chem_eq']):
+        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'lever', 'chem_eq']):
             raise Exception("Error: unsupported mixing ratio profile.")
+        
+        if (X_profile == 'lever') and (X_dim != 1):
+            raise Exception("Error: Level profile currently only implemented for 1D atmospheres.")
             
         if X_profile != 'chem_eq':
         
@@ -325,8 +332,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                             X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                         elif (X_profile == 'two-gradients'):  
                             X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']  
-
+                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                        elif (X_profile == 'lever'):
+                            X_params += ['log_' + species + '_iso', 'log_P_' + species, 'Upsilon_' + species]
                     else:
                         X_params += ['log_' + species]
                 
@@ -764,7 +772,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     #***** Error adjustment parameters *****#
 
     if (error_inflation == 'Line15'): 
-        params += ['log_b']                  # TBD: CHECK definition
+        params += ['b']
         N_error_params = 1
     elif (error_inflation == None):    
         N_error_params = 0
@@ -932,6 +940,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_X = 4      # (log_X_bar_term_high, Delta_log_X_term_high, Delta_log_X_DN_high, log_X_deep)    
     elif (X_profile == 'two-gradients'):
         len_X = 8
+    elif (X_profile == 'lever'):
+        len_X = 3                     # (log_X_iso, log_P_X, Upsilon_X)
     elif (X_profile == 'isochem'):
         len_X = 4      # To cover multi-D cases, we use same log_X format as gradient profile
     elif (X_profile == 'file_read'):   # User provided file
@@ -1130,6 +1140,23 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                         log_X_state[q,5] = 0.0                   # No Day-Night gradient
                         log_X_state[q,6] = -2.0                  # Fix P (X_mid) to 10 mbar for isochem
                         log_X_state[q,7] = log_X_in[count]       # log_X_deep
+                        count += 1
+
+            elif (X_profile == 'lever'):  
+                
+                count = 0  # Counter to make tracking location in log_X_in easier
+                
+                # Loop over parametrised chemical species
+                for q, species in enumerate(param_species):
+                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                        log_X_state[q,0] = log_X_in[count]       # log_X_iso
+                        log_X_state[q,1] = log_X_in[count+1]     # log_P_X
+                        log_X_state[q,2] = log_X_in[count+2]     # Upsilon_X
+                        count += 3
+                    else:   # No altitude variation for this species
+                        log_X_state[q,0] = log_X_in[count]       # log_X_iso
+                        log_X_state[q,1] = -2.0                  # Fix P_X to 10 mbar for isochem
+                        log_X_state[q,2] = 0.0                   # Upsilon_X = 0 for isochem
                         count += 1
 
         # 2D atmosphere

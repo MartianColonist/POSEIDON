@@ -668,10 +668,11 @@ def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
         # Cut out first and last values to avoid SpectRes boundary NaNs
         wl_binned = wl_binned[1:-1]
         spectrum_binned = spectrum_binned[1:-1]
+        err_binned = err_binned[1:-1]
 
         # Replace Spectres boundary NaNs with second and penultimate values
-        err_binned[0] = err_binned[1]
-        err_binned[-1] = err_binned[-2]
+     #   err_binned[0] = err_binned[1]
+     #   err_binned[-1] = err_binned[-2]
 
     # Call Spectres routine
     else:
@@ -1097,7 +1098,7 @@ def generate_latex_param_names(param_names):
     
     # Loop over each free parameter
     for param in param_names:
-        
+            
         components = []    # Array of 'special' components for this parameter (e.g. 'log', 'bar')
         idxs = []          # Indices where each component starts
         lens= []           # Number of characters in each component
@@ -1106,13 +1107,12 @@ def generate_latex_param_names(param_names):
 
         # Temporary fix for 'slope' P-T profile parameters
         if (param in ['Delta_T_10-1mb', 'Delta_T_100-10mb', 'Delta_T_1-0.1b',
-                    'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 'Delta_T_32-10b',
-                    'Delta_T_100-32b']):
+                      'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 'Delta_T_32-10b',
+                      'Delta_T_100-32b']):
             latex_names += ['$\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
             continue
 
         # Temporary fix for aerosol parameter names 
-        '$\\log \\, \\mathrm{Na}$'
         if ('Pbase' in param):
             string = '$\\log \\, \\mathrm{P_{base}} \\, \\mathrm{SiO_2}$'
             latex_names += [string]

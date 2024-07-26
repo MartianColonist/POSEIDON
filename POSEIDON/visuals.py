@@ -1223,12 +1223,12 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
                  data_marker_size_list = [], text_annotations = [],
-                 annotation_pos = [], wl_axis = 'log', 
+                 annotation_pos = [], err_colour = 'black', wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
-                 show_data_bin_width = True,
-                 line_widths = [],
-                 xlabels = True):
+                 show_data_bin_width = True, show_data_cap = True,
+                 data_alpha = 0.8, data_edge_width = 0.8,
+                 line_widths = [], xlabels = True):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1262,7 +1262,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         y_unit (str, optional):
             The unit of the y-axis
             (Options: 'transit_depth', 'eclipse_depth', '(Rp/Rs)^2', 
-            '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp').
+            '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp', 'Fs', 'F*').
         plt_label (str, optional):
             The label for the plot.
         colour_list (list, optional):
@@ -1281,6 +1281,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             A list of text annotations for Figure decoration (e.g. molecule names)
         annotation_pos (list of tuples of str, optional):
             (x, y) locations of the text annotations in the previous argument.
+        err_colour (string, optional):
+            Colour of the data error bars (white works best for a dark background)
         wl_axis (str, optional):
             The type of x-axis to use ('log' or 'linear').
         figure_shape (str, optional):
@@ -1296,10 +1298,16 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             If True, saves a PDF in the POSEIDON output folder.
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
+        show_data_cap (bool, optional):
+            Flag indicating whether to plot the error bar caps on the data points.
+        data_alpha (float, optional):
+            Alpha for the central circle colours on each data point. 
+        data_edge_width (float, optional):
+            Border line width for the central circle on each data point.
         line_widths (list of float, optional):
             Line widths for binned spectra (defaults to 2.0 if not specified).
         x_labels (bool):
-            If false, will remove x_ticks and x_label
+            If false, will remove x_ticks and x_label.
 
     Returns:
         fig (matplotlib figure object):
@@ -1315,7 +1323,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         plot_type = 'time_average_transmission'
     elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
         plot_type = 'emission'
-    elif (y_unit in ['Fp']):
+    elif (y_unit in ['Fp', 'Fs', 'F*']):
         plot_type = 'direct_emission'
     elif (y_unit in ['T_bright']):
         plot_type = 'brightness_temp'
@@ -1495,7 +1503,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     else:    # Bug fix for surface spectra where Fp > 1e10 
         major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 2)
         minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 2)
-    
+
     # If last digit of y labels would be a multiple of 6,7,8,or 9, bump up to 10
     if (ymajor_spacing > 5*np.power(10, major_exponent)):
         ymajor_spacing = 1*np.power(10, major_exponent+1)
@@ -1505,7 +1513,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         yminor_spacing = 1*np.power(10, minor_exponent+1)
     elif (yminor_spacing == 3*np.power(10, minor_exponent)):
         yminor_spacing = 2*np.power(10, minor_exponent)
-    
+
     # Refine y range to be a multiple of the tick spacing (only if range not specified by user)
     if (y_min == None):
         y_min_plt = np.floor(y_min_plt/ymajor_spacing)*ymajor_spacing
@@ -1623,22 +1631,29 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             err_data_i = err_data[idx_start:idx_end]
             bin_size_i = bin_size[idx_start:idx_end]
 
+            if (show_data_cap == True):
+                capsize = 2
+            else:
+                capsize = 0
+
             # Plot dataset
             if (show_data_bin_width == True):
-                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                                   xerr=bin_size_i, marker=data_markers[i], 
-                                                   markersize=data_markers_size[i], 
-                                                   capsize = 2, ls = 'none', elinewidth = 0.8, 
-                                                   color=data_colours[i], alpha = 0.8,
-                                                   ecolor = 'black', label=label_i,
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                                   xerr = bin_size_i, marker = data_markers[i], 
+                                                   markersize = data_markers_size[i], 
+                                                   capsize = capsize, ls = 'none', elinewidth = 0.8, 
+                                                   color = data_colours[i], alpha = data_alpha,
+                                                   ecolor = err_colour, label = label_i,
+                                                   markeredgewidth = data_edge_width,
                                                    zorder = 100)
             else:
-                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
-                                                   marker=data_markers[i], 
-                                                   markersize=data_markers_size[i], 
-                                                   capsize=2, ls='none', elinewidth=0.8, 
-                                                   color=data_colours[i], alpha = 0.8,
-                                                   ecolor = 'black', label=label_i,
+                markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                                   marker = data_markers[i], 
+                                                   markersize = data_markers_size[i], 
+                                                   capsize = capsize, ls='none', elinewidth=0.8, 
+                                                   color = data_colours[i], alpha = data_alpha,
+                                                   ecolor = err_colour, label = label_i,
+                                                   markeredgewidth = data_edge_width,
                                                    zorder = 100)
 
             [markers.set_alpha(1.0)]
@@ -1671,8 +1686,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
     elif (plot_type == 'emission'):
         ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
-    elif (plot_type == 'direct_emission'):
+    elif ((plot_type == 'direct_emission') and (y_unit == 'Fp')):
         ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+    elif ((plot_type == 'direct_emission') and (y_unit in ['Fs', 'F*'])):
+        ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
     elif (plot_type == 'brightness_temp'):
         ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
 
@@ -1739,9 +1756,12 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
               y_min = None, y_max = None, y_unit = 'transit_depth',
               plt_label = None, data_colour_list = [], data_labels = [], 
               data_marker_list = [], data_marker_size_list = [],
-              wl_axis = 'log', figure_shape = 'default', 
+              err_colour = 'black', wl_axis = 'log', figure_shape = 'default', 
               legend_location = 'upper right', legend_box = False,
-              show_data_bin_width = True):
+              show_data_bin_width = True, show_data_cap = True,
+              data_alpha = 0.8, data_edge_width = 0.8,
+              ax = None, save_fig = True,
+              ):
     ''' 
     Plot a collection of datasets. This function can plot transmission or 
     emission datasets, according to the user's choice of 'y_unit'.
@@ -1773,6 +1793,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             A list of marker styles for the observational data.
         data_marker_size_list (list, optional):
             A list of marker sizes for the observational data.
+        err_colour (string, optional):
+            Colour of the data error bars (white works best for a dark background)
         wl_axis (str, optional):
             The type of x-axis to use ('log' or 'linear').
         figure_shape (str, optional):
@@ -1943,7 +1965,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         fig.set_size_inches(12, 8.0) 
 
     
-    ax1 = plt.gca()
+    if (ax == None):
+        ax1 = plt.gca()
+    else:
+        ax1 = ax
     
     # Set x axis to be linear or logarithmic
     ax1.set_xscale(wl_axis)
@@ -1975,21 +2000,29 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         err_data_i = err_data[idx_start:idx_end]
         bin_size_i = bin_size[idx_start:idx_end]
 
+        if (show_data_cap == True):
+            capsize = 2
+        else:
+            capsize = 0
+
         # Plot dataset
         if (show_data_bin_width == True):
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                xerr=bin_size_i, marker=data_markers[i], 
                                                markersize=data_markers_size[i], 
-                                               capsize=2, ls='none', elinewidth=0.8, 
-                                               color=colours[i], alpha = 0.8,
-                                               ecolor = 'black', label=label_i)
+                                               capsize=capsize, ls='none', elinewidth=0.8, 
+                                               color=colours[i], alpha = data_alpha,
+                                               ecolor = err_colour, label=label_i,
+                                               markeredgewidth = data_edge_width,)
+
         else:
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                marker=data_markers[i], 
                                                markersize=data_markers_size[i], 
-                                               capsize=2, ls='none', elinewidth=0.8, 
-                                               color=colours[i], alpha = 0.8,
-                                               ecolor = 'black', label=label_i)
+                                               capsize=capsize, ls='none', elinewidth=0.8, 
+                                               color=colours[i], alpha = data_alpha,
+                                               ecolor = err_colour, label=label_i,
+                                               markeredgewidth = data_edge_width)
 
         [markers.set_alpha(1.0)]
             
@@ -2046,14 +2079,15 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         legline.set_linewidth(1.0)
 
     # Write figure to file
-    if (plt_label == None):
-        file_name = (output_dir + planet_name +
-                     '_data.pdf')
-    else:
-        file_name = (output_dir + planet_name + '_' + plt_label + 
-                     '_data.pdf')
+    if (save_fig == True):
+        if (plt_label == None):
+            file_name = (output_dir + planet_name +
+                        '_data.pdf')
+        else:
+            file_name = (output_dir + planet_name + '_' + plt_label + 
+                        '_data.pdf')
 
-    plt.savefig(file_name, bbox_inches='tight')
+        plt.savefig(file_name, bbox_inches = 'tight')
 
     return fig
 
@@ -2067,13 +2101,14 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            data_colour_list = [], data_labels = [],
                            data_marker_list = [], data_marker_size_list = [],
                            binned_colour_list = [], text_annotations = [],
-                           annotation_pos = [],
+                           annotation_pos = [], err_colour = 'black',
                            wl_axis = 'log', figure_shape = 'default',
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
-                           show_data_bin_width = True, line_widths = [],
-                           sigma_to_plot = 2,
-                           model=None, add_retrieved_offsets=False):
+                           show_data_bin_width = True, show_data_cap = True,
+                           data_alpha = 0.8, data_edge_width = 0.8, sigma_to_plot = 2,
+                           line_widths = [], model = None, add_retrieved_offsets = False,
+                        ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -2135,6 +2170,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             A list of text annotations for Figure decoration (e.g. molecule names)
         annotation_pos (list of tuples of str, optional):
             (x, y) locations of the text annotations in the previous argument.
+        err_colour (string, optional):
+            Colour of the data error bars (white works best for a dark background)
         wl_axis (str, optional):
             The type of x-axis to use ('log' or 'linear').
         figure_shape (str, optional):
@@ -2150,17 +2187,22 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             If True, saves a PDF in the POSEIDON output folder.
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
-        line_widths (list of float, optional):
-            Line widths for median spectra (defaults to 1.0 if not specified).
+        show_data_cap (bool, optional):
+            Flag indicating whether to plot the error bar caps on the data points.
+        data_alpha (float, optional):
+            Alpha for the central circle colours on each data point. 
+        data_edge_width (float, optional):
+            Border line width for the central circle on each data point.
         sigma_to_plot (int, optional):
             How many sigma contours to plot (0 for only median, 1 for median and 
             1 sigma, or 2 for median, 1 sigma, and 2 sigma).
+        line_widths (list of float, optional):
+            Line widths for median spectra (defaults to 1.0 if not specified).
         model (dict, optional):
-            POSEIDON model dictionary. Required to be defined for offsets to be added
+            POSEIDON model dictionary. Required to be defined for offsets to be added.
         add_retrieved_offsets (bool, optional):
-            Plots data with retrieved offset values
-        
-            
+            Plots data with retrieved offset values.
+     
     Returns:
         fig (matplotlib figure object):
             The retrieved spectra plot.
@@ -2586,22 +2628,29 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         err_data_i = err_data[idx_start:idx_end]
         bin_size_i = bin_size[idx_start:idx_end]
 
+        if (show_data_cap == True):
+            capsize = 2
+        else:
+            capsize = 0
+
         # Plot dataset
         if (show_data_bin_width == True):
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                xerr=bin_size_i, marker=data_markers[i], 
                                                markersize=data_markers_size[i], 
-                                               capsize=2, ls='none', elinewidth=0.8, 
-                                               color=data_colours[i], alpha = 0.8,
-                                               ecolor = 'black', label=label_i,
+                                               capsize=capsize, ls='none', elinewidth=0.8, 
+                                               color=data_colours[i], alpha = data_alpha,
+                                               ecolor = err_colour, label=label_i,
+                                               markeredgewidth = data_edge_width,
                                                zorder = 100)
         else:
             markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr=err_data_i, 
                                                marker=data_markers[i], 
                                                markersize=data_markers_size[i], 
-                                               capsize=2, ls='none', elinewidth=0.8, 
-                                               color=data_colours[i], alpha = 0.8,
-                                               ecolor = 'black', label=label_i,
+                                               capsize=capsize, ls='none', elinewidth=0.8, 
+                                               color=data_colours[i], alpha = data_alpha,
+                                               ecolor = err_colour, label=label_i,
+                                               markeredgewidth = data_edge_width,
                                                zorder = 100)
 
         [markers.set_alpha(1.0)]
@@ -2684,7 +2733,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       PT_labels = [], colour_list = [], log_P_min = None,
                       log_P_max = None, T_min = None, T_max = None,
                       legend_location = 'lower left',
-                      ax = None, save_fig = True):
+                      ax = None, save_fig = True,
+                      sigma_to_plot = 2):
     '''
     Plot retrieved Pressure-Temperature (P-T) profiles.
     
@@ -2863,12 +2913,14 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                         label = label_med)
             
             # Plot +/- 1σ confidence region
-            ax1.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
-                            facecolor = colours[i], label = label_one_sig)
+            if sigma_to_plot == 1 or sigma_to_plot == 2:
+                ax1.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
+                                facecolor = colours[i], label = label_one_sig)
 
             # Plot +/- 2σ sigma confidence region
-            ax1.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
-                            facecolor = colours[i], label = label_two_sig)
+            if sigma_to_plot == 2:
+                ax1.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
+                                facecolor = colours[i], label = label_two_sig)
 
         # Plot actual (true) P-T profile
         if (T_true != None):
@@ -2876,15 +2928,15 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
 
     # Common plot settings for all profiles
     ax1.invert_yaxis()            
-    ax1.set_xlabel(r'Temperature (K)', fontsize = 20)
+    ax1.set_xlabel(r'Temperature (K)', fontsize = 16)
     ax1.set_xlim(T_min, T_max)
-    ax1.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax1.set_ylabel(r'Pressure (bar)', fontsize = 16)
     ax1.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))
 
     ax1.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':14}, ncol=1, 
+    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, ncol=1, 
                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
@@ -3332,8 +3384,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 param_max = span[q][1]
 
             x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
-                                alpha=0.4, edgecolor='None', density=True, stacked=True)
-            
+                                  alpha=0.0, edgecolor='None', density=True, stacked=True)
             
             x_max_array.append(x.max())
 

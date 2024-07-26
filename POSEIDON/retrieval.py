@@ -473,7 +473,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             # Apply multiplicative stellar contamination to spectrum
             spectrum = epsilon * spectrum
 
-    #***** Step 5: nightside contamination *****#
+    #***** Step 5: nightside contamination (credit to John Kappelmeier) *****#
     
     # Nightside contamination is only relevant for transmission spectra
     if ('transmission' in spectrum_type):
@@ -908,12 +908,24 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         err_data = data['err_data']
         
         # Compute effective error, if unknown systematics included
-        if (error_inflation == 'Line_2015'):
+        if (error_inflation == 'Line15'):
             err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
             norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
         else: 
             err_eff_sq = err_data*err_data
             norm_log = norm_log_default
+
+        # Load transit depth data points and indices of any offset ranges
+      #  ydata = data['ydata']
+      #  offset_start = data['offset_start']
+      #  offset_end = data['offset_end']
+
+        # Apply relative offset between datasets
+      #  if (offsets_applied == 'single_dataset'):
+      #      ydata_adjusted = ydata.copy()
+      #      ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
+      #  else: 
+      #      ydata_adjusted = ydata
 
         # Load transit depth data points and indices of any offset ranges
         ydata = data['ydata']

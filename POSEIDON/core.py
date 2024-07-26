@@ -201,7 +201,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             specgrid = open_pymsg_grid(stellar_grid)
 
             # Interpolate stellar grid to compute photosphere intensity
-            I_phot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_eff, Met, log_g)
+            I_phot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_eff,
+                                          Met, log_g, stellar_grid)
 
             # Extrapolate stellar spectrum as a black body beyond pymsg's upper limit of 5.5 um
             I_phot_2 = planck_lambda(T_eff, wl_star[wl_star >= 5.499])
@@ -235,7 +236,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
         if (interp_backend == 'pysynphot'):
             I_het = load_stellar_pysynphot(wl_star, T_het, Met, log_g_het, stellar_grid)
         elif (interp_backend == 'pymsg'):
-            I_het_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_het, Met, log_g_het)
+            I_het_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_het, 
+                                         Met, log_g_het, stellar_grid)
             I_het_2 = planck_lambda(T_het, wl_star[wl_star >= 5.499])
             I_het = np.concatenate([I_het_1, I_het_2])
 
@@ -267,10 +269,12 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             I_spot = load_stellar_pysynphot(wl_star, T_spot, Met, log_g_spot, stellar_grid)
             I_fac = load_stellar_pysynphot(wl_star, T_fac, Met, log_g_fac, stellar_grid)
         elif (interp_backend == 'pymsg'):
-            I_spot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_spot, Met, log_g_spot)
+            I_spot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_spot, 
+                                          Met, log_g_spot, stellar_grid)
             I_spot_2 = planck_lambda(T_spot, wl_star[wl_star >= 5.499])
             I_spot = np.concatenate([I_spot_1, I_spot_2])
-            I_fac_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_fac, Met, log_g_fac)
+            I_fac_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_fac,
+                                         Met, log_g_fac, stellar_grid)
             I_fac_2 = planck_lambda(T_fac, wl_star[wl_star >= 5.499])
             I_fac = np.concatenate([I_fac_1, I_fac_2])
 
@@ -403,7 +407,7 @@ def define_model(model_name, bulk_species, param_species,
             slope / file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / file_read / chem_eq).
+            (Options: isochem / gradient / two-gradients / lever / file_read / chem_eq).
         cloud_model (str):
             Chosen cloud parametrisation 
             (Options: cloud-free / MacMad17 / Iceberg / Mie).
@@ -427,7 +431,7 @@ def define_model(model_name, bulk_species, param_species,
             transmission spectrum (nightside contamination).   
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
-            (Options: single_dataset, two_datasets, three_datasets).
+            (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
             (Options: Line15).
@@ -473,8 +477,8 @@ def define_model(model_name, bulk_species, param_species,
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
         reference_parameter (str):
-            For retrievals, whether R_p_ref or P_ref will be a free parameter
-            (Options: R_p_ref / P_ref).
+            For retrievals, whether R_p_ref, P_ref, or both will be a free parameter
+            (Options: R_p_ref / P_ref / R_p_ref+P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
         aerosol (string):
@@ -490,13 +494,15 @@ def define_model(model_name, bulk_species, param_species,
             Log pressures where the temperature difference parameters are 
             defined (only for the Piette & Madhusudhan 2020 P-T profile).
         number_P_knots (float):
-            Number of uniform knots in pressure space (only for Pelletier 2021 P-T profile)
+            Number of uniform knots in pressure space
+            (only for the Pelletier 2021 P-T profile).
         PT_penalty (bool):
-            If True, introduces the sigma_smooth parameter for retrievals (only for Pelletier 2021 P-T profile)
+            If True, introduces the sigma_smooth parameter for retrievals
+            (only for the Pelletier 2021 P-T profile).
         Na_K_fixed_ratio (bool):
             If True, sets log_K = 0.1 * log_Na
         reflection_up_to_5um (bool):
-            If True, only computes albedo up to 5 um (in order to speed up computations)
+            If True, only computes albedo up to 5 um (to speed up computations).
 
     Returns:
         model (dict):
@@ -601,7 +607,8 @@ def define_model(model_name, bulk_species, param_species,
                                       species_EM_gradient, species_DN_gradient, 
                                       species_vert_gradient, Atmosphere_dimension,
                                       opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere, aerosol_species, log_P_slope_arr,
+                                      reference_parameter, disable_atmosphere, 
+                                      aerosol_species, log_P_slope_arr,
                                       number_P_knots, PT_penalty)
     
     # If cloud_model = Mie, load in the cross section 
@@ -911,10 +918,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     aerosol_species = model['aerosol_species']
     Na_K_fixed_ratio = model['Na_K_fixed_ratio']
     PT_penalty = model['PT_penalty']
-    T_eq = planet['planet_T_eq']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
+    T_eq = planet['planet_T_eq']
 
     # Load planet gravity
     if ((gravity_setting == 'fixed') and (mass_setting == 'fixed')):
@@ -931,7 +938,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             g_p = np.power(10.0, log_g)/100   # Convert log cm/s^2 to m/s^2
     else:
         raise Exception("Invalid gravity / mass setting")
-
+    
     # Unpack lists of chemical species in this model
     chemical_species = model['chemical_species']
     active_species = model['active_species']
@@ -1003,7 +1010,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            param_species, active_species, CIA_pairs, 
                            ff_pairs, bf_species, N_sectors, N_zones, alpha, 
                            beta, phi, theta, species_vert_gradient, He_fraction,
-                           T_input, X_input, P_param_set, log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio, constant_gravity,
+                           T_input, X_input, P_param_set, log_P_slope_phot,
+                           log_P_slope_arr, Na_K_fixed_ratio, constant_gravity,
                            chemistry_grid, PT_penalty, T_eq)
 
     #***** Store cloud / haze / aerosol properties *****#
@@ -1013,9 +1021,11 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     theta_cloud_0, \
     a, gamma, \
     r_m, log_n_max, fractional_scale_height, \
-    r_i_real, r_i_complex, log_X_Mie, P_cloud_bottom, \
-    kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed = unpack_cloud_params(param_names, cloud_params, cloud_model, cloud_dim, 
-                                                                           N_params_cum, TwoD_type)
+    r_i_real, r_i_complex, log_X_Mie, \
+    P_cloud_bottom, kappa_cloud_eddysed, \
+    g_cloud_eddysed, w_cloud_eddysed = unpack_cloud_params(param_names, cloud_params,
+                                                           cloud_model, cloud_dim, 
+                                                           N_params_cum, TwoD_type)
     
     # Compute the scale height (for fuzzy deck aerosol models)
     if is_physical == False:
@@ -1236,7 +1246,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         enable_haze = 0
 
     # Check if a cloud deck is enabled in the cloud model
-    # The cloud deck is handled differently for Mie calclations
+    # The cloud deck is handled differently for Mie calculations
     if ('deck' in model['cloud_type'] and 'Mie' not in model['cloud_model']):
         enable_deck = 1
     else:
@@ -1629,8 +1639,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 
                 F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
                 
-
-
         else:
             raise Exception("Error: Invalid scattering option")
 
@@ -1770,9 +1778,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                 "not match wavelength grid of planet spectrum. " +
                                 "Did you forget to provide 'wl' to create_star?")
 
-            # Interpolate stellar spectrum onto planet spectrum wavelength grid
-            # F_s_interp = spectres(wl, wl_s, F_s)
-
             # Convert stellar surface flux to observed flux at Earth
             F_s_obs = (R_s / d)**2 * F_s
 
@@ -1826,9 +1831,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
 def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
               wl_unit = 'micron', bin_width = 'half', spectrum_unit = '(Rp/Rs)^2', 
-              skiprows = None,
-              offset_1_datasets = None,
-              offset_2_datasets = None,
+              skiprows = None, offset_1_datasets = None, offset_2_datasets = None,
               offset_3_datasets = None):
     '''
     Load the user provided datasets into the format expected by POSEIDON. 
@@ -2024,7 +2027,6 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
         offset_data_start = 0    # Dummy values when no offsets included
         offset_data_end = 0
 
-
     else:
         offset_data_start = 0    # Dummy values when no offsets included
         offset_data_end = 0
@@ -2120,9 +2122,9 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Fiducial values to avoid error in default priors below
     else:
         T_phot = 4710
-        err_T_phot = None
-        log_g_phot = None
-        err_log_g_phot = None
+        err_T_phot = 100
+        log_g_phot = 5
+        err_log_g_phot = 0.1
 
     # Unpack data error bars (not error inflation parameter prior)
     err_data = data['err_data']    
@@ -2135,15 +2137,6 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     if ('R_p_ref' in prior_ranges):
         prior_ranges['R_p_ref'] = [prior_ranges['R_p_ref'][0]/R_p_norm,
                                    prior_ranges['R_p_ref'][1]/R_p_norm]
-        
-    # Normalise retrieved planet mass parameter into Jupiter or Earth masses
-    if (mass_unit == 'M_J'):
-        M_p_norm = M_J
-    elif (mass_unit == 'M_E'):
-        M_p_norm = M_E
-    if ('M_p' in prior_ranges):
-        prior_ranges['M_p'] = [prior_ranges['M_p'][0]/M_p_norm,
-                               prior_ranges['M_p'][1]/M_p_norm]
 
     # Normalise retrieved system distance parameter into parsecs
     if (distance_unit == 'pc'):
@@ -2180,24 +2173,19 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'delta_rel': [-1.0e-3, 1.0e-3],
                              'delta_rel_1': [-1.0e-3, 1.0e-3],
                              'delta_rel_2': [-1.0e-3, 1.0e-3],
-                             'log_b': [np.log10(0.001*np.min(err_data**2)),
-                                       np.log10(100.0*np.max(err_data**2))],
-                             'C_to_O': [0.3,1.9],
-                             'log_Met' : [-0.9,3.9],
-                             'log_r_m': [-3,1],       
-                             'log_n_max': [5.0,20.0],  
-                             'fractional_scale_height': [0.1,1], 
-                             'r_i_real': [0,10],
-                             'r_i_complex': [1e-6,100], 
-                             'log_X_Mie' : [-30,-1],
-                             'Delta_log_P' : [0,9],
-                             'log_kappa_ir' : [-5,0],
-                             'log_gamma' : [-4,1],
-                             'log_gamma_2' : [-4,1],
-                             'T_equ' : [400,3000],
-                             'T_int' : [400,3000],
-                             'alpha' : [0,1],
-                             'beta' : [0.25,2]
+                             'delta_rel_3': [-1.0e-3, 1.0e-3],
+                             'b': [np.log10(0.001*np.min(err_data**2)),
+                                   np.log10(100.0*np.max(err_data**2))],
+                             'C_to_O': [0.3, 1.9], 'log_Met' : [-0.9, 3.9],
+                             'log_r_m': [-3, 1], 'log_n_max': [5.0, 20.0],  
+                             'fractional_scale_height': [0.1, 1], 
+                             'r_i_real': [0, 10], 'r_i_complex': [1e-6, 100], 
+                             'log_X_Mie' : [-30, -1], 'Delta_log_P' : [0, 9],
+                             'log_kappa_ir' : [-5, 0], 
+                             'log_gamma' : [-4, 1], 'log_gamma_2' : [-4, 1],
+                             'T_equ' : [400, 3000], 'T_int' : [400, 3000],
+                             'alpha_Line' : [0, 1], 'beta_Line' : [0.25, 2],
+                             'Upsilon': [-180, 180], 'log_P_X_i': [-5, 1],
                             }   
 
     # Iterate through parameters, ensuring we have a full set of priors
@@ -2213,8 +2201,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 if ('log_P_' in parameter):
                     if ('log_P_X_mid' in prior_ranges):
                         prior_ranges[parameter] = prior_ranges['log_P_X_mid']
+                    elif ('log_P_X_i' in prior_ranges):
+                        prior_ranges[parameter] = prior_ranges['log_P_X_i']
                     else:
-                        prior_ranges[parameter] = prior_ranges_defaults['log_P_mid']
+                        prior_ranges[parameter] = prior_ranges_defaults['log_P_X_i']
 
                 # Set non-specified mixing ratio difference prior to that for 'Delta_log_X'
                 elif ('Delta_log_' in parameter):
@@ -2236,6 +2226,12 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                         prior_ranges[parameter] = prior_ranges['log_X']
                     else:
                         prior_ranges[parameter] = prior_ranges_defaults['log_X']
+
+                elif ('Upsilon_' in parameter):
+                    if ('Upsilon' in prior_ranges):
+                        prior_ranges[parameter] = prior_ranges['Upsilon']
+                    else:
+                        prior_ranges[parameter] = prior_ranges_defaults['Upsilon']
 
             # Set non-specified temperature difference parameters to that for 'Delta_T'
             elif ('Delta_T_' in parameter):
@@ -2279,6 +2275,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 if ('log_P_' in parameter):
                     if ('log_P_X_mid' in prior_types):
                         prior_types[parameter] = prior_types['log_P_X_mid']
+                    elif ('log_P_X_i' in prior_types):
+                        prior_types[parameter] = prior_types['log_P_X_i']
                     else:
                         prior_types[parameter] = 'uniform'
 
@@ -2305,6 +2303,12 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                             prior_types[parameter] = 'CLR'
                         else:
                             prior_types[parameter] = 'uniform'
+                
+                elif ('Upsilon_' in parameter):
+                    if ('Upsilon' in prior_types):
+                        prior_types[parameter] = prior_types['Upsilon']
+                    else:
+                        prior_types[parameter] = 'uniform'
                 
             # Set non-specified temperature difference parameters to that for 'Delta_T'
             elif ('Delta_T_' in parameter):
@@ -2341,12 +2345,16 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Remove group prior range for mixing ratio and temperature parameters
     if ('log_P_X_mid' in prior_ranges):
         del prior_ranges['log_P_X_mid']
+    if ('log_P_X_i' in prior_ranges):
+        del prior_ranges['log_P_X_i']
     if ('log_X' in prior_ranges):
         del prior_ranges['log_X']
     if ('Delta_log_X' in prior_ranges):
         del prior_ranges['Delta_log_X']
     if ('Grad_log_X' in prior_ranges):
         del prior_ranges['Grad_log_X']
+    if (('Upsilon' in prior_ranges)):
+        del prior_ranges['Upsilon']
     if (('T' in prior_ranges) and (PT_profile != 'isotherm')):
         del prior_ranges['T']
     if (('Delta_T' in prior_ranges) and (PT_profile != 'gradient')):
@@ -2357,12 +2365,16 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Remove group prior types for mixing ratio and temperature parameters
     if ('log_P_X_mid' in prior_types):
         del prior_types['log_P_X_mid']
+    if ('log_P_X_i' in prior_types):
+        del prior_types['log_P_X_i']
     if ('log_X' in prior_types):
         del prior_types['log_X']
     if ('Delta_log_X' in prior_types):
         del prior_types['Delta_log_X']
     if ('Grad_log_X' in prior_types):
         del prior_types['Grad_log_X']
+    if ('Upsilon' in prior_types):
+        del prior_types['Upsilon']
     if (('T' in prior_types) and (PT_profile != 'isotherm')):
         del prior_types['T']
     if (('Delta_T' in prior_types) and (PT_profile != 'gradient')):

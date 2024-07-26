@@ -19,10 +19,10 @@ jobs:
         shell: bash -l {0}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest]
         python-version: ['3.9', '3.10'] 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Free disk space
       run: |
@@ -33,7 +33,7 @@ jobs:
         df -h
 
     - name: Set up Anaconda
-      uses: conda-incubator/setup-miniconda@v2
+      uses: conda-incubator/setup-miniconda@v3
       with:
         miniconda-version: "latest"
         channels: conda-forge, defaults
@@ -43,7 +43,7 @@ jobs:
 
     - name: Create conda environment
       run: |
-        echo "begin: PATH=$PATH;"
+        echo "begin: PATH=$PATH;" 
         conda create --name test_install python=${{ matrix.python-version }} -y
 
     - name: Install mpi4py and pymultinest
@@ -63,13 +63,8 @@ jobs:
       run: |
         mkdir -p inputs/opacity
         mkdir -p inputs/chemistry_grids
-        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1HA3gZUTmDIzZGFLTtuiPe6VDUxstxjZ_" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
-        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1J7URZFp4YJoKM88qXxnxzZhXaMLlCV-F' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1J7URZFp4YJoKM88qXxnxzZhXaMLlCV-F" -O inputs/chemistry_grids/fastchem_database.hdf5 && rm -rf /tmp/cookies.txt
-        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1xZzbVserwHZx0jmmhhEeQzk5RnxjFf2C" -O inputs/stellar_grids.zip && rm -rf /tmp/cookies.txt
-
-    - name: Extract input files
-      run: |
-        unzip inputs/stellar_grids.zip -d inputs
+        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
+        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3" -O inputs/chemistry_grids/fastchem_database.hdf5 && rm -rf /tmp/cookies.txt
 
     - name: Set environment variables
       run: |
