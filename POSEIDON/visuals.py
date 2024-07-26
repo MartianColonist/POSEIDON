@@ -1227,7 +1227,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
                  show_data_bin_width = True, show_data_cap = True,
-                 data_alpha = 0.8, data_edge_width = 0.8):
+                 data_alpha = 0.8, data_edge_width = 0.8,
+                 line_widths = [], xlabels = True):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1288,7 +1289,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
-            'lower left', 'lower right').
+            'lower left', 'lower right','outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
         ax (matplotlib axis object, optional):
@@ -1297,6 +1298,16 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             If True, saves a PDF in the POSEIDON output folder.
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
+        show_data_cap (bool, optional):
+            Flag indicating whether to plot the error bar caps on the data points.
+        data_alpha (float, optional):
+            Alpha for the central circle colours on each data point. 
+        data_edge_width (float, optional):
+            Border line width for the central circle on each data point.
+        line_widths (list of float, optional):
+            Line widths for binned spectra (defaults to 2.0 if not specified).
+        x_labels (bool):
+            If false, will remove x_ticks and x_label.
 
     Returns:
         fig (matplotlib figure object):
@@ -1332,14 +1343,16 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Quick validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    #if (N_spectra > 9):
-    #    raise Exception("Max number of concurrent spectra to plot is 9.")
+    if (N_spectra > 8) and colour_list == []:
+        raise Exception("Max number of concurrent spectra to plot is 8 with default colour list")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
         raise Exception("Number of model labels does not match number of spectra.")
     if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
+    if ((line_widths != []) and (N_spectra != len(line_widths))):
+        raise Exception("Number of line widths does not match number of spectra.")
         
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
@@ -1364,8 +1377,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Quick validity checks for plotting
         if (N_datasets == 0):
             raise Exception("Must provide at least one dataset to plot!")
-        if (N_datasets > 7):
-            raise Exception("Max number of concurrent datasets to plot is 7.")
+        if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+            raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
         if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
             raise Exception("Number of colours does not match number of datasets.")
         if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1377,19 +1390,19 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             
         # Define colours for plotted spectra (default or user choice)
         if (data_colour_list == []):   # If user did not specify a custom colour list
-            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black']
+            data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown']
         else:
             data_colours = data_colour_list
 
         # Define data marker symbols (default or user choice)
         if (data_marker_list == []):   # If user did not specify a custom colour list
-            data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p']
+            data_markers = ['o', 's', 'D', '*', 'X',]
         else:
             data_markers = data_marker_list
 
         # Define data marker sizes (default or user choice)
         if (data_marker_size_list == []):   # If user did not specify a custom colour list
-            data_markers_size = [3, 3, 3, 3, 3, 3, 3]
+            data_markers_size = [3, 3, 3, 3, 3,]
         else:
             data_markers_size = data_marker_size_list
         
@@ -1483,7 +1496,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Aim for 10 major y-axis labels
     ymajor_spacing = round_sig_figs((y_max_plt - y_min_plt), 1)/10
     yminor_spacing = ymajor_spacing/10
-    
+
     if (np.abs(np.log10(ymajor_spacing)) <= 10.0):    
         major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
         minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
@@ -1586,6 +1599,9 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                 colour_binned = colours[i]
                 lw_binned = 2.0
 
+            if line_widths != []:
+                lw_binned = line_widths[i]
+
             # Plot binned spectrum
             ax1.plot(wl_binned, spec_binned, lw = lw_binned, alpha = 0.8, 
                      color = colour_binned, 
@@ -1656,7 +1672,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
-    ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+    if xlabels == True:
+        ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
         if (y_min_plt < 0.10):
@@ -1689,7 +1706,11 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
     # Plot wl tick labels
-    ax1.set_xticks(wl_ticks)
+    if xlabels == True:
+        ax1.set_xticks(wl_ticks)
+    else:
+        ax1.set_xticks(wl_ticks)
+        ax1.tick_params(labelbottom=False)  
     
     # Switch to two columns if many spectra are being plotted
     if (N_spectra >= 6):
@@ -1780,7 +1801,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
-            'lower left', 'lower right').
+            'lower left', 'lower right', 'outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
         show_data_bin_width (bool, optional):
@@ -1826,8 +1847,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Quick validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 7):
-        raise Exception("Max number of concurrent datasets to plot is 7.")
+    if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+        raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -1839,19 +1860,19 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'black', 'black']
+        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown']
     else:
         colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p','p']
+        data_markers = ['o', 's', 'D', '*', 'X']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3,3]
+        data_markers_size = [3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
        
@@ -1895,8 +1916,12 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     ymajor_spacing = round_sig_figs((y_max_plt - y_min_plt), 1)/10
     yminor_spacing = ymajor_spacing/10
     
-    major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
-    minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
+    if (np.abs(np.log10(ymajor_spacing)) <= 10.0):    
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 1)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 1)
+    else:    # Bug fix for surface spectra where Fp > 1e10 
+        major_exponent = round_sig_figs(np.floor(np.log10(np.abs(ymajor_spacing))), 2)
+        minor_exponent = round_sig_figs(np.floor(np.log10(np.abs(yminor_spacing))), 2)
     
     # If last digit of y labels would be a multiple of 6,7,8,or 9, bump up to 10
     if (ymajor_spacing > 5*np.power(10, major_exponent)):
@@ -2068,7 +2093,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
 
 
 def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1, 
-                           spectra_high1, spectra_high2, planet_name, 
+                           spectra_high1, spectra_high2, planet_name,
                            data_properties, R_to_bin = 100, plt_label = None,
                            show_ymodel = True, wl_min = None, wl_max = None, 
                            y_min = None, y_max = None, y_unit = 'transit_depth', 
@@ -2081,7 +2106,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            legend_location = 'upper right', legend_box = False,
                            ax = None, save_fig = True,
                            show_data_bin_width = True, show_data_cap = True,
-                           sigma_to_plot = 2, data_alpha = 0.8, data_edge_width = 0.8,
+                           data_alpha = 0.8, data_edge_width = 0.8, sigma_to_plot = 2,
+                           line_widths = [], model = None, add_retrieved_offsets = False,
                         ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2152,7 +2178,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
             The location of the legend ('upper left', 'upper right', 
-            'lower left', 'lower right').
+            'lower left', 'lower right', 'outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
         ax (matplotlib axis object, optional):
@@ -2161,10 +2187,22 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             If True, saves a PDF in the POSEIDON output folder.
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
+        show_data_cap (bool, optional):
+            Flag indicating whether to plot the error bar caps on the data points.
+        data_alpha (float, optional):
+            Alpha for the central circle colours on each data point. 
+        data_edge_width (float, optional):
+            Border line width for the central circle on each data point.
         sigma_to_plot (int, optional):
             How many sigma contours to plot (0 for only median, 1 for median and 
             1 sigma, or 2 for median, 1 sigma, and 2 sigma).
-
+        line_widths (list of float, optional):
+            Line widths for median spectra (defaults to 1.0 if not specified).
+        model (dict, optional):
+            POSEIDON model dictionary. Required to be defined for offsets to be added.
+        add_retrieved_offsets (bool, optional):
+            Plots data with retrieved offset values.
+     
     Returns:
         fig (matplotlib figure object):
             The retrieved spectra plot.
@@ -2192,14 +2230,16 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick spectra validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 4):
-        raise Exception("Max number of concurrent retrieved spectra to plot is 4.")
+    if (N_spectra > 3) and (colour_list == []):
+        raise Exception("Max number of concurrent retrieved spectra to plot is 3 with default colour list.")
     if ((colour_list != []) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
     if ((binned_colour_list != []) and (N_spectra != len(binned_colour_list))):
         raise Exception("Number of binned model colours does not match number of spectra.")
     if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
         raise Exception("Number of model labels does not match number of spectra.")
+    if ((line_widths != []) and (N_spectra != len(line_widths))):
+        raise Exception("Number of line widths does not match number of spectra.")
 
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
@@ -2227,8 +2267,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick data validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if (N_datasets > 8):
-        raise Exception("Max number of concurrent datasets to plot is 8.")
+    if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+        raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
     if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
     if ((data_labels != []) and (N_datasets != len(data_labels))):
@@ -2239,22 +2279,118 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         raise Exception("Number of dataset marker sizes does not match number of datasets.")
     if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
+    
+    # @char: add retrieved offsets to observed data
+
+    if add_retrieved_offsets:
+
+        # check model has been defined
+        if model == None:
+            raise Exception('Please provide model to plot offsets')
+        
+        offset_datasets = model['offsets_applied']
+        model_name = model['model_name']
+        
+        # DON'T OVERWRITE YDATA!!!
+        ydata_to_plot = np.array(ydata)
+
+        # add offsets for a single dataset 
+        if offset_datasets == 'single_dataset':
+            # unpack offset data properties
+            offset_start, offset_end = data_properties['offset_start'], data_properties['offset_end']
+
+            # catch offsets for one dataset
+            if isinstance(offset_start, np.int64):
+                offset_start, offset_end = np.array([offset_start]), np.array([offset_end])
+
+            print('offset_start', offset_start)
+
+            # retrieve offset value from results file
+            results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+            results_file_name = model_name + '_results.txt'
+
+            # open results file to find retrieved median offset value
+            with open(results_dir + results_file_name, 'r') as f:
+                for line in f:
+                    if 'delta_rel' in line:
+                        delta_rel = float(line.split()[2])
+
+                    # stop reading file after 1 sigma constraints
+                    if '2 σ constraints' in line:
+                        break
+
+            for start, end  in zip(offset_start, offset_end):
+                # offsets are in ppm
+                ydata_to_plot[start:end] = ydata[start:end] - delta_rel*1e-6
+        
+        # add multiple offsets
+        elif offset_datasets == 'two_datasets' or offset_datasets == 'three_datasets':
+            print('in two datasets')     
+            # unpack offset data properties
+            offset_start_list = ['offset_1_start', 'offset_2_start', 'offset_3_start']
+            offset_end_list = ['offset_1_end', 'offset_2_end', 'offset_3_end']
+
+            offset_start_end = []
+
+            for start_name, end_name in zip(offset_start_list, offset_end_list):
+                offset_start, offset_end = data_properties[start_name], data_properties[end_name]
+
+                # catch zero offsets, not defined as arrays
+                if isinstance(offset_start, int):
+                    offset_start, offset_end = np.array([offset_start]), np.array([offset_end])
+                
+
+                offset_start_end.append((offset_start[0], offset_end[-1]))
+
+            # retrieve offset value from results file
+            results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+            results_file_name = model_name + '_results.txt'
+
+            # create empty array for relative offsets (max. number of offsets is currently 3)
+            delta_rel_array = np.zeros(3)
+
+            # open results file to find retrieved median offset value
+            with open(results_dir + results_file_name, 'r') as f:
+                for line in f:
+                    if 'delta_rel_1' in line:
+                        delta_rel_array[0] = line.split()[2]
+                    if 'delta_rel_2' in line:
+                        delta_rel_array[1] = line.split()[2]
+                    if 'delta_rel_3' in line:
+                        delta_rel_array[2] = line.split()[2]
+
+                    # stop reading file after 1 sigma constraints
+                    if '2 σ constraints' in line:
+                        break
+
+            # add relative offset to ydata (note: offsets are subtracted)
+            for delta_rel, (offset_start, offset_end) in zip(delta_rel_array, offset_start_end):
+                # offsets are in ppm
+                ydata_to_plot[offset_start:offset_end] = ydata[offset_start:offset_end] - delta_rel*1e-6
+        
+        # continue plotting if no offsets are found
+        elif offset_datasets == None:
+            print('No offsets found, plotting data without offsets')
+        
+    else:
+        ydata_to_plot = ydata
+
         
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
-        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson', 'black', 'darkgreen']
+        data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson']
     else:
         data_colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
     if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X', 'p', 'p']
+        data_markers = ['o', 's', 'D', '*', 'X']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
     if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3, 3, 3, 3]
+        data_markers_size = [3, 3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
                 
@@ -2295,8 +2431,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             y_min_plt = min(y_min_plt, y_min_i)
             
         # Check if the lowest data point falls below the current y-limit
-        if (y_min_plt > min(ydata - err_data)):
-            y_min_plt = min(ydata - err_data)
+        if (y_min_plt > min(ydata_to_plot - err_data)):
+            y_min_plt = min(ydata_to_plot - err_data)
             
         y_min_plt = 0.995*y_min_plt  # Extend slightly below
         
@@ -2443,8 +2579,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             label_one_sig = ''
             label_two_sig = ''
 
+        if line_widths != []:
+            lw_binned = line_widths[i]
+        else:
+            lw_binned = 1.0
+
         # Plot median retrieved spectrum
-        ax1.plot(wl_binned, spec_med_binned, lw = 1.0,  
+        ax1.plot(wl_binned, spec_med_binned, lw = lw_binned,  
                  color = scale_lightness(colours[i], 1.0), 
                  label = label_med)
         
@@ -2483,7 +2624,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
         # Extract the ith dataset
         wl_data_i = wl_data[idx_start:idx_end]
-        ydata_i = ydata[idx_start:idx_end]
+        ydata_i = ydata_to_plot[idx_start:idx_end]
         err_data_i = err_data[idx_start:idx_end]
         bin_size_i = bin_size[idx_start:idx_end]
 
@@ -2656,8 +2797,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
     # Quick validity checks for plotting
     if (N_PT == 0):
         raise Exception("Must provide at least one P-T profile to plot!")
-    if (N_PT > 3):
-        raise Exception("Max number of concurrent retrieved P-T profiles to plot is 3.")
+    if (N_PT > 4):
+        raise Exception("Max number of concurrent retrieved P-T profiles to plot is 4.")
     if ((colour_list != []) and (N_PT != len(colour_list))):
         raise Exception("Number of colours does not match number of P-T profiles.")
     if ((PT_labels != []) and (N_PT != len(PT_labels))):
@@ -3169,7 +3310,9 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
     
 def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_colour_list, 
                               retrieval_colour_list, retrieval_labels, span, truths, 
-                              N_rows, N_columns, N_bins):
+                              N_rows, N_columns, N_bins,
+                              vertical_lines, vertical_lines_colors, tick_labelsize = 8, title_fontsize = 12,
+                              custom_labels = []):
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3187,7 +3330,11 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     fig.set_size_inches(2.5*N_columns, 2.5*N_rows)
     
     # Latex code for parameter labels
-    param_labels = generate_latex_param_names(plot_parameters)
+
+    if custom_labels == []:
+        param_labels = generate_latex_param_names(plot_parameters)
+    else:
+        param_labels = custom_labels
 
     # Determine histogram bounds (defaults to +/- 5σ)
     if (span == []):
@@ -3198,7 +3345,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     
     # For each species
     for q in range(len(plot_parameters)):
-
 
         param = plot_parameters[q]
         param_label = param_labels[q]
@@ -3228,6 +3374,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 colour = retrieval_colour_list[m]   # Each retrieval has a different colour
 
             # Set minimum and maximum mixing ratio plot limits
+            # FIX : This throws up an error when you're only plotting one parameter...
             try:
                 param_min, param_max = span[q]
             except:
@@ -3283,8 +3430,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
                 title = "{0} = {1}".format(param_label, title)
                 title = "{0}".format(title)
-                # Change back to 12
-                ax.set_title(title, fontsize = 11)
+                ax.set_title(title, fontsize = title_fontsize)
 
             # Create sub-axis for error bar
       #      newax = plt.gcf().add_axes(ax.get_position(), sharex=ax, frameon=False)
@@ -3302,22 +3448,33 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
       #      newax.tick_params(axis='both', which='major', labelsize=8)
 
             ax.set_yticks([])
-            # CHANGE THIS BACK TO LABEL SIZE 8
-            ax.tick_params(axis='both', which='major', labelsize=8)
+            ax.tick_params(axis='both', which='major', labelsize= tick_labelsize)
 
-            if (param == 'T'):
-                xmajorLocator = MultipleLocator(250)
-                xminorLocator = MultipleLocator(250/2)
-                ax.xaxis.set_major_locator(xmajorLocator)
-                ax.xaxis.set_minor_locator(xminorLocator)
+            #if (param == 'T'):
+            #    xmajorLocator = MultipleLocator(250)
+            #    xminorLocator = MultipleLocator(250/2)
+            #    ax.xaxis.set_major_locator(xmajorLocator)
+            #    ax.xaxis.set_minor_locator(xminorLocator)
 
-            if (param == 'log_r_m_SiO2') or (param == 'log_r_m_Fe2O3'):
+            #if (param == 'log_r_m_SiO2') or (param == 'log_r_m_Fe2O3'):
+            #    xmajorLocator = MultipleLocator(1)
+            #    xminorLocator = MultipleLocator(0.5)
+            #    ax.xaxis.set_major_locator(xmajorLocator)
+            #    ax.xaxis.set_minor_locator(xminorLocator)
+            
+            if('log_r_m' in param):
                 xmajorLocator = MultipleLocator(1)
                 xminorLocator = MultipleLocator(0.5)
                 ax.xaxis.set_major_locator(xmajorLocator)
                 ax.xaxis.set_minor_locator(xminorLocator)
 
-            if (param == 'log_X_SiO2') or (param == 'log_X_Fe2O3'):
+            #if (param == 'log_X_SiO2') or (param == 'log_X_Fe2O3'):
+            #    xmajorLocator = MultipleLocator(5)
+            #    xminorLocator = MultipleLocator(2.5)
+            #    ax.xaxis.set_major_locator(xmajorLocator)
+            #    ax.xaxis.set_minor_locator(xminorLocator)
+
+            if ('log_X' in param) and ('base' not in param):
                 xmajorLocator = MultipleLocator(5)
                 xminorLocator = MultipleLocator(2.5)
                 ax.xaxis.set_major_locator(xmajorLocator)
@@ -3328,7 +3485,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         if (truths != []):
             ax.axvline(x=truths[q], linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
 
-        # Add parameter label
+        if (vertical_lines != []):
+            for n in range(len(vertical_lines)):
+                ax.axvline(x=vertical_lines[n][q], linewidth=1.5, linestyle='-', color=vertical_lines_colors[n], alpha=0.8)
+
+
+        # Add parameter 
       #  ax.text(0.06, 0.94, param_label, color=colour, 
       #          fontsize = 10, horizontalalignment='left', 
       #          verticalalignment='top', transform=ax.transAxes)
@@ -3349,7 +3511,9 @@ def plot_histograms(planet_name, models, plot_parameters,
                     He_fraction = 0.17, N_rows = None, N_columns = None, 
                     axes = [], retrieval_codes = [], external_samples = [],
                     external_param_names = [], plt_label = None, 
-                    save_fig = True):
+                    save_fig = True,
+                    vertical_lines = [], vertical_line_colors = [], tick_labelsize = 8, title_fontsize = 12,
+                    custom_labels = []):
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -3360,8 +3524,8 @@ def plot_histograms(planet_name, models, plot_parameters,
     N_models = len(models)
     N_params = len(plot_parameters)
 
-    if (N_models > 4):
-        raise Exception("Max supported number of retrieval models is 4.")
+    if (N_models > 10):
+        raise Exception("Max supported number of retrieval models is 10.")
 
     if (N_models == 1) and (parameter_colour_list == []):
         parameter_colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
@@ -3474,10 +3638,18 @@ def plot_histograms(planet_name, models, plot_parameters,
             param = plot_parameters[q]
 
             # QUICK FIX DO NOT KEEP THIS
-            if param == 'log_P_cloud_SiO2':
-                param = 'log_P_top_slab_SiO2'
+            # This is to compare old Grant et al 2023 results to new results
+            # I changed the parameter name
+            if param == 'log_P_top_slab_SiO2':
+                try:
+                    param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
+                except:
+                    param = 'log_P_cloud_SiO2'
+                    param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
 
-            param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
+            
+            else:
+                param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]]
       #      for j in range(len(chemical_species)):
       #          if (chemical_species[j] in param):
 
@@ -3491,7 +3663,9 @@ def plot_histograms(planet_name, models, plot_parameters,
     fig = plot_retrieved_parameters(axes, param_vals, plot_parameters, 
                                     parameter_colour_list, retrieval_colour_list, 
                                     retrieval_labels, span, truths, 
-                                    N_rows, N_columns, N_bins)
+                                    N_rows, N_columns, N_bins,
+                                    vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize,
+                                    custom_labels = custom_labels)
     
     # Save figure to file
     if (save_fig == True):
@@ -3508,6 +3682,148 @@ def plot_histograms(planet_name, models, plot_parameters,
 ''' 
 Integration of below functions with plot_histograms pending.
 '''
+
+def plot_composition(planet, models, plot_type = 'abundances', include_bulk = False,
+                     plot_species = [], plot_ratios = [], colour_list = [], 
+                     retrieval_labels = [], span = [], truths = [], N_bins = 40,
+                     He_fraction = 0.17, N_rows = None, N_columns = None, 
+                     plt_label = None):
+
+
+    if (len(models) > 3):
+        raise Exception("Max supported number of retrieval models is 3.")
+
+    if ((len(models) == 1) and (colour_list == [])):
+        colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
+                       'saddlebrown', 'grey', 'brown']
+    elif ((len(models) == 1) and (colour_list != [])):
+        if (plot_species != []):
+            if (len(colour_list) != len(plot_species)):
+                raise Exception("Number of colours does not match the requested " + 
+                                "number of species to plot.")
+        elif (plot_ratios != []):
+            if (len(colour_list) != len(plot_ratios)):
+                raise Exception("Number of colours does not match the requested " + 
+                                "number of elemental ratios to plot.")
+    elif ((len(models) >= 2) and (colour_list == [])):
+        colour_list = ['purple', 'dodgerblue', 'forestgreen']
+    elif ((len(models) >= 2) and (colour_list != [])):
+        if (len(colour_list) != len(models)):
+            raise Exception("Number of colours does not match the number of " + 
+                            "retrieval models.")
+
+    X_vals = []    # List to store mixing ratios for all models, samples, and species
+
+    # We must include bulk gases for elemental ratios (e.g. H2 for O/H ratio)
+    if (plot_type == 'elemental_ratios'):
+        include_bulk = True
+
+    # For each retrieval
+    for m in range(len(models)):
+
+        model = models[m]
+
+        # Unpack model and atmospheric properties
+        planet_name = planet['planet_name']
+        model_name = model['model_name']
+        param_species = model['param_species']
+        bulk_species = model['bulk_species']
+        N_params_cum = model['N_params_cum']
+
+        # Unpack number of free parameters
+        param_names = model['param_names']
+        n_params = len(param_names)
+
+        # Identify output directory location
+        output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+
+        # Identify directory location where the plot will be saved
+        plot_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+        # Load relevant output directory
+        output_prefix = model_name + '-'
+
+        # Change directory into MultiNest result file folder
+        os.chdir(output_dir + 'MultiNest_raw/')
+
+        # Run PyMultiNest analyser to extract posterior samples
+        analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
+                                        verbose = False)
+        samples = analyzer.get_equal_weighted_posterior()[:,:-1]
+
+        # Change directory back to directory where user's python script is located
+        os.chdir('../../../../')
+
+        # Find total number of available posterior samples from MultiNest 
+        N_samples = len(samples[:,0])
+        N_species_param = len(param_species)
+
+        # Add bulk species to beginning of array (first histogram) if desired
+        if (include_bulk == True):
+
+            if ('H2' and 'He' in bulk_species):
+                all_species = np.append(np.array(['He']), param_species)
+                all_species = np.append(np.array(['H2']), all_species)
+                log_X_stored = np.zeros(shape=(N_samples, N_species_param+2))
+            else:
+                all_species = np.append(bulk_species, param_species)
+                log_X_stored = np.zeros(shape=(N_samples, N_species_param+1))
+
+        # Bulk species not plotted
+        else:
+            all_species = param_species
+            log_X_stored = np.zeros(shape=(N_samples, N_species_param))
+
+        # Generate spectrum and PT profiles from selected samples
+        for i in range(N_samples):
+
+            # Append bulk component abundance
+            if (include_bulk == True):
+
+                if ('H2' and 'He' in bulk_species):
+
+                    # Extract mixing ratios from MultiNest samples
+                    _, _, log_X_stored[i,2:], _, _, _, _, _ = split_params(samples[i], 
+                                                                           N_params_cum)
+
+                    X_H2 = (1.0 - np.sum(np.power(10.0, log_X_stored[i,2:])))/(1.0 + He_fraction)
+                    X_He = He_fraction*X_H2
+
+                    log_X_stored[i,0] = np.log10(X_H2)
+                    log_X_stored[i,1] = np.log10(X_He)                                   
+
+                else:
+
+                    # Extract mixing ratios from MultiNest samples
+                    _, _, log_X_stored[i,1:], _, _, _, _, _ = split_params(samples[i], 
+                                                                           N_params_cum)
+
+                    X_0 = 1.0 - np.sum(np.power(10.0, log_X_stored[i,1:]), axis=0)
+                    log_X_stored[i,0] = np.log10(X_0)
+
+            else:
+
+                # Extract mixing ratios from MultiNest samples
+                _, _, log_X_stored[i,:], _, _, _, _, _ = split_params(samples[i], 
+                                                                      N_params_cum)
+
+        X_vals_m = np.power(10.0, log_X_stored)
+
+        X_vals.append(X_vals_m)
+
+    # Plot elemental ratios
+    if (plot_type == 'elemental_ratios'):
+        fig = plot_retrieved_element_ratios(X_vals, all_species, plot_ratios,
+                                            colour_list, retrieval_labels, span,
+                                            truths, N_rows, N_columns, N_bins)
+
+    # Save figure to file
+    if (plt_label == None):
+        file_name = (plot_dir + planet_name + '_' + plot_type + '.png')
+    else:
+        file_name = (plot_dir + planet_name + '_' + plt_label + '_' + plot_type + '.png')
+
+    fig.savefig(file_name, bbox_inches='tight', dpi=800)
 
 def elemental_ratio(all_species, X_vals, element_1, element_2):
     '''
@@ -3600,6 +3916,39 @@ def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
 
         ax = plt.subplot(gs[row_idx, column_idx:column_idx+1])
 
+        x_max_array = []
+        # For each retrieval
+        for m in range(len(X_vals)):
+
+            X_vals_m = X_vals[m]
+
+            N_samples = np.shape(X_vals_m)[0]
+
+            ratio_vals = elemental_ratio(all_species, X_vals_m, elements[0], elements[1])
+
+            if (elements[1] == 'H'):
+                ratio_vals = ratio_vals / solar_values[ratio]
+            
+            if (N_models == 1):
+                colour = colour_list[q]   # Each ratio has a different colour
+            else:
+                colour = colour_list[m]   # Each retrieval has a different colour
+
+            # Set minimum and maximum mixing ratio plot limits
+            try:
+                x_min, x_max = span[q]
+            except:
+                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+
+                if (elements[1] == 'H'):
+                    span[q] = _quantile(np.log10(ratio_vals), quant)
+                else:
+                    span[q] = _quantile(ratio_vals, quant)
+                x_min = span[q][0]
+                x_max = span[q][1]
+
+            x_max_array.append(x_max)
+
         # For each retrieval
         for m in range(len(X_vals)):
 
@@ -3631,14 +3980,15 @@ def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
                 x_max = span[q][1]
         
             # Plot histogram
+            
             if (elements[1] == 'H'):
-                low1, median, high1 = plot_parameter_panel(ax, np.log10(ratio_vals), ratio,
-                                                           N_bins, x_min, x_max, colour)
+                low1, median, high1 = plot_parameter_panel(ax, np.log10(ratio_vals), N_bins, ratio,
+                                                        x_min, x_max, colour, x_max_array)
             else:
-                low1, median, high1 = plot_parameter_panel(ax, ratio_vals, ratio, 
-                                                           N_bins, x_min, x_max, colour)
+                low1, median, high1 = plot_parameter_panel(ax, ratio_vals, N_bins, ratio,
+                                                        x_min, x_max, colour, x_max_array)
 
-            print(0.5*((median-low1) + (high1 - median)))
+            #print(0.5*((median-low1) + (high1 - median)))
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
@@ -3695,3 +4045,120 @@ def plot_retrieved_element_ratios(X_vals, all_species, plot_ratios, colour_list,
       #      newax.text(0.96, 0.96, overlay, color='navy', fontsize = 10,
       #                 horizontalalignment='right', verticalalignment='top', transform=newax.transAxes)
 
+
+
+def vary_one_parameter_PT(model, planet, param_name, vary_list,
+                           P, P_ref, R_p_ref,
+                       PT_params_og, log_X_params_og, cloud_params_og,
+                       ax = None,legend_location = 'upper right'):
+    
+    '''
+    This function is utilized in tutorial noteooks to show how turning a knob on a parameter changes a resultant PT profile
+
+    Args:
+        model (dict):
+            A specific description of a given POSEIDON model.
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        param_name (string):
+            Name of the parameter to vary
+        vary_list (array of float):
+            Array containing values to test
+        P (np.array of float):
+            Model pressure grid (bar).
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        PT_params_og (np.array of float):
+            Original parameters defining the pressure-temperature field.
+        log_X_params_og (np.array of float):
+            Original parameters defining the log-mixing ratio field.
+        cloud_params_og (np.array of float):
+            Original parameters defining atmospheric aerosols.
+        legend_location (str, optional):
+            The location of the legend ('upper left', 'upper right', 
+            'lower left', 'lower right').
+        ax (matplotlib axis object, optional):
+            Matplotlib axis provided externally.
+
+
+    Returns: 
+        Outputs a plot of resultant spectra with the param_name at the vary_list values.
+
+    '''
+
+    from POSEIDON.core import define_model
+    from POSEIDON.core import make_atmosphere
+    from POSEIDON.core import compute_spectrum
+    from POSEIDON.visuals import plot_spectra
+    from POSEIDON.utility import plot_collection
+    import matplotlib.pyplot as plt
+
+    spectra_array = []
+    spectra_labels = []
+
+    colour_list = ['red','orange','yellow','green','blue','purple']
+
+    # create figure
+    fig = plt.figure()
+
+    if (ax == None):
+        ax = plt.gca()
+    else:
+        ax = ax
+
+    # Real spectrum 
+    model_name = 'Vary-One-Thing'
+    bulk_species = ['H2','He']
+    species_list = model['param_species']
+    param_species = species_list
+
+    if model['cloud_model'] != 'Mie':
+
+        model = define_model(model_name,bulk_species,param_species,
+                                PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                cloud_dim = model['cloud_dim'])
+
+    else:
+        aerosol_species = model['aerosol_species']
+
+        model = define_model(model_name,bulk_species,param_species,
+                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
+                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                        cloud_dim = model['cloud_dim'],
+                        aerosol_species = aerosol_species, 
+                        scattering = model['scattering'],
+                        reflection = model['reflection'])
+
+
+    index = np.argwhere(model['PT_param_names'] == param_name)[0][0]
+
+    for i in range(len(vary_list)):
+
+        PT_params = np.copy(PT_params_og)
+        PT_params[index] = vary_list[i]
+
+        PT_label = param_name + ' = ' + str(vary_list[i])
+        
+        atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params_og, cloud_params_og)
+
+        P = atmosphere['P']
+        T = atmosphere['T']
+
+        ax.semilogy(T[:,0,0], P, lw=1.5, color = colour_list[i], label = PT_label)
+   
+    #Common plot settings for all profiles
+    ax.invert_yaxis()            
+    ax.set_xlabel(r'Temperature (K)', fontsize = 16)
+    #ax.set_xlim(T_min, T_max)
+    ax.set_ylabel(r'Pressure (bar)', fontsize = 16)
+    #ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))  
+    ax.tick_params(labelsize=12)
+    
+    # Add legend
+    legend = ax.legend(loc=legend_location, shadow=True, prop={'size':10}, ncol=1, 
+                       frameon=False, columnspacing=1.0)
+    
+    fig.set_size_inches(9.0, 9.0)

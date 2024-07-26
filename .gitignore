@@ -2,7 +2,6 @@ docs/_build/
 docs/_build/html
 docs/content/future
 docs/content/notebooks/POSEIDON_output
-docs/content/notebooks/Mie Tutorial/POSEIDON_output
 docs/content/notebooks/data
 tests/POSEIDON_output
 __pycache__
@@ -15,4 +14,8 @@ POSEIDON.egg-info/
 inputs/
 run/
 .vscode
+
+/planets
+/final_experiments
+/Aerosol-Database-Make
 final_experiments

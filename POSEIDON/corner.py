@@ -607,7 +607,9 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             
             if ((('T' in param_name) or ('T_' in param_name)) and ('log' not in param_name)):
                 title_fmt = '.0f'
-            elif (('alpha' in param_name) or ('beta' in param_name)):
+            elif (('alpha' in param_name) and ('T_int' not in param_names)):
+                title_fmt = '.0f'
+            elif (('beta' in param_name) and ('T_int' not in param_names)):
                 title_fmt = '.0f'
             elif ('delta_rel' in param_name):
                 title_fmt = '.0f'

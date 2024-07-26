@@ -1,6 +1,6 @@
 ######################################################
 ######################################################
-#  Functions that use the aerosol database 
+#  Functions that are used to incorporate aerosols into POSEIDON
 ######################################################
 ######################################################
 
@@ -15,10 +15,10 @@ import glob
 
 from .utility import shared_memory_array
 from .supported_chemicals import aerosol_supported_species
-#from .core import wl_grid_constant_R
 
 ############################################################################################
 # Utility Functions
+# - Most of these functions are featured in cloud_tutorial_transmission.ipynb
 ############################################################################################
 
 def wl_grid_constant_R(wl_min, wl_max, R):
@@ -53,15 +53,35 @@ def wl_grid_constant_R(wl_min, wl_max, R):
     
     return wl
 
+
 def find_nearest(array, value):
     array = np.asarray(array)
     idx = (np.abs(array - value)).argmin()
     return idx
 
-# Plot the cross section for a specific aersol in the database (for testing)
+
 def plot_effective_cross_section_aerosol(aerosol, wl, r_m):
 
-    # Load in the aerosol database
+    '''
+    Plots the effective extinction cross section of an aerosol in the database
+    for visualization purposes
+
+    Args:
+
+        aerosol (string):
+            Aerosol name
+        wl (np.array of float):
+            Model wavelength grid (μm)
+        r_m  (float) : 
+            Mean particle sizes (in um)
+
+    
+    Returns: 
+        Outputs a plot of wl (x) vs log effective extincrion cross section (y)
+          
+    '''
+
+    # Load in the aerosol database for aerosol
     input_file_path = os.environ.get("POSEIDON_input_data")
 
     if (input_file_path == None):
@@ -97,27 +117,59 @@ def plot_effective_cross_section_aerosol(aerosol, wl, r_m):
 
     database.close()
 
-# Plot the number density above the fuzzy deck (for testing)
-def plot_aerosol_number_denstiy_fuzzy_deck(atmosphere,log_P_cloud,log_n_max,fractional_scale_height):
 
+def plot_aerosol_number_density_fuzzy_deck(atmosphere,log_P_cloud,log_n_max,fractional_scale_height):
+
+    '''
+    Plots the number density of an aerosol above a fuzzy deck
+
+    Args:
+
+        atmosphere (dict):
+            Collection of atmospheric properties.
+        
+        Fuzzy Deck Arguments
+
+        log_P_cloud (float) : 
+            Cloud Top Pressure (everything below P_cloud is opaque). 
+            If cloud coverage is complete, P_cloud is located at R_p
+
+        log_n_max (array of float) : 
+            Logorithm of maximum number density (at the cloud top)
+
+        fractional_scale_height (array of float) :
+            fractional scale height of aerosol 
+
+    
+    Returns: 
+        Outputs a plot of pressure (y) versus number density of aerosol (x)
+          
+    '''
+
+    # Load in the radial profile, scale height, and pressure
     r = atmosphere['r']
     H = atmosphere['H']
     P = atmosphere['P']
 
     P_cloud = 10**log_P_cloud
 
+    # Solve for number density of aerosol following equation 11 in Mullens et al 2024
+
     # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
     n_aerosol = np.empty_like(r)
     P_cloud_index = find_nearest(P,P_cloud)
+
     # Find the radius corresponding to the cloud top pressure 
     cloud_top_height = r[P_cloud_index]
+
     # Height above cloud 
     h = r[P_cloud_index:] - cloud_top_height
+
     # Find number density below and above P_cloud
     n_aerosol[:P_cloud_index] = 1.0e250
     n_aerosol[P_cloud_index:] = (10**log_n_max) * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
 
-
+    # Plot 
     title = ('Number Density of Aerosol above Cloud Deck\n log_P_cloud: ' + str(log_P_cloud) + 
              ' log_n_max: ' + str(log_n_max) + ' f: ' + str(fractional_scale_height))
     fig, ax = plt.subplots()
@@ -131,11 +183,13 @@ def plot_aerosol_number_denstiy_fuzzy_deck(atmosphere,log_P_cloud,log_n_max,frac
     ax.legend()
     plt.show()
 
-# File read in utility functions 
+ 
 def load_refractive_indices_from_file(wl,file_name):
 
     '''
-    Loads in the refractive indices from a text file (2 rows skipped, columns : wl n k)
+    Loads in the refractive indices from a text file (columns : wl n k)
+    Either the first two rows are skipped, or the header is assumed to be 
+    comments ('#')
 
     Args:
         wl (np.array of float):
@@ -153,6 +207,7 @@ def load_refractive_indices_from_file(wl,file_name):
 
     '''
 
+    # Create the wl_mie array (which is set at R = 1000)
     wl_min = np.min(wl)
     wl_max = np.max(wl)
     wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
@@ -162,8 +217,10 @@ def load_refractive_indices_from_file(wl,file_name):
     #########################
     print('Loading in : ', file_name)
     try:
+        # Assume that the header is all commented out
         file_as_numpy = np.loadtxt(file_name, comments = '#').T
     except:
+        # Assume that the first two rows are the header
         file_as_numpy = np.loadtxt(file_name, skiprows = 2).T
 
     # If its index, wavelength, n, k we need to do something different. 
@@ -173,19 +230,24 @@ def load_refractive_indices_from_file(wl,file_name):
         imaginary_indices = file_as_numpy[3]
         file_as_numpy = np.array([wavelengths,real_indices,imaginary_indices])
 
+    # Read in the columns
     wavelengths = file_as_numpy[0]
     real_indices = file_as_numpy[1]
     imaginary_indices = file_as_numpy[2]
 
+    # Interpolate them onto the wavelength grid
     interp_reals = interp1d(wavelengths, file_as_numpy[1])
     interp_complexes = interp1d(wavelengths, file_as_numpy[2])
 
     return interp_reals(wl_Mie), interp_complexes(wl_Mie)
 
+
 def plot_refractive_indices_from_file(wl, file_name):
 
     '''
-    Plots the refractive indices from a txt file (2 rows skipped, columns : wl n k)
+    Plots the refractive indices from a txt file (columns : wl n k)
+    Either the first two rows are skipped, or the header is assumed to be 
+    comments ('#')
 
     Args:
         wl (np.array of float):
@@ -194,16 +256,24 @@ def plot_refractive_indices_from_file(wl, file_name):
         file_name (string):
             File name (with directory included)
 
+    Returns: 
+        Outputs a plot of wl (x) vs refractive indices (y)
+
     '''
 
+    # load in the real and imaginary indices
     real_indices, imaginary_indices = load_refractive_indices_from_file(wl,file_name)
+
+    # Create the WL_Mie array, which is always at R = 1000
     wl_min = np.min(wl)
     wl_max = np.max(wl)
     wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
 
+    # This is for the title of the plot, finding the molecule name
     molecule = file_name.split('/')[1][:-4]
     molecule = molecule.split('_')[0]
 
+    # Plot the real and imaginary indices
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_size_inches(10, 6)
     suptitle = 'Refractive Indices for ' + molecule
@@ -219,10 +289,15 @@ def plot_refractive_indices_from_file(wl, file_name):
 
     plt.show()
 
+
 def plot_effective_cross_section_from_file(wl, r_m, file_name):
 
     '''
-    Plots the effective cross sections from a txt file (2 rows skipped, columns : wl n k)
+    Plots the effective cross sections from a txt file (columns : wl n k)
+    Either the first two rows are skipped, or the header is assumed to be 
+    comments ('#')
+
+    This function precomputes the cross sections directly, and plots them
 
     Args:
         wl (np.array of float):
@@ -234,14 +309,21 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
         file_name (string):
             File name (with directory included)
 
+    Returns: 
+        Outputs a plot of wl (x) vs different cross sections, asymmetry parameter, and single scattering albedo (y)
+
     '''
 
+    # Read in indices and make the wl_Mie grid that is at R = 1000
     r_i_real, r_i_complex = load_refractive_indices_from_file(wl,file_name)
     wl_min = np.min(wl)
     wl_max = np.max(wl)
     wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
+
+    # Compute cross sections directly from LX-Mie
     eff_ext_cross_section, eff_scat_cross_section, eff_abs_cross_section, eff_back_cross_section, eff_w, eff_g = precompute_cross_sections_from_indices(wl_Mie,r_i_real,r_i_complex, r_m)
 
+    # Plot cross sections
     plt.figure(figsize=(10,6))
     label = 'r_m ' + str(r_m) + ' (um)'
     plt.plot(wl_Mie, eff_ext_cross_section, label = label)
@@ -314,25 +396,46 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     plt.legend()
     plt.show()
 
-# Plot the cross section for a specific aersol in the database (for testing)
+
 def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
 
-    # For documentation, see Mie_cloud_free
+    '''
+    Plots the effective cross sections for a constant (with wavelength) refractive index
 
+    This function precomputes the cross sections directly, and plots them
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+
+        r_m (float):
+            Mean particle size (um)
+
+        r_i_real (float) :
+            Real refractive index (only used for constant, free refractive index)
+
+        r_i_complex (float) :
+            Complex refractive index (only used for constant, free refractive index)
+
+    Returns: 
+        Outputs a plot of wl (x) vs effective extinction cross section (y)
+
+    '''
+
+    # Constants for LX-MIE algorithm
     r_m_std_dev = 0.5
     z_max = 5
     num_integral_points = 100
     R_Mie = 1000
 
+    # Create the wl_Mie array, which is at R = 1000
     wl_min = wl[0]
     wl_max = wl[-1]
     wl_Mie = wl_grid_constant_R(wl_min, wl_max, R_Mie)
     
+    # Create array of x - iy
     eta = complex(r_i_real,-r_i_complex)
-    eta_array = np.full(len(wl_Mie),eta)
 
-
-    eff_cross_sections = np.zeros(len(wl_Mie))
     z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
     z = np.append(z[::-1], -z)
 
@@ -341,7 +444,6 @@ def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
     # 2) Probability distribution of particle size 
     # 3) Qext, which is given by the LX-MIE algorithm
 
-    # ??? Still not sure about the constant here
     probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
     radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
     geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
@@ -381,16 +483,6 @@ def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
     # Scattering Cross section 
     eff_scat_cross_section = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
 
-    # Absorption Cross section
-    eff_abs_cross_section = eff_ext_cross_section - eff_scat_cross_section
-
-    # BackScatter Cross section 
-    eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
-
-    # Effective w and g
-    eff_w = np.median(w_intpl, axis=1)
-    eff_g = np.median(g_intpl, axis=1)
-
     # Interpolate the eff_cross_section from wl_Mie back to native wl
     # This can probably be made faster 
     interp = interp1d(wl_Mie, eff_ext_cross_section)
@@ -407,438 +499,32 @@ def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
     plt.title(title)
     plt.show()
 
-    all_etas = []
-    all_xs = []
-    all_Qexts = []
-
-# Plot the number density above the fuzzy deck (for testing)
-def plot_aerosol_number_denstiy_fuzzy_deck(atmosphere,log_P_cloud,log_n_max,fractional_scale_height):
-
-    r = atmosphere['r']
-    H = atmosphere['H']
-    P = atmosphere['P']
-
-    P_cloud = 10**log_P_cloud
-
-    # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-    n_aerosol = np.empty_like(r)
-    P_cloud_index = find_nearest(P,P_cloud)
-    # Find the radius corresponding to the cloud top pressure 
-    cloud_top_height = r[P_cloud_index]
-    # Height above cloud 
-    h = r[P_cloud_index:] - cloud_top_height
-    # Find number density below and above P_cloud
-    n_aerosol[:P_cloud_index] = 1.0e250
-    n_aerosol[P_cloud_index:] = (10**log_n_max) * np.exp(-h/(fractional_scale_height*H[P_cloud_index:]))
-
-
-    title = ('Number Density of Aerosol above Cloud Deck\n log_P_cloud: ' + str(log_P_cloud) + 
-             ' log_n_max: ' + str(log_n_max) + ' f: ' + str(fractional_scale_height))
-    fig, ax = plt.subplots()
-    fig.set_size_inches(10, 6)
-    ax.plot(np.log10(n_aerosol.T[0][0])[P_cloud_index:],np.log10(P)[P_cloud_index:])
-    ax.axhspan(log_P_cloud, np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
-    ax.invert_yaxis()
-    ax.set_title(title)
-    ax.set_xlabel('log(Number Density)')
-    ax.set_ylabel('log(P)')
-    ax.legend()
-    plt.show()
-
-def contribution_clouds_transmission(model, planet, star, wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og,
-                        show_chemical_species = True, put_one_in = True):
-
-    from POSEIDON.core import define_model
-    from POSEIDON.core import make_atmosphere
-    from POSEIDON.core import compute_spectrum
-    from POSEIDON.visuals import plot_spectra
-    from POSEIDON.utility import plot_collection
-
-    spectra_array = []
-    spectra_labels = []
-    colour_list = ['dimgray', 'darkturquoise', 'springgreen', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
-
-    # Real spectrum 
-    model_name = 'Full Spectrum'
-    bulk_species = ['H2','He']
-    species_list = model['param_species']
-    param_species = species_list
-
-    # Only if the model has aerosol species do we include them 
-    # Compute the full spectrum that the contribution will build onto 
-    if model['cloud_model'] != 'Mie':
-
-        model_full = define_model(model_name,bulk_species,param_species,
-                                PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
-
-        atmosphere_full = make_atmosphere(planet, model_full, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og)
-
-        spectrum_full = compute_spectrum(planet, star, model_full, atmosphere_full, opac, wl,
-                                        spectrum_type = 'transmission')
-
-    else:
-        aerosol_species = model['aerosol_species']
-
-        model_full = define_model(model_name,bulk_species,param_species,
-                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                        aerosol_species = aerosol_species)
-
-        atmosphere_full = make_atmosphere(planet, model_full, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og)
-
-        spectrum_full = compute_spectrum(planet, star, model_full, atmosphere_full, opac, wl,
-                                        spectrum_type = 'transmission')
-        
-
-    # H + He atmosphere
-    # If and only if you are preforming a 'put one in' model will this make sense 
-
-    if put_one_in == True:
-
-        model_name = 'Bulk'
-        param_species = []
-
-        # Model H-H2
-        model_bulk = define_model(model_name,bulk_species,param_species,
-                                PT_profile = model['PT_profile'], X_profile = model['X_profile'])
-
-        log_X_params = np.array([])
-        atmosphere_bulk = make_atmosphere(planet, model_bulk, P, P_ref, R_p_ref, PT_params_og)
-
-        spectrum_bulk = compute_spectrum(planet, star, model_bulk, atmosphere_bulk, opac, wl,
-                                        spectrum_type = 'transmission')
-        
-        spectra_array.append(spectrum_bulk)
-
-        spectra_labels.append('Bulk Species')
-
-
-    # Model Clouds 
-    if model['cloud_model'] == 'MacMad17':
-
-        if put_one_in == True:
-
-            model_clouds = define_model(model_name,bulk_species,param_species,
-                                    PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                    cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
-
-            log_X_params = np.array([])
-            atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
-
-            spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                            spectrum_type = 'transmission')
-            
-            spectra_array.append(spectrum_clouds)
-            spectra_labels.append(model['cloud_type'])
-
-        else:
-
-            model_no_clouds = define_model(model_name,bulk_species,param_species,
-                        PT_profile = model['PT_profile'], X_profile = model['X_profile'])
-
-            atmosphere_no_clouds = make_atmosphere(planet, model_no_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og)
-
-            spectrum_no_clouds = compute_spectrum(planet, star, model_no_clouds, atmosphere_no_clouds, opac, wl,
-                                            spectrum_type = 'transmission')
-            
-            spectra_array.append(spectrum_no_clouds)
-            label = '- ' + model['cloud_type']
-            spectra_labels.append(label)
-
-
-    elif model['cloud_model'] == 'Mie':
-
-        aerosol_species = model['aerosol_species']
-
-        if put_one_in == True:
-
-            model_clouds = define_model(model_name,bulk_species,param_species,
-                            PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                            cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                            aerosol_species = aerosol_species)
-
-            log_X_params = np.array([])
-            atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
-
-            spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                            spectrum_type = 'transmission')
-            
-            spectra_array.append(spectrum_clouds)
-
-            if len(aerosol_species) > 1:
-                label = 'Total Cloud'
-            else:
-                label = aerosol_species[0]
-
-            spectra_labels.append(label)
-
-            if len(aerosol_species) > 1:
-
-                if model['cloud_type'] == 'slab' or model['cloud_type'] == 'opaque_deck_plus_slab':
-
-                    log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
-
-                    for n in log_X_indices:
-
-                        cloud_params = np.copy(cloud_params_og)
-
-                        for m in log_X_indices:
-                            if m != n:
-                                cloud_params[m] = -50
-
-                        model_clouds = define_model(model_name,bulk_species,param_species,
-                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                        aerosol_species = aerosol_species)
-
-                        log_X_params = np.array([])
-                        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params)
-
-                        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                                        spectrum_type = 'transmission')
-                        
-                        spectra_array.append(spectrum_clouds)
-
-                        spectra_labels.append(model['cloud_param_names'][n].split('_')[2])
-                
-                
-                elif model['cloud_type'] == 'fuzzy_deck_plus_slab':
-
-                    f_index = np.where(np.char.find(model['cloud_param_names'], 'f')!= -1)[0]
-                    log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
-
-                    for n in log_X_indices:
-
-                        cloud_params = np.copy(cloud_params_og)
-
-                        # Sets the f parameter close to 0, keeping the opaque slab and getting rid of the fuzziness
-                        cloud_params[f_index] = 0.000001
-
-                        for m in log_X_indices:
-                            if m != n:
-                                cloud_params[m] = -50
-
-                        model_clouds = define_model(model_name,bulk_species,param_species,
-                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                        aerosol_species = aerosol_species)
-
-                        log_X_params = np.array([])
-                        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params)
-
-                        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                                        spectrum_type = 'transmission')
-                        
-                        spectra_array.append(spectrum_clouds)
-
-                        spectra_labels.append(model['cloud_param_names'][n].split('_')[2])
-
-                    # Turn off both except the fuzzy deck 
-                    cloud_params = np.copy(cloud_params_og)
-                    for n in log_X_indices:
-                        cloud_params[n] = -50
-
-                    model_clouds = define_model(model_name,bulk_species,param_species,
-                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                        aerosol_species = aerosol_species)
-                    
-                    atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params)
-
-                    spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                                        spectrum_type = 'transmission')
-                        
-                    spectra_array.append(spectrum_clouds)
-                    
-                    spectra_labels.append(model['cloud_param_names'][f_index][0].split('_')[1])
-
-        else:
-
-            model_no_clouds = define_model(model_name,bulk_species,param_species,
-                PT_profile = model['PT_profile'], X_profile = model['X_profile'])
-
-            atmosphere_no_clouds = make_atmosphere(planet, model_no_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og)
-
-            spectrum_no_clouds = compute_spectrum(planet, star, model_no_clouds, atmosphere_no_clouds, opac, wl,
-                                            spectrum_type = 'transmission')
-            
-            spectra_array.append(spectrum_no_clouds)
-
-            if len(aerosol_species) > 1:
-                label = '- Total Cloud'
-            else:
-                label = '- ' + aerosol_species[0]
-
-            spectra_labels.append(label)
-
-            if len(aerosol_species) > 1:
-
-                if model['cloud_type'] == 'slab' or model['cloud_type'] == 'opaque_deck_plus_slab':
-
-                    log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
-
-                    for n in log_X_indices:
-
-                        cloud_params = np.copy(cloud_params_og)
-
-                        for m in log_X_indices:
-                            if m == n:
-                                cloud_params[m] = -50
-
-                        model_clouds = define_model(model_name,bulk_species,param_species,
-                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                        aerosol_species = aerosol_species)
-
-                        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
-
-                        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                                        spectrum_type = 'transmission')
-                        
-                        spectra_array.append(spectrum_clouds)
-
-                        label = '- ' + model['cloud_param_names'][n].split('_')[2]
-                        spectra_labels.append(label)
-                
-                
-                elif model['cloud_type'] == 'fuzzy_deck_plus_slab':
-
-                    f_index = np.where(np.char.find(model['cloud_param_names'], 'f')!= -1)[0]
-                    log_X_indices = np.where(np.char.find(model['cloud_param_names'], 'log_X')!= -1)[0]
-
-                    for n in log_X_indices:
-
-                        cloud_params = np.copy(cloud_params_og)
-
-                        for m in log_X_indices:
-                            if m == n:
-                                cloud_params[m] = -50
-
-                        model_clouds = define_model(model_name,bulk_species,param_species,
-                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                        aerosol_species = aerosol_species)
-
-                        atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
-
-                        spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                                        spectrum_type = 'transmission')
-                        
-                        spectra_array.append(spectrum_clouds)
-
-                        label = '- ' + model['cloud_param_names'][n].split('_')[2]
-                        spectra_labels.append(label)
-
-                    # Turn only the fuzzy deck 
-                    cloud_params = np.copy(cloud_params_og)
-                    cloud_params[f_index] = 0.000001
-
-                    model_clouds = define_model(model_name,bulk_species,param_species,
-                                        PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                        cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                        aerosol_species = aerosol_species)
-                    
-                    atmosphere_clouds = make_atmosphere(planet, model_clouds, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
-
-                    spectrum_clouds = compute_spectrum(planet, star, model_clouds, atmosphere_clouds, opac, wl,
-                                                        spectrum_type = 'transmission')
-                        
-                    spectra_array.append(spectrum_clouds)
-                    
-                    label = '- '+ model['cloud_param_names'][f_index][0].split('_')[1]
-                    spectra_labels.append(label)
-
-    # For each chemical species in the model
-    if show_chemical_species == True:
-
-        if put_one_in == True:
-
-            for i in range(len(species_list)):
-
-                model_name = 'One-Species'
-                param_species = [species_list[i]]
-
-                model_one_species = define_model(model_name,bulk_species,param_species,
-                                                PT_profile = model['PT_profile'], X_profile = model['X_profile'])
-
-                log_X_params = np.array([log_X_params_og[0][i]])
-
-                atmosphere_one_species = make_atmosphere(planet, model_one_species, P, P_ref, R_p_ref, PT_params_og, log_X_params)
-
-                spectrum_one_species = compute_spectrum(planet, star, model_one_species, atmosphere_one_species, opac, wl,
-                                                spectrum_type = 'transmission')
-
-                spectra_array.append(spectrum_one_species)
-                spectra_labels.append(species_list[i])
-        
-        else:
-
-            for n in range(len(species_list)):
-
-                log_X_params = np.copy(log_X_params_og)
-
-                for m in range(len(log_X_params[0])):
-                    if m == n:
-                        log_X_params[0][m] = -50
-
-                model_name = 'Minus-One-Species'
-
-                if model['cloud_model'] != 'Mie':
-
-                    model_one_species = define_model(model_name,bulk_species,param_species,
-                                                    PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                                    cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
-                    
-                else:
-                    aerosol_species = model['aerosol_species']
-
-                    model_one_species = define_model(model_name,bulk_species,param_species,
-                                PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                                aerosol_species = aerosol_species)
-
-
-                atmosphere_one_species = make_atmosphere(planet, model_one_species, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
-
-                spectrum_one_species = compute_spectrum(planet, star, model_one_species, atmosphere_one_species, opac, wl,
-                                                spectrum_type = 'transmission')
-
-                spectra_array.append(spectrum_one_species)
-                label = '- ' + species_list[n]
-                spectra_labels.append(label)
-
-    # Plot
-    # Initialize plot collection with the full spectrum
-
-    # To make sure the full spectrum is plotted on top of everything else
-    spectra_array.append(spectrum_full)
-    spectra_labels.append('Full Spectrum')
-
-    spectra = []
-
-    # Loop through the contribution spectra 
-    for s in spectra_array:
-        spectra = plot_collection(s, wl, collection = spectra)
-
-    colour_list = colour_list[:len(spectra_array)-1]
-    colour_list.append('black')
-    
-    fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                   plt_label = 'Cloud Contribution Plot',
-                   spectra_labels = spectra_labels,
-                   plot_full_res = False, 
-                   save_fig = False,
-                   colour_list = colour_list[:len(spectra_array)])
 
 def plot_clouds(planet,model,atmosphere, colour_list = []):
 
-    # Unpack model 'strings'
-    planet_name = planet['planet_name']
-    model_name = model['model_name']
+    '''
+    Plots how the aerosols look like in the forward model atmosphere. 
+    Very similar to how plot_PT or plot_chem work
+
+    This function precomputes the cross sections directly, and plots them
+
+    Args:
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        model (dict):
+            A specific description of a given POSEIDON model.
+        atmosphere (dict):
+            Collection of atmospheric properties.
+        colour_list (list, optional): 
+            List of colours for each retrieved chemical profile.
+
+    Returns: 
+        Outputs a plot of mixing ratio (x) vs pressure (y)
+
+    '''
+
+    # Unpack model parmaeters
     aerosol_species = model['aerosol_species']
-    Atmosphere_dimension = model['Atmosphere_dimension']
-    TwoD_type = model['TwoD_type']
     cloud_type = model['cloud_type']
 
     # Global parameters
@@ -912,6 +598,9 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
             label = free_string
         else:
             label = aerosol_species[0]
+
+        print('Max mixing ratio : ', np.max(mixing_ratio[P_cloud_index:]))
+        print('Min mixing ratio : ', np.min(mixing_ratio[P_cloud_index:]))
     
         ax.plot(mixing_ratio[P_cloud_index:], log_P[P_cloud_index:], label = label, color = colours[0])
         ax.axhspan(log_P[P_cloud_index], np.log10(np.max(P)), alpha=0.5, color='gray', label = 'Opaque Cloud')
@@ -936,6 +625,38 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
             plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q], linewidth=5.0)
             ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--')
             ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[q], label = label)
+    
+    # @char: adding one_slab plotting
+    elif (cloud_type == 'one_slab'):
+
+        # only one slab location in model
+        P_cloud_index_top = find_nearest(P,P_cloud)
+        P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+
+        # catch case where user specificed colours have not accounted for the cloud extent
+        if len(colour_list) == len(aerosol_species):
+            # plot cloud pressure extent
+            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color = 'silver', label = 'Slab Pressure Extent')
+        else: 
+            # plot cloud pressure extent
+            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color = colours[-1], label = 'Slab Pressure Extent')
+
+        # loop through aerosols
+        for q in range(len(aerosol_species)):
+
+            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+            n_aerosol = np.empty_like(r)
+
+            log_X = log_X_Mie[q]
+
+            if aerosol_species[0] == 'free':
+                label = free_string
+            else:
+                label = aerosol_species[q]
+        
+            # plot species mixing ratios
+            plt.vlines(x = log_X, ymin = log_P[P_cloud_index_bttm], ymax = log_P[P_cloud_index_top], color = colours[q], linewidth=5.0)
+            ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--', label = label)
 
     # Combined Models 
     elif (cloud_type == 'fuzzy_deck_plus_slab'):
@@ -1050,7 +771,7 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
             log_X = log_X_Mie[q]
             ax.axvline(x = log_X, color = colours[q], linewidth=1.0, label = label)
 
-
+    # Flip y axis and set limits and labels
     ax.invert_yaxis()
     ax.set_ylim(log_P[0], log_P[-1])  
     ax.set_xlim(-30, -1)  
@@ -1059,8 +780,114 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
     ax.legend()
     plt.show()
 
+
+def plot_lognormal_distribution(r_m_std_dev = 0.5):
+
+    '''
+    Plots the lognormal distribution (which points are computed and integrated over)
+
+    Args:
+        r_m_std_dev (float):
+            Width of the lognormal distribution
+
+    Returns: 
+        Outputs a plot particle size distributions
+
+    '''
+    import matplotlib
+    from matplotlib import cm
+    
+    plt.style.use('classic')
+    plt.rc('font', family = 'serif')
+    matplotlib.rcParams['svg.fonttype'] = 'none'
+    matplotlib.rcParams['figure.facecolor'] = 'white'
+
+    rm_array = [1e-3, 1e-2, 1e-1, 1e0, 1e1]
+    labels = ['1e-3 μm', '1e-2 μm', '1e-1 μm', '1 μm', '10 μm', '10 μm']
+
+    color = cm.gnuplot2(np.linspace(0, 1,6))
+    color = color[:5]
+
+    plt.figure(figsize=(12,6))
+
+    for n in range(len(rm_array)):
+
+        r_m = rm_array[n]
+
+        z_max = 5
+        num_integral_points = 100
+        R_Mie = 1000
+
+        z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
+
+        z = np.append(z[::-1], -z)
+
+
+        # For the effective cross section integral we need three components 
+        # 1) Geometric cross section
+        # 2) Probability distribution of particle size 
+        # 3) Qext, which is given by the LX-MIE algorithm
+
+        # ??? Still not sure about the constant here
+        probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
+        radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
+        geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
+
+        plt.plot(np.log10(radii), probs, color = color[n], lw = 2, label = labels[n])
+        plt.scatter(np.log10(radii), probs, color = color[n], lw = 2)
+
+    plt.ylim(-0.02, np.max(probs)+0.1)
+    title = 'Assumed Particle Size Distribution ($\sigma_r$ = ' + str(r_m_std_dev) + ')'
+    plt.title(title)
+    plt.ylabel('Probability')
+    plt.xlabel('Log Particle Radii (μm)')
+    plt.legend()
+    plt.show()
+
+
 def vary_one_parameter(model, planet, star, param_name, vary_list,
-                       wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og):
+                       wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og,
+                       spectrum_type = 'transmission'):
+    
+    '''
+    This function is utilized in tutorial noteooks to show how turning a knob on a parameter changes a resultant spectrum
+
+    Args:
+        model (dict):
+            A specific description of a given POSEIDON model.
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        star (dict):
+            Collection of stellar properties used by POSEIDON.
+        param_name (string):
+            Name of the parameter to vary
+        vary_list (array of float):
+            Array containing values to test
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        opac (dict):
+            Collection of cross sections and other opacity sources.
+        P (np.array of float):
+            Model pressure grid (bar).
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        PT_params_og (np.array of float):
+            Original parameters defining the pressure-temperature field.
+        log_X_params_og (np.array of float):
+            Original parameters defining the log-mixing ratio field.
+        cloud_params_og (np.array of float):
+            Original parameters defining atmospheric aerosols.
+        spectrum_type (str):
+            The type of spectrum for POSEIDON to compute
+            (Options: transmission / emission / direct_emission / 
+                      transmission_time_average).
+
+    Returns: 
+        Outputs a plot of resultant spectra with the param_name at the vary_list values.
+
+    '''
 
     from POSEIDON.core import define_model
     from POSEIDON.core import make_atmosphere
@@ -1068,10 +895,11 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
     from POSEIDON.visuals import plot_spectra
     from POSEIDON.utility import plot_collection
 
+    # Array that holds each spectrum and their label
     spectra_array = []
     spectra_labels = []
 
-    # Real spectrum 
+    # Make a new model object just to vary things around
     model_name = 'Vary-One-Thing'
     bulk_species = ['H2','He']
     species_list = model['param_species']
@@ -1081,7 +909,8 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
 
         model = define_model(model_name,bulk_species,param_species,
                                 PT_profile = model['PT_profile'], X_profile = model['X_profile'],
-                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'])
+                                cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
+                                cloud_dim = model['cloud_dim'])
 
     else:
         aerosol_species = model['aerosol_species']
@@ -1089,11 +918,14 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
         model = define_model(model_name,bulk_species,param_species,
                         PT_profile = model['PT_profile'], X_profile = model['X_profile'],
                         cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
-                        aerosol_species = aerosol_species)
+                        cloud_dim = model['cloud_dim'],
+                        aerosol_species = aerosol_species, 
+                        scattering = model['scattering'],
+                        reflection = model['reflection'])
 
 
     # Try to find the variable they want to vary 
-
+    # And then loop over it, making a new atmosphere object and saving the resultant spectrum
     if param_name in model['PT_param_names']:
 
         index = np.argwhere(model['PT_param_names'] == param_name)[0][0]
@@ -1106,7 +938,7 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
             atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, log_X_params_og, cloud_params_og)
 
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                      spectrum_type = 'transmission')
+                                      spectrum_type = spectrum_type)
             
             spectra_array.append(spectrum)
             label = param_name + ' = ' + str(vary_list[i])
@@ -1124,7 +956,7 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
             atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params_og, log_X_params, cloud_params_og)
 
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                      spectrum_type = 'transmission')
+                                      spectrum_type = spectrum_type)
             
             spectra_array.append(spectrum)
             label = param_name + ' = ' + str(vary_list[i])
@@ -1136,13 +968,13 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
 
         for i in range(len(vary_list)):
 
-            cloud_params = np.copy(cloud_params_og)
-            cloud_params[index] = vary_list[i]
+            cloud_params = np.copy(cloud_params_og).astype(float)
+            cloud_params[index] = float(vary_list[i])
             
             atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params)
 
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                      spectrum_type = 'transmission')
+                                      spectrum_type = spectrum_type)
             
             spectra_array.append(spectrum)
             label = param_name + ' = ' + str(vary_list[i])
@@ -1168,12 +1000,14 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
 
 ############################################################################################
 # Loading Saved Array 
+# - Loads in the aerosol database and interpolates it 
 ############################################################################################
 
 def load_aerosol_grid(aerosol_species, grid = 'aerosol', 
                         comm = MPI.COMM_WORLD, rank = 0):
     '''
-    Load a aerosol cross section grid.
+    Load a aerosol cross section grid (similar to load_chemistry_grid in chemistry.py)
+
     Args:
         aerosol_species (list or np.array of str):
             List of aerosol species to load mixing ratios from grid.
@@ -1194,10 +1028,11 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     
     '''
 
+    # Reads in the database if more than one core is being used
     if (rank == 0):
         print("Reading in database for aerosol cross sections...")
 
-    # Check that the selected chemistry grid is supported
+    # Check that the selected aerosol grid is supported
     if (grid not in ['aerosol']):
         raise Exception("Error: unsupported aerosol grid")
 
@@ -1210,9 +1045,10 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
                         "your .bashrc or .bash_profile to point to the " +
                         "POSEIDON input folder.")
     
+    # Load in the aerosol species
     aerosol_species = np.array(aerosol_species)
     
-    # Open chemistry grid HDF5 file
+    # Open aerosol grid HDF5 file
     database = h5py.File(input_file_path + 'opacity/'  + grid + '_database_emission.hdf5', 'r')
 
     # Load the dimensions of the grid
@@ -1272,11 +1108,13 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
 
     return aerosol_grid
 
+
 def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array, 
                                aerosol_species, return_dict = True):
     '''
     Interpolate a pre-computed grid of aerosol cross sections
     onto a model wl range, and mean particle size.
+
     Args:
         aerosol_grid (dict):
             Dictionary containing the aerosol cross section database.
@@ -1288,6 +1126,7 @@ def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array,
             List of chemical species to interpolate mixing ratios for.
         return_dict (bool):
             If False, return an array of shape (len(species), len(P_array)).
+            If True, will return a dictionary 
     Returns:
         sigma_Mie_interp_dict (dict) ---> if return_dict = True:
             A dictionary of effective cross sections with keys being the same names as 
@@ -1298,15 +1137,14 @@ def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array,
     
     '''
 
-    # Unpack chemistry grid properties
+    # Unpack aerosol grid properties
     grid = aerosol_grid['grid']
     sigma_Mie_grid = aerosol_grid['sigma_Mie_grid']
     r_m_grid = aerosol_grid['r_m_grid']
     wl_grid = aerosol_grid['wl_grid']
     aerosol_species = np.array(aerosol_species)
     
-
-    # Store lengths of input P, T, C/O and metallicity arrays
+    # Store lengths of r_m and wl arrays
     len_r_m, len_wl = np.array(r_m_array).size, np.array(wl).size
     max_len = max(len_r_m, len_wl)
 
@@ -1368,9 +1206,14 @@ def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array,
             sigma_Mie_interp_dict[species]['eff_w'] = interpolate(species)[5]
         return sigma_Mie_interp_dict
 
+
 ############################################################################################
 # Main Cloud Functions
+# - Mie_cloud is what is going to be called the most frequently, since it pulls from the database
+# - The functions below it generate aerosol properties on-the-fly, or are used
+# - to generate new entires for the database
 ############################################################################################
+
 
 def Mie_cloud(P,wl,r, H, n,
               r_m, 
@@ -1385,9 +1228,10 @@ def Mie_cloud(P,wl,r, H, n,
 
 
     '''
-    Calculates the number density n(P) and cross section sigma(wavelength) for a aerosol cloud.
-    aerosol clouds are defined as being opaque below P_cloud. 
-    Returns the absorption coefficient kappa = n * cross section
+    Calculates the number density n(P) and cross section sigma(wavelength) for different aerosol cloud models
+    Also pulls the asymmetry parameter and single scattering albedo
+    Utilized the precomputed, aerosol database 
+    Outputs from this function are then utilized to generated extinction coefficients in core.py 
 
     Args:
 
@@ -1468,51 +1312,69 @@ def Mie_cloud(P,wl,r, H, n,
     '''
 
     #########################
-    # Initialize number density array
+    # Initialize number density array for aerosols
     #########################
 
     n_aerosol_array = []
 
     #########################
-    # Loop through each aerosol
+    # Loop through each aerosol species
     #########################
 
     for q in range(len(r_m)):
     
         #########################
-        # Calculate the number density above the cloud top, in the slab, or applies a uniform haze
+        # Calculate the number density based on cloud models
         #########################
         
         # Fuzzy Deck Model 
+        # See Equation 11 in Mullens et al 2024 for details
         if (cloud_type == 'fuzzy_deck'):
+
             # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-            n_aerosol = np.empty_like(r)
+            n_aerosol = np.zeros_like(r)
+
+            # Find index in P array where top of opaque deck is 
             P_cloud_index = find_nearest(P,P_cloud)
+
             # Find the radius corresponding to the cloud top pressure 
             cloud_top_height = r[P_cloud_index]
-            # Height above cloud 
+
+            # Height above cloud to compute 'fuzziness'
             h = r[P_cloud_index:] - cloud_top_height
-            # Find number density below and above P_cloud
+
+            # Below the opaque deck it is high number density 
             n_aerosol[:P_cloud_index] = 1.0e250
+
+            # Above the opaque deck it is based on the 'fuzziness' equation
             n_aerosol[P_cloud_index:] = (10**log_n_max[q]) * np.exp(-h/(fractional_scale_height[q]*H[P_cloud_index:]))
+
+            # Append to number density array
             n_aerosol_array.append(n_aerosol)
 
         # Slab Model 
         elif (cloud_type == 'slab'):
-            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-            n_aerosol = np.empty_like(r)
-            P_cloud_index_top = find_nearest(P,P_cloud[q])
-            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q])
 
-            n_aerosol = np.empty_like(r)
+            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+            n_aerosol = np.zeros_like(r)
+
+            # Find index in P array where top of slab is 
+            P_cloud_index_top = find_nearest(P,P_cloud[q])
+
+            # Find index in P array where bottom of slab is 
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q])
+            
+            # In the slab, number density is equal to the mixing ratio of aerosol times n
             n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
+            
+            # Append to number density array
             n_aerosol_array.append(n_aerosol)
 
-        # Combined Models 
+        # Combined Models
         elif (cloud_type == 'fuzzy_deck_plus_slab'):
-            # The first index will be the fuzzy deck 
+            # The first index will be the fuzzy deck model (as described above)
             if q == 0:
-                n_aerosol = np.empty_like(r)
+                n_aerosol = np.zeros_like(r)
                 P_cloud_index = find_nearest(P,P_cloud[q])
                 cloud_top_height = r[P_cloud_index]
                 h = r[P_cloud_index:] - cloud_top_height
@@ -1521,34 +1383,53 @@ def Mie_cloud(P,wl,r, H, n,
                 n_aerosol_array.append(n_aerosol)
 
             else:
-                # Others will be slabs 
-                n_aerosol = np.empty_like(r)
+                # Others will be slabs (as described above)
+                n_aerosol = np.zeros_like(r)
                 P_cloud_index_top = find_nearest(P,P_cloud[q])
                 P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q-1]) #Because this is one shorter than the P_cloud array, decks don't have P_bottom
-                n_aerosol = np.empty_like(r)
                 n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q-1]) # same reason
                 n_aerosol_array.append(n_aerosol)
 
         # For the opaque deck, the opaque deck will be added to the aerosol array even though its not really an aerosol species 
         elif (cloud_type == 'opaque_deck_plus_slab'):
             
+            # We add the opaque deck to beggining of the n_aerosol array
+            # Before adding the slabs
             if q == 0:
-                n_aerosol = np.empty_like(r)
+                n_aerosol = np.zeros_like(r)
                 P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
                 n_aerosol[:P_cloud_index] = 1.0e250
                 n_aerosol_array.append(n_aerosol)
                 
-            n_aerosol = np.empty_like(r)
+            n_aerosol = np.zeros_like(r)
             P_cloud_index_top = find_nearest(P,P_cloud[q+1]) # The slab top pressure are next after the deck 
             P_cloud_index_bttm = find_nearest(P,P_cloud_bottom[q]) # Doesn't change
-            n_aerosol = np.empty_like(r)
             n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
+            n_aerosol_array.append(n_aerosol)
+
+        # For opaque deck + uniform x, we add opaque deck as the first element 
+        elif (cloud_type == 'opaque_deck_plus_uniform_X'):
+            
+            # We add the opaque deck to beggining of the n_aerosol array
+            # Before adding the uniform_X
+            if q == 0:
+                n_aerosol = np.zeros_like(r)
+                P_cloud_index = find_nearest(P,P_cloud[0]) # The deck top pressure is the first element in the P_cloud
+                n_aerosol[:P_cloud_index] = 1.0e250
+                n_aerosol_array.append(n_aerosol)
+                
+            n_aerosol = np.zeros_like(r)
+            n_aerosol = (n)*np.float_power(10,log_X_Mie[q])
             n_aerosol_array.append(n_aerosol)
 
         # Uniform X Model 
         else:
-            n_aerosol = np.empty_like(r)
+            n_aerosol = np.zeros_like(r)
+
+            # In the atmosphere, number density is equal to the mixing ratio of aerosol times n
             n_aerosol = (n)*np.float_power(10,log_X_Mie[q])
+
+            # Append to number density array
             n_aerosol_array.append(n_aerosol)
 
     #########################
@@ -1560,14 +1441,17 @@ def Mie_cloud(P,wl,r, H, n,
         aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol', 
                         comm = MPI.COMM_WORLD, rank = 0)
 
+    # Interpolate the grid across wl and r_m to get the radiative properties of aerosols
     sigma_Mie_interp_dict = interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m, 
                                aerosol_species, return_dict = True)
     
-    # To work with Numba
+    # To work with Numba we defined these
     sigma_ext_cld_array = []
     g_cld_array = []
     w_cld_array = []
 
+    # For each aerosol, we pull the effective extinction cross section,
+    # assymmetry parameter, and single scattering albedo
     for aerosol in aerosol_species:
 
         sigma_ext = sigma_Mie_interp_dict[aerosol]['eff_ext']
@@ -1586,13 +1470,17 @@ def Mie_cloud(P,wl,r, H, n,
 ######################################################
 ######################################################
 #  Functions that don't use the aerosol database 
+# - Uses the LX-Mie algorithm (see details below)
+# - Either constant refractive index or file read (which uses Mie_cloud_free) forward models
+# - or database copmuting functions
 ######################################################
 ######################################################
 
 ############################################################################################
 # Empty Arrays for Qext calculations
-# RYAN : Is there a better way to do this? 
 ############################################################################################
+
+# These are used as a 'cache' (see Zhang 2019 for details)
 
 # All refractive indices
 all_etas = []
@@ -1616,7 +1504,10 @@ free_or_file = ''
 
 
 ############################################################################################
-# LX MIE Algorithm - See https://arxiv.org/abs/1710.04946
+# LX MIE Algorithm 
+# See https://arxiv.org/abs/1710.04946
+# Note that get_extinctions() was edited in order to also compute asymmetry parameter 'g'
+# As well as return Q_scat, Q_back
 ############################################################################################
 
 def get_iterations_required(xs, c=4.3):
@@ -1675,6 +1566,7 @@ def get_As(max_n, zs):
         An[i] = (i + 1)/zs - 1.0/((i + 1)/zs + An[i+1])
     return An
 
+
 def get_extinctions(m, xs):
     # Builds upon the algorithm from Kitzmann & Heng 2017 to compute Qext(x) for an array
     # of x's and refractive index m.  This algorithm is stable and does not
@@ -1723,7 +1615,6 @@ def get_extinctions(m, xs):
 
         
     # Calculating complete an and bn array for the asymmetry parameter 
-    # This is a quick fix 
     curr_B = 1.0/(1 + 1j * (np.cos(xs) + xs*np.sin(xs))/(np.sin(xs) - xs*np.cos(xs)))
     curr_C = -1.0/xs + 1.0/(1.0/xs  + 1.0j)
     
@@ -1751,8 +1642,6 @@ def get_extinctions(m, xs):
 
         g_1[cond] += (i*(i+2))/(i+1) * (((an)*(an_plus_1.conjugate())) + ((bn)*(bn_plus_1.conjugate()))).real
         g_2[cond] += (2*i + 1)/(i*(i+1)) * (an * bn.conjugate()).real
-
-
     
     # Add all the prefactors to the sums
     Qext *= 2/xs**2
@@ -1765,14 +1654,18 @@ def get_extinctions(m, xs):
 
     return Qext, Qscat, Qback, g
 
+
 ############################################################################################
-# Auxiliary Functions (Retrieving and updating cached arrays)
+# Auxiliary PLATON Functions (Retrieving and updating cached arrays)
+# See https://iopscience.iop.org/article/10.1088/1538-3873/aaf5ad/pdf
+# The algorithm was edited include Q_scat, Q_back, and g
+# Note that POSEIDON computes Q_abs, Q_scat, Q_back cross sections and saves them, but
+# does not use them (as of V1.2)
 ############################################################################################
 
 # Function that tries to find an existing Qext (within 5% marigin error) via interpolation 
 # Or returns a miss 
 # INPUTS : Refractive Indices array, 2 pi r / lambda array
-
 # max_frac_error = 0.05
 
 def get_from_cache(eta, xs, max_frac_error = 0.05):
@@ -1952,7 +1845,8 @@ def get_and_update(eta,xs):
 
 
 ############################################################################################
-# Main Cloud Functions
+# Main Cloud Function for free or file_read forward models
+# Algorithm computed extinction cross section, 
 ############################################################################################
 
 def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_type, 
@@ -1960,9 +1854,10 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
                    log_X_Mie = 0, P_cloud_bottom = -100, r_m_std_dev = 0.5, z_max = 5,
                    num_integral_points = 100):
     '''
-    Calculates the number density n(P) and cross section sigma(wavelength) for a aerosol cloud.
-    aerosol clouds are defined as being opaque below P_cloud. 
-    Returns the absorption coefficient kappa = n * cross section
+    Calculates the number density n(P) and cross section sigma(wavelength) for different aerosol cloud models
+    Also pulls the asymmetry parameter and single scattering albedo
+    Utilized the LX-Mie algorithm to compute constant refractive index or file_read refractive index files
+    Outputs from this function are then utilized to generated extinction coefficients in core.py 
 
     Args:
 
@@ -1987,9 +1882,6 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
         cloud_type (string):
             uniform_X, fuzzy_deck, slab, opaque_deck_with_slab, fuzzy_deck_with_slab
 
-
-
-
         -------- Semi- Optional Arguments -------
 
         Fuzzy Deck Arguments
@@ -2010,6 +1902,12 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
             Mixing ratio for a mie aerosol (either specified or free, only for uniform haze models)
 
         MUST have either a specified aerosol OR a r_i_real + r_i_complex
+
+        r_i_real (float) :
+            Real refractive index (only used for constant, free refractive index)
+
+        r_i_complex (float) :
+            Complex refractive index (only used for constant, free refractive index)
 
         Slab Arguments 
 
@@ -2040,9 +1938,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
           
     '''
 
-    # DELETE THIS LATER 
     global all_etas, all_xs, all_Qexts, all_Qscats, all_Qbacks, all_gs, wl_Mie_empty, free_or_file
-
 
     #########################
     # Set up wl_mie (a wl array with R = 1000). This is only for aerosol = 'free' or 'file'
@@ -2055,7 +1951,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     if len(wl_Mie_empty) == 0:
         wl_Mie = np.append(wl_Mie_empty, wl_Mie_in)
 
-    # If its a new wl array 
+    # If its a new wl array (same python notebook, different wl, can cause this error)
     if  wl[0] != wl_min or wl[-1] != wl_max:
         wl_min = wl[0]
         wl_max = wl[-1]
@@ -2066,10 +1962,15 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     # Calculate the number density above the cloud top or apply a uniform haze
     #########################
     
+    # See Mie_cloud() for more details on cloud models below
+    # Do note that parameters are assigned a bit differently for 
+    # File read vs compositionally specific aerosols, which is why the code 
+    # Here is also a bit different. 
+
     # Fuzzy Deck Model 
     if cloud_type == 'fuzzy_deck':
         # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-        n_aerosol = np.empty_like(r)
+        n_aerosol = np.zeros_like(r)
         P_cloud_index = find_nearest(P,P_cloud)
         # Find the radius corresponding to the cloud top pressure 
         cloud_top_height = r[P_cloud_index]
@@ -2083,7 +1984,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     # If P_cloud is a float its just the slab, without a deck
     elif cloud_type == 'slab':
         # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
-        n_aerosol = np.empty_like(r)
+        n_aerosol = np.zeros_like(r)
         P_cloud_index_top = find_nearest(P,P_cloud)
         P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
 
@@ -2094,7 +1995,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     # In this model, the P_cloud has the deck pressure and the slab pressure. For the others, its a int 
     elif cloud_type == 'opaque_deck_plus_slab':
         # Deck First 
-        n_aerosol = np.empty_like(r)
+        n_aerosol = np.zeros_like(r)
         P_cloud_index = find_nearest(P,P_cloud[0])
         n_aerosol[:P_cloud_index] = 1.0e250
 
@@ -2103,10 +2004,21 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
         P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
         n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie)
 
+    # Opaque Deck + Uniform X Model 
+    # In this model, the P_cloud has the deck pressure and the slab pressure. For the others, its a int 
+    elif cloud_type == 'opaque_deck_plus_uniform_X':
+
+        # Unifrom X First
+        n_aerosol = np.zeros_like(r)
+        n_aerosol = (n)*np.float_power(10,log_X_Mie)
+
+        # Deck next
+        P_cloud_index = find_nearest(P,P_cloud[0])
+        n_aerosol[:P_cloud_index] = 1.0e250
 
     # Uniform X
     elif cloud_type == 'uniform_X':
-        n_aerosol = np.empty_like(r)
+        n_aerosol = np.zeros_like(r)
         n_aerosol = (n)*np.float_power(10,log_X_Mie)
 
     # At this point, the r_i_real, r_i_complex is either a float or an array (free vs file_read)
@@ -2156,11 +2068,8 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
 
     #########################
     # Caculate the effective cross section of the particles (as a function of wavelength)
+    # As well as scattering cross sections, back-scattering cross section, single scattering albedo, and asymmetry parameter
     #########################
-    # There is an effective cross section for every wavelength 
-    # Therefore, we need an array of resultant effective cross sections the same size as wl 
-
-    eff_cross_sections = np.zeros(len(wl_Mie))
 
     # Eventually we will be numerically integrating over z, where z = ln(r) - ln(r_m) / r_m_std_dev^2
     # r is the particle size, given by a log-normal particle size distribution P(r)
@@ -2175,7 +2084,6 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     # 2) Probability distribution of particle size 
     # 3) Qext, which is given by the LX-MIE algorithm
 
-    # ??? Still not sure about the constant here
     probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
     radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
     geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
@@ -2191,7 +2099,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
         # Matrix division by adding dimensionality to both the radii and wl arrays 
         # You then flatten it out to just get all possible values 
 
-        # If aersol = free, then the refractive index is not wavelength dependent 
+        # If aerosol = free, then the refractive index is not wavelength dependent 
         # We can just follow PLATON algorithm 
         dense_xs = 2*np.pi*radii[np.newaxis,:] / wl_Mie[:,np.newaxis] # here the um crosses out 
         dense_xs = dense_xs.flatten()
@@ -2202,12 +2110,8 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
 
         x_hist = np.histogram(dense_xs, bins='auto')[1]
 
-        # Now to feed everything into Q_ext
+        # Now to feed everything and compute the efficiencies and asymmetry parameter
 
-        # Ok I am going to walk through this self statement as best as I can 
-        # self in this case is atmosphere_solver, the main body of PLATON (like main.py)
-        # In the preamble, we set self._mie_cache to MieCache()
-        # This intializes MieCache and runs init, which creates the empty arrays for saving cs, Qexts, and etas
         # This next stage, get_and_update is a function that takes in eta and x_hist
         # It then tries to see if it can get the cross sections from the cache (see below) and if not
         # runs get_Qext (the LX_MIE algorithm) and adds it to the cache 
@@ -2226,7 +2130,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
         # This next part interpolated the Qext points that were made from the coarse x histogram 
         # And interpolates them back onto the dense x array 
 
-        # SSA and weighted g 
+        # SSA is computed directly from efficiencies 
         w_hist = Qscat_hist/Qext_hist
 
         # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
@@ -2254,7 +2158,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
 
 
     # aerosol = 'file_read'
-    # Have to loop through each wavelength
+    # Have to loop through each wavelength (since its not constant with wavelength)
     else: 
 
         Qext_intpl_array = []
@@ -2283,7 +2187,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
             spl = scipy.interpolate.splrep(x_hist, Qext_hist)
             Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
 
-            # SSA and weighted g 
+            # SSA 
             w_hist = Qscat_hist/Qext_hist
 
             # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
@@ -2329,27 +2233,31 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     # BackScatter Cross section 
     eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
 
-    # Effective w and g
+    # Effective w and g (with medians, feel free to change to trapezoidal integration)
     eff_w = np.median(w_intpl, axis=1)
     eff_g = np.median(g_intpl, axis=1)
 
     # Interpolate the eff_cross_section from wl_Mie back to native wl
-    # This can probably be made faster 
     interp = interp1d(wl_Mie, eff_ext_cross_section)
     eff_ext = interp(wl)
 
+    # Not used in current code
     interp = interp1d(wl_Mie, eff_abs_cross_section)
     eff_abs = interp(wl)
 
+    # Not used in current code
     interp = interp1d(wl_Mie, eff_scat_cross_section)
     eff_scat = interp(wl)
 
+    # Not used in current code
     interp = interp1d(wl_Mie, eff_back_cross_section)
     eff_back = interp(wl)
 
+    # Interpolate the eff_g from wl_Mie back to native wl
     interp = interp1d(wl_Mie, eff_g)
     eff_g = interp(wl)
 
+    # Interpolate the eff_w from wl_Mie back to native wl
     interp = interp1d(wl_Mie, eff_w)
     eff_w = interp(wl)
 
@@ -2375,7 +2283,7 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
 
 ######################################################
 ######################################################
-#  Functions that can add molecules to the aerosol database
+#  Functions that can add new aerosols to the aerosol database
 ######################################################
 ######################################################
 
@@ -2383,28 +2291,32 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
 # Main DataBase Functions
 ############################################################################################
 
-# This will can be used to make new cross sections from lab data to add to database
+
 def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
 
     '''
-    Calculates the .npy file from a refractive index txt file (lab data)
+    Calculates .npy files from a refractive index txt file (lab data)
     Takes ~ a day to generate the npy file that then can be easily added to the aerosol database  
-    Please ensure that the first two rows are skippable, and that the columns are 
+    Please ensure that the first two rows are skippable, or that the header is commented out (#) and that the columns are 
     Wavelength (microns) | Real Index | Imaginary Index
-    Please also ensure that the wavelengths are at LEAST from 0.2 to 30 um. If not, add 0s into your txt files 
+
+    For better commented code on how the LX-MIE/PLATON algorithm works, see Mie_cloud_free()
 
     INPUTS 
 
     file_name (txt):
         file name of the txt file with the directory included
 
-    aerosoL_name (txt):
+    aerosol_name (txt):
         name that you want the npy file saved with
     '''
 
     global all_etas, all_xs, all_Qexts, all_Qscats, all_Qbacks, all_gs
 
     # Constants for the Qext Calculation
+    # Can be changed depending on your preferences
+    # (here the main thing to change would be either the lognormal standard devation, r_m_std_dev)
+    # (or R_Mie, the resolution at which things are computed)
     r_m_std_dev = 0.5
     z_max = 5
     num_integral_points = 100
@@ -2421,7 +2333,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     g_array = []
     jumbo_array = []
 
-    # Reset the saved arrays 
+    # Reset the saved arrays, just in case
     all_etas = []
     all_xs = []
     all_Qexts = []
@@ -2429,6 +2341,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     all_Qbacks = []
     all_gs = []
 
+    # Create wl_Mie array which goes from 0.2 to 30 at R = 1000
     wl_min = 0.2
     wl_max = 30
     wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
@@ -2438,6 +2351,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     idx_start = 0
     idx_end = 5011
 
+    # Radii are computed from 1e-3 to 10 um. Can also change this if you want
     r_m_array = 10**np.linspace(-3,1,1000)
 
     # Load in the input file path
@@ -2489,7 +2403,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
             idx_end = find_nearest(wl_Mie, wl_max)
 
             # Find nearest pulls the closest value below the given value, so we go up one index
-            wl_Mie = wl_Mie[idx_start+1:idx_end]
+            wl_Mie = wl_Mie[idx_start:idx_end]
 
             print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to '+  str(np.max(wl_Mie)))
 
@@ -2525,17 +2439,21 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     interp_complexes = interp1d(wavelengths, file_as_numpy[2])
     eta_array = interp_reals(wl_Mie) + -1j *interp_complexes(wl_Mie)
 
+    # Counter is used to print out progress of precomputation, as well as reset caches every 250 entries
     counter = 0
 
+    # Loop over radii in the radius array
     for r_m in r_m_array:
 
         #########################
-        # Caculate the effective cross section of the particles (as a function of wavelength)
+        # Caculate the  cross sections, single scattering albedo, and asymmetry parameter of the particles (as a function of wavelength)
         #########################
-
+        
+        # Print the radius being computed every ten steps
         if counter % 10 == 0:
             print(r_m)
 
+        # Every 250 steps clear out LX-MIe caches
         if counter % 250 == 0:
             all_etas = []
             all_xs = []
@@ -2544,6 +2462,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
             all_Qbacks = []
             all_gs = []
 
+        # LX-MIE algorithm starts here. See Mie_cloud_free() for details
         z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
         z = np.append(z[::-1], -z)
 
@@ -2628,6 +2547,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
         eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
 
         # Effective w and g
+        # Can change this to a trapezoidal or a mean if you want
         eff_w[idx_start:idx_end] = np.median(w_intpl, axis=1)
         eff_g[idx_start:idx_end] = np.median(g_intpl, axis=1)
 
@@ -2641,28 +2561,31 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
 
         counter += 1
 
-    title = input_file_path + 'opacity/refractive_indices/eff_ext_Mie_' + aerosol_name
+    # Save each radiative property as a seperate numpy array for future 
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name
     np.save(title,ext_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_scat_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name
     np.save(title,scat_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_abs_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name
     np.save(title,abs_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_back_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name
     np.save(title,back_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_w_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name
     np.save(title,w_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_g_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' + aerosol_name
     np.save(title,g_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/jumbo_Mie_' + aerosol_name
+    # Save all of them together as the jumpbo array
+    title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name
     jumbo_array.append([ext_array,scat_array,abs_array,back_array,w_array,g_array])
     np.save(title,jumbo_array,allow_pickle = True)
 
+    # Reset the cache arrays
     all_etas = []
     all_xs = []
     all_Qexts = []
@@ -2671,7 +2594,334 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     all_gs = []
     print('Remember to update aerosol_supported_species in supported_opac.py!')
 
-# Allows the user to make one set of cross sections from an input array of imaginary and real indices 
+
+def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
+                                                 r_m_std_dev = 0.5,
+                                                 log_r_m_min = -3,
+                                                 log_r_m_max = 1,
+                                                 g_w_calc = 'median'):
+
+    '''
+    Calculates .npy files from a refractive index txt file (lab data)
+    Takes ~ a day to generate the npy file that then can be easily added to the aerosol database  
+    Please ensure that the first two rows are skippable, or that the header is commented out (#) and that the columns are 
+    Wavelength (microns) | Real Index | Imaginary Index
+    Same as precompute_cross_sections_one_aerosol but allows for customization
+
+    For better commented code on how the LX-MIE/PLATON algorithm works, see Mie_cloud_free()
+
+    INPUTS 
+
+        file_name (txt):
+            file name of the txt file with the directory included
+
+        aerosol_name (txt):
+            name that you want the npy file saved with
+
+        r_m_std_dev (float, optional):
+            standard deviations of the lognormal distributions
+
+        log_r_m_min (float, optional):
+            mininum radii to be computed
+
+        log_r_m_max (float, optional):
+            maximum radii to be computed
+        
+        g_w_calc (string, optional):
+            how g and w are averaged. Options are 'median', 'mean', 'trap'
+    '''
+
+    global all_etas, all_xs, all_Qexts, all_Qscats, all_Qbacks, all_gs
+
+    if g_w_calc != 'median' and g_w_calc!= 'mean' and g_w_calc != 'trap':
+        raise Exception('Supported g and w calculations is median (default), mean, or trap (trapezoidal integration)')
+
+    # Constants for the Qext Calculation
+    z_max = 5
+    num_integral_points = 100
+    R_Mie = 1000
+
+    # Saved Arrays 
+    sigma_Mie_all = []
+    wl_Mie = []
+    ext_array = []
+    scat_array = []
+    abs_array = []
+    back_array = []
+    w_array = []
+    g_array = []
+    jumbo_array = []
+
+    # Reset the saved arrays, just in case
+    all_etas = []
+    all_xs = []
+    all_Qexts = []
+    all_Qscats = []
+    all_Qbacks = []
+    all_gs = []
+
+    # Create wl_Mie array which goes from 0.2 to 30 at R = 1000
+    wl_min = 0.2
+    wl_max = 30
+    wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
+
+    # Default indices for the cross section, g, and w arrays
+    # This only changes if the lab data doesn't span the entire wl range 
+    idx_start = 0
+    idx_end = 5011
+
+    # Radii 
+    r_m_array = 10**np.linspace(log_r_m_min,log_r_m_max,1000)
+
+    # Load in the input file path
+    input_file_path = os.environ.get("POSEIDON_input_data")
+
+    if input_file_path == None:
+        raise Exception("POSEIDON cannot locate the input folder.\n" +
+                        "Please set the 'POSEIDON_input_data' variable in " +
+                        "your .bashrc or .bash_profile to point to the " +
+                        "POSEIDON input folder.")
+
+    #########################
+    # Load in refractive indices (as function of wavelength)
+    #########################
+    try :
+        file_name = file_name
+        print('Loading in : ', file_name)
+        try:
+            file_as_numpy = np.loadtxt(file_name, comments = '#').T
+        except:
+            file_as_numpy = np.loadtxt(file_name, skiprows = 2).T
+
+        # If its index, wavelength, n, k we need to do something different. 
+        if len(file_as_numpy) == 4:
+            wavelengths = file_as_numpy[1]
+            real_indices = file_as_numpy[2]
+            imaginary_indices = file_as_numpy[3]
+            file_as_numpy = np.array([wavelengths,real_indices,imaginary_indices])
+
+    except :
+        raise Exception('Could not load in file. Make sure directory is included in the input')
+
+
+    wavelengths = file_as_numpy[0]
+
+    # Truncating wl grid if necessary 
+    # Any values not covered will be set to 0 in the database
+    if np.max(wavelengths) < 30 or np.min(wavelengths) > 0.2:
+
+        print('Wavelength column does not span 0.2 to 30 um')
+
+        # If less than 30 and greater than 0.2
+        if np.max(wavelengths) < 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = np.max(wavelengths)
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start:idx_end]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to '+  str(np.max(wl_Mie)))
+
+        # If less than 30 only
+        elif np.max(wavelengths) < 30 and np.min(wavelengths) <= 0.2:
+
+            wl_min = 0.2
+            wl_max = np.max(wavelengths)
+
+            idx_start = 0
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            wl_Mie = wl_Mie[:idx_end]
+            
+            print('Wavelength grid will be truncated to : 0.2 to ' + str(np.max(wl_Mie)))
+
+        # If more than 0.2 only 
+        elif np.max(wavelengths) >= 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = 30
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = 5011
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start:]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to 30')
+
+    # Loading in the refractive indices 
+    interp_reals = interp1d(wavelengths, file_as_numpy[1])
+    interp_complexes = interp1d(wavelengths, file_as_numpy[2])
+    eta_array = interp_reals(wl_Mie) + -1j *interp_complexes(wl_Mie)
+
+    # Counter is used to print out progress of precomputation, as well as reset caches every 250 entries
+    counter = 0
+
+    # Loop over radii in the radius array
+    for r_m in r_m_array:
+
+        #########################
+        # Caculate the  cross sections, single scattering albedo, and asymmetry parameter of the particles (as a function of wavelength)
+        #########################
+        
+        # Print the radius being computed every ten steps
+        if counter % 10 == 0:
+            print(r_m)
+
+        # Every 250 steps clear out LX-MIe caches
+        if counter % 250 == 0:
+            all_etas = []
+            all_xs = []
+            all_Qexts = []
+            all_Qscats = []
+            all_Qbacks = []
+            all_gs = []
+
+        # LX-MIE algorithm starts here. See Mie_cloud_free() for details
+        z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
+        z = np.append(z[::-1], -z)
+
+        probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
+        radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
+        geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
+
+        Qext_intpl_array = []
+        Qscat_intpl_array = []
+        Qback_intpl_array = []
+        w_intpl_array = []
+        g_intpl_array = []
+
+        # Loop through each wavelength 
+        for m in range(len(wl_Mie)):
+            
+            # Take the dense xs, but keep wavelength constant this time around
+            dense_xs = 2*np.pi*radii / wl_Mie[m]
+            dense_xs = dense_xs.flatten()
+
+            # Make xs more coarse
+            x_hist = np.histogram(dense_xs, bins='auto')[1]
+
+            # Pull the refractive index for the wavelength we are on 
+            eta = eta_array[m]
+
+            # Get the coarse Qext with the constant eta 
+            Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
+
+            # SSA and weighted g 
+            w_hist = Qscat_hist/Qext_hist
+            #g_hist = g_hist/Qscat_hist
+
+            # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
+            spl = scipy.interpolate.splrep(x_hist, Qext_hist)
+            Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
+            Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            spl = scipy.interpolate.splrep(x_hist, w_hist)
+            w_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            spl = scipy.interpolate.splrep(x_hist, Qback_hist)
+            Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            spl = scipy.interpolate.splrep(x_hist, g_hist)
+            g_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+            # Append it to the array that will have all the Qext
+            Qext_intpl_array.append(Qext_intpl)
+            Qscat_intpl_array.append(Qscat_intpl)
+            Qback_intpl_array.append(Qback_intpl)
+            w_intpl_array.append(w_intpl)
+            g_intpl_array.append(g_intpl)
+
+        # Reshape the mega array so that the first index is wavelngth, second is radius 
+        Qext_intpl = np.reshape(Qext_intpl_array, (len(wl_Mie), len(radii)))
+        Qscat_intpl = np.reshape(Qscat_intpl_array, (len(wl_Mie), len(radii)))
+        Qback_intpl = np.reshape(Qback_intpl_array, (len(wl_Mie), len(radii)))
+        w_intpl = np.reshape(w_intpl_array, (len(wl_Mie), len(radii)))
+        g_intpl = np.reshape(g_intpl_array, (len(wl_Mie), len(radii)))
+
+        # Empty arrays to store the following values into 
+        eff_ext_cross_section = np.full(5011, 1e-250)
+        eff_scat_cross_section = np.full(5011, 1e-250)
+        eff_abs_cross_section = np.full(5011, 1e-250)
+        eff_back_cross_section = np.full(5011, 1e-250)
+        eff_w = np.full(5011, 1e-250)
+        eff_g = np.full(5011, 1e-250)
+
+        # Effective Cross section is a trapezoidal integral
+        eff_ext_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+
+        # Scattering Cross section 
+        eff_scat_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+
+        # Absorption Cross section
+        eff_abs_cross_section[idx_start:idx_end] = eff_ext_cross_section[idx_start:idx_end] - eff_scat_cross_section[idx_start:idx_end]
+
+        # BackScatter Cross section 
+        eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+
+        # Effective w and g
+        if g_w_calc == 'median':
+            eff_w[idx_start:idx_end] = np.median(w_intpl, axis=1)
+            eff_g[idx_start:idx_end] = np.median(g_intpl, axis=1)
+
+        elif g_w_calc == 'mean':
+            eff_w[idx_start:idx_end] = np.mean(w_intpl, axis=1)
+            eff_g[idx_start:idx_end] = np.mean(g_intpl, axis=1)     
+        
+        elif g_w_calc == 'trap':
+            eff_w[idx_start:idx_end] = np.trapz(probs*w_intpl, z)
+            eff_g[idx_start:idx_end] = np.trapz(probs*g_intpl, z) 
+
+        # Append everything to arrays to save
+        ext_array.append(eff_ext_cross_section)
+        scat_array.append(eff_scat_cross_section)
+        abs_array.append(eff_abs_cross_section)
+        back_array.append(eff_back_cross_section)
+        w_array.append(eff_w)
+        g_array.append(eff_g)
+
+        counter += 1
+
+    # Save each radiative property as a seperate numpy array for future 
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name
+    np.save(title,ext_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name
+    np.save(title,scat_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name
+    np.save(title,abs_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name
+    np.save(title,back_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name
+    np.save(title,w_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' + aerosol_name
+    np.save(title,g_array,allow_pickle = True)
+
+    # Save all of them together as the jumpbo array
+    title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name
+    jumbo_array.append([ext_array,scat_array,abs_array,back_array,w_array,g_array])
+    np.save(title,jumbo_array,allow_pickle = True)
+
+    # Reset the cache arrays
+    all_etas = []
+    all_xs = []
+    all_Qexts = []
+    all_Qscats = []
+    all_Qbacks = []
+    all_gs = []
+    print('Remember to update aerosol_supported_species in supported_opac.py!')
+
+
 def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indices_array, r_m):
 
     '''
@@ -2679,6 +2929,7 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
     And the particle size in um 
 
     Allows the user to directly quirey the LX_MIE algorithm with their refractive index data 
+    Before running the full precompute cross sections one aerosol function
 
     INPUTS 
 
@@ -2691,10 +2942,13 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
     imaginary_indices_array (np.array of float):
         Imaginary indices 
 
-    r_m
+    r_m  (float) : 
+        Mean particle size (in um)
     '''
         
     global all_etas, all_xs, all_Qexts, all_Qscats, all_Qbacks, all_gs
+
+    # For detailed comments, see precompute_cross_sections_one_aerosol()
 
     # Constants that for the Qext Claculation
     r_m_std_dev = 0.5
@@ -2807,15 +3061,17 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
 
     return eff_ext_cross_section, eff_scat_cross_section, eff_abs_cross_section, eff_back_cross_section, eff_w, eff_g
 
-# Reformulate database
+
 def make_aerosol_database():
 
     '''
-    Regenerates the aerosol_database from all npy files in input/refractive_indices
+    Regenerates the aerosol_database from all npy files in input/aerosol_Mie_properties/
     This functionality allows for users to create new eff cross section arrays using 
-    precompute_cross_Sections_one_aerosol()
-    With their own lab data 
+    precompute_cross_sections_one_aerosol()
+    With their own lab data and add it to the database
     '''
+
+    # Load in where the opacity folder is 
     input_file_path = os.environ.get("POSEIDON_input_data")
 
     if input_file_path == None:
@@ -2824,8 +3080,8 @@ def make_aerosol_database():
                         "your .bashrc or .bash_profile to point to the " +
                         "POSEIDON input folder.")
 
-    # Load in the aerosol list
-    mydir = input_file_path + "opacity/refractive_indices/"
+    # Load in the aerosol files used to generate database
+    mydir = input_file_path + "opacity/aerosol_Mie_properties/"
     file_list = glob.glob(mydir + "jumbo*.npy")
     file_list.sort()
 

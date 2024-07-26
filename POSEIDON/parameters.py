@@ -16,7 +16,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
-                       aerosol_species, log_P_slope_arr):
+                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -99,11 +99,17 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
-        aerosol_species (string):
-            Either 'free' or a specific aerosol.
+        aerosol_species (list of string):
+            Either 'free' or specific aerosol(s).
         log_P_slope_array (np.array of float):
             Log pressures where the temperature difference parameters are 
             defined (Piette & Madhusudhan 2020 profile only).
+        number_P_knots (float):
+            Number of uniform knots in pressure space 
+            (only for the Pelletier 2021 P-T profile).
+        PT_penalty (bool):
+            If True, introduces the sigma_smooth parameter for retrievals
+            (only for the Pelletier 2021 P-T profile).
 
     Returns:
         params (np.array of str):
@@ -185,7 +191,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** PT profile parameters *****#
 
         if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
-                               'slope', 'file_read']):
+                               'slope', 'Pelletier', 'Guillot', 'Guillot_dayside',
+                               'Line', 'file_read']):
             raise Exception("Error: unsupported P-T profile.")
 
         # Check profile settings are supported
@@ -194,6 +201,18 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             
         if ((PT_profile == 'Madhu') and (PT_dim > 1)):
             raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Pelletier') and (PT_dim > 1)):
+            raise Exception("Pelletier (2021) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Guillot') and (PT_dim > 1)):
+            raise Exception("Guillot (2010) (pRT implementation) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Guillot_dayside') and (PT_dim > 1)):
+            raise Exception("Guillot (dayside) (2010) (pRT implementation) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Line') and (PT_dim > 1)):
+            raise Exception("Line (2013) (platon implementation) profile only supported for 1D models")
 
         if ((PT_profile == 'slope') and (PT_dim > 1)):
             raise Exception("Slope profile only supported for 1D models")
@@ -213,6 +232,20 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 PT_params += ['T_phot_PT']
                 for i in range(len(log_P_slope_arr)):
                     PT_params += ['Delta_T_' + str(i+1)]
+            elif (PT_profile == 'Pelletier'):
+                if number_P_knots < 3:
+                    raise Exception('number_P_knots must be at least 3. (Captures top, bottom, middle pressures in log space)')
+                for i in range(number_P_knots):
+                    PT_params += ['T_' + str(i+1)]
+                if PT_penalty == True:
+                    PT_params += ['sigma_s']
+            elif (PT_profile == 'Guillot'):
+                PT_params += ['log_kappa_IR', 'log_gamma', 'T_int', 'T_equ']
+            elif (PT_profile == 'Guillot_dayside'):
+                PT_params += ['log_kappa_IR', 'log_gamma', 'T_int', 'T_equ']
+            elif (PT_profile == 'Line'):
+                PT_params += ['log_kappa_IR', 'log_gamma', 'log_gamma_2', 
+                              'alpha_Line', 'beta_Line', 'T_int']
             
         # 2D model (asymmetric terminator or day-night transition)
         elif (PT_dim == 2):
@@ -555,8 +588,12 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             if ('haze' not in cloud_type) and ('deck' not in cloud_type):
                 raise Exception("Error: unsupported cloud model.")
 
-        # Mie scattering        
+        # Mie scattering     
         elif (cloud_model == 'Mie'):
+
+            # If working with a 2D patchy cloud model
+            if (cloud_dim == 2):
+                cloud_params += ['f_cloud']
 
             if (cloud_type =='fuzzy_deck'):
 
@@ -631,9 +668,51 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_X_' + aerosol]
 
-            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab']):
-                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab.")
+            elif (cloud_type == 'opaque_deck_plus_uniform_X'):
+
+                cloud_params += ['log_P_top_deck']
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    cloud_params += ['log_r_m']
+                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+            
+            # @char adding in single slab, multiple species
+            elif (cloud_type == 'one_slab'):
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    print('Only one slab can be defined with free or file_read')
+                    cloud_params += ['log_P_top_slab']
+                    cloud_params += ['Delta_log_P']
+                    cloud_params += ['log_r_m']
+                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+
+                else:
+                    # define slab top pressure and extent
+                    cloud_params += ['log_P_top_slab']
+                    cloud_params += ['Delta_log_P']
+                    
+                    # add aerosol specific parameters
+                    for aerosol in aerosol_species: 
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+
+            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab', 'opaque_deck_plus_uniform_X', 'one_slab']):
+                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X.")
         
+        elif (cloud_model == 'eddysed'):
+            # If working with a 2D patchy cloud model
+            if (cloud_dim == 2):
+                cloud_params += ['f_cloud']
+
+            cloud_params += ['kappa_cloud_eddysed']
+            cloud_params += ['g_cloud_eddysed']
+            cloud_params += ['w_cloud_eddysed']
+
+
         else:
             raise Exception("Error: unsupported cloud model.")
             
@@ -844,6 +923,14 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_PT = 8     
     elif (PT_profile == 'Madhu'):   # Madhusudhan & Seager (2009) profile
         len_PT = 6
+    elif (PT_profile == 'Pelletier'): # Pelletier (2021)
+        len_PT = len(PT_in)
+    elif (PT_profile == 'Guillot'): # Guillot (2010)
+        len_PT = 4
+    elif (PT_profile == 'Guillot_dayside'): # Guillot with f = 0.5 (2010)
+        len_PT = 4
+    elif (PT_profile == 'Line'): # Line (2013)
+        len_PT = 6
     elif (PT_profile == 'slope'):   # Piette & Madhusudhan (2020) profile
         len_PT = 8
     elif (PT_profile == 'file_read'):   # User provided file
@@ -894,6 +981,14 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             PT_state = PT_in                # Assign 6 parameters defining this profile
         elif (PT_profile == 'slope'):
             PT_state = PT_in                # Assign 8 parameters defining this profile
+        elif (PT_profile == 'Pelletier'):
+            PT_state = PT_in
+        elif (PT_profile == 'Guillot'):
+            PT_state = PT_in
+        elif (PT_profile == 'Guillot_dayside'):
+            PT_state = PT_in
+        elif (PT_profile == 'Line'):
+            PT_state = PT_in
                
     # 2D atmosphere
     elif (PT_dim == 2):
@@ -1484,6 +1579,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
 
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
+
     # Patchy cloud model from MacDonald & Madhusudhan (2017)
     if (cloud_model == 'MacMad17'):
         
@@ -1523,6 +1623,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_real = 0
         r_i_complex = 0
         log_X_Mie = []
+
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
          
     # 3D patchy cloud model from MacDonald & Lewis (2022)
     elif (cloud_model == 'Iceberg'):
@@ -1573,6 +1678,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
 
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
+
     # Mie clouds 
     elif (cloud_model == 'Mie'):
 
@@ -1585,28 +1695,28 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # Cloud is opaque up to P_cloud, and then follows an exponential distribution for 
         # number density of aerosols. This is set by n_cloud 
         kappa_cloud_0 = 1.0e250
+
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
         
         if (cloud_dim == 1):
             f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
-
         elif (cloud_dim == 2):
-            if (TwoD_type == 'E-M'):
+            try:
                 f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
-                phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
-                theta_0 = -90.0                # Cloud spans full day to night zones
-            if (TwoD_type == 'D-N'):
-                f_cloud, phi_0 = 1.0, -90.0    # Uniform axially, not-uniform along ray
-                theta_0 = clouds_in[np.where(cloud_param_names == 'theta_0')[0][0]]
-        
-        elif (cloud_dim == 3):
-            f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
-            phi_0 = clouds_in[np.where(cloud_param_names == 'phi_0')[0][0]]
-            theta_0 = clouds_in[np.where(cloud_param_names == 'theta_0')[0][0]]
-             
-        else:   # Set dummy parameter values for angles if cloud dimension not specified 
-            f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+            except:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0]] 
+
+            phi_0 = -90
+            theta_0 = -90.0       
 
         # Set the Mie parameters 
+        # Sorry that below is a bit of a mess if anyone is looking at this in the future
+        # There are a lot of different cloud models, and 
+        # numpy gets made depending on if the inputs are an array or a string (file read vs database aerosol)
+        # Details below
         
         # If the cloud is a fuzzy_deck, slab, fuzzy_deck_plus_slab, or opaque_deck_plus_slab model 
         # it will contain the string 'log_P_top' in its parameter names 
@@ -1693,6 +1803,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
                             log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
                             P_slab_bottom = np.power(10.0, (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
+
                 
                 # Otherwise, it is just a slab model 
                 else:
@@ -1711,27 +1822,49 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                     log_n_max = 0
                     fractional_scale_height = 0
             
-            # Otherwise, its just a fuzzy deck with no slabs 
+            # Otherwise, its just a fuzzy deck with no slabs or opaque_deck_plus_uniform_X
             else:
-            
-                try:
-                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
-                    P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
-                    log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
-                    fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
-                except:
-                    r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
-                    P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
-                    log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
-                    fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
 
-                # Need to set the slab parameters to dummy values to pass into the cloud object 
-                log_X_Mie = 100
-                P_slab_bottom = 100.0
- 
+                # Fuzzy deck 
+                if any ('log_n_max' in s for s in cloud_param_names):
+                
+                    try:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
+                        log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
+                        fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+                    except:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
+                        log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
+                        fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+
+                    # Need to set the slab parameters to dummy values to pass into the cloud object 
+                    log_X_Mie = 100
+                    P_slab_bottom = 100.0
+                
+                # opaque_deck_plus_uniform_x
+                else:
+
+                    try:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                        
+                    except:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_top')[0][0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
+
+                    # If uniform_X, you set the slab and deck parameters to dummy values to pass into the cloud object
+                    log_n_max = 0
+                    fractional_scale_height = 0
+                    P_slab_bottom = 100.0
+
         
-        # If the aerosol is a uniform_haze model 
+        # If the aerosol is a uniform_X
         else:
+
             try:
                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
@@ -1752,9 +1885,42 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         else:
             r_i_real = 0
             r_i_complex = 0
+
+    # This cloud model is to specifically take in kappa_cloud, g_cloud, and w_cloud from eddysed calculations
+    # i.e from PICASO, VIRGA
+    elif (cloud_model =='eddysed'):
+
+        kappa_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'kappa_cloud_eddysed')[0][0]]
+        g_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'g_cloud_eddysed')[0][0]]
+        w_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'w_cloud_eddysed')[0][0]]
+        
+        # Set dummy parameter values, not used when cloud-free
+        kappa_cloud_0 = 1.0e250
+        P_cloud = 100.0
+        P_slab_bottom = 100.0
+        a, gamma = 1.0, -4.0  
+
+        if (cloud_dim == 1):
+            f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
+        elif (cloud_dim == 2):
+            try:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
+            except:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0]] 
+            phi_0 = -90
+            theta_0 = -90.0   
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
     
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
-           fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom
+           fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom, \
+           kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

@@ -18,6 +18,7 @@ from spectres import spectres
 from scipy.constants import parsec
 import cmasher as cmr
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 
 from .constants import R_J, R_E
 from .utility import create_directories, write_spectrum, read_data, prior_index, prior_index_V2, closest_index, closest_index_GPU, \
@@ -36,7 +37,7 @@ from .instrument import init_instrument
 from .transmission import TRIDENT
 from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
-                      emission_Toon
+                      emission_Toon, reflection_Toon
 
 from .species_data import polarisabilities
 
@@ -94,6 +95,7 @@ def wl_grid_constant_R(wl_min, wl_max, R):
     
     return wl
 
+
 def check_atmosphere_physical(atmosphere, opac):
     '''
     Checks that a specific model atmosphere is physical.
@@ -141,6 +143,7 @@ def check_atmosphere_physical(atmosphere, opac):
         else:
             return True
 
+
 #################################
 # Spectral Contribution Functions
 #################################
@@ -155,10 +158,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                bulk_species = False,
                cloud_contribution = False,
                cloud_species = '',
-               cloud_total_contribution = False,
-               put_one_in = False,
-               take_one_out = False,
-               fix_mu = True):
+               cloud_total_contribution = False,):
     
     ''' Main function to evaluate extinction coefficients for molecules / atoms,
         Rayleigh scattering, hazes, and clouds for parameter combination
@@ -174,6 +174,9 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
         The output extinction coefficient arrays are given as a function
         of layer number (indexed from low to high altitude), terminator
         sector, and wavelength.
+
+        In the spectral contribution plots, each extinction coefficient
+        is turned off except for the one being analyzed.
     
     '''
     
@@ -184,11 +187,12 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
     N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
     N_bf_species = len(bf_species)           # Number of bound-free species included
     
-    # Set up to find the bulk species indices (these are always turned on)
+    # Set up to find the bulk species indices (these are always turned on in spectral contribution plots)
     # Find the number and indices for the bulk species 
     N_bulk_species = N_species - N_species_active
-    # The bulk species are also the first few indices in the chemical species list
     bulk_species_indices = range(N_bulk_species)
+
+    # The bulk species are also the first few indices in the chemical species list
     bulk_species_names = chemical_species[:N_bulk_species]
 
     # Find the name of the bulk species and check to see if they are 
@@ -207,7 +211,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
         if pair_1_bool == True and pair_2_bool == True:
             bulk_cia_indices.append(i)
 
-    # Else, we are trying to find the contribution from a species
+    # If we are only trying to find contribution from a spectrally
+    # active gas species
     if bulk_species == False and cloud_contribution == False:
 
         # Find the index in the list of chemical species 
@@ -226,6 +231,12 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
             pair_1, pair_2 = cia_pairs[i].split('-')
             if contribution_species == pair_1 or contribution_species == pair_2:
                 cia_indices.append(i)
+
+    # If the species is H-, include the bf_index
+    if contribution_species == 'H-':
+        bound_free = True
+    else:
+        bound_free = False
 
 
     N_wl = len(wl)     # Number of wavelengths on model grid
@@ -273,6 +284,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
                             n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
                             n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+                        else:
+                            n_n_cia = 0
 
                     # If bulk is true or cloud contribution is true, we are only interested in the bulk species contribution 
                     if bulk_species == True or cloud_contribution == True:
@@ -280,6 +293,9 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
                             n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
                             n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
+                    
+                        else:
+                            n_n_cia = 0
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -303,7 +319,10 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 # For each source of bound-free absorption (photodissociation)
                 for q in range(N_bf_species): 
                     
-                    n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    if bound_free == True:
+                        n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    else:
+                        n_q = 0
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -316,7 +335,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 for q in range(N_species_active): 
                     
                     # If we are not doing the bulk species, we just want the species 
-                    if bulk_species == False and cloud_contribution == False:
+                    if bulk_species == False and cloud_contribution == False and bound_free == False:
                         if q == contribution_molecule_active_index:
                             n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
                 
@@ -324,7 +343,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_q = 0
                     
                     else:
-                        # If bulk is true or cloud is true, then everything in active is turned off 
+                        # If bulk is true, cloud is true, or bound_free is True, then everything in active is turned off 
                         n_q = 0
                     
                     # For each wavelength
@@ -336,7 +355,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 # For each molecular / atomic species
                 for q in range(N_species):  
                     
-                    if bulk_species == False and cloud_contribution == False:
+                    # Same as N_species_active part 
+                    if bulk_species == False and cloud_contribution == False and bound_free == False:
                         if q == contribution_molecule_species_index:
                             n_q = n_level*X[q,i,j,k]   # Number density of given species
                         elif q in bulk_species_indices:
@@ -345,7 +365,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_q = 0
 
                     else:
-                        # If bulk is true or cloud is true, only keep the bulk species on 
+                        # If bulk is true, cloud is true, and bound_free is true, only keep the bulk species on 
                         if q in bulk_species_indices:
                             n_q = n_level*X[q,i,j,k]   # Number density of given species
                         else:
@@ -399,6 +419,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 # All deck, slab, aerosol information is stored in the n_aerosol_array
                 # If its an opaque deck, then the length of sigma_Mie_array will be one more than n_aerosol_array
                 # Since the opaque deck is being counted as an extra aerosol 
+                # (in clouds.py, Mie_cloud(), opaque deck is the first element in sigma_Mie_array)
                 # Otherwise, it should be the same 
 
                 # If cloud contribution = True, we need to find the species we want the contribution of 
@@ -432,7 +453,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                         
 
                 # Opaque Deck is the first element in n_aerosol_array
-                # I will decide for now to add the opaque deck to each species. I think that won't hurt to keep them together 
+                # This is set up so that the opaque deck is not appended to any of the compositionally specific aerosols
+                # And will only show up if cloud_total_contribution is set to True 
                 else:
                     for aerosol in range(len(n_aerosol_array)):
                             
@@ -448,7 +470,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             elif cloud_contribution == True and cloud_total_contribution == False:
 
                                 if aerosol == 0:
-                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += 1.0e250
+                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += 0
 
                                 else:
                                     for i in range(i_bot,N_layers):
@@ -469,7 +491,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                                                 kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
 
     return kappa_gas, kappa_Ray, kappa_cloud
-        
+
+
 def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
                      disable_continuum = False, suppress_print = False,
@@ -479,15 +502,11 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                      bulk_species = True, 
                      cloud_contribution = False, 
                      cloud_species_list = [],
-                     cloud_total_contribution = False,
-                     put_one_in = True,
-                     take_one_out = False,
-                     fix_mu = True,
-                     scattering_contribution = False,
-                     reflection_contribution = False):
+                     cloud_total_contribution = False):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
-    equation to compute the spectrum of the model atmosphere.
+    equation to compute the spectrum of the model atmosphere
+    in order to get the spectral contribution of species
 
     Args:
         planet (dict):
@@ -528,10 +547,26 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             is identical at all times due to translational symmetry, so y_p = 0
             is good for all times post second contact and pre third contact.
             Units are in m, not in stellar radii.
+        contribution_species_list (np.array of string):
+            List of gas species to analyze the spectral contribution of
+        bulk_species (bool):
+            If true, will compute the spectral contribution of the bulk species
+        cloud_contribution (bool):
+            If true, will compute the spectral contribution of clouds (either parameterized or aerosols)
+        cloud_species_list (np.array of string):
+            List of aerosols to analyze the spectral contribution of. Cloud_contribution must be True 
+        cloud_total_contribution (bool):
+            If true, will compute spectral contribution of combined clouds 
+            If using parameterized clouds, this bool will need to be true (to show deck + haze, for example)
+            If using aerosols, will compute combined aerosol spectral contribution
 
     Returns:
         spectrum (np.array of float):
             The spectrum of the atmosphere (transmission or emission).
+        spectrum_contribution_list_names (np.array of string):
+            Array used for plotting (contains names and order of spectral contribution spectra)
+        spectrum_contribution_list (np.array of float):
+            Array of spectra, each corresponding to the spectral contribution of a species in the list_names array.
     
     '''
 
@@ -546,6 +581,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
     scattering = model['scattering']
+    reflection = model['reflection']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -562,6 +598,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     R_p = planet['planet_radius']
     b_p = planet['planet_impact_parameter']
     d = planet['system_distance']
+    a_p = planet['planet_semi_major_axis']
 
     if (star is not None):
         R_s = star['R_s']
@@ -705,7 +742,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                                                      fractional_scale_height = fractional_scale_height)
 
                 # If its a slab
-                elif (model['cloud_type'] == 'slab'):
+                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
 
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \
@@ -763,6 +800,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                                                     log_X_Mie = log_X_Mie,
                                                     P_cloud = P_cloud,
                                                     P_cloud_bottom = P_cloud_bottom)
+
+
                         
                 # If its a fuzzy_deck_plus_slab run 
                 elif (model['cloud_type'] == 'fuzzy_deck_plus_slab'):
@@ -793,6 +832,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                 w_cloud = np.zeros_like(wl)
                 g_cloud = np.zeros_like(wl)
+
 
             # Calculate extinction coefficients in standard mode
 
@@ -982,23 +1022,42 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
 
         elif (scattering == True):
+            
+            # Else, we need to restructure w_cloud and g_cloud to span by layer 
+            # For Mie models with 1 species, the g and w can be help constant with each layer since
+            # Kappa cloud will encode where clouds are
+            # For models that are cloud free, you still need a g and w thats just an array of 0s
+            # For Mie models with more than one species, we need to be more careful with the g and w array
+            if len(aerosol_species) == 1 or aerosol_species == []:
+                w_cloud = np.ones_like(kappa_cloud)*w_cloud
+                g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
-            # Calculate combined single scattering albedo
-            w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
+            # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+            else:
+                raise Exception('Only 1 aerosol species supported for scattering')
 
-            # Calculate combined scattering asymmetry parameter
-            g_tot = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
-
-            # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
-            F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
-                                      np.flip(dtau_tot, axis=0), 
-                                      np.flip(w_tot, axis=0), 
-                                      np.flip(g_tot, axis=0))
+            # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+            F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                        kappa_Ray, kappa_cloud, kappa_tot,
+                                        w_cloud, g_cloud, zone_idx,
+                                        hard_surface = 0, tridiagonal = 0, 
+                                        Gauss_quad = 5, numt = 1)
             
             dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
         else:
             raise Exception("Error: Invalid scattering option")
+
+        # Add in the seperate reflection  
+        if (reflection == True):
+
+            albedo = reflection_Toon(P, wl, dtau_tot,
+                                    kappa_Ray, kappa_cloud, kappa_tot,
+                                    w_cloud, g_cloud, zone_idx,
+                                    single_phase = 3, multi_phase = 0,
+                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                    Gauss_quad = 5, numt = 1,
+                                    toon_coefficients=0, tridiagonal=0, b_top=0)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -1065,6 +1124,33 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             # Final spectrum is the planet-star flux ratio
             spectrum = F_p_obs / F_s_obs
 
+        if (reflection == True):
+            
+            try:
+                FpFs_reflected = albedo*(R_p_eff/a_p)**2
+            except:
+                raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
+            
+            if ('direct' in spectrum_type):
+
+                # Load stellar spectrum
+                F_s = star['F_star']
+                wl_s = star['wl_star']
+
+                if (np.array_equiv(wl_s, wl) is False):
+                    raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                    "not match wavelength grid of planet spectrum. " +
+                                    "Did you forget to provide 'wl' to create_star?")
+
+                F_s_obs = (R_s / d)**2 * F_s
+                Fp_reflected_obs = FpFs_reflected*F_s_obs
+                
+                spectrum += Fp_reflected_obs
+
+            else:
+                #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                spectrum += FpFs_reflected
+
         # Then do the contribution functions 
         spectrum_contribution_list = []
 
@@ -1091,22 +1177,42 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
             elif (scattering == True):
 
-                # Calculate combined single scattering albedo
-                w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud_temp[:,0,zone_idx,:] * w_cloud))/kappa_tot
+                # Else, we need to restructure w_cloud and g_cloud to span by layer 
+                # For Mie models with 1 species, the g and w can be help constant with each layer since
+                # Kappa cloud will encode where clouds are
+                # For models that are cloud free, you still need a g and w thats just an array of 0s
+                # For Mie models with more than one species, we need to be more careful with the g and w array
+                if len(aerosol_species) == 1 or aerosol_species == []:
+                    w_cloud = np.ones_like(kappa_cloud)*w_cloud
+                    g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
-                # Calculate combined scattering asymmetry parameter
-                g_tot = ((w_cloud * kappa_cloud_temp[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud_temp[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+                # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+                else:
+                    raise Exception('Only 1 aerosol species supported for scattering')
 
-                # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
-                F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
-                                        np.flip(dtau_tot, axis=0), 
-                                        np.flip(w_tot, axis=0), 
-                                        np.flip(g_tot, axis=0))
+                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                            kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                            w_cloud, g_cloud, zone_idx,
+                                            hard_surface = 0, tridiagonal = 0, 
+                                            Gauss_quad = 5, numt = 1)
+            
                 
                 dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
             else:
                 raise Exception("Error: Invalid scattering option")
+            
+                    # Add in the seperate reflection  
+            if (reflection == True):
+
+                albedo = reflection_Toon(P, wl, dtau_tot,
+                                        kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                        w_cloud, g_cloud, zone_idx,
+                                        single_phase = 3, multi_phase = 0,
+                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                        Gauss_quad = 5, numt = 1,
+                                        toon_coefficients=0, tridiagonal=0, b_top=0)
 
             # Calculate effective photosphere radius at tau = 2/3
             if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -1172,15 +1278,92 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                 # Final spectrum is the planet-star flux ratio
                 spectrum_temp = F_p_obs / F_s_obs
+            
+            if (reflection == True):
+            
+                try:
+                    FpFs_reflected = albedo*(R_p_eff/a_p)**2
+                except:
+                    raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
+                
+                if ('direct' in spectrum_type):
+
+                    # Load stellar spectrum
+                    F_s = star['F_star']
+                    wl_s = star['wl_star']
+
+                    if (np.array_equiv(wl_s, wl) is False):
+                        raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                        "not match wavelength grid of planet spectrum. " +
+                                        "Did you forget to provide 'wl' to create_star?")
+
+                    F_s_obs = (R_s / d)**2 * F_s
+                    Fp_reflected_obs = FpFs_reflected*F_s_obs
+                    
+                    spectrum_temp += Fp_reflected_obs
+
+                else:
+                    #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                    spectrum_temp += FpFs_reflected
 
             spectrum_contribution_list.append(spectrum_temp)
   
     return spectrum, spectrum_contribution_list_names, spectrum_contribution_list
 
+
 def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_names, spectrum_contribution_list,
                                full_spectrum_first = True, y_unit='transit_depth',
                                brightness_temperature = False, star = [],
-                               stellar_spectrum = False):
+                               y_min = None, y_max = None,
+                               figure_shape = 'wide',
+                               save_fig = False,
+                               line_widths = [],
+                               colour_list = [],
+                               return_fig = False,
+                               ax = None):
+    
+    '''
+    Plot the spectral contributions directly from the spectral_contribution() outputs
+
+    Args:
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        spectrum (np.array of float):
+            The spectrum of the atmosphere (transmission or emission).
+        spectrum_contribution_list_names (np.array of string):
+            Array used for plotting (contains names and order of spectral contribution spectra)
+        spectrum_contribution_list (np.array of float):
+            Array of spectra, each corresponding to the spectral contribution of a species in the list_names array.
+        full_spectrum_first (bool):
+            If True, the full spectrum will be plotted first (behind all other spectra)
+        y_unit (str, optional):
+            The unit of the y-axis
+            (Options: 'transit_depth', 'eclipse_depth', '(Rp/Rs)^2', 
+            '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp').
+        brightness_tempearture (bool, optional):
+            If True, will convert spectrum and spectrum_contribution_list_names to brightness temperature
+        star (dict, optional):
+            Collection of stellar properties used by POSEIDON.
+            For converting secondary eclipse spectra into brightness temperature
+        y_min (float, optional):
+            The minimum value for the y-axis.
+        y_max (float, optional):
+            The maximum value for the y-axis.
+        figure_shape (str, optional):
+            The shape of the figure ('default' or 'wide' - the latter is 16:9).
+        save_fig (bool, optional):
+            If True, saves a PDF in the POSEIDON output folder.
+        line_widths (array of floats, optional):
+            Optional line widths. We reccomend the full spectra be larger than the contributing ones
+        colour_list (list, optional):
+            A list of colours for the model spectra
+        return_fig (bool, optional):
+            Returns the fig object, in case you want it in the notebook to manipulate
+        ax (matplotlib axis object, optional):
+            Matplotlib axis provided externally.
+    '''
 
     from POSEIDON.utility import plot_collection
     from POSEIDON.visuals import plot_spectra
@@ -1189,7 +1372,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
     # If brightness_temperature is true, convert from FpFs (or Fp) to brightness temeperature 
     if brightness_temperature == True:
-
+        
         y_unit = 'T_bright'
         h = sc.h
         c = sc.c 
@@ -1197,11 +1380,11 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         wl_brightness = wl * 1e-6
 
         Rp = planet['planet_radius']
-        F_star = star['F_star']
-        Rs = star['R_s']
 
         # Check to see if its directly imaged or not 
         if star != []:
+            F_star = star['F_star']
+            Rs = star['R_s']
             Fp = spectrum * F_star/((Rp/Rs)**2.) # Planet Flux
         else:
             Fp = spectrum
@@ -1217,9 +1400,14 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
             spectrum_contribution_list[s] = (h*c)/(kb * (wl_brightness) * np.log(1 + (2 * h * c**2 / ((Fp/np.pi) * (wl_brightness)**5))))
 
-
+    # This plots the full spectrum first, so that the contribution can be plotted on top of it
     if full_spectrum_first == True:
-        colour_list = ['black','dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
+
+        # If the user didn't provide a color list
+        if colour_list == []:
+
+            # Black is the full spectrum 
+            colour_list = ['black','dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
 
         spectra = plot_collection(spectrum, wl, collection = spectra)
         labels = spectrum_contribution_list_names.copy()
@@ -1229,21 +1417,29 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         for s in spectrum_contribution_list:
             spectra = plot_collection(s, wl, collection = spectra)
 
-        # Plot the full spectrum last so its on top 
-
+        # Cut the list to the number of spectra you have 
         colour_list = colour_list[:len(spectrum_contribution_list)+1]
         
         fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                    plt_label = 'Cloud Contribution Plot',
+                    plt_label = 'Spectral Contribution Plot',
                     spectra_labels = labels,
                     plot_full_res = False, 
-                    save_fig = False,
+                    save_fig = save_fig,
                     colour_list = colour_list,
-                    y_unit = y_unit)
+                    y_unit = y_unit,
+                    y_min = y_min,
+                    y_max = y_max,
+                    figure_shape = figure_shape,
+                    line_widths = line_widths,
+                    ax = ax
+                    )
         
     else: 
         
-        colour_list = ['dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
+        # If the user didn't provide a color list
+        if colour_list == []:
+
+            colour_list = ['dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
 
         spectra = []
         # Loop through the contribution spectra 
@@ -1253,6 +1449,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         # Plot the full spectrum last so its on top 
         spectra = plot_collection(spectrum, wl, collection = spectra)
 
+        # Cut the spectrum to the number of spectra you have, and add black for the full spectrum
         colour_list = colour_list[:len(spectrum_contribution_list)]
         colour_list.append('black')
 
@@ -1261,16 +1458,25 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
         
         fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                    plt_label = 'Cloud Contribution Plot',
+                    plt_label = 'Spectral Contribution Plot',
                     spectra_labels = labels,
                     plot_full_res = False, 
-                    save_fig = False,
+                    save_fig = save_fig,
                     colour_list = colour_list,
-                    y_unit = y_unit)
+                    y_unit = y_unit,
+                    y_min = y_min,
+                    y_max = y_max,
+                    figure_shape = figure_shape,
+                    line_widths = line_widths,
+                    ax = ax)
+        
+    if return_fig == True:
+        return fig
         
 #################################
 # Pressure Contribution Functions
 #################################
+
 
 def extinction_pressure_contribution(chemical_species, active_species, cia_pairs, ff_pairs, bf_species, aerosol_species,
                n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
@@ -1283,9 +1489,6 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                cloud_contribution = False,
                cloud_species = '',
                cloud_total_contribution = False,
-               put_one_in = False,
-               take_one_out = False,
-               fix_mu = True,
                layer_to_ignore = 0,
                total_pressure_contribution = False):
     
@@ -1303,6 +1506,9 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
         The output extinction coefficient arrays are given as a function
         of layer number (indexed from low to high altitude), terminator
         sector, and wavelength.
+
+        For pressure contribution, it goes row by row 
+        And removes the opacity (either total or individual species) from that row
     
     '''
     
@@ -1316,6 +1522,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
     # Set up to find the bulk species indices (these are always turned on)
     # Find the number and indices for the bulk species 
     N_bulk_species = N_species - N_species_active
+
     # The bulk species are also the first few indices in the chemical species list
     bulk_species_indices = range(N_bulk_species)
     bulk_species_names = chemical_species[:N_bulk_species]
@@ -1336,7 +1543,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
         if pair_1_bool == True and pair_2_bool == True:
             bulk_cia_indices.append(i)
 
-    # Else, we are trying to find the contribution from a species
+    # Else, we are trying to find the contribution from a spectrally active gas species
     if bulk_species == False and cloud_contribution == False:
 
         # Find the index in the list of chemical species 
@@ -1355,6 +1562,12 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
             pair_1, pair_2 = cia_pairs[i].split('-')
             if contribution_species == pair_1 or contribution_species == pair_2:
                 cia_indices.append(i)
+
+    # If we are looking at H-
+    if contribution_species == 'H-':
+        bound_free = True
+    else:
+        bound_free = False
 
 
     N_wl = len(wl)     # Number of wavelengths on model grid
@@ -1432,12 +1645,18 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         kappa_gas[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
                         
                 # For each free-free absorption pair
+                # NOTE : Need to be updated like cia
                 for q in range(N_ff_pairs): 
-                    
-                    n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
-                    n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
-                    n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
-                    
+
+                    # If its the total pressure contribution, we turn everything off no matter what 
+                    if (total_pressure_contribution == True) and (i == layer_to_ignore):
+                        n_n_f = 0
+
+                    else:
+                        n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
+                        n_ff_2 = n_level*X_ff[1,q,i,j,k]   # Number density of second species in ff pair
+                        n_n_ff = n_ff_1*n_ff_2             # Product of number densities of ff pair
+                        
                     # For each wavelength
                     for l in range(N_wl):
                         
@@ -1446,8 +1665,17 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         
                 # For each source of bound-free absorption (photodissociation)
                 for q in range(N_bf_species): 
+
+                    # If its the total pressure contribution, we turn everything off no matter what 
+                    if (total_pressure_contribution == True) and (i == layer_to_ignore):
+                        n_q = 0
+
+                    # We are looking at H- only
+                    elif (bound_free == True) and (i == layer_to_ignore):
+                        n_q
                     
-                    n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
+                    else:
+                        n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -1571,6 +1799,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                                 # If we want one species of cloud contribution 
                                 if (cloud_contribution == True) and (cloud_total_contribution == False) and (i == layer_to_ignore):
 
+
                                     if aerosol != aerosol_species_index:
                                         kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
 
@@ -1584,6 +1813,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                                 # If we just want total pressure contribution 
                                 elif (total_pressure_contribution == True) and (i == layer_to_ignore):
                                     kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * 0
+                                    
 
                                 # Else, don't turn off clouds
                                 else:
@@ -1591,7 +1821,8 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         
 
                 # Opaque Deck is the first element in n_aerosol_array
-                # I will decide for now to add the opaque deck to each species. I think that won't hurt to keep them together 
+                # This is set up so that the opaque deck is not appended to any of the compositionally specific aerosols
+                # And will only show up if cloud_total_contribution is set to True 
                 else:
                     for aerosol in range(len(n_aerosol_array)):
                             
@@ -1606,7 +1837,6 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                                             kappa_cloud[i,j,k,:] = 0
 
                                 else:
-
                                     for i in range(i_bot,N_layers):
                                         for q in range(len(wl)):
                                             if i == layer_to_ignore:
@@ -1660,6 +1890,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
 
     return kappa_gas, kappa_Ray, kappa_cloud
 
+
 def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
                      disable_continuum = False, suppress_print = False,
@@ -1670,16 +1901,18 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                      cloud_contribution = False, 
                      cloud_species_list = [],
                      cloud_total_contribution = False,
-                     put_one_in = True,
-                     take_one_out = False,
-                     fix_mu = True,
-                     scattering_contribution = False,
-                     reflection_contribution = False,
                      total_pressure_contribution = False,
                      layer_to_ignore = 0):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
+
+    In the pressure contribution plots, the extinction coeeficient in one pressure layer 
+    (either total or individual species) is turned off
+    and the spectrum is recomputed
+
+    Note that this function is called by pressure_contribution, which loops over all pressure layers
+    Though it can be called by a user, to calculate the contribution for a single pressure layer
 
     Args:
         planet (dict):
@@ -1720,14 +1953,34 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             is identical at all times due to translational symmetry, so y_p = 0
             is good for all times post second contact and pre third contact.
             Units are in m, not in stellar radii.
+        contribution_species_list (np.array of string):
+            List of gas species to analyze the pressure contribution of
+        bulk_species (bool):
+            If true, will compute the pressure contribution of the bulk species
+        cloud_contribution (bool):
+            If true, will compute the pressure contribution of clouds (either parameterized or aerosols)
+        cloud_species_list (np.array of string):
+            List of aerosols to analyze the pressure contribution of. Cloud_contribution must be True 
+        cloud_total_contribution (bool):
+            If true, will compute pressure contribution of combined clouds 
+            If using parameterized clouds, this bool will need to be true (to show deck + haze, for example)
+            If using aerosols, will compute combined aerosol pressure contribution
+        total_pressure_contribution (bool):
+            If true, will compute the pressure contribution by removing all opacity from each layer 
+        layer_to_ignore (int):
+            The pressure layer whose opacity will be turned off. Looped over in pressure_contribution()
 
     Returns:
         spectrum (np.array of float):
             The spectrum of the atmosphere (transmission or emission).
+        spectrum_contribution_list_names (np.array of string):
+            Array used for plotting (contains names and order of pressure contribution spectra)
+        spectrum_contribution_list (np.array of float):
+            Array of spectra, each corresponding to the pressure contribution of a species in the list_names array.
     
     '''
 
-    # Check if the atmosphere is unphysical (e.g. temperature out of bounds)
+    #Check if the atmosphere is unphysical (e.g. temperature out of bounds)
     if (check_atmosphere_physical(atmosphere, opac) == False):
         spectrum = np.empty(len(wl))
         spectrum[:] = np.NaN
@@ -1738,6 +1991,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
     scattering = model['scattering']
+    reflection = model['reflection']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1754,6 +2008,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     R_p = planet['planet_radius']
     b_p = planet['planet_impact_parameter']
     d = planet['system_distance']
+    a_p = planet['planet_semi_major_axis']
 
     if (star is not None):
         R_s = star['R_s']
@@ -1897,7 +2152,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                                                      fractional_scale_height = fractional_scale_height)
 
                 # If its a slab
-                elif (model['cloud_type'] == 'slab'):
+                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
 
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \
@@ -2135,8 +2390,6 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
                 spectrum_contribution_list_names.append('Total Pressure Contribution')
 
-
-
         # Running POSEIDON on the GPU
         elif (device == 'gpu'):
             raise Exception("GPU transmission spectra not yet supported.")
@@ -2202,22 +2455,43 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
         elif (scattering == True):
 
-            # Calculate combined single scattering albedo
-            w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud))/kappa_tot
+            # Else, we need to restructure w_cloud and g_cloud to span by layer 
+            # For Mie models with 1 species, the g and w can be help constant with each layer since
+            # Kappa cloud will encode where clouds are
+            # For models that are cloud free, you still need a g and w thats just an array of 0s
+            # For Mie models with more than one species, we need to be more careful with the g and w array
+            if len(aerosol_species) == 1 or aerosol_species == []:
+                w_cloud = np.ones_like(kappa_cloud)*w_cloud
+                g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
-            # Calculate combined scattering asymmetry parameter
-            g_tot = ((w_cloud * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+            # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+            else:
+                raise Exception('Only 1 aerosol species supported for scattering')
 
-            # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
-            F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
-                                      np.flip(dtau_tot, axis=0), 
-                                      np.flip(w_tot, axis=0), 
-                                      np.flip(g_tot, axis=0))
+            # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+            F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                        kappa_Ray, kappa_cloud, kappa_tot,
+                                        w_cloud, g_cloud, zone_idx,
+                                        hard_surface = 0, tridiagonal = 0, 
+                                        Gauss_quad = 5, numt = 1)
+        
             
             dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
+        
 
         else:
             raise Exception("Error: Invalid scattering option")
+        
+        # Add in the seperate reflection  
+        if (reflection == True):
+
+            albedo = reflection_Toon(P, wl, dtau_tot,
+                                    kappa_Ray, kappa_cloud, kappa_tot,
+                                    w_cloud, g_cloud, zone_idx,
+                                    single_phase = 3, multi_phase = 0,
+                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                    Gauss_quad = 5, numt = 1,
+                                    toon_coefficients=0, tridiagonal=0, b_top=0)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -2283,6 +2557,33 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
             # Final spectrum is the planet-star flux ratio
             spectrum = F_p_obs / F_s_obs
+        
+        if (reflection == True):
+            
+            try:
+                FpFs_reflected = albedo*(R_p_eff/a_p)**2
+            except:
+                raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
+            
+            if ('direct' in spectrum_type):
+
+                # Load stellar spectrum
+                F_s = star['F_star']
+                wl_s = star['wl_star']
+
+                if (np.array_equiv(wl_s, wl) is False):
+                    raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                    "not match wavelength grid of planet spectrum. " +
+                                    "Did you forget to provide 'wl' to create_star?")
+
+                F_s_obs = (R_s / d)**2 * F_s
+                Fp_reflected_obs = FpFs_reflected*F_s_obs
+                
+                spectrum += Fp_reflected_obs
+
+            else:
+                #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                spectrum += FpFs_reflected
 
         # Then do the contribution functions 
         spectrum_contribution_list = []
@@ -2291,6 +2592,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
             kappa_gas_temp = kappa_gas_contribution_array[i]
             kappa_cloud_temp = kappa_cloud_contribution_array[i]
+
 
             # Compute total extinction (all absorption + scattering sources)
             kappa_tot = (kappa_gas_temp[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
@@ -2310,22 +2612,42 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
             elif (scattering == True):
 
-                # Calculate combined single scattering albedo
-                w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud_temp[:,0,zone_idx,:] * w_cloud))/kappa_tot
+                # Else, we need to restructure w_cloud and g_cloud to span by layer 
+                # For Mie models with 1 species, the g and w can be help constant with each layer since
+                # Kappa cloud will encode where clouds are
+                # For models that are cloud free, you still need a g and w thats just an array of 0s
+                # For Mie models with more than one species, we need to be more careful with the g and w array
+                if len(aerosol_species) == 1 or aerosol_species == []:
+                    w_cloud = np.ones_like(kappa_cloud_temp)*w_cloud
+                    g_cloud = np.ones_like(kappa_cloud_temp)*g_cloud
 
-                # Calculate combined scattering asymmetry parameter
-                g_tot = ((w_cloud * kappa_cloud_temp[:,0,zone_idx,:]) / ((w_cloud * kappa_cloud_temp[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud
+                # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+                else:
+                    raise Exception('Only 1 aerosol species supported for scattering')
 
-                # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip P axis)
-                F_p, dtau = emission_Toon(np.flip(P), np.flip(T), wl, 
-                                        np.flip(dtau_tot, axis=0), 
-                                        np.flip(w_tot, axis=0), 
-                                        np.flip(g_tot, axis=0))
+                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                            kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                            w_cloud, g_cloud, zone_idx,
+                                            hard_surface = 0, tridiagonal = 0, 
+                                            Gauss_quad = 5, numt = 1)
+            
                 
                 dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
             else:
                 raise Exception("Error: Invalid scattering option")
+            
+                    # Add in the seperate reflection  
+            if (reflection == True):
+
+                albedo = reflection_Toon(P, wl, dtau_tot,
+                                        kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                        w_cloud, g_cloud, zone_idx,
+                                        single_phase = 3, multi_phase = 0,
+                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                        Gauss_quad = 5, numt = 1,
+                                        toon_coefficients=0, tridiagonal=0, b_top=0)
 
             # Calculate effective photosphere radius at tau = 2/3
             if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -2392,9 +2714,37 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 # Final spectrum is the planet-star flux ratio
                 spectrum_temp = F_p_obs / F_s_obs
 
+            if (reflection == True):
+            
+                try:
+                    FpFs_reflected = albedo*(R_p_eff/a_p)**2
+                except:
+                    raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
+                
+                if ('direct' in spectrum_type):
+
+                    # Load stellar spectrum
+                    F_s = star['F_star']
+                    wl_s = star['wl_star']
+
+                    if (np.array_equiv(wl_s, wl) is False):
+                        raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                        "not match wavelength grid of planet spectrum. " +
+                                        "Did you forget to provide 'wl' to create_star?")
+
+                    F_s_obs = (R_s / d)**2 * F_s
+                    Fp_reflected_obs = FpFs_reflected*F_s_obs
+                    
+                    spectrum_temp += Fp_reflected_obs
+
+                else:
+                    #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                    spectrum_temp += FpFs_reflected
+
             spectrum_contribution_list.append(spectrum_temp)
-  
+    
     return spectrum, spectrum_contribution_list_names, spectrum_contribution_list
+
 
 def pressure_contribution(planet, star, model, atmosphere, opac, wl,
                             spectrum_type = 'transmission', save_spectrum = False,
@@ -2406,34 +2756,98 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
                             cloud_contribution = False, 
                             cloud_species_list = [],
                             cloud_total_contribution = False,
-                            put_one_in = True,
-                            take_one_out = False,
-                            fix_mu = True,
-                            scattering_contribution = False,
-                            reflection_contribution = False,
-                            total_pressure_contribuiton = False):
+                            total_pressure_contribution = False,
+                            verbose = False):
 
 
     '''
-    Computes the pressure contribution function 
+    Computes the pressure contribution function by looping over each layer in the Pressure array
+
+    Args:
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        star (dict):
+            Collection of stellar properties used by POSEIDON.
+        model (dict):
+            A specific description of a given POSEIDON model.
+        atmosphere (dict):
+            Collection of atmospheric properties.
+        opac (dict):
+            Collection of cross sections and other opacity sources.
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        spectrum_type (str):
+            The type of spectrum for POSEIDON to compute
+            (Options: transmission / emission / direct_emission / 
+                      transmission_time_average).
+        save_spectrum (bool):
+            If True, writes the spectrum to './POSEIDON_output/PLANET/spectra/'.
+        disable_continuum (bool):
+            If True, turns off CIA and Rayleigh scattering opacities.
+        suppress_print (bool):
+            if True, turn off opacity print statements (in line-by-line mode).
+        Gauss_quad (int):
+            Gaussian quadrature order for integration over emitting surface
+            * Only for emission spectra *
+            (Options: 2 / 3).
+        use_photosphere_radius (bool):
+            If True, use R_p at tau = 2/3 for emission spectra prefactor.
+        device (str):
+            Experimental: use CPU or GPU (only for emission spectra)
+            (Options: cpu / gpu)
+        y_p (np.array of float):
+            Coordinate of planet centre along orbit at the time the spectrum
+            is computed (y_p = 0, the default, corresponds to mid-transit).
+            For non-grazing transits of uniform stellar disks, the spectrum
+            is identical at all times due to translational symmetry, so y_p = 0
+            is good for all times post second contact and pre third contact.
+            Units are in m, not in stellar radii.
+        contribution_species_list (np.array of string):
+            List of gas species to analyze the pressure contribution of
+        bulk_species (bool):
+            If true, will compute the pressure contribution of the bulk species
+        cloud_contribution (bool):
+            If true, will compute the pressure contribution of clouds (either parameterized or aerosols)
+        cloud_species_list (np.array of string):
+            List of aerosols to analyze the pressure contribution of. Cloud_contribution must be True 
+        cloud_total_contribution (bool):
+            If true, will compute pressure contribution of combined clouds 
+            If using parameterized clouds, this bool will need to be true (to show deck + haze, for example)
+            If using aerosols, will compute combined aerosol pressure contribution
+        total_pressure_contribution (bool):
+            If true, will compute the pressure contribution by removing all opacity from each layer 
     
     Returns:
         Contribution (np.array)
             Array. [i,j,k] i = molecule number (or total if total = True), j = Pressure layer, k = Wavelength 
-        Norm (np.array)
-            Array [i,j] where i = molecule number and j = wavelength. If user wants to normalize them   
+        norm (np.array)
+            Array [i,j] where i = molecule number and j = wavelength. If user wants to normalize them (not used in our code)
+        spectrum_contribution_list_names (np.array of string):
+            Array used for plotting (contains names and order of spectral contribution spectra)
     '''
     
+    # Warning message
+    if len(wl) > 10000:
+        print('Given current resolution (R), this will take more than a few hours to run. We reccomend to lower the resolution to 1000.')
+
+    # Load in the pressure object
     P = atmosphere['P']
 
     # Find how many elements you need 
     contribution_length = 0 
 
+    # Need to figure out if cloud contribution for non aerosols counts here or not(it doesnt)
     if bulk_species == True:
         contribution_length += 1
-    if cloud_total_contribution == True:
-        contribution_length += 1
-    if total_pressure_contribuiton == True:
+    # This only matters of aerosol models with multiple cloud species 
+    if model['cloud_type'] == 'Mie':
+        if cloud_total_contribution == True:
+            contribution_length += 1
+    else:
+        if cloud_contribution == True:
+            contribution_length += 1
+        
+    if total_pressure_contribution == True:
         contribution_length += 1
     
     contribution_length += len(contribution_species_list)
@@ -2442,10 +2856,14 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     # Define arrays where pressure contribution functions will live 
     Contribution = np.zeros(shape=(contribution_length,len(P), len(wl)))
 
-    # For denominator of contribution function 
+    # For denominator of contribution function (not used in current code, but returned just in case)
     norm = np.zeros(shape=(contribution_length,len(wl)))   # Running sum for contribution
 
+    # Loop over each layer in the pressure array, and compute spectra by removing specific opacities in that layer 
     for i in range(len(P)):
+
+        if verbose == True:
+            print(i)
 
         spectrum, spectrum_contribution_list_names, spectrum_contribution_list = pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                                                                                         spectrum_type = spectrum_type, save_spectrum = save_spectrum,
@@ -2457,21 +2875,18 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
                                                                                                                         cloud_contribution = cloud_contribution, 
                                                                                                                         cloud_species_list = cloud_species_list,
                                                                                                                         cloud_total_contribution = cloud_total_contribution,
-                                                                                                                        put_one_in = put_one_in,
-                                                                                                                        take_one_out = take_one_out,
-                                                                                                                        fix_mu = fix_mu,
-                                                                                                                        scattering_contribution = scattering_contribution,
-                                                                                                                        reflection_contribution = reflection_contribution,
-                                                                                                                        total_pressure_contribution = total_pressure_contribuiton,
+                                                                                                                        total_pressure_contribution = total_pressure_contribution,
                                                                                                                         layer_to_ignore = i)
-                                                                                                            
+        
+
+        # Loop through and take the difference of the full spectrum and the one where opacity is removed from a layer                                                                                       
         for j in range(len(spectrum_contribution_list)):
         
             # Find the difference between spectrums
             diff = spectrum - spectrum_contribution_list[j]
 
             # Add to contribution function (not yet normalized)
-            Contribution[j,i,:] = diff
+            Contribution[j,i,:] = np.abs(diff)
 
             # Increment normalization factor 
             norm[j,:] += diff
@@ -2479,35 +2894,39 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
 
     return Contribution, norm, spectrum_contribution_list_names
 
+
 def plot_pressure_contribution(wl,P,
                                Contribution,
                                spectrum_contribution_list_names, 
-                               R = 100):
+                               R = 100,
+                               return_fig = False):
 
-    # Plots out the pressure contribution functions. Only displays them, doesn't save them.
+    '''
+    Plot the pressure contributions directly from the pressure_contribution() outputs
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        P (np.array of float):
+            Model pressure grid (bar). (From atmosphere['P'])
+        Contribution (np.array)
+            Array. [i,j,k] i = molecule number (or total if total = True), j = Pressure layer, k = Wavelength 
+        spectrum_contribution_list_names (np.array of string):
+            Array used for plotting (contains names and order of spectral contribution spectra)
+        R (int, optional):
+            Spectral resolution (R = wl/dwl) to bin the model spectra to. 
+        return_fig (bool, optional):
+            Returns the fig object, in case you want it in the notebook to manipulate
+    '''
     
     for i in range(len(spectrum_contribution_list_names)):
 
-            fig, ax = plt.subplots(figsize=(10, 10))
-
-            a = ax.contourf(wl, np.log10(P), Contribution[i,:,:],cmap='plasma')
-
-            ax.set_ylabel('Log Pressure (bar)')
-            ax.invert_yaxis()
-            ax.set_xlabel('Wavelength ($\mu$m)')
-
             title = 'Contribution Function : ' + str(spectrum_contribution_list_names[i])
-            
-            ax.set_title(title)
-            plt.colorbar(a, label='Transmission CF')
-            plt.show()
 
             # Trying Ryan's Binning 
-
             fig = plt.figure()  
             fig.set_size_inches(14, 7)
             ax = plt.gca()
-
             ax.set_yscale("log")
 
             # Bin the wavelengths using the first pressure layer of the spectrum 
@@ -2523,7 +2942,7 @@ def plot_pressure_contribution(wl,P,
 
             X_bin, Y_bin = np.meshgrid(wl_binned, P)
             
-            # Plot binned contribution function
+            # Plot binned contribution functio
             contour_plot = plt.contourf(X_bin, Y_bin, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
             #contour_plot = plt.contourf(wl_binned, P, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
 
@@ -2536,29 +2955,103 @@ def plot_pressure_contribution(wl,P,
             ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
             ax.set_title(title)
 
-            plt.colorbar()
+            fig1 = fig
+
+            #plt.colorbar()
             plt.show()
+
+            fig = plt.figure()  
+            fig.set_size_inches(14, 7)
+            ax = plt.gca()
+            ax.set_yscale("log")
+
+            Contribution_binned[Contribution_binned == 0] = np.min(Contribution_binned[np.nonzero(Contribution_binned)])
+
+            contour_plot = plt.contourf(X_bin, Y_bin, Contribution_binned[:,:], 100, cmap=cmr.swamp_r, norm = colors.LogNorm(vmin=Contribution_binned[:,:].min(), vmax=Contribution_binned[:,:].max()))
+
+            ax.invert_yaxis()    
+
+            ax.set_xlim([wl[0], wl[-1]])
+            ax.set_ylim([P[0], P[-1]])        
+            
+            ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5)
+            ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
+            title = 'LOG Contribution Function : ' + str(spectrum_contribution_list_names[i])
+            ax.set_title(title)
+
+            fig2 = fig
+
+            #plt.colorbar()
+            plt.show()
+    
+    if return_fig == True:
+        return fig1, fig2
+
+#################################
+# Pressure Contribution Functions
+#################################
+
 
 def photometric_contribution_function(wl, P, Contribution, 
                                       spectrum_contribution_list_names,
+                                      binsize = 1,
+                                      treat_wlmin_as_zero = False
                                       ):
+    
+    '''
+    Computes the photometric contribution directly from the pressure_contribution() outputs
+    (a photometric contribution is just the integral average over wavelengths, i.e. the mean)
 
-    wl_min = np.min(wl)
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        P (np.array of float):
+            Model pressure grid (bar). (From atmosphere['P'])
+        Contribution (np.array)
+            Array. [i,j,k] i = molecule number (or total if total = True), j = Pressure layer, k = Wavelength 
+        spectrum_contribution_list_names (np.array of string):
+            Array used for plotting (contains names and order of spectral contribution spectra)
+        binsize (float):
+            The size of the wavelength bin 
+        treat_wlmin_as_zero (bool, optional):
+            If True, will set wl_min as 0 before binning (makes bins look nicer than 0.2 to 1.2 um)
+    
+    Returns:
+         photometric_contribution (np.array of floats):
+            Array of each photometric contribution function, corresponding to the wavelength bins
+         photometric_all_wavelengths (np.array of floats):
+            Array containing photometric contributions across all wavelengths
+         bins (np.array of floats):
+            Wavelength bins (wl_min and wl_max for each bin) (for plotting)
+    '''
+
+    # This parameter is to make the bins look a bit better
+    # I.e. if you are using 1 um sized bins 
+    # It will go from 0 to 1, instead of 0.2 to 1.2 
+    if treat_wlmin_as_zero == False:
+        wl_min = np.min(wl)
+    else:
+        wl_min = 0
+
     wl_max = np.max(wl)
 
-    # Bin Stuff from minimum wavelength to maximum wavelength by 0.1 
-    bins = np.arange(wl_min,wl_max+0.1,0.1)
+    if binsize == 0:
+        binsize = np.max(np.diff(wl))
 
-    for b in range(len(bins)):
-        bins[b] = round(bins[b],1)
+    # Bin Stuff from minimum wavelength to maximum wavelength by 0.1 
+    bins = np.arange(wl_min,wl_max+binsize,binsize)
+
+    # Replace first bin with actual wl_min 
+    if treat_wlmin_as_zero == True:
+        bins[0] = np.min(wl)
 
     # Make it so the last bin includes the max wavelength (if not it will be a seperate bin)
-    bins[-1] += 0.1
+    bins[-1] += binsize
     bin_indices = np.digitize(wl, bins)
-    bins[-1] -= 0.1
+    bins[-1] -= binsize
 
     bincount = np.bincount(bin_indices)
-
+    
     # Finds the indices to loop over in the wavelength ranges
     indices_for_loop = []
     for n in range(len(bincount)):
@@ -2566,7 +3059,6 @@ def photometric_contribution_function(wl, P, Contribution,
             indices_for_loop.append(n)
         else:
             indices_for_loop.append(np.sum(bincount[0:n+1])-1)
-
 
     # Now to find photometric contribution 
 
@@ -2576,21 +3068,21 @@ def photometric_contribution_function(wl, P, Contribution,
     # Loop over each molecule
     for i in range(len(spectrum_contribution_list_names)):
 
-        median_array_one_molecule = []
+        mean_array_one_molecule = []
         # Loop over each wavelength range 
         for j in range(len(indices_for_loop)-1):
             # Loop over each pressure range to get the median 
             temp_row = []
             for p in range(len(P)):
+                
+                temp_row.append(np.mean(Contribution[i,p,indices_for_loop[j]:indices_for_loop[j+1]]))
 
-                temp_row.append(np.nanmedian(Contribution[i,p,indices_for_loop[j]:indices_for_loop[j+1]]))
+            mean_array_one_molecule.append(temp_row)
 
-            median_array_one_molecule.append(temp_row)
+        photometric_contribution.append(mean_array_one_molecule)
 
-        photometric_contribution.append(median_array_one_molecule)
-
-    # Finding the total photometric contribution for each molecule by adding everything up    
-    photometric_total = []
+    # Finding the across all wavelengths by adding everything up  
+    photometric_all_wavelengths = []
     for i in range(len(photometric_contribution)):
         temp_row = np.zeros(len(photometric_contribution[i][0]))
         for j in range(len(photometric_contribution[i])):
@@ -2598,64 +3090,84 @@ def photometric_contribution_function(wl, P, Contribution,
             
         # Now to normalize the area to 1 
         temp_row = temp_row / np.trapz(temp_row)
-        photometric_total.append(temp_row)
+        photometric_all_wavelengths.append(temp_row)
 
+    return photometric_contribution, photometric_all_wavelengths, bins
 
-    return photometric_contribution, photometric_total
 
 def plot_photometric_contribution(wl,P,
-                                  photometric_contribution, photometric_total,
-                                  spectrum_contribution_list_names):
+                                  photometric_contribution, photometric_all_wavelengths,
+                                  spectrum_contribution_list_names,
+                                  bins = [],
+                                  return_fig = False):
+    
+    '''
+    Plots the photoemtric contributions directly from outputs of photometric_contribution_function()
+
+    Args:
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        P (np.array of float):
+            Model pressure grid (bar). (From atmosphere['P'])
+        photometric_contribution (np.array of floats):
+            Array of each photometric contribution function, corresponding to the wavelength bins
+        photometric_all_wavelengths (np.array of floats):
+            Array containing photometric contributions across all wavelengths
+        spectrum_contribution_list_names (np.array of string):
+            Array used for plotting (contains names and order of spectral contribution spectra)
+        bins (np.array of floats):
+            Wavelength bins (wl_min and wl_max for each bin) (for plotting and the legend)
+        return_fig (bool, optional):
+            Returns the fig object, in case you want it in the notebook to manipulate
+        
+    '''
 
     # Loop over each molecule
-
     labels = []
     for i in spectrum_contribution_list_names:
         labels.append(i)
-    labels.append('Total')
+
 
     for i in range(len(spectrum_contribution_list_names)):
 
+        # Normalize to 1 
+        photometric_contribution[i] = np.array(photometric_contribution)[i,:]/np.max(np.array(photometric_contribution)[i,:])
+        photometric_all_wavelengths[i] = np.array(photometric_all_wavelengths)[i,:]/np.max(np.array(photometric_all_wavelengths)[i,:])
+
         fig, ax = plt.subplots(figsize=(10, 10))
 
-        for b in range(len(photometric_contribution[i])):
-            ax.plot(photometric_contribution[i][b],np.log10(P))
+        if bins == []:
+            for b in range(len(photometric_contribution[i])):
+                ax.plot(photometric_contribution[i][b],np.log10(P))
+        
+        else:
+            cm = plt.get_cmap('gist_rainbow')
+            ax.set_prop_cycle('color', [cm(1.*i/len(bins)) for i in range(len(bins))])
+            for b in range(len(bins)-1):
+                label = '[' + str(round(bins[b],1)) + ':' + str(round(bins[b+1],1)) + ')'
+                if b == len(bins)-2:
+                    label = '[' + str(round(bins[b],1)) + ':' + str(round(bins[b+1],1)) + ']'
+                ax.plot(photometric_contribution[i][b],np.log10(P), label = label)
+            ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+            ax.get_legend().set_title("Wavelength (μm) Bins")
 
         ax.set_ylabel('Log Pressure (bar)')
         ax.invert_yaxis()
         ax.set_xlabel('Contribution')
         title = 'Photometric Contribution Function : ' + str(labels[i])
         ax.set_title(title)
+
+        fig1 = fig
         plt.show()
         
         fig, ax = plt.subplots(figsize=(10, 10))
         ax.set_ylabel('Log Pressure (bar)')
         ax.invert_yaxis()
         ax.set_xlabel('Contribution')
-        title = 'Photometric Contribution Function All Wavelength : ' + str(labels[i])
+        title = 'Photometric Contribution Function All Wavelengths : ' + str(labels[i])
         ax.set_title(title)
-        ax.plot(photometric_total[i],np.log10(P))
+        ax.plot(photometric_all_wavelengths[i],np.log10(P))
         plt.show()
 
-    # Plots all of them together, and the log version as well 
-    fig, ax = plt.subplots(figsize=(10, 10))
-    ax.set_ylabel('Log Pressure (bar)')
-    ax.invert_yaxis()
-    ax.set_xlabel('Contribution')
-    title = 'Photometric Contribution Function All Wavelength All Molecules:'
-    ax.set_title(title)
-    for i in range(len(spectrum_contribution_list_names)):
-        ax.plot(photometric_total[i],np.log10(P), label = labels[i])
-    ax.legend()
-    plt.show()
-
-    fig, ax = plt.subplots(figsize=(10, 10))
-    ax.set_ylabel('Log Pressure (bar)')
-    ax.invert_yaxis()
-    ax.set_xlabel('Log Contribution')
-    title = 'Photometric Contribution Function All Wavelength All Molecules:'
-    ax.set_title(title)
-    for i in range(len(spectrum_contribution_list_names)):
-        ax.plot(np.log10(photometric_total[i]),np.log10(P), label = labels[i])
-    ax.legend()
-    plt.show()
+    if return_fig == True:
+        return fig1

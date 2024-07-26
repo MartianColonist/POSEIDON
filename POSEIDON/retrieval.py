@@ -43,7 +43,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                   stellar_T_step = 20, stellar_log_g_step = 0.1, 
                   N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest', 
                   resume = False, verbose = True, sampling_target = 'parameter',
-                  chem_grid = 'fastchem', N_output_samples = 1000):
+                  chem_grid = 'fastchem', N_output_samples = 1000,):
     '''
     ADD DOCSTRING
     '''
@@ -252,6 +252,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     stellar_contam = model['stellar_contam']
     nightside_contam = model['nightside_contam']
     disable_atmosphere = model['disable_atmosphere']
+    PT_penalty = model['PT_penalty']
 
     # Unpack planet and star properties
     R_p = planet['planet_radius']
@@ -354,6 +355,33 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
                                      log_g, M_p, T_input, X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN, 
                                      constant_gravity, chemistry_grid)
+        
+        # If PT_penalty is true, then you compute the PT penalty
+        # Only for Pelletier 2021 profiles
+        if PT_penalty == True:
+
+            # Unpack Ptop and Pbottom 
+            log_P_min = np.min(np.log10(P))
+            log_P_max = np.max(np.log10(P))
+
+            # Unpack the number of knots, T points, and sigma smooth
+            num_of_knots = len(PT_params) - 1
+            T_points = np.array(PT_params[:-1])
+            sigma_s = PT_params[-1]
+
+            # Delta log p goes in denominator of the sum
+            # restep here just returns the spacing 
+            deltalogp = np.linspace(log_P_min,log_P_max,num=num_of_knots,retstep=True)[1]
+
+            # Sum in Equation 11, with the addition of a 1/2 ln (2 pi sigma_smooth**2) from Line et al 2011
+            sum = np.sum(((T_points[2:] - 2*T_points[1:-1] + T_points[:-2])**2)/(deltalogp**3) ) - 0.5 * np.log(2*np.pi*sigma_s**2)
+            
+            # Prefix remains the same from Equation 11
+            lnprior_TP = (-1.0/(2.0*sigma_s**2)) * (1/(log_P_max-log_P_min)) * sum
+
+        else:
+            lnprior_TP = 0
+        
 
         #***** Step 3: generate spectrum of atmosphere ****#
 
@@ -372,7 +400,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         if (np.any(np.isnan(spectrum))):
             
             # Quit if given parameter combination is unphysical
-            return 0, spectrum, atmosphere
+            return 0, spectrum, atmosphere, lnprior_TP
 
     #***** Step 4: stellar contamination *****#
     
@@ -474,7 +502,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             F_s_binned = bin_spectrum_to_data(F_s_obs, wl, data)
             ymodel = F_p_binned/F_s_binned
 
-    return ymodel, spectrum, atmosphere 
+    return ymodel, spectrum, atmosphere, lnprior_TP
 
 
 @jit(nopython = True)
@@ -551,6 +579,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     error_inflation = model['error_inflation']
     offsets_applied = model['offsets_applied']
     stellar_contam = model['stellar_contam']
+    PT_penalty = model['PT_penalty']
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
@@ -852,13 +881,13 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         
         #***** For valid parameter combinations, run forward model *****#
 
-        ymodel, spectrum, _ = forward_model(cube, planet, star, model, opac, data, 
-                                            wl, P, P_ref_set, R_p_ref_set, P_param_set, 
-                                            He_fraction, N_slice_EM, N_slice_DN, 
-                                            spectrum_type, T_phot_grid, T_het_grid, 
-                                            log_g_phot_grid, log_g_het_grid,
-                                            I_phot_grid, I_het_grid, y_p, F_s_obs,
-                                            constant_gravity, chemistry_grid)
+        ymodel, spectrum, _, lnprior_TP = forward_model(cube, planet, star, model, opac, data, 
+                                                        wl, P, P_ref_set, R_p_ref_set, P_param_set, 
+                                                        He_fraction, N_slice_EM, N_slice_DN, 
+                                                        spectrum_type, T_phot_grid, T_het_grid, 
+                                                        log_g_phot_grid, log_g_het_grid,
+                                                        I_phot_grid, I_het_grid, y_p, F_s_obs,
+                                                        constant_gravity, chemistry_grid)
         
         # Reject unphysical spectra (forced to be NaN by function above)
         if (np.any(np.isnan(spectrum))):
@@ -944,7 +973,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
             ydata_adjusted = ydata.copy()
 
-            # Three offsets for three datasets
+            # Three offsets for three dataseets
             if offset_1_start == 0:
                 ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
                 ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
@@ -967,6 +996,9 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     
         loglikelihood = (-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq).sum()
         loglikelihood += norm_log
+
+        # Add the PT penalty 
+        loglikelihood += lnprior_TP
                     
         return loglikelihood
     
@@ -1019,7 +1051,7 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
         param_vector = samples[sample[i],:]
 
         ymodel, spectrum, \
-        atmosphere = forward_model(param_vector, planet, star, model, opac, data, 
+        atmosphere, _ = forward_model(param_vector, planet, star, model, opac, data, 
                                    wl, P, P_ref_set, R_p_ref_set, P_param_set, 
                                    He_fraction, N_slice_EM, N_slice_DN, 
                                    spectrum_type, T_phot_grid, T_het_grid, 
@@ -1096,6 +1128,170 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
     return T_low2, T_low1, T_median, T_high1, T_high2, \
            log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2, \
            spec_low2, spec_low1, spec_median, spec_high1, spec_high2
+
+
+def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = None, 
+                             median=True, best_fit=False,
+                             P_param_set = 1.0e-2, He_fraction = 0.17,
+                             N_slice_EM = 2, N_slice_DN = 4, 
+                             constant_gravity = False, chemistry_grid = None):
+    """
+    Creates the atmosphere dictionary for the median or best fit spectrum of a retrieval.
+
+    Args:
+        planet (dict):
+            Collection of planetary properties used POSEIDON.
+        model (dict):
+            A specific description of a given POSEIDON model.
+        P (np.array of float):
+            Model pressure grid (bar).
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        median (optional, bool)
+            Option to create an atmosphere from the median retrieved spectrum.
+        best_fit (optional, bool)
+            Option to create an atmosphere from the best fit retrieved spectrum
+                He_fraction (float):
+            Assumed H2/He ratio (0.17 default corresponds to the solar ratio).
+        N_slice_EM (even int):
+            Number of azimuthal slices in the evening-morning transition region.
+        N_slice_DN (even int):
+            Number of zenith slices in the day-night transition region.
+        constant_gravity (bool):
+            If True, disable inverse square law gravity (only for testing).
+        chemistry_grid (dict):
+            For models with a pre-computed chemistry grid only, this dictionary
+            is produced in chemistry.py.
+
+    Returns:
+        atmosphere (dict):
+                Collection of atmospheric properties required to compute the
+                resultant spectrum of the planet.
+    """
+
+    # unpack planet
+    planet_name = planet['planet_name']
+
+    # unpack model
+    param_names = model['param_names']
+    N_params_cum = model['N_params_cum']
+    physical_param_names = model['physical_param_names']
+
+    radius_unit = model['radius_unit']
+    mass_unit = model['mass_unit']
+    surface = model['surface']
+
+    # no user defined T_input and X_input in retrievals
+    T_input = []
+    X_input = []
+
+    # Identify output directory location
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+
+    # Load relevant output directory
+    output_prefix = model['model_name'] + '-'
+
+    # Change directory into MultiNest result file folder
+    os.chdir(output_dir + 'MultiNest_raw/')
+
+    # Run PyMultiNest analyser to extract posterior samples
+    analyzer = pymultinest.Analyzer(len(param_names), outputfiles_basename = output_prefix,
+                                    verbose = False)
+    
+    # get parameter values for either the median or best fit model
+    if median == True and best_fit == False:
+
+        # get stats 
+        stats = analyzer.get_stats()
+
+        # create empty list to store parameter values
+        param_values = []
+        
+        # loop over all parameters in model
+        for i in range(len(param_names)):
+            param_values.append(stats['marginals'][i]['median'])
+
+    
+    elif median == False and best_fit == True:
+
+        # get best fit parameter values
+        best_fit = analyzer.get_best_fit()
+        param_values = best_fit['parameters']
+
+
+    # catch cases where median and best fit are both true or both false
+    elif (median == False and best_fit == False) or (median == True and best_fit == True):
+        # Change directory back to directory where user's python script is located
+        os.chdir('../../../../')
+        raise Exception("Please specify either median or best fit model as True")
+    
+
+    # Change directory back to directory where user's python script is located
+    os.chdir('../../../../')
+
+
+    # split parameters into each atmosphere category
+    physical_params, PT_params, log_X_params, \
+    cloud_params, geometry_params, _, _, _ = split_params(param_values, N_params_cum)
+    
+    # Unpack reference pressure if set as a free parameter
+    if ('log_P_ref' in physical_param_names):
+        P_ref = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_ref')[0][0]])
+    else:
+        P_ref = P_ref_set
+
+    # Unpack reference radius if set as a free parameter
+    if ('R_p_ref' in physical_param_names):
+        R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
+
+        # Convert normalised radius drawn by MultiNest back into SI
+        if (radius_unit == 'R_J'):
+            R_p_ref *= R_J
+        elif (radius_unit == 'R_E'):
+            R_p_ref *= R_E
+        else:
+            R_p_ref = R_p_ref_set
+
+    # Unpack planet mass if set as a free parameter
+    if ('M_p' in physical_param_names):
+        M_p = physical_params[np.where(physical_param_names == 'M_p')[0][0]]
+
+        # Convert normalised mass drawn by MultiNest back into SI
+        if (mass_unit == 'M_J'):
+            M_p *= M_J
+        elif (mass_unit == 'M_E'):
+            M_p *= M_E
+
+    else:
+        M_p = None
+
+    # Unpack log(gravity) if set as a free parameter
+    if ('log_g' in physical_param_names):
+        log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
+    else:
+        log_g = None
+
+    # Unpack surface pressure if set as a free parameter
+    if (surface == True):
+        P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+    else:
+        P_surf = None
+
+    
+    # make atmosphere 
+    atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
+                                 log_X_params, cloud_params, geometry_params,
+                                 log_g = log_g, M_p = M_p, T_input = T_input,
+                                 X_input = X_input, P_surf = P_surf,
+                                 P_param_set = P_param_set, He_fraction = He_fraction, 
+                                 N_slice_EM = N_slice_EM, N_slice_DN = N_slice_DN, 
+                                 constant_gravity = constant_gravity,
+                                 chemistry_grid = chemistry_grid)
+    
+    return atmosphere
+
 
 
 #***** Compute Bayes factors, sigma significance etc *****#
