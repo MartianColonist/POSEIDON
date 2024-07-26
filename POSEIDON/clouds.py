@@ -2500,26 +2500,26 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
         counter += 1
 
     # Save each radiative property as a seperate numpy array for future 
-    title = input_file_path + 'opacity/refractive_indices/eff_ext_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name
     np.save(title,ext_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_scat_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name
     np.save(title,scat_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_abs_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name
     np.save(title,abs_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_back_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name
     np.save(title,back_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_w_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name
     np.save(title,w_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_g_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' + aerosol_name
     np.save(title,g_array,allow_pickle = True)
 
     # Save all of them together as the jumpbo array
-    title = input_file_path + 'opacity/refractive_indices/jumbo_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name
     jumbo_array.append([ext_array,scat_array,abs_array,back_array,w_array,g_array])
     np.save(title,jumbo_array,allow_pickle = True)
 
@@ -2814,7 +2814,7 @@ def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
         
         elif g_w_calc == 'trap':
             eff_w[idx_start:idx_end] = np.trapz(probs*w_intpl, z)
-            eff_g[idx_start:idx_end] = nnp.trapz(probs*g_intpl, z) 
+            eff_g[idx_start:idx_end] = np.trapz(probs*g_intpl, z) 
 
         # Append everything to arrays to save
         ext_array.append(eff_ext_cross_section)
@@ -2827,26 +2827,26 @@ def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
         counter += 1
 
     # Save each radiative property as a seperate numpy array for future 
-    title = input_file_path + 'opacity/refractive_indices/eff_ext_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name
     np.save(title,ext_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_scat_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name
     np.save(title,scat_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_abs_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name
     np.save(title,abs_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_back_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name
     np.save(title,back_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_w_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name
     np.save(title,w_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/refractive_indices/eff_g_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' + aerosol_name
     np.save(title,g_array,allow_pickle = True)
 
     # Save all of them together as the jumpbo array
-    title = input_file_path + 'opacity/refractive_indices/jumbo_Mie_' + aerosol_name
+    title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name
     jumbo_array.append([ext_array,scat_array,abs_array,back_array,w_array,g_array])
     np.save(title,jumbo_array,allow_pickle = True)
 
