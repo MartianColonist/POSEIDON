@@ -113,10 +113,10 @@ def test_continuum_retrieval():
 
     #***** Generate synthetic data *****#
 
-    os.mkdir('./data')
-    os.mkdir('./data/WASP-121b')
+   # os.mkdir('./tests/data')
+   # os.mkdir('./tests/data/WASP-121b')
     
-    data_dir = './data/WASP-121b'
+    data_dir = './tests/data/WASP-121b'
 
     generate_syn_data_from_user(planet, wl, spectrum, data_dir, instrument = 'dummy',
                                 R_data = 30, err_data = 50, wl_start = 0.45, 
@@ -154,15 +154,15 @@ def test_continuum_retrieval():
     #***** Run atmospheric retrieval *****#
 
     run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
-                    spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
-                    N_live = 400, verbose = True)
+                  spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
+                  N_live = 400, verbose = True)
 
     #***** Read MultiNest retrieval results *****#
 
     true_vals = [1.753, T_eq, log_X_params[0]]
 
     # Change directory into MultiNest result file folder
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+    output_dir = './tests/POSEIDON_output/' + planet_name + '/retrievals/'
     os.chdir(output_dir + 'MultiNest_raw/')
 
     n_params = len(model['param_names'])

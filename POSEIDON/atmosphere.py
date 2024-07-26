@@ -1698,8 +1698,6 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio,
              constant_gravity = False, chemistry_grid = None,
              PT_penalty = False, T_eq = None):
-             He_fraction, T_input, X_input, P_param_set, log_P_slope_phot, 
-             log_P_slope_arr, constant_gravity = False, chemistry_grid = None):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
