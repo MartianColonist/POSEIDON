@@ -781,6 +781,70 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
     plt.show()
 
 
+def plot_lognormal_distribution(r_m_std_dev = 0.5):
+
+    '''
+    Plots the lognormal distribution (which points are computed and integrated over)
+
+    Args:
+        r_m_std_dev (float):
+            Width of the lognormal distribution
+
+    Returns: 
+        Outputs a plot particle size distributions
+
+    '''
+    import matplotlib
+    from matplotlib import cm
+    
+    plt.style.use('classic')
+    plt.rc('font', family = 'serif')
+    matplotlib.rcParams['svg.fonttype'] = 'none'
+    matplotlib.rcParams['figure.facecolor'] = 'white'
+
+    rm_array = [1e-3, 1e-2, 1e-1, 1e0, 1e1]
+    labels = ['1e-3 μm', '1e-2 μm', '1e-1 μm', '1 μm', '10 μm', '10 μm']
+
+    color = cm.gnuplot2(np.linspace(0, 1,6))
+    color = color[:5]
+
+    plt.figure(figsize=(12,6))
+
+    for n in range(len(rm_array)):
+
+        r_m = rm_array[n]
+
+        z_max = 5
+        num_integral_points = 100
+        R_Mie = 1000
+
+        z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
+
+        z = np.append(z[::-1], -z)
+
+
+        # For the effective cross section integral we need three components 
+        # 1) Geometric cross section
+        # 2) Probability distribution of particle size 
+        # 3) Qext, which is given by the LX-MIE algorithm
+
+        # ??? Still not sure about the constant here
+        probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
+        radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
+        geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
+
+        plt.plot(np.log10(radii), probs, color = color[n], lw = 2, label = labels[n])
+        plt.scatter(np.log10(radii), probs, color = color[n], lw = 2)
+
+    plt.ylim(-0.02, np.max(probs)+0.1)
+    title = 'Assumed Particle Size Distribution ($\sigma_r$ = ' + str(r_m_std_dev) + ')'
+    plt.title(title)
+    plt.ylabel('Probability')
+    plt.xlabel('Log Particle Radii (μm)')
+    plt.legend()
+    plt.show()
+
+
 def vary_one_parameter(model, planet, star, param_name, vary_list,
                        wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og,
                        spectrum_type = 'transmission'):
