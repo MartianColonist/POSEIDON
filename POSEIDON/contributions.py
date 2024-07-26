@@ -742,7 +742,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                                                      fractional_scale_height = fractional_scale_height)
 
                 # If its a slab
-                elif (model['cloud_type'] == 'slab'):
+                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
 
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \
@@ -1367,11 +1367,6 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
     from POSEIDON.utility import plot_collection
     from POSEIDON.visuals import plot_spectra
-
-    if (ax == None):
-        ax = plt.gca()
-    else:
-        ax = ax
 
     spectra = []
 
@@ -2157,7 +2152,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                                                      fractional_scale_height = fractional_scale_height)
 
                 # If its a slab
-                elif (model['cloud_type'] == 'slab'):
+                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
 
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \

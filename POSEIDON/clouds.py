@@ -630,18 +630,16 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
     elif (cloud_type == 'one_slab'):
 
         # only one slab location in model
-        # pineapple
-        print('P_cloud = ', P_cloud)
         P_cloud_index_top = find_nearest(P,P_cloud)
         P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
 
         # catch case where user specificed colours have not accounted for the cloud extent
         if len(colour_list) == len(aerosol_species):
             # plot cloud pressure extent
-            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color = 'silver', label = 'Cloud Pressure Extent')
+            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color = 'silver', label = 'Slab Pressure Extent')
         else: 
             # plot cloud pressure extent
-            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color = colours[-1], label = 'Cloud Pressure Extent')
+            ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color = colours[-1], label = 'Slab Pressure Extent')
 
         # loop through aerosols
         for q in range(len(aerosol_species)):
