@@ -716,15 +716,15 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
     nu_max = 1.0e4/wl_min   # Maximum wavenumber on output grid
     
     # Round so wavenumber grid bounds match cross section resolution (0.01 cm^-1)
-    nu_min = np.around(nu_min, np.abs(np.int(np.log10(line_by_line_res))))
-    nu_max = np.around(nu_max, np.abs(np.int(np.log10(line_by_line_res))))
+    nu_min = np.around(nu_min, np.abs(int(np.log10(line_by_line_res))))
+    nu_max = np.around(nu_max, np.abs(int(np.log10(line_by_line_res))))
     
     # Find number of wavenumber points on grid
-    N_nu = np.int((nu_max - nu_min)/line_by_line_res)
+    N_nu = int((nu_max - nu_min)/line_by_line_res)
     
     # Initialise line-by-line model wavenumber grid
     nu = np.linspace(nu_max, nu_min, N_nu)                          # Decreasing wavenumber order
-    nu = np.around(nu, np.abs(np.int(np.log10(line_by_line_res))))  # Remove floating point errors
+    nu = np.around(nu, np.abs(int(np.log10(line_by_line_res))))  # Remove floating point errors
     
     # Initialise corresponding wavelength grid 
     wl = 1.0e4/nu   # Convert from cm^-1 to um

@@ -1103,7 +1103,7 @@ def generate_latex_param_names(param_names):
         idxs = []          # Indices where each component starts
         lens= []           # Number of characters in each component
         
-        captured_characters = np.zeros(len(param)).astype(np.int32)  # Stays zero for entries with solo letters (e.g. 'H' in 'H2O')
+        captured_characters = np.zeros(len(param)).astype(np.int64)  # Stays zero for entries with solo letters (e.g. 'H' in 'H2O')
 
         # Temporary fix for 'slope' P-T profile parameters
         if (param in ['Delta_T_10-1mb', 'Delta_T_100-10mb', 'Delta_T_1-0.1b',
