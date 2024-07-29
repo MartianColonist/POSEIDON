@@ -1168,6 +1168,16 @@ def generate_latex_param_names(param_names):
             latex_names += [string]
             continue
 
+        if ('alpha_Line' == param):
+            string = '$\\alpha_{\\mathrm{Line}}$'
+            latex_names += [string]
+            continue
+
+        if ('beta_Line' == param):
+            string = '$\\beta_{\\mathrm{Line}}$'
+            latex_names += [string]
+            continue
+
         if ('Delta_log_P_' in param):
             if('SiO2' in param):
                 string = '$\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{SiO_2}$'
