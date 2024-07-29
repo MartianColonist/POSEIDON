@@ -1228,7 +1228,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  legend_box = True, ax = None, save_fig = True,
                  show_data_bin_width = True, show_data_cap = True,
                  data_alpha = 0.8, data_edge_width = 0.8,
-                 line_widths = [], xlabels = True):
+                 line_widths = [], xlabels = True, ylabels = True):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1307,7 +1307,9 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         line_widths (list of float, optional):
             Line widths for binned spectra (defaults to 2.0 if not specified).
         x_labels (bool):
-            If false, will remove x_ticks and x_label.
+            If false, will remove x_ticks labels and x_label.
+        y_labels (bool):
+            If false, will remove y_ticks labels and y_label.
 
     Returns:
         fig (matplotlib figure object):
@@ -1675,23 +1677,24 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     if xlabels == True:
         ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
-    if (plot_type == 'transmission'):
-        if (y_min_plt < 0.10):
-            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
-        else:
-            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
-    elif (plot_type == 'planet_star_radius_ratio'):
-        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
-    elif (plot_type == 'time_average_transmission'):
-        ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
-    elif (plot_type == 'emission'):
-        ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
-    elif ((plot_type == 'direct_emission') and (y_unit == 'Fp')):
-        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
-    elif ((plot_type == 'direct_emission') and (y_unit in ['Fs', 'F*'])):
-        ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
-    elif (plot_type == 'brightness_temp'):
-        ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
+    if ylabels == True:
+        if (plot_type == 'transmission'):
+            if (y_min_plt < 0.10):
+                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+            else:
+                ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+        elif (plot_type == 'planet_star_radius_ratio'):
+            ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
+        elif (plot_type == 'time_average_transmission'):
+            ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
+        elif (plot_type == 'emission'):
+            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+        elif ((plot_type == 'direct_emission') and (y_unit == 'Fp')):
+            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+        elif ((plot_type == 'direct_emission') and (y_unit in ['Fs', 'F*'])):
+            ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+        elif (plot_type == 'brightness_temp'):
+            ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
@@ -1711,6 +1714,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     else:
         ax1.set_xticks(wl_ticks)
         ax1.tick_params(labelbottom=False)  
+    
+    # If ylabels = False, don't show them
+    if ylabels == False:
+        ax.tick_params(labelleft=False)  
     
     # Switch to two columns if many spectra are being plotted
     if (N_spectra >= 6):
@@ -2108,6 +2115,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            show_data_bin_width = True, show_data_cap = True,
                            data_alpha = 0.8, data_edge_width = 0.8, sigma_to_plot = 2,
                            line_widths = [], model = None, add_retrieved_offsets = False,
+                           xlabels = True, ylabels = True
                         ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2202,6 +2210,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             POSEIDON model dictionary. Required to be defined for offsets to be added.
         add_retrieved_offsets (bool, optional):
             Plots data with retrieved offset values.
+        x_labels (bool):
+            If false, will remove x_ticks and x_label.
+        y_labels (bool):
+            If false, will remove y_ticks and y_label.
      
     Returns:
         fig (matplotlib figure object):
@@ -2668,19 +2680,21 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
-    ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+    if xlabels == True:
+        ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
-    if (plot_type == 'transmission'):
-        if (y_min_plt < 0.10):
-            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
-        else:
-            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
-    elif (plot_type == 'planet_star_radius_ratio'):
-        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
-    elif (plot_type == 'emission'):
-        ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
-    elif (plot_type == 'direct_emission'):
-        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+    if ylabels == True:
+        if (plot_type == 'transmission'):
+            if (y_min_plt < 0.10):
+                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+            else:
+                ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+        elif (plot_type == 'planet_star_radius_ratio'):
+            ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
+        elif (plot_type == 'emission'):
+            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+        elif (plot_type == 'direct_emission'):
+            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
@@ -2695,7 +2709,15 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
     # Plot wl tick labels
-    ax1.set_xticks(wl_ticks)
+    if xlabels == True:
+        ax1.set_xticks(wl_ticks)
+    else:
+        ax1.set_xticks(wl_ticks)
+        ax1.tick_params(labelbottom=False)  
+    
+    # If ylabels = False, don't show them
+    if ylabels == False:
+        ax.tick_params(labelleft=False)  
 
     # Add box around legend
     if (legend_box == True):
@@ -3311,7 +3333,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                               retrieval_colour_list, retrieval_labels, span, truths, 
                               N_rows, N_columns, N_bins,
                               vertical_lines, vertical_lines_colors, tick_labelsize = 8, title_fontsize = 12,
-                              custom_labels = []):
+                              custom_labels = [], custom_ticks = []):
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3408,7 +3430,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
-                                                       param_min, param_max, colour, x_max_array = x_max_array)
+                                                    param_min, param_max, colour, x_max_array = x_max_array,)
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
@@ -3479,6 +3501,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 ax.xaxis.set_major_locator(xmajorLocator)
                 ax.xaxis.set_minor_locator(xminorLocator)
 
+            if custom_ticks != []:
+                xmajorLocator = MultipleLocator(custom_ticks[q][0])
+                xminorLocator = MultipleLocator(custom_ticks[q][1])
+                ax.xaxis.set_major_locator(xmajorLocator)
+                ax.xaxis.set_minor_locator(xminorLocator)
+
 
         # Overplot true value
         if (truths != []):
@@ -3512,7 +3540,7 @@ def plot_histograms(planet_name, models, plot_parameters,
                     external_param_names = [], plt_label = None, 
                     save_fig = True,
                     vertical_lines = [], vertical_line_colors = [], tick_labelsize = 8, title_fontsize = 12,
-                    custom_labels = []):
+                    custom_labels = [], custom_ticks = []):
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -3664,7 +3692,8 @@ def plot_histograms(planet_name, models, plot_parameters,
                                     retrieval_labels, span, truths, 
                                     N_rows, N_columns, N_bins,
                                     vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize,
-                                    custom_labels = custom_labels)
+                                    custom_labels = custom_labels,
+                                    custom_ticks = custom_ticks )
     
     # Save figure to file
     if (save_fig == True):

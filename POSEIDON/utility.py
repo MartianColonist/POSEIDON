@@ -1716,7 +1716,105 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
                        stats, ln_Z, ln_Z_err, reduced_chi_square, best_chi_square,
                        dof, best_fit_params, wl, R, instruments, datasets,
                        radius_unit)
+
+
+def get_vmr(name, mol, planet_name):
+
+    ''' 
+    Gets the vmr from the results.txt file
+
+    INPUTS:
+        name (string):
+            model name
+        mol (string):
+            name of parameters to grab
+        planet_name (string)
+            name of planet (to load results file)
+
+    OUTPUTS:
+        vmr (float):
+            The vmr of the variable (or just the value before the +/-)
+        sig1, sig2 (float):
+            Upper and lower 1 sigma values
     
+    '''
+
+    outdir = './POSEIDON_output/'+planet_name+'/retrievals/results/'
+    with open(outdir + name + '_results.txt') as f:
+        lines = f.readlines()
+        for l in lines:
+            if l.startswith(mol):
+                # VMR
+                vmr = float(l.split()[2])
+
+                # +1sigma
+                sig1 = l.split()[3]
+                sig1 = sig1.replace('(', '')
+                sig1 = sig1.replace(')', '')
+                sig1 = sig1.replace('+', '')
+                sig1 = float(sig1)
+
+                # -1sigma
+                sig2 = l.split()[4]
+                sig2 = sig2.replace('(', '')
+                sig2 = sig2.replace(')', '')
+                sig2 = float(sig2)
+
+                # If we continue, there are other lines that will fulfill
+                # if criteria and overwrite what we want with wider
+                # (2, 3,  5 sigma) bounds
+                return vmr, sig1, sig2
+            
+        # If the model doesn't have a param
+        return -1, -1, -1
+
+
+def make_latex_table_from_results(model_names_array, variables, planet_name):
+
+    ''' 
+    Gets the vmr from the results.txt file
+
+    INPUTS:
+        model_names_array (array of string):
+            model names for each model to print out
+        variables (array of string):
+            name of parameters to grab
+        planet_name (string)
+            name of planet (to load results file)
+
+    OUTPUTS:
+        Prints out a latex friendly table
+    
+    '''
+            
+    refs = model_names_array
+
+    mols = variables
+
+    for im, m in enumerate(mols):
+        line = m + ' & '
+        for i in range(len(refs)):
+
+            vmr, hisig, losig = get_vmr(refs[i], m, planet_name)
+
+            # Model doesn't have parameter
+            if (vmr, hisig, losig) == (-1, -1, -1):
+                line += ' --- &'
+            
+            else:
+                if i != len(refs)-1:
+                    if m == 'R_p_ref':
+                        line += ' ${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
+                    else:
+                        line += ' ${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
+                else:
+                    if m == 'R_p_ref':
+                        line += ' ${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\ '.format(vmr, hisig, losig)
+                    else:
+                        line += ' ${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\'.format(vmr, hisig, losig)
+        
+        print(line)
+
 
 def mock_missing(name):
     def init(self, *args, **kwargs):
