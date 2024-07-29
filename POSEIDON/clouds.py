@@ -626,7 +626,7 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
             ax.axvline(x = log_X, color = colours[q], linewidth=1.0, linestyle = '--')
             ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color= colours[q], label = label)
     
-    # @char: adding one_slab plotting
+    # One slab plotting (when there is one slab, more than one species)
     elif (cloud_type == 'one_slab'):
 
         # only one slab location in model

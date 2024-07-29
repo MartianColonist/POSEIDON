@@ -2280,8 +2280,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
     
-    # @char: add retrieved offsets to observed data
-
+    # add retrieved offsets to observed data
     if add_retrieved_offsets:
 
         # check model has been defined

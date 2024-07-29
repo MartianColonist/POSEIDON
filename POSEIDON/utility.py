@@ -1105,6 +1105,9 @@ def generate_latex_param_names(param_names):
         
         captured_characters = np.zeros(len(param)).astype(np.int64)  # Stays zero for entries with solo letters (e.g. 'H' in 'H2O')
 
+        # Note that many of these temporary fixes are made obsolete
+        # due to plot_histograms now having custom_labels() argument
+        
         # Temporary fix for 'slope' P-T profile parameters
         if (param in ['Delta_T_10-1mb', 'Delta_T_100-10mb', 'Delta_T_1-0.1b',
                       'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 'Delta_T_32-10b',
@@ -1139,7 +1142,8 @@ def generate_latex_param_names(param_names):
                 continue
 
         if ('X' in param):
-
+            
+            # Grab the aerosol name 
             aerosol_name = param.split('_')[2]
 
             if('SiO2' in param):
@@ -1202,24 +1206,24 @@ def generate_latex_param_names(param_names):
                 string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{MgSiO_3}$'
                 latex_names += [string]
                 continue
-            # @char: quick fix for cloud_type = 'one_slab'
+            # If one_slab, then it will print out this without the species alongside it 
             if('log_P_top_slab' == param):
                 string = '$\\log \\, \\mathrm{P_{top,slab}}$'
                 latex_names += [string]
                 continue
+            # Else, it just grabs the beggining of the aerosol_name 
             else:
                 aerosol_name = param.split('_')[4]
                 string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{' + aerosol_name + '}$'
                 latex_names += [string]
                 continue
 
-        # @char: quick fix for cloud_type = 'one_slab'
+        #  Quick fix for cloud_type = 'one_slab'
         # 'Delta_log_P_' will not be recognised so new if statement can be made
         if ('Delta_log_P' == param):
             string = '$\Delta \\, \\log \\, \mathrm{P}$'
             latex_names += [string]
             continue
-
 
 
         # Quick fix for log_Na + K
