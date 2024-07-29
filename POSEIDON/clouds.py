@@ -845,6 +845,222 @@ def plot_lognormal_distribution(r_m_std_dev = 0.5):
     plt.show()
 
 
+def database_properties_plot(file_name):
+
+    '''
+    Plots the refractive index and aerosol properties in the aerosol database (same format as aerosol-database.pdf)
+
+    Args:
+        file_name (string):
+            Name of refractive index file, with file path included
+
+    Returns: 
+        Outputs a plot of refractive index, sigma_ext,eff, g, and w for an aerosol in the database
+
+    '''
+
+    # Change fonts used, and set up styles
+    # note that this will change it within a whole kernel
+    import matplotlib.pyplot as plt
+    import matplotlib.style
+    from matplotlib import cm
+
+    plt.style.use('classic')
+    plt.rc('font', family = 'serif')
+    matplotlib.rcParams['svg.fonttype'] = 'none'
+    matplotlib.rcParams['figure.facecolor'] = 'white'
+
+    # Set up wl_Mie to load in refractive indices and database
+    wl_min = 0.2    # Minimum wavelength (um)
+    wl_max = 30      # Maximum wavelength  (um)
+    R = 1000       # Spectral resolution of grid
+    wl = wl_grid_constant_R(wl_min, wl_max, R)
+    wl_Mie =  wl_grid_constant_R(wl_min, wl_max, R)
+
+    # Get species name, and print 
+    species = file_name.split('/')[-1].split('.txt')[0]
+    aerosol = species
+
+    print(species)
+
+    # Load in the grid with the species 
+    aerosol_grid = load_aerosol_grid([species])
+
+    # Arrays to loop over, and save in
+    log_r_m_array = [-3,-2,-1,0,1]
+    r_m_array = ['0.001', '0.01', '0.1', '1', '10']
+    ext_array = []
+    w_array = []
+    g_array = []
+
+    # Quiery the aerosol database for each particle size
+    for r_m in log_r_m_array:
+
+        r_m = 10**r_m
+        sigma_Mie_interp_array = interpolate_sigma_Mie_grid(aerosol_grid, wl, [r_m], [species],)
+
+        ext_array.append(sigma_Mie_interp_array[species]['eff_ext'])
+        w_array.append(sigma_Mie_interp_array[species]['eff_w'])
+        g_array.append(sigma_Mie_interp_array[species]['eff_g'])
+
+    # Plot it in a huge combined plot  
+    fig_combined = plt.figure(constrained_layout=True, figsize=(11*1.5, 8.5*1.3))    # Change (9,5.5) to alter the aspect ratio
+
+    # This function is the magic. Each letter corresponds to one matplotlib axis, which you can then pass to POSEIDON's plotting functions
+    axd = fig_combined.subplot_mosaic(
+        """
+        AACC
+        BBCC
+        DDEE
+        DDEE
+        """
+    )
+
+    # Colormap
+    color = cm.plasma(np.linspace(0, 1, 7))
+    color = color[:6]
+
+    #########################
+    # Load in refractive indices (as function of wavelength)
+    #########################
+
+    # Refractive index files either have a commented out header or the first two rows 
+    # are the header
+    try :
+        try:
+            file_as_numpy = np.loadtxt(file_name, comments = '#').T
+        except:
+            file_as_numpy = np.loadtxt(file_name, skiprows = 2).T
+
+        # If its index, wavelength, n, k we need to do something different. 
+        if len(file_as_numpy) == 4:
+            wavelengths = file_as_numpy[1]
+            real_indices = file_as_numpy[2]
+            imaginary_indices = file_as_numpy[3]
+            file_as_numpy = np.array([wavelengths,real_indices,imaginary_indices])
+
+    except :
+        raise Exception('Could not load in file. Make sure directory is included in the input')
+
+    # Fix wl_Mie if the refractive indices don't extend to all wavelengths
+    wavelengths = file_as_numpy[0]
+    wl_Mie = wl_grid_constant_R(0.2, 30, R)  
+    # Truncating wl grid if necessary 
+    # Any values not covered will be set to 0 in the database
+    if np.max(wavelengths) < 30 or np.min(wavelengths) > 0.2:
+
+        print('Wavelength column does not span 0.2 to 30 um')
+
+        # If less than 30 and greater than 0.2
+        if np.max(wavelengths) < 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = np.max(wavelengths)
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start:idx_end]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to '+  str(np.max(wl_Mie)))
+
+        # If less than 30 only
+        elif np.max(wavelengths) < 30 and np.min(wavelengths) <= 0.2:
+
+            wl_min = 0.2
+            wl_max = np.max(wavelengths)
+
+            idx_start = 0
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            wl_Mie = wl_Mie[:idx_end]
+            
+            print('Wavelength grid will be truncated to : 0.2 to ' + str(np.max(wl_Mie)))
+
+        # If more than 0.2 only 
+        elif np.max(wavelengths) >= 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = 30
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = 5011
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start:]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to 30')
+
+    # Load the indices, and plot everything up
+    real_indices, imaginary_indices = load_refractive_indices_from_file(wl_Mie,file_name)
+
+    wl_min = np.min(wl_Mie)
+    wl_max = np.max(wl_Mie)
+    wl_Mie_new = wl_grid_constant_R(wl_min, wl_max, 1000)
+
+    molecule = file_name.split('/')[1][:-4]
+    molecule = molecule.split('_')[0]
+
+    suptitle = 'Refractive Indices for ' + molecule + '\n (' + str(np.min(wl_Mie).round(2)) + ', ' + str(np.max(wl_Mie).round(2)) + ') μm'
+    axd['A'].set_title(suptitle) 
+
+    axd['A'].plot(wl_Mie_new, real_indices, c = 'black', lw = 2)
+    axd['B'].plot(wl_Mie_new, imaginary_indices, c = 'black', lw = 2)
+
+    axd['A'].set_xlim((0,30))
+    axd['B'].set_xlim((0,30))
+    axd['A'].set_ylabel('Real Indices',fontsize = 14)
+    axd['B'].set_ylabel('Imaginary Indices',fontsize = 14)
+
+    for i in range(len(log_r_m_array)):
+        label = 'r$_m$ : ' + str(r_m_array[i]) + ' μm'
+        eff_ext_cross_section = ext_array[i]
+        axd['C'].plot(wl, np.log10(eff_ext_cross_section), label = label, c = color[i], lw = 2)
+    title = aerosol + ' Effective Extinction Cross Section\n$\sigma_{\mathrm{ext},\,\mathrm{eff}}$ = $\sigma_{\mathrm{abs},\,\mathrm{eff}}$ + $\sigma_{\mathrm{scat},\,\mathrm{eff}}$'
+    axd['C'].set_title(title,fontsize = 14)
+    axd['C'].set_ylabel('log$_{10}$ ($\sigma_{\mathrm{ext},\,\mathrm{eff}}$)', fontsize = 14)
+    axd['C'].set_xlim((0,30))
+
+    for i in range(len(log_r_m_array)):
+        label = 'r$_m$ : ' + str(r_m_array[i]) + ' μm'
+        w = w_array[i]
+        axd['D'].plot(wl, w, label = label, c = color[i], lw = 2)
+    title = aerosol + ' Single Scattering Albedos $\omega$\n0 (black, completely absorbing) to 1 (white, completely scattering)'
+    axd['D'].set_title(title)
+    axd['D'].set_ylabel('$\omega$',fontsize = 14)
+    axd['D'].set_xlabel('Wavelength (μm)',fontsize = 14)
+    axd['D'].set_ylim((-0.05,1.05))
+    axd['D'].set_xlim((0,30))
+
+    for i in range(len(g_array)):
+        label = 'r$_m$ : ' + str(r_m_array[i]) + ' μm'
+        g= g_array[i]
+        axd['E'].plot(wl, g, label = label, c = color[i], lw = 2)
+    title = aerosol + ' Asymmetry Parameter $g$\n0 (Rayleigh Limit) to 1 (Total Forward Scattering)'
+    axd['E'].set_title(title)
+    axd['E'].set_ylabel('$g$',fontsize = 14)
+    axd['E'].set_xlabel('Wavelength (μm)',fontsize = 14)
+
+    if np.min(g_array) <= 0:
+        axd['E'].set_ylim((np.min(g_array)-0.05, 1.05))
+    else:
+        axd['E'].set_ylim((-0.05, 1.05))
+
+    axd['E'].set_xlim((0,30))
+
+    handles, labels = axd['E'].get_legend_handles_labels()
+    axd['E'].legend(handles[::-1], labels[::-1],loc='center left', shadow = True, prop = {'size':12}, 
+                                    ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
+
+    handles, labels = axd['C'].get_legend_handles_labels()
+    axd['C'].legend(handles[::-1], labels[::-1],loc='center left', shadow = True, prop = {'size':12}, 
+                                    ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
+
+
+    plt.show()
+
+
 def vary_one_parameter(model, planet, star, param_name, vary_list,
                        wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og,
                        spectrum_type = 'transmission'):
