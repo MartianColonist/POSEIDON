@@ -2115,6 +2115,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            show_data_bin_width = True, show_data_cap = True,
                            data_alpha = 0.8, data_edge_width = 0.8, sigma_to_plot = 2,
                            line_widths = [], model = None, add_retrieved_offsets = False,
+                           verbose_offsets = True,
                            xlabels = True, ylabels = True
                         ):
     ''' 
@@ -2210,9 +2211,11 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             POSEIDON model dictionary. Required to be defined for offsets to be added.
         add_retrieved_offsets (bool, optional):
             Plots data with retrieved offset values.
-        x_labels (bool):
+        verbose offsets (bool, optional):
+            Will print out offsets applied to which datasets
+        x_labels (bool, optional):
             If false, will remove x_ticks and x_label.
-        y_labels (bool):
+        y_labels (bool, optional):
             If false, will remove y_ticks and y_label.
      
     Returns:
@@ -2307,14 +2310,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
         # add offsets for a single dataset 
         if offset_datasets == 'single_dataset':
+            
             # unpack offset data properties
-            offset_start, offset_end = data_properties['offset_start'], data_properties['offset_end']
+            offset_start, offset_end = data_properties['offset_1_start'], data_properties['offset_1_end']
 
             # catch offsets for one dataset
             if isinstance(offset_start, np.int64):
                 offset_start, offset_end = np.array([offset_start]), np.array([offset_end])
-
-            print('offset_start', offset_start)
 
             # retrieve offset value from results file
             results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
@@ -2333,10 +2335,15 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for start, end  in zip(offset_start, offset_end):
                 # offsets are in ppm
                 ydata_to_plot[start:end] = ydata[start:end] - delta_rel*1e-6
+            
+            # If this is true, will append the offset applied to the dataset to the data labels 
+            if verbose_offsets == True:
+                print('Applied ' + str(delta_rel) + ' ppm offset to offset_1_datasets')
         
         # add multiple offsets
         elif offset_datasets == 'two_datasets' or offset_datasets == 'three_datasets':
-            print('in two datasets')     
+            #print('in two datasets')     
+
             # unpack offset data properties
             offset_start_list = ['offset_1_start', 'offset_2_start', 'offset_3_start']
             offset_end_list = ['offset_1_end', 'offset_2_end', 'offset_3_end']
@@ -2378,6 +2385,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for delta_rel, (offset_start, offset_end) in zip(delta_rel_array, offset_start_end):
                 # offsets are in ppm
                 ydata_to_plot[offset_start:offset_end] = ydata[offset_start:offset_end] - delta_rel*1e-6
+
+            if verbose_offsets == True:
+                print('Applied ' + str(delta_rel_array[0]) + ' ppm offset to offset_1_datasets')
+                print('Applied ' + str(delta_rel_array[1]) + ' ppm offset to offset_2_datasets')
+
+                if offset_datasets == 'three_datasets':
+                    print('Applied ' + str(delta_rel_array[2]) + ' ppm offset to offset_3_datasets')
         
         # continue plotting if no offsets are found
         elif offset_datasets == None:
