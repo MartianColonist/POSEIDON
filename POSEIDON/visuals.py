@@ -2312,7 +2312,14 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         if offset_datasets == 'single_dataset':
             
             # unpack offset data properties
-            offset_start, offset_end = data_properties['offset_1_start'], data_properties['offset_1_end']
+            
+            # offset_1_end == 0 is the default value for offset_1 array (meaning that the original offset_datasets was used)
+            # The only difference is that the offset_1 setting can have multiple datasets with same offset
+
+            if data_properties['offset_1_end'] == 0:
+                offset_start, offset_end = data_properties['offset_start'], data_properties['offset_end']
+            else:
+                offset_start, offset_end = data_properties['offset_1_start'], data_properties['offset_1_end']
 
             # catch offsets for one dataset
             if isinstance(offset_start, np.int64):
@@ -2338,7 +2345,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             
             # If this is true, will append the offset applied to the dataset to the data labels 
             if verbose_offsets == True:
-                print('Applied ' + str(delta_rel) + ' ppm offset to offset_1_datasets')
+                if data_properties['offset_1_end'] == 0:
+                    print('Applied ' + str(delta_rel) + ' ppm offset to offset_datasets')
+                else:
+                    print('Applied ' + str(delta_rel) + ' ppm offset to offset_1_datasets')
         
         # add multiple offsets
         elif offset_datasets == 'two_datasets' or offset_datasets == 'three_datasets':
