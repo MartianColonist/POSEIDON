@@ -1228,7 +1228,9 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  legend_box = True, ax = None, save_fig = True,
                  show_data_bin_width = True, show_data_cap = True,
                  data_alpha = 0.8, data_edge_width = 0.8,
-                 line_widths = [], xlabels = True, ylabels = True):
+                 line_widths = [], xlabels = True, ylabels = True,
+                 line_styles = [],
+                 alphas = []):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1310,6 +1312,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             If false, will remove x_ticks labels and x_label.
         y_labels (bool):
             If false, will remove y_ticks labels and y_label.
+        line_styles (list of string, optional):
+            Line styles for binned spectra, '-' default
+        alphas (list of float, optional):
+            Alpha values for binned spectra, '0.8' default
 
     Returns:
         fig (matplotlib figure object):
@@ -1603,12 +1609,23 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
             if line_widths != []:
                 lw_binned = line_widths[i]
+            
+            if alphas != []:
+                alpha_binned = alphas[i]
+            else:
+                alpha_binned = 0.8
+
+            if line_styles != []:
+                linestyle_binned = line_styles[i]
+            else:
+                linestyle_binned = '-'
 
             # Plot binned spectrum
-            ax1.plot(wl_binned, spec_binned, lw = lw_binned, alpha = 0.8, 
+            ax1.plot(wl_binned, spec_binned, lw = lw_binned, alpha = alpha_binned, 
                      color = colour_binned, 
                      zorder = N_spectra+N_plotted_binned, 
-                     label = label_i)
+                     label = label_i,
+                     linestyle = linestyle_binned)
             
             N_plotted_binned += 1
 
