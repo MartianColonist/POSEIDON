@@ -900,6 +900,18 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
           :width: 100
           :align: center
 
+   * - :math:`\mathrm{CH_3 Cl}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?92=onn>`_
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+     - Air
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/gases/CH3Cl.png
+          :width: 100
+          :align: center
+
    * - :math:`\mathrm{GeH_4}`
      - `HITRAN-2020 <https://hitran.org/lbl/3?139=on>`_
      - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
