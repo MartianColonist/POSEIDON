@@ -59,7 +59,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - MARVELised 
      - 
        .. image:: ../_static/opacity_previews/gases/H2O.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CO_2}`
@@ -73,7 +73,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/CO2.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CH_4}`
@@ -87,7 +87,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/CH4.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CO}`
@@ -101,7 +101,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 6 Isotopes*
      - 
        .. image:: ../_static/opacity_previews/gases/CO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Na}`
@@ -115,7 +115,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Na.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{K}`
@@ -129,7 +129,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/K.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{NH_3}`
@@ -143,7 +143,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - MARVELised 
      - 
        .. image:: ../_static/opacity_previews/gases/NH3.png
-          :width: 100
+          :width: 50
           :align: center
   
    * - :math:`\mathrm{HCN}`
@@ -157,7 +157,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - No Change
      - 
        .. image:: ../_static/opacity_previews/gases/HCN.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{SO_2}`
@@ -171,7 +171,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - MARVELised
      - 
        .. image:: ../_static/opacity_previews/gases/SO2.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{H_2 S}`
@@ -187,7 +187,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/H2S.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{PH_3}`
@@ -201,7 +201,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - No Change
      - 
        .. image:: ../_static/opacity_previews/gases/PH3.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{C_2 H_2}`
@@ -215,7 +215,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/C2H2.png
-          :width: 100
+          :width: 50
           :align: center
 
    *  - :math:`\mathrm{\textbf{Metal}}`
@@ -242,7 +242,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/TiO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{VO}`
@@ -258,7 +258,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/VO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{AlO}`
@@ -276,7 +276,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/AlO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{SiO}`
@@ -294,7 +294,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/SiO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CaO}`
@@ -310,7 +310,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/CaO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{MgO}`
@@ -324,7 +324,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/MgO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{NaO}`
@@ -338,7 +338,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/NaO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{LaO}`
@@ -352,7 +352,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/LaO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{ZrO}`
@@ -366,7 +366,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/ZrO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{SO}`
@@ -384,7 +384,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/SO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{NO}`
@@ -398,7 +398,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/NO.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{PO}`
@@ -414,7 +414,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/PO.png
-          :width: 100
+          :width: 50
           :align: center
 
    *  - :math:`\mathrm{\textbf{Metal}}`
@@ -441,7 +441,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/TiH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CrH}`
@@ -459,7 +459,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/CrH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{FeH}`
@@ -477,7 +477,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/FeH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{ScH}`
@@ -493,7 +493,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/ScH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{AlH}`
@@ -511,7 +511,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/AlH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{SiH}`
@@ -527,7 +527,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/SiH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{BeH}`
@@ -543,7 +543,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/BeH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CaH}`
@@ -561,7 +561,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/CaH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{MgH}`
@@ -579,7 +579,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/MgH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{LiH}`
@@ -595,7 +595,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/LiH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{NaH}`
@@ -611,7 +611,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/NaH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{OH}`
@@ -629,7 +629,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/OH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{OH^{+}}`
@@ -643,7 +643,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/OH+.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CH}`
@@ -661,7 +661,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/CH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{NH}`
@@ -679,7 +679,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/NH.png
-          :width: 100
+          :width: 50
           :align: center
   
    * - :math:`\mathrm{SH}`
@@ -697,7 +697,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/SH.png
-          :width: 100
+          :width: 50
           :align: center
 
    *  - :math:`\mathrm{\textbf{Misc.}}`
@@ -718,7 +718,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/OCS.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{PN}`
@@ -736,7 +736,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/PN.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{PS}`
@@ -752,7 +752,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - 
        .. image:: ../_static/opacity_previews/gases/PS.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CS}`
@@ -766,7 +766,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/CS.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{C_2}`
@@ -780,7 +780,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/C2.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CH_3}`
@@ -798,7 +798,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/CH3.png
-          :width: 100
+          :width: 50
           :align: center
     
    * - :math:`\mathrm{H_{3}^{+}}`
@@ -816,7 +816,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - No Change
      - 
        .. image:: ../_static/opacity_previews/gases/H3+.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{N_2 O}`
@@ -828,7 +828,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/N2O.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{NO_2}`
@@ -840,7 +840,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/NO2.png
-          :width: 100
+          :width: 50
           :align: center
 
    *  - :math:`\mathrm{\textbf{HITRAN}}`
@@ -861,7 +861,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/C2H4.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{C_2 H_6}`
@@ -873,7 +873,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/C2H6.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CH_3 CN}`
@@ -885,7 +885,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/CH3CN.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CH_3 OH}`
@@ -897,7 +897,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/CH3OH.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CH_3 Cl}`
@@ -909,7 +909,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/CH3Cl.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{GeH_4}`
@@ -921,7 +921,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/GeH4.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CS_2}`
@@ -933,7 +933,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/CS2.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{O_2}`
@@ -945,7 +945,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/O2.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{O_3}`
@@ -963,7 +963,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/O3.png
-          :width: 100
+          :width: 50
           :align: center
 
    *  - :math:`\mathrm{\textbf{Atoms}}`
@@ -984,7 +984,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/Al.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Ba}`
@@ -996,7 +996,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/Ba.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Ba^{+}}`
@@ -1008,7 +1008,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/Ba+.png
-          :width: 100
+          :width: 50
           :align: center
   
    * - :math:`\mathrm{Ca}`
@@ -1022,7 +1022,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Ca.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Ca^{+}}`
@@ -1036,7 +1036,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Ca+.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Cr}`
@@ -1048,7 +1048,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added Species**
      - 
        .. image:: ../_static/opacity_previews/gases/Cr.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Cs}`
@@ -1062,7 +1062,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Cs.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Fe}`
@@ -1076,7 +1076,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Cs.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Fe^{+}}`
@@ -1090,7 +1090,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Fe+.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Li}`
@@ -1104,7 +1104,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Li.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Mg}`
@@ -1118,7 +1118,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Mg.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Mg^{+}}`
@@ -1132,7 +1132,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Mg+.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Mn}`
@@ -1146,7 +1146,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Mn.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Ni}`
@@ -1158,7 +1158,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added species**
      - 
        .. image:: ../_static/opacity_previews/gases/Ni.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{O}`
@@ -1170,7 +1170,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added species**
      - 
        .. image:: ../_static/opacity_previews/gases/O.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Rb}`
@@ -1184,7 +1184,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Rb.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Sc}`
@@ -1196,7 +1196,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - **Added species**
      - 
        .. image:: ../_static/opacity_previews/gases/Sc.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Ti}`
@@ -1210,7 +1210,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Ti.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Ti^{+}}`
@@ -1224,7 +1224,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/Ti+.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{V}`
@@ -1238,7 +1238,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/V.png
-          :width: 100
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{V^{+}}`
@@ -1252,7 +1252,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
        Vacuum
      - 
        .. image:: ../_static/opacity_previews/gases/V+.png
-          :width: 100
+          :width: 50
           :align: center
 
 
@@ -1281,7 +1281,9 @@ released? Please address any request for new opacities to: ryanjmac@umich.edu.
 Aerosol Database
 ________________
 
-New to POSEIDON v1.2!
+POSEIDON v1.2 includes an extensive database of Mie scattering properties for
+atmospheric aerosols. The database and its computation are detailed in full in
+Mullens et al. (2024).
 
 .. list-table::
    :widths: 20 20 20 20 20 20 20
@@ -1290,13 +1292,19 @@ New to POSEIDON v1.2!
    * - Species 
      - Common Name
      
-       Name in POSEIDON
-     - Database Reference
-     - Refractive Index References
-     - Wavelengths in Database
+       (Name in POSEIDON)
      - Plot
 
        (Click)
+     - Database 
+     
+       Reference
+     - Refractive Index 
+     
+       References
+     - Wavelength
+     
+       Range
      - Notes
 
    *  - :math:`\mathrm{\textbf{Super-Hot}}`
@@ -1311,18 +1319,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{CaAl_{12}O_{19}}`
      -  Hibonite
      
-        Hibonite
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+        (Hibonite)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Hibonite.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Mutschke (2002) <https://ui.adsabs.harvard.edu/abs/2002A%26A...392.1047M/abstract>`_
        
-       :math:`\hookrightarrow` `DOCCD Link (Hibonite E||c) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
-     - (2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Hibonite.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(Hibonite E||c) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - 2–30 μm
 
      - Crystalline (hexagonal, uniaxial)
 
@@ -1333,16 +1347,20 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{Al_{2}O_{3}}`
      - :math:`\gamma` Corundum
      
-       Al2O3 
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (Al2O3) 
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Al2O3.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Koike et al. (1995) <https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract>`_
 
-     - (0.34,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Al2O3.png
-          :width: 100
-          :align: center
+     - 0.34–30 μm
 
      - Crystalline (cubic, isotropic)
 
@@ -1351,20 +1369,26 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{Al_{2}O_{3}}`
      - Corundum
 
-       Al2O3_KH
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (Al2O3_KH)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Al2O3_KH.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Begemann et al. (1997) <https://ui.adsabs.harvard.edu/abs/1997ApJ...476..199B/abstract>`_
      
-       :math:`\hookrightarrow` `DOCCD Link (Porous) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+       :math:`\hspace{1.0em}` `(Porous) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
        `Koike et al (1995) <https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Al2O3_KH.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Mix of amorphous alumina (porous, isotropic) 
      
@@ -1373,18 +1397,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{CaTiO_{3}}`
      - Perovskite
 
-       CaTiO3
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (CaTiO3)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/CaTiO3.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
      
-       :math:`\hookrightarrow` `DOCCD Link (CaTiO3) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
-     - (2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/CaTiO3.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(CaTiO3) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+
+     - 2–30 μm
 
      - Crystalline (orthorhombic, near-cubic and isotropic)
       
@@ -1393,20 +1423,26 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{CaTiO_{3}}`
      - Perovskite
 
-       CaTiO3_KH
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (CaTiO3_KH)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/CaTiO3_KH.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
      
-       :math:`\hookrightarrow` `DOCCD Link (CaTiO3) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+
+       :math:`\hspace{1.0em}` `(CaTiO3) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
        `Ueda (1998) <https://ui.adsabs.harvard.edu/abs/1998JPCM...10.3669U/abstract>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/CaTiO3_KH.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Crystalline (orthorhombic, near-cubic and isotropic)
        
@@ -1423,44 +1459,58 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{TiO_{2}}`
      - Anatase
 
-       TiO2_anatase
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (TiO2_anatase)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/TiO2_anatase.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
 
        `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (Anatase) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
-       `Siefke (2016) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
+       :math:`\hspace{1.0em}` `(Anatase) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/TiO2_anatase.png
-          :width: 100
-          :align: center
+       `Siefke (2016) <https://ui.adsabs.harvard.edu/abs/2016arXiv160704866S/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (tetragonal, uniaxial)
      
        Natural Anatase (:math:`\mathrm{Ti_{0.992}V_{0.008}O_{2}}`) + Thin Film
 
+       Natural crystal indices averaged by polarization (2/3 Ordinary + 1/3 Extraordinary)
+
    * - :math:`\mathrm{TiO_{2}}`
      - Rutile
      
-       TiO2_rutile
-     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+       (TiO2_rutile)
 
-     - `Ribarsky in Palik (1985) [Vol 1, Sec 39] (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-     
-       `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
-
-       :math:`\hookrightarrow` `DOCCD Link (Rutile, E||a,b) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
-
-     - (0.47,30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/TiO2_rutile.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+
+     - `Ribarsky in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+     
+       `Palik (1985) [Vol 1, Sec 39] (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+
+       :math:`\hspace{1.0em}` `(Rutile, E||a,b) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+
+     - 0.47–30 μm
 
      - Crystalline (tetragonal, uniaxial)
      
@@ -1471,54 +1521,64 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{TiC}`
      - Titanium Carbide
      
-       TiC
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (TiC)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/TiC.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Koide (1990) <https://ui.adsabs.harvard.edu/abs/1990PhRvB..42.4979K/abstract>`_
      
        `Henning & Dutschke (2001) <https://ui.adsabs.harvard.edu/abs/2001AcSpA..57..815H/abstract>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/TiC.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Crystalline (cubic, face centered, isotropic)
      
        Synthetic Single Crystals 
 
-   * - :math:`\mathrm{VO_2}`
+   * - :math:`\mathrm{VO}`
      - Vanadium Oxide
      
-       VO
+       (VO)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/VO.png
+          :width: 50
+          :align: center
+
      - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
 
      - `Wan et al. (2019) <https://ui.adsabs.harvard.edu/abs/2019AnP...53100188W/abstract>`_
 
-     - (0.3,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/VO.png
-          :width: 100
-          :align: center
+     - 0.3–30 μm
 
      - :math:`\mathrm{VO_2}` thin film as a VO proxy
      
-       (:math:`\mathrm{VO_2}` is monoclinic,uniaxial but thin film is random orientation)
+       (:math:`\mathrm{VO_2}` is monoclinic, uniaxial but thin film is random orientation)
 
    * - :math:`\mathrm{C}`
-     - Meteoritic Nano-Diamonds
+     - Meteoritic 
      
-       NanoDiamonds
+       Nano-Diamonds
+     
+       (NanoDiamonds)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/NanoDiamonds.png
+          :width: 50
+          :align: center
+
      - `Mullens 2024`
 
      - `Mutschke (2004) <https://ui.adsabs.harvard.edu/abs/2004A%26A...423..983M/abstract>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/NanoDiamonds.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -1535,73 +1595,96 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{Fe}`
      - :math:`\alpha` Iron
      
-       Fe
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (Fe)
 
-     - `Lynch & Hunter in Palik (1991) (Vol 2, Sec 15) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
-
-     - (0.2,30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/Fe.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Lynch & Hunter in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+     
+       `Palik (1991) (Vol 2, Sec 15) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (cubic, body centered, stil slightly anisotropic due to ferromagnetism)
 
    * - :math:`\mathrm{FeO}`
-     - Wustite
+     - Wüstite
      
-       FeO
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (FeO)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/FeO.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Begemann (1995) <https://ui.adsabs.harvard.edu/abs/1995P%26SS...43.1257B/abstract>`_
 
-     - (0.21,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/FeO.png
-          :width: 100
-          :align: center
+     - 0.21–30 μm
 
-     - Crystalline (Hexagonal, grows as an isotropic slab)
+     - Crystalline (Cubic, face centered, isotropic)
      
-       Natural + Synethic crystal
+       Synthetic
   
    * - :math:`\mathrm{FeS}`
      - Troilite
      
-       FeS
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (FeS)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/FeS.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Pollack (1994) (C) <https://ui.adsabs.harvard.edu/abs/1994ApJ...421..615P/abstract>`_
 
        `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (FeS) <https://www.astro.uni-jena.de/Laboratory/OCDB/sulfides.html>`_
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/FeS.png
-          :width: 100
-          :align: center
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/sulfides.html>`_
 
-     - Crystalline (Cubic, face centered, isotropic)
+       :math:`\hspace{1.0em}` `(FeS) <https://www.astro.uni-jena.de/Laboratory/OCDB/sulfides.html>`_
+
+     - 0.2–30 μm
+
+     - Crystalline (Hexagonal, grows as an isotropic slab)
      
-       Synthetic + Natural
+       Natural + Synethic crystal
 
    * - :math:`\mathrm{Fe_2O_3}`
-     - Hematite / :math:`\alpha\mathrm{Fe_2O_3}`
+     - Hematite / :math:`\alpha \mathrm{Fe_2O_3}`
      
-       Fe2O3
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (Fe2O3)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Fe2O3.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - Unpublished, Triaud in DOCCD
 
-       :math:`\hookrightarrow` `DOCCD Link (Fe2O3 E||a,b) <https://www.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Fe2O3.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(Fe2O3 E||a,b) <https://www.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html>`_
+
+     - 0.2–30 μm
 
      - Crystalline (Rhombohedral, uniaxial)
      
@@ -1610,16 +1693,20 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{FeSiO_3}`
      - Ferrosilite
      
-       FeSiO3
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (FeSiO3)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/FeSiO3.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Day (1981) <https://ui.adsabs.harvard.edu/abs/1981ApJ...246..110D/abstract>`_
 
-     - (8.22,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/FeSiO3.png
-          :width: 100
-          :align: center
+     - 8.22–30 μm
 
      - Amorphous (isotropic)
      
@@ -1628,18 +1715,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{Fe_2SiO_4}`
      - Fayalite
      
-       Fe2SiO4_KH
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (Fe2SiO4_KH)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Fe2SiO4_KH.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...378..228F/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (Fayalite (synthetic)) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
-     - (0.40,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Fe2SiO4_KH.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(Fayalite (synthetic)) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 0.40–30 μm
 
      - Crystalline (orthorhombic, biaxial)
      
@@ -1647,7 +1740,7 @@ New to POSEIDON v1.2!
        
        Each polarization (E||a,b,c) averaged
 
-   *  - :math:`\mathrm{\textbf{Magensium}}`
+   *  - :math:`\mathrm{\textbf{Magnesium}}`
       - 
       - 
       - 
@@ -1658,58 +1751,80 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{MgO}`
      - Periclase
      
-       MgO
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (MgO)
 
-     - `Roessler & Huffman in Palik (1991) (Vol 2, Sec 46) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
-
-     - (0.2,30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/MgO.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Roessler & Huffman in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+
+       `Palik (1991) (Vol 2, Sec 46) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+     
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
        KH18 filled empty Palik entries with Kramers-Kronig analysis
 
    * - :math:`\mathrm{Mg_{0.8}Fe_{1.2}SiO4}`
-     - Forsterite ('Iron-rich')
+     - Forsterite 
      
-       Mg2SiO4_Fe_rich
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       'Iron-rich'
+     
+       (Mg2SiO4_Fe_rich)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_Fe_rich.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Henning (2005) (C) <https://ui.adsabs.harvard.edu/abs/2005IAUS..231..457H/abstract>`_
 
        `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (Mg(0.8)Fe(1.2)SiO4) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.21,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_Fe_rich.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(Mg(0.8)Fe(1.2)SiO4) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.21–30 μm
 
      - Amorphous (glass, isotropic)
      
        Olivine
 
    * - :math:`\mathrm{Mg_{1.72}Fe_{0.21}SiO4}`
-     - Forsterite ('Iron-poor')
+     - Forsterite
      
-       Mg2SiO4_Fe_poor
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       'Iron-poor'
+     
+       (Mg2SiO4_Fe_poor)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_Fe_poor.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (San Carlos Olivine) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_Fe_poor.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(San Carlos Olivine) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Crystalline (orthorhombic, biaxial)
      
@@ -1717,13 +1832,21 @@ New to POSEIDON v1.2!
        
        Extraordinary ray (E||c) used
        
-       Olivine.
+       Olivine
 
    * - :math:`\mathrm{Mg_{2}SiO4}`
      - Forsterite
      
-       Mg2SiO4_amorph
-     - `Burningham (2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
+       (Mg2SiO4_amorph)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_amorph.png
+          :width: 50
+          :align: center
+
+     - `Burningham <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
+
+       `(2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
 
      - `Scott & Duly (1996) (C) <https://ui.adsabs.harvard.edu/abs/1996ApJS..105..401S/abstract>`_
 
@@ -1731,11 +1854,7 @@ New to POSEIDON v1.2!
 
        `Nitsan & Shankland (1976) <https://ui.adsabs.harvard.edu/abs/1976GeoJ...45...59N/abstract>`_
 
-     - (0.27,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_amorph.png
-          :width: 100
-          :align: center
+     - 0.27–30 μm
 
      - Amorphous Forsterite Thin Film (isotropic) 
      
@@ -1745,39 +1864,47 @@ New to POSEIDON v1.2!
        
        Refractive indices from 0.06-62 μm, interpolated to fit EGP grid (0.26-227 μm)
        
-       Olivine.
+       Olivine
 
    * - :math:`\mathrm{Mg_{2}SiO4}`
      - Forsterite
      
-       Mg2SiO4_amorph_sol_gel
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (Mg2SiO4_amorph_sol_gel)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_amorph_sol_gel.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (Mg(2)SiO(4)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_amorph_sol_gel.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(Mg(2)SiO(4)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Amorphous Sol Gel (synthetic, isotropic)
 
    * - :math:`\mathrm{Mg_{2}SiO4}`
      - Forsterite
      
-       Mg2SiO4_crystalline
+       (Mg2SiO4_crystalline)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_crystalline.png
+          :width: 50
+          :align: center
+
      - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
 
      - `Suto (2006) <https://ui.adsabs.harvard.edu/abs/2006MNRAS.370.1599S/abstract>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Mg2SiO4_crystalline.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Crystalline (orthorhombic, biaxial)
      
@@ -1785,23 +1912,29 @@ New to POSEIDON v1.2!
        
        E||a and E||b polarizations combined
        
-       Olivine.
+       Olivine
 
    * - :math:`\mathrm{MgFeSiO_4}`
      - Olivine
      
-       MgFeSiO4_amorph_glass
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (MgFeSiO4_amorph_glass)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MgFeSiO4_amorph_glass.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (MgFeSiO[4] [3.71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/MgFeSiO4_amorph_glass.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(MgFeSiO[4] [3.71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Amorphous (glass, isotropic)
      
@@ -1810,40 +1943,52 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{Mg_{0.8}Fe_{1.2}SiO_4}`
      - Olivine
      
-       Mg8Fe12SiO4_amorph_glass
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (Mg8Fe12SiO4_amorph_glass)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Mg8Fe12SiO4_amorph_glass.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (Mg(0.8)Fe(1.2)SiO4) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Mg8Fe12SiO4_amorph_glass.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(Mg(0.8)Fe(1.2)SiO4) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Amorphous (glass, isotropic)
      
        Synthetic
 
-   * - :math:`\mathrm{MgSiO_3}`
+   * - :math:`\mathrm{MgSiO_3}` *
      - Enstatite
      
-       MgSiO3
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (MgSiO3)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MgSiO3.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Egan & Hilgeman (1975) <https://ui.adsabs.harvard.edu/abs/1975AJ.....80..587E/abstract>`_
      
        `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (MgSiO(3) [2/71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/MgSiO3.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(MgSiO(3) [2/71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Natural Crystalline (orthorhombic, biaxial) (no polarization given)
      
@@ -1854,8 +1999,16 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{MgSiO_3}`
      - Enstatite
      
-       MgSiO3_amorph
-     - `Burningham (2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
+       (MgSiO3_amorph)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MgSiO3_amorph.png
+          :width: 50
+          :align: center
+
+     - `Burningham <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
+
+       `(2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
 
      - `Scott & Duly (1996) (C) <https://ui.adsabs.harvard.edu/abs/1996ApJS..105..401S/abstract>`_
 
@@ -1863,11 +2016,7 @@ New to POSEIDON v1.2!
 
        `Nitsan & Shankland (1976) <https://ui.adsabs.harvard.edu/abs/1976GeoJ...45...59N/abstract>`_
 
-     - (0.27,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/MgSiO3_amorph.png
-          :width: 100
-          :align: center
+     - 0.27–30 μm
 
      - Amorphous Enstatite Thin Film (isotropic) 
      
@@ -1882,18 +2031,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{MgSiO_3}`
      - Enstatite
      
-       MgSiO3_amorph_glass
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (MgSiO3_amorph_glass)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MgSiO3_amorph_glass.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link (MgSiO(3) [2/71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/MgSiO3_amorph_glass.png
-          :width: 100
-          :align: center
+        :math:`\hspace{1.0em}` `(MgSiO(3) [2/71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Amorphous (glass, isotropic)
      
@@ -1904,18 +2059,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{MgSiO_3}`
      - Enstatite
      
-       MgSiO3_sol_gel
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (MgSiO3_sol_gel)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MgSiO3_sol_gel.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (MgSiO(3)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/MgSiO3_sol_gel.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(MgSiO(3)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Amorphous Sol Gel (synthetic, isotropic)
      
@@ -1924,18 +2085,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{MgSiO_3}`
      - Ortho-Enstatite
      
-       MgSiO3_crystalline
-     - `Burningham (2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
+       (MgSiO3_crystalline)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MgSiO3_crystalline.png
+          :width: 50
+          :align: center
+
+     - `Burningham <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
+
+       `(2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
 
      - `Jager (1998) <https://ui.adsabs.harvard.edu/abs/1998A%26A...339..904J/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link (Enstatite (natural)) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
-     - (0.27,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/MgSiO3_crystalline.png
-          :width: 100
-          :align: center
+       :math:`\hspace{1.0em}` `(Enstatite (natural)) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 0.27–30 μm
 
      - Crystalline (Orthorhombic, biaxial)
      
@@ -1951,18 +2118,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{Mg_{0.4}Fe_{0.6}SiO_3}`
      - Pyroxene
      
-       Mg4Fe6SiO3_amorph_glass
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (Mg4Fe6SiO3_amorph_glass)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Mg4Fe6SiO3_amorph_glass.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link (Mg(0.4)Fe(0.6)SIO(3)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Mg4Fe6SiO3_amorph_glass.png
-          :width: 100
-          :align: center
+        :math:`\hspace{1.0em}` `(Mg(0.4)Fe(0.6)SIO(3)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Amorphous (glass, isotropic)
      
@@ -1973,18 +2146,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{Mg_{0.5}Fe_{0.5}SiO_3}`
      - Pyroxene
      
-       Mg5Fe5SiO3_amorph_glass
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (Mg5Fe5SiO3_amorph_glass)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Mg5Fe5SiO3_amorph_glass.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link (Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Mg5Fe5SiO3_amorph_glass.png
-          :width: 100
-          :align: center
+        :math:`\hspace{1.0em}` `(Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Amorphous (glass, isotropic)
      
@@ -1995,18 +2174,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{Mg_{0.8}Fe_{0.2}SiO_3}`
      - Pyroxene
      
-       Mg8Fe2SiO3_amorph_glass
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (Mg8Fe2SiO3_amorph_glass)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Mg8Fe2SiO3_amorph_glass.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link (Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-     - (0.2,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Mg8Fe2SiO3_amorph_glass.png
-          :width: 100
-          :align: center
+        :math:`\hspace{1.0em}` `(Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - 0.2–30 μm
 
      - Amorphous (glass, isotropic)
      
@@ -2017,18 +2202,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{MgAl_2O_4}`
      - Spinel
      
-       MgAl2O4
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (MgAl2O4)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MgAl2O4.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      -  `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...373.1125F/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link (Natural Mg-spinel) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
-     - (1.69,30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/MgAl2O4.png
-          :width: 100
-          :align: center
+        :math:`\hspace{1.0em}` `(Natural Mg-spinel) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - 1.69–30 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -2045,22 +2236,32 @@ New to POSEIDON v1.2!
       - 
 
    * - :math:`\mathrm{SiC}`
-     - Moissanite / :math:`\alpha` Carborundum
+     - Moissanite / 
      
-       SiC
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       :math:`\alpha` Carborundum
+     
+       (SiC)
 
-     -  `Laor & Draine (1993) (C) <https://ui.adsabs.harvard.edu/abs/2001A%26A...373.1125F/abstract>`_
-
-        `Philipp & Taft (1960) in Caras (1965) <https://apps.dtic.mil/sti/tr/pdf/AD0464777.pdf>`_
-
-        `Bohren & Huffman (1983) [Sec 9.1, 12.3.4] <https://ui.adsabs.harvard.edu/abs/1983asls.book.....B/abstract>`_
-
-     - (0.2,30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/SiC.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     -  `Laor & Draine (1993) (C) <https://ui.adsabs.harvard.edu/abs/1993ApJ...402..441L/abstract>`_
+
+        `Philipp & Taft (1960) in <https://apps.dtic.mil/sti/tr/pdf/AD0464777.pdf>`_
+
+        `Caras (1965) <https://apps.dtic.mil/sti/tr/pdf/AD0464777.pdf>`_
+
+        `Bohren & Huffman <https://ui.adsabs.harvard.edu/abs/1983asls.book.....B/abstract>`_
+
+        `(1983) [Sec 9.1, 12.3.4] <https://ui.adsabs.harvard.edu/abs/1983asls.book.....B/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic). 
      
@@ -2069,18 +2270,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{SiO}`
      - Silicon Monoxide
      
-       SiO
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (SiO)
 
-     -  `Philipp in Palik (1985) (Vol 1, Sec 36) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-        `Wetzel (2013) <https://ui.adsabs.harvard.edu/abs/2013A%26A...553A..92W/abstract>`_
-
-     - (0.2,30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/SiO.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 36) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Wetzel (2013) <https://ui.adsabs.harvard.edu/abs/2013A%26A...553A..92W/abstract>`_
+
+     - 0.2–30 μm
 
      - Amorphous (glass, isotropic)
      
@@ -2091,80 +2298,72 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{SiO_2}`
      - :math:`\alpha+\beta` Quartz
      
-       SiO2
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (SiO2)
 
-     -  `Philipp in Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-        `Zeidler (2013) <https://ui.adsabs.harvard.edu/abs/2013A%26A...553A..81Z/abstract>`_
-
-        :math:`\hookrightarrow` `DOCCD Link (SiO2 at 928K, E||c) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
-
-     - (0.2,30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/SiO2.png
-          :width: 100
+          :width: 50
           :align: center
 
-     - Short wavelengths is :math:`\alpha` Quartz (crystalline,trigonal,uniaxial)
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Zeidler (2013) <https://ui.adsabs.harvard.edu/abs/2013A%26A...553A..81Z/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+       :math:`\hspace{1.0em}` `(SiO2 at 928K, E||c) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 0.2–30 μm
+
+     - Short wavelengths is :math:`\alpha` Quartz (crystalline, trigonal, uniaxial)
      
-       Infrared wavelengths is :math:`\beta` Quartz (crystalline,hexagonal,uniaxial)
+       Infrared wavelengths is :math:`\beta` Quartz (crystalline, hexagonal, uniaxial)
        
-       928K, Extraordinary (E||C) ray was used for :math:`\beta` Quartz
+       928K, Extraordinary (E||c) ray was used for :math:`\beta` Quartz
 
    * - :math:`\mathrm{SiO_2}`
      - :math:`\alpha` Quartz
      
-       SiO2_crystalline_2023
-     - `Mullens 2024'_
+       (SiO2_crystalline_2023)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/SiO2_crystalline_2023.png
+          :width: 50
+          :align: center
+
+     - `Mullens 2024`_
 
      -  `Herve Herbin & Petitprez (2023) <https://www.tandfonline.com/doi/full/10.1080/02786826.2023.2165899>`_
 
-     - (0.25, 15.37) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/SiO2_crystalline_2023.png
-          :width: 100
-          :align: center
+     - 0.25–15.37 μm
 
      - Crystalline (trigonal, uniaxial)
      
        Airborne quartz particles, random orientation
 
    * - :math:`\mathrm{SiO_2}`
-     - :math:`\alpha` Quartz + Silica Glass
-     
-       SiO2_amorph
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-     -  `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
-
-        :math:`\hookrightarrow` `DOCCD Link (Amorphous SiO2, 300K) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
-
-        `Philipp in Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/SiO2_amorph.png
-          :width: 100
-          :align: center
-
-     - Short wavelengths is :math:`\alpha` Quartz (crystalline,trigonal,uniaxial)
-     
-       Long wavelengths is amorphous silica (glass, isotropic)
-
-   * - :math:`\mathrm{SiO_2}`
      - :math:`\alpha` Quartz
      
-       SiO2_alpha_palik
-     - `Mullens 2024`_
+       (SiO2_alpha_palik)
 
-     - `Philipp in Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-     - (0.2, 30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/SiO2_alpha_palik.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Mullens 2024`_
+
+     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (trigonal, uniaxial)
      
@@ -2174,19 +2373,53 @@ New to POSEIDON v1.2!
        
        Indices averaged by polarization (2/3 Ordinary + 1/3 Extraordinary)
 
+   * - :math:`\mathrm{SiO_2}`
+     - :math:`\alpha` Quartz + Silica Glass
+     
+       (SiO2_amorph)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/SiO2_amorph.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+       :math:`\hspace{1.0em}` `(Amorphous SiO2, 300K) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+       `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
+
+     - Short wavelengths is :math:`\alpha` Quartz (crystalline,trigonal,uniaxial)
+     
+       Long wavelengths is amorphous silica (glass, isotropic)
+
    * -  :math:`\mathrm{SiO_2}`
      -  Silica Glass
      
-        SiO2_glass_palik
-     - `Mullens 2024`_
+        (SiO2_glass_palik)
 
-     - `Philipp in Palik (1985) (Vol 1, Sec 35) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-     - (0.2, 30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/SiO2_glass_palik.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Mullens 2024`_
+
+     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
 
      - Amorphous (glass, isotropic)
      
@@ -2204,18 +2437,24 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{Cr}`
      - Chromium
      
-       Cr
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (Cr)
 
-     - `Lynch & Hunter in Palik (1991) (Vol 2, Sec 15.6) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Cr.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Lynch & Hunter in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+
+       `Palik (1991) (Vol 2, Sec 15.6) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
 
        `Rakic (1998) <https://ui.adsabs.harvard.edu/abs/1998ApOpt..37.5271R/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Cr.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Crystalline (cubic, body centered, isotropic) (technically tetragonal, but not by much)
      
@@ -2224,16 +2463,20 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{MnS}`
      - :math:`\alpha` Manganese Sulfide
      
-       MnS
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (MnS)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MnS.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
-     - (0.2, 13) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/MnS.png
-          :width: 100
-          :align: center
+     - 0.2–13 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -2242,52 +2485,74 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{MnS}`
      - :math:`\alpha` Manganese Sulfide
      
-       MnS_KH
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       (MnS_KH)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MnS_KH.png
+          :width: 50
+          :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
        `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/MnS_KH.png
-          :width: 100
-          :align: center
+       `Palik & Addamiano in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
-       Synthetic single crystals + :math:`\mathrm{Na_2S}` extrapolation
+       Synthetic single crystals + :math:`\mathrm{Na_2S}` and :math:`\mathrm{ZnS}` extrapolation
        
        KH18 derived real indices from Kramers-Kronig of imaginary indices
 
    * - :math:`\mathrm{MnS}`
      - :math:`\alpha` Manganese Sulfide
      
-       MnS_Mor
+       (MnS_Mor)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/MnS_Mor.png
+          :width: 50
+          :align: center
+
      - `Mullens (2024)`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
        `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/MnS_Mor.png
-          :width: 100
-          :align: center
+       `Palik & Addamiano in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
-       Synthetic single crystals + :math:`\mathrm{Na_2S}` extrapolation
+       Synthetic single crystals + :math:`\mathrm{Na_2S}` and :math:`\mathrm{ZnS}` extrapolation
        
        Used WS15 indices to 13 μm, and KH18 from 13-30 μm
 
    * - :math:`\mathrm{Na_2S}`
      - Sodium Sulfide
      
-       Na2S
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (Na2S)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Na2S.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Morley (2012) <https://ui.adsabs.harvard.edu/abs/2012ApJ...756..172M/abstract>`_
      
@@ -2295,31 +2560,31 @@ New to POSEIDON v1.2!
 
        `Khachai (2009) <https://ui.adsabs.harvard.edu/abs/2009JPCM...21i5404K/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Na2S.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Crystalline (cubic, face centered, isotropic)
      
        Compiled by Morley (2012)
        
-       Synthetic crystal lab data + computed from first principles
+       Synthetic crystal lab data (15K) + computed from first principles
 
    * - :math:`\mathrm{ZnS}`
      - Zinc blende / Sphalerite
      
-       ZnS
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (ZnS)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/ZnS.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Querry (1987) <https://apps.dtic.mil/sti/citations/ADA192210>`_
 
-     - (0.22, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/ZnS.png
-          :width: 100
-          :align: center
+     - 0.22–30 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -2328,16 +2593,22 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{NaCl}`
      - Halite / Rock Salt
      
-       NaCl
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (NaCl)
 
-     - `Eldridge & Palik in Palik (1985) (Vol 1, Sec 38) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-     - (0.2, 30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/NaCl.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Eldridge & Palik in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 38) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -2348,16 +2619,22 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{KCl}`
      - Sylvite
      
-       KCl
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (KCl)
 
-     - `Palik in Palik (1985) (Vol 1, Sec 33) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-     - (0.2, 30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/KCl.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Palik in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 33) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -2375,54 +2652,68 @@ New to POSEIDON v1.2!
 
 
    * - :math:`\mathrm{NH_4H_2PO_4}`
-     - Ammonium Dihydrogen Phosphate
+     - Ammonium Dihydrogen 
      
-       ADP
+       Phosphate
+     
+       (ADP)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/ADP.png
+          :width: 50
+          :align: center
+
      - `Mullens 2024`_
 
      - `Zernike (1965) <https://ui.adsabs.harvard.edu/abs/1965JOSA...55..210Z/abstract>`_
 
        `Querry (1974) <https://ui.adsabs.harvard.edu/abs/1974JOSA...64...39Q/abstract>`_
 
-     - (0.2, 19.99) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/ADP.png
-          :width: 100
-          :align: center
+     - 0.2–19.99 μm
 
      - Crystalline (tetragonal, uniaxial) + Liquid 
      
        Synthetic crystal + aqueous solution
 
+       Crystalline indices averaged by polarization (2/3 Ordinary + 1/3 Extraordinary)
+
    * - :math:`\mathrm{H_2O}`
      - Water (liquid)
      
-       H2O
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (H2O)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/H2O.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Hale & Querry (1973) (C) <https://ui.adsabs.harvard.edu/abs/1973ApOpt..12..555H/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/H2O.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Room temperature (298.5K) liquid water
 
    * - :math:`\mathrm{H_2O}`
      - Ice 1h
      
-       H2O_ice
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (H2O_ice)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/H2O_ice.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Warren (1984) (C) <https://ui.adsabs.harvard.edu/abs/1984ApOpt..23.1206W/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/H2O_ice.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Crystalline (hexagonal, uniaxial) (266.15K ice)
      
@@ -2431,36 +2722,40 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{NH_4SH}`
      - Amonnium Hydrosulfide
      
-       NH4SH
+       (NH4SH)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/NH4SH.png
+          :width: 50
+          :align: center
+
      - `Mullens 2024`_
 
      - Personal Communication
 
        :math:`\hookrightarrow` `Howett (2007) (C) <https://ui.adsabs.harvard.edu/abs/2007JOSAB..24..126H/abstract>`_
 
-     - (0.5, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/NH4SH.png
-          :width: 100
-          :align: center
+     - 0.5–30 μm
 
-     - Crystalline (rhombic, biaxial)
+     - Crystalline (rhombic, biaxial) (~160K)
      
        Unpublished dataset, personal communication.
 
    * - :math:`\mathrm{NH_3}`
      - Amonnia
      
-       NH3
+       (NH3)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/NH3.png
+          :width: 50
+          :align: center
+
      - `optool <https://github.com/cdominik/optool/tree/master/lnk_data>`_
 
      - `Martonchik (1984) (C) <https://ui.adsabs.harvard.edu/abs/1984ApOpt..23..541M/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/NH3.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -2469,16 +2764,20 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{CH_4}`
      - Methane (liquid)
      
-       CH4_liquid
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (CH4_liquid)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/CH4_liquid.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Martonchik & Orton (1984) (C) <https://ui.adsabs.harvard.edu/abs/1994ApOpt..33.8306M/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/CH4_liquid.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - 111K Liquid Methane
      
@@ -2487,16 +2786,20 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{CH_4}`
      - Methane (solid)
      
-       CH4_solid
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (CH4_solid)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/CH4_solid.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Martonchik & Orton (1984) (C) <https://ui.adsabs.harvard.edu/abs/1994ApOpt..33.8306M/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/CH4_solid.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -2505,22 +2808,26 @@ New to POSEIDON v1.2!
        Refractive index data is sometimes absolute lower or upper limit
 
    * - Ice Tholins 
-     - Ice Tholins (see notes)
+     - Ice Tholins 
      
-       IceTholin
+       — see notes
+     
+       (IceTholin)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/IceTholin.png
+          :width: 50
+          :align: center
+
      - `Mullens 2024`_
 
      - `Khare (1993) <https://ui.adsabs.harvard.edu/abs/1993Icar..103..290K/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/IceTholin.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Amorphous (isotropic)
      
-       :math:`\mathrm{C_2H_6}`/:math:`\mathrm{H_2O}` (1:6 ratio) irradiation residue 
+       :math:`\mathrm{C_2H_6}`/:math:`\mathrm{H_2O}` (1:6 ratio) irradiation residue (77K)
 
 
    *  - :math:`\mathrm{\textbf{Soots and Hazes}}`
@@ -2534,53 +2841,66 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{C}`
      - Graphite
      
-       C
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+       \(C\)
 
-     - `Draine (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1017D/abstract>`_
-       `Draine (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1026D/abstract>`_
-
-     - (0.2, 30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/C.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Draine (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1017D/abstract>`_
+
+       `Draine (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1026D/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (hexagonal, uniaxial)
     
-       Extraordinary and ordinary rays averaged by KH18
+       Indices averaged by polarization (2/3 Ordinary + 1/3 Extraordinary)
 
    * - ExoHaze
-     - ExoHaze (see notes)
+     - ExoHaze 
      
-       ExoHaze_1000xSolar_300K
+       — see notes
+     
+       (ExoHaze_1000xSolar_300K)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/ExoHaze_1000xSolar_300K.png
+          :width: 50
+          :align: center
+
      - `Mullens 2024`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
-     - (0.4, 28.6) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/ExoHaze_1000xSolar_300K.png
-          :width: 100
-          :align: center
+     - 0.4–28.6 μm
 
      - Amorphous (isotropic)
      
        66% H2O, 6.6% CH4, 6.5% N2, 4.9% CO2, and 16% He irradiation residue
 
    * - ExoHaze
-     - ExoHaze (see notes)
+     - ExoHaze
      
-       ExoHaze_1000xSolar_400K
+       — see notes
+     
+       (ExoHaze_1000xSolar_400K)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/ExoHaze_1000xSolar_400K.png
+          :width: 50
+          :align: center
+
      - `Mullens 2024`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
-     - (0.4, 28.6) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/ExoHaze_1000xSolar_400K.png
-          :width: 100
-          :align: center
+     - 0.4–28.6 μm
 
      - Amorphous (isotropic)
      
@@ -2589,16 +2909,18 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{C}`
      - Flame Soot
      
-       Soot
+       (Soot)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Soot.png
+          :width: 50
+          :align: center
+
      - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
 
      - `Lavvas & Koskinen (2017) (C) <https://ui.adsabs.harvard.edu/abs/2017ApJ...847...32L/abstract>`_
 
-     - (0.2, 30) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Soot.png
-          :width: 100
-          :align: center
+     - 0.2–30 μm
 
      - Amorphous (isotropic)
      
@@ -2607,166 +2929,222 @@ New to POSEIDON v1.2!
    * - :math:`\mathrm{C_6H_{12}}`
      - 1-Hexene
      
-       Hexene
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       (Hexene)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Hexene.png
+          :width: 50
+          :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
      - `Anderson (2000) <https://apps.dtic.mil/sti/citations/ADA379578>`_
 
-     - (2, 25) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Hexene.png
-          :width: 100
-          :align: center
+     - 2–25 μm
 
      - Liquid (linear alpha olefin)
   
    * - :math:`\mathrm{H_2SO_4}`
      - Sulfuric Acid
      
-       H2SO4
+       (H2SO4)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/H2SO4.png
+          :width: 50
+          :align: center
+
      - `Mullens 2024`_
 
      - `Palmer & Williams (1975) <https://ui.adsabs.harvard.edu/abs/1975ApOpt..14..208P/abstract>`_
 
-     - (0.36, 24.98) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/H2SO4.png
-          :width: 100
-          :align: center
+     - 0.36–24.98 μm
 
      - Liquid (300K, 84.5% solution)
      
-       0.702-0.360 um imaginary indices fit with an exponent
+       0.702-0.360 μm imaginary indices fit with an exponent
        
-       2.564-2.770 fit with an exponent and offset to match data
+       2.564-2.770 μm fit with an exponent and offset to match data
 
    * - :math:`\mathrm{S_8}`
-     - Cyclo-Octasulfur / Orthorhombic Sulfur / :math:`\alpha` Sulfur
+     - Cyclo-Octasulfur / 
      
-       S8
-     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+       Orthorhombic Sulfur / 
+       
+       :math:`\alpha` Sulfur
+     
+       (S8)
 
-     - `Fuller, Downing, & Querry in Palik (1998) (Vo 3, Sec 42) (C) <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
-
-     - (0.2, 30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/S8.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+
+     - `Fuller, Downing, & Querry in <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
+
+       `Palik (1998) (Vo 3, Sec 42) (C) <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
+
+     - 0.2–30 μm
 
      - Crystalline (orthorhombic, biaxial)
      
-       Palik only records ordinary ray (averaged E||a and E||b)
+       Palik only records 'ordinary ray' (averaged E||a and E||b)
 
    * - Saturn Haze
-     - Saturn Phosphorus Haze (see notes)
+     - Saturn Phosphorus Haze
+       
+       — see notes
      
-       Saturn-Phosphorus-Haze
+       (Saturn-Phosphorus-Haze)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Saturn-Phosphorus-Haze.png
+          :width: 50
+          :align: center
+
      - `Mullens 2024`_
 
      - `Noy (1981) <https://ui.adsabs.harvard.edu/abs/1981JGR....8611985N/abstract>`_
+
        `Fletcher (2023) <https://ui.adsabs.harvard.edu/abs/2023JGRE..12807924F/abstract>`_
+
        `Sromovsky (2019) <https://ui.adsabs.harvard.edu/abs/2020Icar..34413398S/abstract>`_
 
-     - (0.2, 20) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Saturn-Phosphorus-Haze.png
-          :width: 100
-          :align: center
+     - 0.2–20 μm
 
      - Amorphous (isotropic)
      
        Diphosphine haze proxy
       
-       Imaginary indices from Noy (1981) and Fletcher (2023), real from Sromovsky (2019) (white phosphorus)
+       Imaginary indices from Noy (1981) and Fletcher (2023)
+       Real from Sromovsky (2019) (white phosphorus)
 
    * - :math:`\mathrm{C}`
-     - Soot 6mm (see notes)
+     - Soot 6mm
      
-       Soot_6mm
-     - `Mullens 2024`_
+       — see notes
+     
+       (Soot_6mm)
 
-     - `Chang & Charalampopoulos (1990) <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
-
-     - (0.2, 28.4) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/Soot_6mm.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Mullens 2024`_
+
+     - `Chang & Charalampopoulos <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
+
+       `(1990) <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
+
+     - 0.2–28.4 μm
 
      - Amorphous (isotropic)
      
        Optical indices measured 6mm above burner
 
    * - Titan Tholin
-     - Tholin (see notes)
+     - Tholin
      
-       Tholin
-     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+       — see notes
+     
+       (Tholin)
 
-     - `Khare (1984) <https://ui.adsabs.harvard.edu/abs/1984Icar...60..127K/abstract>`_
-       `Ramirez (2002) <https://ui.adsabs.harvard.edu/abs/2002Icar..156..515R/abstract>`_
-
-     - (0.2, 30) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/Tholin.png
-          :width: 100
+          :width: 50
           :align: center
+
+     - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Khare (1984) <https://ui.adsabs.harvard.edu/abs/1984Icar...60..127K/abstract>`_
+
+       `Ramirez (2002) <https://ui.adsabs.harvard.edu/abs/2002Icar..156..515R/abstract>`_
+
+     - 0.2–30 μm
 
      - Amorphous (isotropic)
      
-       Both tholins are :math:`\mathrm{N2}` :math:`\mathrm{CH_4}` irradiation residue
+       Both tholin references are :math:`\mathrm{N2}` - :math:`\mathrm{CH_4}` irradiation residue
        
        Khare (1984) is 9:1 and Ramirez (2002) is 9.8:0.2
        
-       Ramirez (2002) indices are used from 0.2-0.4 μm due to issues in Khare (1984).
+       Ramirez (2002) indices are used from 0.2-0.4 μm due to issues in Khare (1984)
 
    * - Oxygenated Tholin
-     - Tholin (C/O=1, see notes)
+     - Tholin 
      
-       Tholin-CO-1
-     - `Mullens 2024`_
+       C/O=1
+       
+       — see notes
+     
+       (Tholin-CO-1)
 
-     - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
-
-     - (0.2, 9.99) μm
      - 
        .. image:: ../_static/opacity_previews/aerosols/Tholin-CO-1.png
-          :width: 100
+          :width: 50
           :align: center
 
-     - Amorphous (isotropic)
-     
-       :math:`\mathrm{N2}` :math:`\mathrm{CH_4}` :math:`\mathrm{CO_2}` (C/O = 1, 9:0.5:0.5) irradiation residue
-
-   * - Oxygenated Tholin
-     - Tholin (C/O=0.625, see notes)
-     
-       Tholin-CO-0625
      - `Mullens 2024`_
 
      - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
 
-     - (0.2, 9.99) μm
-     - 
-       .. image:: ../_static/opacity_previews/aerosols/Tholin-CO-0625.png
-          :width: 100
-          :align: center
+     - 0.2–9.99 μm
 
      - Amorphous (isotropic)
      
-       :math:`\mathrm{N2}` :math:`\mathrm{CH_4}` :math:`\mathrm{CO_2}` (C/O = 0.625, 9:0.8:0.2) irradiation residue
+       :math:`\mathrm{N2}` - :math:`\mathrm{CH_4}` - :math:`\mathrm{CO_2}` (C/O = 1, 9:0.5:0.5) irradiation residue
+
+   * - Oxygenated Tholin
+     - Tholin
+     
+       C/O=0.625
+       
+       — see notes
+     
+       (Tholin-CO-0625)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols/Tholin-CO-0625.png
+          :width: 50
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
+
+     - 0.2–9.99 μm
+
+     - Amorphous (isotropic)
+     
+       :math:`\mathrm{N2}` - :math:`\mathrm{CH_4}` - :math:`\mathrm{CO_2}` (C/O = 0.625, 9:0.8:0.2) irradiation residue
 
 
-`(C)` refers to references that compile refractive index data (sometimes to supplement their own lab data). See Aerosol-Database-Readme.txt for more details.
+`(C)` refers to references that compile refractive index data (sometimes to 
+supplement their own lab data). See Aerosol-Database-Readme.txt for more details.
+
+`*` :math:`\mathrm{MgSiO_3}` has four altnernative entries that explore 
+assumptions that go into how aerosol properties are precomputed. 
+See Make-Aerosol-Database.ipynb tutorial for more details.
 
 Refractive indices are room temperature unless specifically noted.
 
-Plots display refractive indices (real and imaginary), effective extinction cross section (combined scattering and absorption)
-for mean particle sizes (1e-3 to 10 um) assuming a lognormal particle distribution with a width of 0.5. Median asymmetry parameter and 
-single scattering albedo for mean particle sizes (1e-3 to 10 um) assuming a lognormal particle distribution with a width of 0.5.
+Plots display refractive indices (real and imaginary) (x represents actual 
+refractive indices, line is interpolated), effective extinction cross section 
+(combined scattering and absorption) for mean particle sizes (1e-3 to 10 μm) 
+assuming a lognormal particle distribution with a width of 0.5. Median asymmetry 
+parameter and single scattering albedo for mean particle sizes (1e-3 to 10 μm) 
+assuming a lognormal particle distribution with a width of 0.5.
 
-Short summaries on each refractive index paper, as well as when you would expect each aerosol to form with planetary-specific references for each aerosol, are listed on Aerosol-Database-Readme.txt.
+Short summaries on each refractive index paper, as well as when you would expect 
+each aerosol to form with planetary-specific references for each entry and class, 
+are listed on Aerosol-Database-Readme.txt.
 
 Please address any request for new aerosols to: eem85@cornell.edu.
 
