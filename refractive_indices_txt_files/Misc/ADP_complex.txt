@@ -2,7 +2,8 @@
 #
 # 0.2 to 2 um real indices from Zernike 1964, Table 7
 # 'Refractive Indices of Ammonium Dihydrogen Phosphate and Potassium Dihydrogen Phosphate between 2000 Å and 1.5 μ'
-# I took the absolute indices and averaged the ordinary and extraordinary ray indices (n_o + n_e/2)
+# Indices are extrapolated from 1.15 um to 2 um
+# I took the absolute indices and averaged the ordinary and extraordinary ray indices based on direction ((2/3*n_o + 1/3*n_e)
 # I take the 0.2 to 2 um imginary to be 0 since ADP crystals are used to 
 # make lasers, and therefore have negliable attenuation in the wavelengths
 # that they are used to make industry grade lasers
@@ -10,25 +11,26 @@
 #
 # 2-20 um real and imaginary from Querry 1974, Table 2 (aqueous solution)
 # 'Optical constants in the infrared for K2SO4, NH4H2PO4 , and H2SO4 in water'
-0.2 1.618358 0.0
-0.3 1.538369 0.0
-0.4 1.516678 0.0
-0.5 1.507007 0.0
-0.6 1.501426 0.0
-0.7 1.497571 0.0
-0.8 1.49452 0.0
-0.9 1.49185 0.0
-1.0 1.489343 0.0
-1.1 1.486877 0.0
-1.2 1.484379 0.0
-1.3 1.481803 0.0
-1.4 1.479118 0.0
-1.5 1.476303 0.0
-1.6 1.473342 0.0
-1.7 1.470222 0.0
-1.8 1.466937 0.0
-1.9 1.463475 0.0
-2.00 1.315 0.0 
+#
+0.2 1.628629 0.0
+0.3 1.546892 0.0
+0.4 1.524722 0.0
+0.5 1.514778 0.0
+0.6 1.508976 0.0
+0.7 1.504908 0.0
+0.8 1.501634 0.0
+0.9 1.498724 0.0
+1.0 1.495956 0.0
+1.1 1.493206 0.0
+1.2 1.4904 0.0
+1.3 1.487491 0.0
+1.4 1.484446 0.0
+1.5 1.481243 0.0
+1.6 1.477867 0.0
+1.7 1.474304 0.0
+1.8 1.470545 0.0
+1.9 1.466582 0.0
+2.0 1.462407 0.0
 2.20 1.306 0.0 
 2.40 1.292 0.0 
 2.60 1.251 0.0 

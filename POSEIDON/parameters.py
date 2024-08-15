@@ -680,15 +680,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_X_' + aerosol]
             
-            # @char adding in single slab, multiple species
+            # One slab defined with multiple species included
             elif (cloud_type == 'one_slab'):
 
                 if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
-                    print('Only one slab can be defined with free or file_read')
-                    cloud_params += ['log_P_top_slab']
-                    cloud_params += ['Delta_log_P']
-                    cloud_params += ['log_r_m']
-                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                    raise Exception('Only one cloud species can be defined when using free or file_read. Use slab instead')
 
                 else:
                     # define slab top pressure and extent
@@ -701,7 +697,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                         cloud_params += ['log_X_' + aerosol]
 
             elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab', 'opaque_deck_plus_uniform_X', 'one_slab']):
-                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X.")
+                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, one_slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X.")
         
         elif (cloud_model == 'eddysed'):
             # If working with a 2D patchy cloud model

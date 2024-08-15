@@ -336,7 +336,14 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                     
                     # If we are not doing the bulk species, we just want the species 
                     if bulk_species == False and cloud_contribution == False and bound_free == False:
-                        if q == contribution_molecule_active_index:
+
+                        # There is a bug when He is considered a param_species instead of an bulk species
+                        # Since He is param, but isn't an active species, it doens't have an active_index
+
+                        if contribution_species == 'He':
+                            n_q = 0
+                        
+                        elif q == contribution_molecule_active_index:
                             n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
                 
                         else:
@@ -1694,7 +1701,11 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
 
                     if (bulk_species == False) and (cloud_contribution == False) and (total_pressure_contribution == False):
                         # Second if statement since the index is only defined if the above is true 
-                        if (q == contribution_molecule_active_index) and (i == layer_to_ignore):
+                        
+                        # There is a bug when He is in param species since it doesn't have an active index 
+                        if contribution_species == 'He':
+                            n_q = 0
+                        elif (q == contribution_molecule_active_index) and (i == layer_to_ignore):
                             n_q = 0
                         else:
                             n_q = n_level*X_active[q,i,j,k] 

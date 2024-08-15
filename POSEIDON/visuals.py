@@ -1228,7 +1228,9 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  legend_box = True, ax = None, save_fig = True,
                  show_data_bin_width = True, show_data_cap = True,
                  data_alpha = 0.8, data_edge_width = 0.8,
-                 line_widths = [], xlabels = True):
+                 line_widths = [], xlabels = True, ylabels = True,
+                 line_styles = [],
+                 alphas = []):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1307,7 +1309,13 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         line_widths (list of float, optional):
             Line widths for binned spectra (defaults to 2.0 if not specified).
         x_labels (bool):
-            If false, will remove x_ticks and x_label.
+            If false, will remove x_ticks labels and x_label.
+        y_labels (bool):
+            If false, will remove y_ticks labels and y_label.
+        line_styles (list of string, optional):
+            Line styles for binned spectra, '-' default
+        alphas (list of float, optional):
+            Alpha values for binned spectra, '0.8' default
 
     Returns:
         fig (matplotlib figure object):
@@ -1601,12 +1609,23 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
             if line_widths != []:
                 lw_binned = line_widths[i]
+            
+            if alphas != []:
+                alpha_binned = alphas[i]
+            else:
+                alpha_binned = 0.8
+
+            if line_styles != []:
+                linestyle_binned = line_styles[i]
+            else:
+                linestyle_binned = '-'
 
             # Plot binned spectrum
-            ax1.plot(wl_binned, spec_binned, lw = lw_binned, alpha = 0.8, 
+            ax1.plot(wl_binned, spec_binned, lw = lw_binned, alpha = alpha_binned, 
                      color = colour_binned, 
                      zorder = N_spectra+N_plotted_binned, 
-                     label = label_i)
+                     label = label_i,
+                     linestyle = linestyle_binned)
             
             N_plotted_binned += 1
 
@@ -1675,23 +1694,24 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     if xlabels == True:
         ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
-    if (plot_type == 'transmission'):
-        if (y_min_plt < 0.10):
-            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
-        else:
-            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
-    elif (plot_type == 'planet_star_radius_ratio'):
-        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
-    elif (plot_type == 'time_average_transmission'):
-        ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
-    elif (plot_type == 'emission'):
-        ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
-    elif ((plot_type == 'direct_emission') and (y_unit == 'Fp')):
-        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
-    elif ((plot_type == 'direct_emission') and (y_unit in ['Fs', 'F*'])):
-        ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
-    elif (plot_type == 'brightness_temp'):
-        ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
+    if ylabels == True:
+        if (plot_type == 'transmission'):
+            if (y_min_plt < 0.10):
+                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+            else:
+                ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+        elif (plot_type == 'planet_star_radius_ratio'):
+            ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
+        elif (plot_type == 'time_average_transmission'):
+            ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
+        elif (plot_type == 'emission'):
+            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+        elif ((plot_type == 'direct_emission') and (y_unit == 'Fp')):
+            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+        elif ((plot_type == 'direct_emission') and (y_unit in ['Fs', 'F*'])):
+            ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+        elif (plot_type == 'brightness_temp'):
+            ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
@@ -1711,6 +1731,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     else:
         ax1.set_xticks(wl_ticks)
         ax1.tick_params(labelbottom=False)  
+    
+    # If ylabels = False, don't show them
+    if ylabels == False:
+        ax.tick_params(labelleft=False)  
     
     # Switch to two columns if many spectra are being plotted
     if (N_spectra >= 6):
@@ -2108,6 +2132,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            show_data_bin_width = True, show_data_cap = True,
                            data_alpha = 0.8, data_edge_width = 0.8, sigma_to_plot = 2,
                            line_widths = [], model = None, add_retrieved_offsets = False,
+                           verbose_offsets = True,
+                           xlabels = True, ylabels = True
                         ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2202,6 +2228,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             POSEIDON model dictionary. Required to be defined for offsets to be added.
         add_retrieved_offsets (bool, optional):
             Plots data with retrieved offset values.
+        verbose offsets (bool, optional):
+            Will print out offsets applied to which datasets
+        x_labels (bool, optional):
+            If false, will remove x_ticks and x_label.
+        y_labels (bool, optional):
+            If false, will remove y_ticks and y_label.
      
     Returns:
         fig (matplotlib figure object):
@@ -2280,8 +2312,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
     
-    # @char: add retrieved offsets to observed data
-
+    # add retrieved offsets to observed data
     if add_retrieved_offsets:
 
         # check model has been defined
@@ -2296,14 +2327,20 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
         # add offsets for a single dataset 
         if offset_datasets == 'single_dataset':
+            
             # unpack offset data properties
-            offset_start, offset_end = data_properties['offset_start'], data_properties['offset_end']
+            
+            # offset_1_end == 0 is the default value for offset_1 array (meaning that the original offset_datasets was used)
+            # The only difference is that the offset_1 setting can have multiple datasets with same offset
+
+            if data_properties['offset_1_end'] == 0:
+                offset_start, offset_end = data_properties['offset_start'], data_properties['offset_end']
+            else:
+                offset_start, offset_end = data_properties['offset_1_start'], data_properties['offset_1_end']
 
             # catch offsets for one dataset
             if isinstance(offset_start, np.int64):
                 offset_start, offset_end = np.array([offset_start]), np.array([offset_end])
-
-            print('offset_start', offset_start)
 
             # retrieve offset value from results file
             results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
@@ -2322,10 +2359,18 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for start, end  in zip(offset_start, offset_end):
                 # offsets are in ppm
                 ydata_to_plot[start:end] = ydata[start:end] - delta_rel*1e-6
+            
+            # If this is true, will append the offset applied to the dataset to the data labels 
+            if verbose_offsets == True:
+                if data_properties['offset_1_end'] == 0:
+                    print('Applied ' + str(delta_rel) + ' ppm offset to offset_datasets')
+                else:
+                    print('Applied ' + str(delta_rel) + ' ppm offset to offset_1_datasets')
         
         # add multiple offsets
         elif offset_datasets == 'two_datasets' or offset_datasets == 'three_datasets':
-            print('in two datasets')     
+            #print('in two datasets')     
+
             # unpack offset data properties
             offset_start_list = ['offset_1_start', 'offset_2_start', 'offset_3_start']
             offset_end_list = ['offset_1_end', 'offset_2_end', 'offset_3_end']
@@ -2367,6 +2412,13 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             for delta_rel, (offset_start, offset_end) in zip(delta_rel_array, offset_start_end):
                 # offsets are in ppm
                 ydata_to_plot[offset_start:offset_end] = ydata[offset_start:offset_end] - delta_rel*1e-6
+
+            if verbose_offsets == True:
+                print('Applied ' + str(delta_rel_array[0]) + ' ppm offset to offset_1_datasets')
+                print('Applied ' + str(delta_rel_array[1]) + ' ppm offset to offset_2_datasets')
+
+                if offset_datasets == 'three_datasets':
+                    print('Applied ' + str(delta_rel_array[2]) + ' ppm offset to offset_3_datasets')
         
         # continue plotting if no offsets are found
         elif offset_datasets == None:
@@ -2669,19 +2721,21 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
-    ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+    if xlabels == True:
+        ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
-    if (plot_type == 'transmission'):
-        if (y_min_plt < 0.10):
-            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
-        else:
-            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
-    elif (plot_type == 'planet_star_radius_ratio'):
-        ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
-    elif (plot_type == 'emission'):
-        ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
-    elif (plot_type == 'direct_emission'):
-        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+    if ylabels == True:
+        if (plot_type == 'transmission'):
+            if (y_min_plt < 0.10):
+                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+            else:
+                ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+        elif (plot_type == 'planet_star_radius_ratio'):
+            ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
+        elif (plot_type == 'emission'):
+            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+        elif (plot_type == 'direct_emission'):
+            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
@@ -2696,7 +2750,15 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
     # Plot wl tick labels
-    ax1.set_xticks(wl_ticks)
+    if xlabels == True:
+        ax1.set_xticks(wl_ticks)
+    else:
+        ax1.set_xticks(wl_ticks)
+        ax1.tick_params(labelbottom=False)  
+    
+    # If ylabels = False, don't show them
+    if ylabels == False:
+        ax.tick_params(labelleft=False)  
 
     # Add box around legend
     if (legend_box == True):
@@ -3312,7 +3374,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                               retrieval_colour_list, retrieval_labels, span, truths, 
                               N_rows, N_columns, N_bins,
                               vertical_lines, vertical_lines_colors, tick_labelsize = 8, title_fontsize = 12,
-                              custom_labels = []):
+                              custom_labels = [], custom_ticks = []):
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3409,7 +3471,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
-                                                       param_min, param_max, colour, x_max_array = x_max_array)
+                                                    param_min, param_max, colour, x_max_array = x_max_array,)
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
@@ -3480,6 +3542,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 ax.xaxis.set_major_locator(xmajorLocator)
                 ax.xaxis.set_minor_locator(xminorLocator)
 
+            if custom_ticks != []:
+                xmajorLocator = MultipleLocator(custom_ticks[q][0])
+                xminorLocator = MultipleLocator(custom_ticks[q][1])
+                ax.xaxis.set_major_locator(xmajorLocator)
+                ax.xaxis.set_minor_locator(xminorLocator)
+
 
         # Overplot true value
         if (truths != []):
@@ -3513,7 +3581,7 @@ def plot_histograms(planet_name, models, plot_parameters,
                     external_param_names = [], plt_label = None, 
                     save_fig = True,
                     vertical_lines = [], vertical_line_colors = [], tick_labelsize = 8, title_fontsize = 12,
-                    custom_labels = []):
+                    custom_labels = [], custom_ticks = []):
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -3665,7 +3733,8 @@ def plot_histograms(planet_name, models, plot_parameters,
                                     retrieval_labels, span, truths, 
                                     N_rows, N_columns, N_bins,
                                     vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize,
-                                    custom_labels = custom_labels)
+                                    custom_labels = custom_labels,
+                                    custom_ticks = custom_ticks )
     
     # Save figure to file
     if (save_fig == True):
