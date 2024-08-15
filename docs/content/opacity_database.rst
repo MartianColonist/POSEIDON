@@ -2,9 +2,2859 @@ Opacity Database
 ================
 
 
-This page will contain reference tables summarising the opacity sources comprising
-the POSEIDON opacity database.
+Molecular, atomic, and aerosol opacities are a required input to any radiative 
+transfer codes. POSEIDON's opacity database includes high-resolution 
+(:math:`R \sim 10^6`) line-by-line absorption cross sections and continuum 
+absorption processes, alongside Mie scattering extinction cross sections, 
+single scattering albedos, and asymmetry parameters.
 
-For now, the latest public description of the POSEIDON opacity database can be found in 
+
+Line-by-line Cross Sections
+___________________________
+
+POSEIDON v1.2 includes a comprehensive update to the opacity database to reflect 
+recent theoretical and experimental advances:
+
+* New line lists.
+* Updated :math:`\mathrm{H_2}` + :math:`\mathrm{He}` broadening.
+* Improved line position accuracy for high-resolution analyses (i.e. ExoMol's MARVEL procedure).
+* UV-Visible wavelength coverage (down to :math:`0.2 \, \mathrm{\mu m}`, where available).
+
+The current line-by-line opacity sources included in POSEIDON are summarised below:
+
+.. list-table::
+   :widths: 20 20 20 20 20 20
+   :header-rows: 1
+
+   * - Species
+     - Line List
+       
+       (Version)
+     - Reference
+     - Broadening
+     - Updates vs. 
+     
+       POSEIDON 1.0
+     - Plot
+
+       (Click)
+   * - :math:`\mathrm{H_2O}`
+     - `POKAZATEL <https://www.exomol.com/data/molecules/H2O/1H2-16O/POKAZATEL/>`_
+       
+       (2023-06-21)
+     - `Polyansky et al. <https://ui.adsabs.harvard.edu/abs/2018MNRAS.480.2597P/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.480.2597P/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - MARVELised 
+     - 
+       .. image:: ../_static/opacity_previews/H2O.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CO_2}`
+     - `UCL-4000 <https://www.exomol.com/data/molecules/CO2/12C-16O2/UCL-4000/>`_
+       
+       (2020-06-30)
+     - `Yurchenko et al. <https://ui.adsabs.harvard.edu/abs/2020MNRAS.496.5282Y/abstract>`_
+
+       `(2020) <https://ui.adsabs.harvard.edu/abs/2020MNRAS.496.5282Y/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+     - 
+       .. image:: ../_static/opacity_previews/CO2.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CH_4}`
+     - `MM <https://www.exomol.com/data/molecules/CH4/12C-1H4/MM/>`_
+       
+       (2024-01-13)
+     - `Yurchenko et al. <https://ui.adsabs.harvard.edu/abs/2024MNRAS.528.3719Y/abstract>`_
+
+       `(2024) <https://ui.adsabs.harvard.edu/abs/2024MNRAS.528.3719Y/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+     - 
+       .. image:: ../_static/opacity_previews/CH4.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CO}`
+     - `Li2015 <https://www.exomol.com/data/molecules/CO/12C-16O/Li2015/>`_
+       
+       (2017-01-31)
+     - `Li et al. <https://ui.adsabs.harvard.edu/abs/2015ApJS..216...15L/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015ApJS..216...15L/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 6 Isotopes*
+     - 
+       .. image:: ../_static/opacity_previews/CO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Na}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Na.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{K}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/K.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{NH_3}`
+     - `CoYuTe <https://www.exomol.com/data/molecules/NH3/14N-1H3/CoYuTe/>`_
+       
+       (2020-07-30)
+     - `Coles et al. <https://ui.adsabs.harvard.edu/abs/2019MNRAS.490.4638C/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019MNRAS.490.4638C/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - MARVELised 
+     - 
+       .. image:: ../_static/opacity_previews/NH3.png
+          :width: 400
+          :align: center
+  
+   * - :math:`\mathrm{HCN}`
+     - `Harris <https://www.exomol.com/data/molecules/HCN/1H-12C-14N/Harris/>`_
+       
+       (2016-12-05)
+     - `Barber et al. <https://ui.adsabs.harvard.edu/abs/2014MNRAS.437.1828B/abstract>`_
+
+       `(2014) <https://ui.adsabs.harvard.edu/abs/2014MNRAS.437.1828B/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - No Change
+     - 
+       .. image:: ../_static/opacity_previews/HCN.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{SO_2}`
+     - `ExoAmes <https://www.exomol.com/data/molecules/SO2/32S-16O2/ExoAmes/>`_
+       
+       (2017-01-31)
+     - `Underwood et al. <https://ui.adsabs.harvard.edu/abs/2016MNRAS.459.3890U/abstract>`_
+
+       `(2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.459.3890U/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - MARVELised
+     - 
+       .. image:: ../_static/opacity_previews/SO2.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{H_2 S}`
+     - `AYT2 <https://www.exomol.com/data/molecules/H2S/1H2-32S/AYT2/>`_
+       
+       (2022-09-18)
+     - `Azzam et al. <https://ui.adsabs.harvard.edu/abs/2016MNRAS.460.4063A/abstract>`_
+
+       `(2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.460.4063A/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/H2S.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{PH_3}`
+     - `SAlTY <https://www.exomol.com/data/molecules/PH3/31P-1H3/SAlTY/>`_
+       
+       (2017-01-31)
+     - `Sousa-Silva et al. <https://ui.adsabs.harvard.edu/abs/2015MNRAS.446.2337S/abstract>`_
+
+       `(2014) <https://ui.adsabs.harvard.edu/abs/2015MNRAS.446.2337S/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - No Change
+     - 
+       .. image:: ../_static/opacity_previews/PH3.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{C_2 H_2}`
+     - `aCeTY <https://www.exomol.com/data/molecules/C2H2/12C2-1H2/aCeTY/>`_
+       
+       (2022-09-18)
+     - `Chubb et al. <https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.1531C/abstract>`_
+
+       `(2020) <https://ui.adsabs.harvard.edu/abs/2020MNRAS.493.1531C/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+     - 
+       .. image:: ../_static/opacity_previews/C2H2.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{OCS}`
+     - `OYT8 <https://www.exomol.com/data/molecules/OCS/16O-12C-32S/OYT8/>`_
+       
+       (2024-04-25)
+     - `Owens et al. <https://ui.adsabs.harvard.edu/abs/2024MNRAS.530.4004O/abstract>`_
+
+       `(2024) <https://ui.adsabs.harvard.edu/abs/2024MNRAS.530.4004O/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/OCS.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{TiO}`
+     - `Toto <https://www.exomol.com/data/molecules/TiO/49Ti-16O/Toto/>`_
+       
+       (2024-05-09)
+     - `McKemmish et al. <https://ui.adsabs.harvard.edu/abs/2019MNRAS.488.2836M/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019MNRAS.488.2836M/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - MARVELised 
+      
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/TiO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{VO}`
+     - `VOMYT <https://www.exomol.com/data/molecules/VO/51V-16O/VOMYT/>`_
+       
+       (2016-07-26)
+     - `McKemmish et al. <https://ui.adsabs.harvard.edu/abs/2016MNRAS.463..771M/abstract>`_
+
+       `(2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.463..771M/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/VO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{AlO}`
+     - `ATP <https://www.exomol.com/data/molecules/AlO/27Al-16O/ATP/>`_
+       
+       (2021-06-22)
+     - `Patrascu et al. <https://ui.adsabs.harvard.edu/abs/2015MNRAS.449.3613P/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015MNRAS.449.3613P/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - MARVELised 
+
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/AlO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{SiO}`
+     - `SiOUVenIR <https://www.exomol.com/data/molecules/SiO/28Si-16O/SiOUVenIR/>`_
+       
+       (2021-11-05)
+     - `Yurchenko et al. <https://ui.adsabs.harvard.edu/abs/2022MNRAS.510..903Y/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.510..903Y/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/SiO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CaO}`
+     - `VBATHY <https://www.exomol.com/data/molecules/CaO/40Ca-16O/VBATHY/>`_
+       
+       (2023-02-20)
+     - `Yurchenko et al. <https://ui.adsabs.harvard.edu/abs/2016MNRAS.456.4524Y/abstract>`_
+
+       `(2016) <https://ui.adsabs.harvard.edu/abs/2016MNRAS.456.4524Y/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/CaO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{MgO}`
+     - `LiTY <https://www.exomol.com/data/molecules/MgO/24Mg-16O/LiTY/>`_
+       
+       (2019-04-01)
+     - `Li et al. <https://ui.adsabs.harvard.edu/abs/2019MNRAS.486.2351L/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019MNRAS.486.2351L/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/MgO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{NaO}`
+     - `NaOUCMe <https://www.exomol.com/data/molecules/NaO/23Na-16O/NaOUCMe/>`_
+       
+       (2021-11-17)
+     - `Mitev et al. <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.2349M/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.2349M/abstract>`_
+     - `SB'07 <https://ui.adsabs.harvard.edu/abs/2007ApJS..168..140S/abstract>`_
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/NaO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{LaO}`
+     - `BDL <https://www.exomol.com/data/molecules/LaO/139La-16O/BDL/>`_
+       
+       (2023-09-23)
+     - `Bernath et al. <https://ui.adsabs.harvard.edu/abs/2023ApJ...953..181B/abstract>`_
+
+       `(2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...953..181B/abstract>`_
+     - `SB'07 <https://ui.adsabs.harvard.edu/abs/2007ApJS..168..140S/abstract>`_
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/LaO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{ZrO}`
+     - `ZorrO <https://www.exomol.com/data/molecules/ZrO/90Zr-16O/ZorrO/>`_
+       
+       (2023-07-13)
+     - `Perri et al. <https://ui.adsabs.harvard.edu/abs/2023MNRAS.524.4631P/abstract>`_
+
+       `(2023) <https://ui.adsabs.harvard.edu/abs/2023MNRAS.524.4631P/abstract>`_
+     - `SB'07 <https://ui.adsabs.harvard.edu/abs/2007ApJS..168..140S/abstract>`_
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/ZrO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{SO}`
+     - `SOLIS <https://www.exomol.com/data/molecules/SO/32S-16O/SOLIS/>`_
+       
+       (2023-09-14)
+     - `Brady et al. <https://ui.adsabs.harvard.edu/abs/2024MNRAS.527.6675B/abstract>`_
+
+       `(2024) <https://ui.adsabs.harvard.edu/abs/2024MNRAS.527.6675B/abstract>`_
+     - Fixed 
+     
+       :math:`\gamma_L = 0.07`
+
+       :math:`n_L = 0.5`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/SO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{NO}`
+     - `XABC <https://www.exomol.com/data/molecules/NO/14N-16O/XABC/>`_
+       
+       (2021-04-22)
+     - `Qu et al. <https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.5768Q/abstract>`_
+
+       `(2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.504.5768Q/abstract>`_
+     - Air 
+     - New Line List
+     - 
+       .. image:: ../_static/opacity_previews/NO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{PO}`
+     - `POPS <https://www.exomol.com/data/molecules/PO/31P-16O/POPS/>`_
+       
+       (2017-09-10)
+     - `Qu et al. <https://ui.adsabs.harvard.edu/abs/2017MNRAS.472.3648P/abstract>`_
+
+       `(2017) <https://ui.adsabs.harvard.edu/abs/2017MNRAS.472.3648P/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/PO.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{TiH}`
+     - `MoLLIST <https://www.exomol.com/data/molecules/TiH/48Ti-1H/MoLLIST/>`_
+       
+       (2016-07-26)
+     - `Bernath <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+
+       `(2020) <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+      
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/TiH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CrH}`
+     - `MoLLIST <https://www.exomol.com/data/molecules/CrH/52Cr-1H/MoLLIST/>`_
+       
+       (2016-07-26)
+     - `Bernath <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+
+       `(2020) <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+      
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/CrH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{FeH}`
+     - `MoLLIST <https://www.exomol.com/data/molecules/FeH/56Fe-1H/MoLLIST/>`_
+       
+       (2016-07-26)
+     - `Bernath <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+
+       `(2020) <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/FeH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{ScH}`
+     - `MoLLIST <https://www.exomol.com/data/molecules/ScH/45Sc-1H/LYT/>`_
+       
+       (2016-07-26)
+     - `Lodi et al. <https://ui.adsabs.harvard.edu/abs/2015MolPh.113.1998L/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015MolPh.113.1998L/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/ScH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{AlH}`
+     - `AloHa <https://www.exomol.com/data/molecules/AlH/27Al-1H/AloHa/>`_
+       
+       (2016-07-26)
+     - `Yurchenko et al. <https://ui.adsabs.harvard.edu/abs/2024MNRAS.527.9736Y/abstract>`_
+
+       `(2023) <https://ui.adsabs.harvard.edu/abs/2024MNRAS.527.9736Y/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/AlH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{SiH}`
+     - `SiGHTLY <https://www.exomol.com/data/molecules/SiH/28Si-1H/SiGHTLY/>`_
+       
+       (2017-11-01)
+     - `Yurchenko et al. <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.5324Y/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.473.5324Y/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/SiH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{BeH}`
+     - `Darby-Lewis <https://www.exomol.com/data/molecules/BeH/9Be-1H/Darby-Lewis/>`_
+       
+       (2018-02-12)
+     - `Darby-Lewis et al. <https://ui.adsabs.harvard.edu/abs/2018JPhB...51r5701D/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018JPhB...51r5701D/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/BeH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CaH}`
+     - `XAB <https://www.exomol.com/data/molecules/CaH/40Ca-1H/XAB/>`_
+       
+       (2022-02-11)
+     - `Owens et al. <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.5448O/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.5448O/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/CaH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{MgH}`
+     - `XAB <https://www.exomol.com/data/molecules/MgH/24Mg-1H/XAB/>`_
+       
+       (2022-02-11)
+     - `Owens et al. <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.5448O/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022MNRAS.511.5448O/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/MgH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{LiH}`
+     - `CLT <https://www.exomol.com/data/molecules/LiH/7Li-1H/CLT/>`_
+       
+       (2016-09-27)
+     - `Coppola et al. <https://ui.adsabs.harvard.edu/abs/2011MNRAS.415..487C/abstract>`_
+
+       `(2011) <https://ui.adsabs.harvard.edu/abs/2011MNRAS.415..487C/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/LiH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{NaH}`
+     - `Rivlin <https://www.exomol.com/data/molecules/NaH/23Na-1H/Rivlin/>`_
+       
+       (2016-09-27)
+     - `Rivlin et al. <https://ui.adsabs.harvard.edu/abs/2015MNRAS.451..634R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015MNRAS.451..634R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/NaH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{OH}`
+     - `MoLLIST <https://www.exomol.com/data/molecules/OH/16O-1H/MoLLIST/>`_
+       
+       (2018-07-19)
+     - `Bernath <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+
+       `(2020) <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+     
+       Air Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/OH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{OH^{+}}`
+     - `MoLLIST <https://www.exomol.com/data/molecules/OH_p/16O-1H_p/MoLLIST/>`_
+       
+       (2022-07-13)
+     - `Bernath <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+
+       `(2020) <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/OH+.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CH}`
+     - `MoLLIST <https://www.exomol.com/data/molecules/CH/12C-1H/MoLLIST/>`_
+       
+       (2019-02-14)
+     - `Bernath <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+
+       `(2020) <https://ui.adsabs.harvard.edu/abs/2020JQSRT.24006687B/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/CH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{NH}`
+     - `kNigHt <https://www.exomol.com/data/molecules/NH/14N-1H/kNigHt/>`_
+       
+       (2024-03-01)
+     - `Perri et al. <https://ui.adsabs.harvard.edu/abs/2024MNRAS.531.3023P/abstract>`_
+
+       `(2024) <https://ui.adsabs.harvard.edu/abs/2024MNRAS.531.3023P/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/NH.png
+          :width: 400
+          :align: center
+  
+   * - :math:`\mathrm{SH}`
+     - `GYT <https://www.exomol.com/data/molecules/SH/32S-1H/GYT/>`_
+       
+       (2019-08-01)
+     - `Gorman et al. <https://ui.adsabs.harvard.edu/abs/2019MNRAS.490.1652G/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019MNRAS.490.1652G/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+     
+       Air Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/SH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{PN}`
+     - `PaiN <https://www.exomol.com/data/molecules/PN/31P-14N/PaiN/>`_
+       
+       (2024-05-05)
+     - `Semenov et al.`
+
+       `(2024)`
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - New Line List
+
+       SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/PN.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{PS}`
+     - `POPS <https://www.exomol.com/data/molecules/PS/31P-32S/POPS/>`_
+       
+       (2017-09-10)
+     - `Prajapat et al. <https://ui.adsabs.harvard.edu/abs/2017MNRAS.472.3648P/abstract>`_
+
+       `(2017) <https://ui.adsabs.harvard.edu/abs/2017MNRAS.472.3648P/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - SB'07 Broad to 
+
+       :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - 
+       .. image:: ../_static/opacity_previews/PS.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CS}`
+     - `JnK <https://www.exomol.com/data/molecules/CS/12C-32S/JnK/>`_
+       
+       (2016-07-26)
+     - `Paulose et al. <https://ui.adsabs.harvard.edu/abs/2015MNRAS.454.1931P/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015MNRAS.454.1931P/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/CS.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{C_2}`
+     - `8states <https://www.exomol.com/data/molecules/C2/12C2/8states/>`_
+       
+       (2020-06-28)
+     - `Yurchenko et al. <https://ui.adsabs.harvard.edu/abs/2018MNRAS.480.3397Y/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.480.3397Y/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/C2.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CH_3}`
+     - `AYYJ <https://www.exomol.com/data/molecules/CH3/12C-1H3/AYYJ/>`_
+       
+       (2019-05-01)
+     - `Adam et al. <https://ui.adsabs.harvard.edu/abs/2019JPCA..123.4755A/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JPCA..123.4755A/abstract>`_
+     - Fixed 
+     
+       :math:`\gamma_L = 0.053`
+
+       :math:`n_L = 0.5`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/CH3.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{H_{3}^{+}}`
+     - `MiZATeP <https://www.exomol.com/data/molecules/OH_p/16O-1H_p/MoLLIST/>`_
+       
+       (2017-03-30)
+     - `Mizus et al. <https://ui.adsabs.harvard.edu/abs/2017MNRAS.468.1717M/abstract>`_
+
+       `(2017) <https://ui.adsabs.harvard.edu/abs/2017MNRAS.468.1717M/abstract>`_
+     - Fixed 
+     
+       :math:`\gamma_L = 0.07`
+
+       :math:`n_L = 0.5`
+     - No Change
+     - 
+       .. image:: ../_static/opacity_previews/H3+.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{N_2 O}`
+     - `HITEMP-2020 <https://hitran.org/hitemp/>`_
+     - `Hargreaves et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.232...35H/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.232...35H/abstract>`_
+     - Air
+     - New Line List
+     - 
+       .. image:: ../_static/opacity_previews/N2O.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{NO_2}`
+     - `HITEMP-2020 <https://hitran.org/hitemp/>`_
+     - `Hargreaves et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.232...35H/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.232...35H/abstract>`_
+     - Air
+     - New Line List
+     - 
+       .. image:: ../_static/opacity_previews/NO2.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{C_2 H_4}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?90=on>`_
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+     - Air
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/C2H4.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{C_2 H_6}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?78=on>`_
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+     - Air
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/C2H6.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CH_3 CN}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?95=on>`_
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+     - Air
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/CH3CN.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CH_3 OH}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?92=onn>`_
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+     - Air
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/CH3OH.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{GeH_4}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?139=on>`_
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+     - Air
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/GeH4.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{CS_2}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?131=on>`_
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+     - Air
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/CS2.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{O_2}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?36=on>`_
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+     - Air
+     - New Line List
+     - 
+       .. image:: ../_static/opacity_previews/O2.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{O_3}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?16=on>`_
+
+       Laboratory
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `Serdyuchenko et al. <https://ui.adsabs.harvard.edu/abs/2014AMT.....7..625S/abstract>`_
+
+       `(2014) <https://ui.adsabs.harvard.edu/abs/2014AMT.....7..625S/abstract>`_
+     - Air
+     - New Line List
+     - 
+       .. image:: ../_static/opacity_previews/O3.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Al}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/Al.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Ba}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/Ba.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Ba^{+}}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/Ba+.png
+          :width: 400
+          :align: center
+  
+   * - :math:`\mathrm{Ca}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Ca.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Ca^{+}}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Ca+.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Cr}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added Species**
+     - 
+       .. image:: ../_static/opacity_previews/Cr.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Cs}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Cs.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Fe}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Cs.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Fe^{+}}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Fe+.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Li}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Li.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Mg}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Mg.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Mg^{+}}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Mg+.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Mn}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Mn.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Ni}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added species**
+     - 
+       .. image:: ../_static/opacity_previews/Ni.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{O}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added species**
+     - 
+       .. image:: ../_static/opacity_previews/O.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Rb}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Rb.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Sc}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - **Added species**
+     - 
+       .. image:: ../_static/opacity_previews/Sc.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Ti}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Ti.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{Ti^{+}}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/Ti+.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{V}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/V.png
+          :width: 400
+          :align: center
+
+   * - :math:`\mathrm{V^{+}}`
+     - `VALD3 <https://vald.astro.uu.se/~vald/>`_
+     - `Ryabchikova et al. <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+
+       `(2015) <https://ui.adsabs.harvard.edu/abs/2015PhyS...90e4005R/abstract>`_
+     - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
+     - Air Wave. to
+
+       Vacuum
+     - 
+       .. image:: ../_static/opacity_previews/V+.png
+          :width: 400
+          :align: center
+
+
+
+`*` For CO, POSEIDON defaults to a weighted average using terrestrial isotope ratios.
+Users can also treat each CO isotopologue as separate species (e.g. `12C-16O`, 
+`13C-16O`, `12C-17O`, etc.) for modelling and retrieval purposes. All other 
+chemical species use cross sections for the principal isotopologue only.
+
+:math:`\mathrm{H_2 + He}` broadening data are mostly sourced from ExoMol's 
+H2.broad and He.broad files and we include the J dependence (a0). Where these 
+data are not available, we use the estimated :math:`\mathrm{H_2 + He}` pressure 
+broadening parameters from `Chubb et al. (2022) <https://ui.adsabs.harvard.edu/abs/2021A%26A...646A..21C/abstract>`_.
+
+The continuum opacity sources, including collision-induced absorption (CIA) and
+Rayleigh scattering cross sections, are unchanged from POSEIDON v1.0.
+
+Is your favourite molecule missing? Has a revolutionary new line list just been
+released? Please address any request for new opacities to: ryanjmac@umich.edu.
+
+
+Aerosol Database
+________________
+
+@ Elijah
+
+.. list-table::
+   :widths: 20 20 20 20 20 20 20
+   :header-rows: 1
+
+   * - Species 
+     - Common Name
+     
+       Name in POSEIDON
+     - Plot
+
+       (Click)
+     - Database Reference
+     - Refractive Index References
+     - Wavelengths in Database
+     - Notes
+
+   *  - :math:`\mathrm{\textbf{Super-Hot}}`
+      - 
+      - 
+      - 
+      -
+      - 
+      - 
+
+
+   * - :math:`\mathrm{CaAl_{12}O_{19}}`
+     -  Hibonite
+     
+        Hibonite
+
+     - 
+       .. image:: ../_static/opacity_previews/Hibonite.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Mutschke (2002) <https://ui.adsabs.harvard.edu/abs/2002A%26A...392.1047M/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link (Hibonite E||c) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - (2, 30) μm
+
+     - Crystalline (hexagonal, uniaxial)
+
+       Natural Crystal (:math:`\mathrm{Ca_{0.85}Al_{11.37}Ti_{0.26}Fe_{0.38}O_{19}}`)
+
+       Extraordinary (E||c) used
+
+   * - :math:`\mathrm{Al_{2}O_{3}}`
+     - :math:`\gamma` Corundum
+     
+       Al2O3 
+
+     - 
+       .. image:: ../_static/opacity_previews/Al2O3.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Koike et al. (1995) <https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract>`_
+
+     - (0.34, 30) μm
+
+     - Crystalline (cubic, isotropic)
+
+       Both Alumina and ISAS (combustion product) used
+
+   * - :math:`\mathrm{Al_{2}O_{3}}`
+     - Corundum
+
+       Al2O3_KH
+
+     - 
+       .. image:: ../_static/opacity_previews/Al2O3_KH.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Begemann et al. (1997) <https://ui.adsabs.harvard.edu/abs/1997ApJ...476..199B/abstract>`_
+     
+       :math:`\hookrightarrow` `DOCCD Link (Porous) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+       `Koike et al (1995) <https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Mix of amorphous alumina (porous, isotropic) 
+     
+       `+` :math:`\gamma` crystalline corundum (cubic, isotropic, Alumina + ISAS)
+
+   * - :math:`\mathrm{CaTiO_{3}}`
+     - Perovskite
+
+       CaTiO3
+
+     - 
+       .. image:: ../_static/opacity_previews/CaTiO3.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
+     
+       :math:`\hookrightarrow` `DOCCD Link (CaTiO3) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+
+     - (2, 30) μm
+
+     - Crystalline (orthorhombic, near-cubic and isotropic)
+      
+       Natural Crystal
+
+   * - :math:`\mathrm{CaTiO_{3}}`
+     - Perovskite
+
+       CaTiO3_KH
+
+     - 
+       .. image:: ../_static/opacity_previews/CaTiO3_KH.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
+     
+       :math:`\hookrightarrow` `DOCCD Link (CaTiO3) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+
+       `Ueda (1998) <https://ui.adsabs.harvard.edu/abs/1998JPCM...10.3669U/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (orthorhombic, near-cubic and isotropic)
+       
+       Natural Crystal + Synthetic Single Crystal
+
+   *  - :math:`\mathrm{\textbf{M-L Dwarf}}`
+      - 
+      - 
+      - 
+      -
+      - 
+      - 
+
+   * - :math:`\mathrm{TiO_{2}}`
+     - Anatase
+
+       TiO2_anatase
+
+     - 
+       .. image:: ../_static/opacity_previews/TiO2_anatase.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
+
+       `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (Anatase) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+
+       `Siefke (2016) <https://ui.adsabs.harvard.edu/abs/2016arXiv160704866S/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (tetragonal, uniaxial)
+     
+       Natural Anatase (:math:`\mathrm{Ti_{0.992}V_{0.008}O_{2}}`) + Thin Film
+
+       Natural crystal indices averaged by polarization (2/3 Ordinary + 1/3 Extraordinary)
+
+   * - :math:`\mathrm{TiO_{2}}`
+     - Rutile
+     
+       TiO2_rutile
+
+     - 
+       .. image:: ../_static/opacity_previews/TiO2_rutile.png
+          :width: 400
+          :align: center
+
+     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+
+     - `Ribarsky in Palik (1985) [Vol 1, Sec 39] (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+     
+       `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (Rutile, E||a,b) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+
+     - (0.47, 30) μm
+
+     - Crystalline (tetragonal, uniaxial)
+     
+       Natural Rutile (:math:`\mathrm{Ti_{0.984}V_{0.008}Fe_{0.008}O_{2}}`)
+       
+       Ordinary (E||a,b) used
+
+   * - :math:`\mathrm{TiC}`
+     - Titanium Carbide
+     
+       TiC
+
+     - 
+       .. image:: ../_static/opacity_previews/TiC.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Koide (1990) <https://ui.adsabs.harvard.edu/abs/1990PhRvB..42.4979K/abstract>`_
+     
+       `Henning & Dutschke (2001) <https://ui.adsabs.harvard.edu/abs/2001AcSpA..57..815H/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, face centered, isotropic)
+     
+       Synthetic Single Crystals 
+
+   * - :math:`\mathrm{VO_2}`
+     - Vanadium Oxide
+     
+       VO
+
+     - 
+       .. image:: ../_static/opacity_previews/VO.png
+          :width: 400
+          :align: center
+
+     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+
+     - `Wan et al. (2019) <https://ui.adsabs.harvard.edu/abs/2019AnP...53100188W/abstract>`_
+
+     - (0.3, 30) μm
+
+     - :math:`\mathrm{VO_2}` thin film as a VO proxy
+     
+       (:math:`\mathrm{VO_2}` is monoclinic, uniaxial but thin film is random orientation)
+
+   * - :math:`\mathrm{C}`
+     - Meteoritic Nano-Diamonds
+     
+       NanoDiamonds
+
+     - 
+       .. image:: ../_static/opacity_previews/NanoDiamonds.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`
+
+     - `Mutschke (2004) <https://ui.adsabs.harvard.edu/abs/2004A%26A...423..983M/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       Natural Crystal
+
+   *  - :math:`\mathrm{\textbf{Iron}}`
+      - 
+      - 
+      - 
+      -
+      - 
+      - 
+
+   * - :math:`\mathrm{Fe}`
+     - :math:`\alpha` Iron
+     
+       Fe
+
+     - 
+       .. image:: ../_static/opacity_previews/Fe.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Lynch & Hunter in Palik (1991) (Vol 2, Sec 15) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, body centered, stil slightly anisotropic due to ferromagnetism)
+
+   * - :math:`\mathrm{FeO}`
+     - Wustite
+     
+       FeO
+
+     - 
+       .. image:: ../_static/opacity_previews/FeO.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Begemann (1995) <https://ui.adsabs.harvard.edu/abs/1995P%26SS...43.1257B/abstract>`_
+
+     - (0.21, 30) μm
+
+     - Crystalline (Cubic, face centered, isotropic)
+     
+       Synthetic
+  
+   * - :math:`\mathrm{FeS}`
+     - Troilite
+     
+       FeS
+
+     - 
+       .. image:: ../_static/opacity_previews/FeS.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Pollack (1994) (C) <https://ui.adsabs.harvard.edu/abs/1994ApJ...421..615P/abstract>`_
+
+       `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (FeS) <https://www.astro.uni-jena.de/Laboratory/OCDB/sulfides.html>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (Hexagonal, grows as an isotropic slab)
+     
+       Natural + Synethic crystal
+
+   * - :math:`\mathrm{Fe_2O_3}`
+     - Hematite / :math:`\alpha \mathrm{Fe_2O_3}`
+     
+       Fe2O3
+
+     - 
+       .. image:: ../_static/opacity_previews/Fe2O3.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - Unpublished, Triaud in DOCCD
+
+       :math:`\hookrightarrow` `DOCCD Link (Fe2O3 E||a,b) <https://www.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (Rhombohedral, uniaxial)
+     
+       Ordinary ray (E||a,b) used
+
+   * - :math:`\mathrm{FeSiO_3}`
+     - Ferrosilite
+     
+       FeSiO3
+
+     - 
+       .. image:: ../_static/opacity_previews/FeSiO3.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Day (1981) <https://ui.adsabs.harvard.edu/abs/1981ApJ...246..110D/abstract>`_
+
+     - (8.22, 30) μm
+
+     - Amorphous (isotropic)
+     
+       Iron-rich olivine
+
+   * - :math:`\mathrm{Fe_2SiO_4}`
+     - Fayalite
+     
+       Fe2SiO4_KH
+
+     - 
+       .. image:: ../_static/opacity_previews/Fe2SiO4_KH.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...378..228F/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (Fayalite (synthetic)) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - (0.40, 30) μm
+
+     - Crystalline (orthorhombic, biaxial)
+     
+       Synthetic Single Crystal
+       
+       Each polarization (E||a,b,c) averaged
+
+   *  - :math:`\mathrm{\textbf{Magnesium}}`
+      - 
+      - 
+      - 
+      -
+      - 
+      - 
+
+   * - :math:`\mathrm{MgO}`
+     - Periclase
+     
+       MgO
+
+     - 
+       .. image:: ../_static/opacity_previews/MgO.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Roessler & Huffman in Palik (1991) (Vol 2, Sec 46) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       KH18 filled empty Palik entries with Kramers-Kronig analysis
+
+   * - :math:`\mathrm{Mg_{0.8}Fe_{1.2}SiO4}`
+     - Forsterite ('Iron-rich')
+     
+       Mg2SiO4_Fe_rich
+
+     - 
+       .. image:: ../_static/opacity_previews/Mg2SiO4_Fe_rich.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Henning (2005) (C) <https://ui.adsabs.harvard.edu/abs/2005IAUS..231..457H/abstract>`_
+
+       `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (Mg(0.8)Fe(1.2)SiO4) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.21, 30) μm
+
+     - Amorphous (glass, isotropic)
+     
+       Olivine
+
+   * - :math:`\mathrm{Mg_{1.72}Fe_{0.21}SiO4}`
+     - Forsterite ('Iron-poor')
+     
+       Mg2SiO4_Fe_poor
+
+     - 
+       .. image:: ../_static/opacity_previews/Mg2SiO4_Fe_poor.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (San Carlos Olivine) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (orthorhombic, biaxial)
+     
+       Natural crystal
+       
+       Extraordinary ray (E||c) used
+       
+       Olivine
+
+   * - :math:`\mathrm{Mg_{2}SiO4}`
+     - Forsterite
+     
+       Mg2SiO4_amorph
+
+     - 
+       .. image:: ../_static/opacity_previews/Mg2SiO4_amorph.png
+          :width: 400
+          :align: center
+
+     - `Burningham (2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
+
+     - `Scott & Duly (1996) (C) <https://ui.adsabs.harvard.edu/abs/1996ApJS..105..401S/abstract>`_
+
+       `Draine & Lee (1984) <https://ui.adsabs.harvard.edu/abs/1984ApJ...285...89D/abstract>`_
+
+       `Nitsan & Shankland (1976) <https://ui.adsabs.harvard.edu/abs/1976GeoJ...45...59N/abstract>`_
+
+     - (0.27, 30) μm
+
+     - Amorphous Forsterite Thin Film (isotropic) 
+     
+       `+` 'Astronomical' Silicate (Derived to fit observations) 
+       
+       `+` Crystalline Synthetic Forsterite (E||a + E||c)
+       
+       Refractive indices from 0.06-62 μm, interpolated to fit EGP grid (0.26-227 μm)
+       
+       Olivine
+
+   * - :math:`\mathrm{Mg_{2}SiO4}`
+     - Forsterite
+     
+       Mg2SiO4_amorph_sol_gel
+
+     - 
+       .. image:: ../_static/opacity_previews/Mg2SiO4_amorph_sol_gel.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (Mg(2)SiO(4)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous Sol Gel (synthetic, isotropic)
+
+   * - :math:`\mathrm{Mg_{2}SiO4}`
+     - Forsterite
+     
+       Mg2SiO4_crystalline
+
+     - 
+       .. image:: ../_static/opacity_previews/Mg2SiO4_crystalline.png
+          :width: 400
+          :align: center
+
+     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+
+     - `Suto (2006) <https://ui.adsabs.harvard.edu/abs/2006MNRAS.370.1599S/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (orthorhombic, biaxial)
+     
+       Synthetic Single Crystals
+       
+       E||a and E||b polarizations combined
+       
+       Olivine
+
+   * - :math:`\mathrm{MgFeSiO_4}`
+     - Olivine
+     
+       MgFeSiO4_amorph_glass
+
+     - 
+       .. image:: ../_static/opacity_previews/MgFeSiO4_amorph_glass.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (MgFeSiO[4] [3.71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (glass, isotropic)
+     
+       Synthetic
+
+   * - :math:`\mathrm{Mg_{0.8}Fe_{1.2}SiO_4}`
+     - Olivine
+     
+       Mg8Fe12SiO4_amorph_glass
+
+     - 
+       .. image:: ../_static/opacity_previews/Mg8Fe12SiO4_amorph_glass.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (Mg(0.8)Fe(1.2)SiO4) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (glass, isotropic)
+     
+       Synthetic
+
+   * - :math:`\mathrm{MgSiO_3}` *
+     - Enstatite
+     
+       MgSiO3
+
+     - 
+       .. image:: ../_static/opacity_previews/MgSiO3.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Egan & Hilgeman (1975) <https://ui.adsabs.harvard.edu/abs/1975AJ.....80..587E/abstract>`_
+     
+       `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (MgSiO(3) [2/71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Natural Crystalline (orthorhombic, biaxial) (no polarization given)
+     
+       `+` Synthetic Amorphous (glass, isotropic)
+       
+       Silicate pyroxene
+
+   * - :math:`\mathrm{MgSiO_3}`
+     - Enstatite
+     
+       MgSiO3_amorph
+
+     - 
+       .. image:: ../_static/opacity_previews/MgSiO3_amorph.png
+          :width: 400
+          :align: center
+
+     - `Burningham (2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
+
+     - `Scott & Duly (1996) (C) <https://ui.adsabs.harvard.edu/abs/1996ApJS..105..401S/abstract>`_
+
+       `Draine & Lee (1984) <https://ui.adsabs.harvard.edu/abs/1984ApJ...285...89D/abstract>`_
+
+       `Nitsan & Shankland (1976) <https://ui.adsabs.harvard.edu/abs/1976GeoJ...45...59N/abstract>`_
+
+     - (0.27, 30) μm
+
+     - Amorphous Enstatite Thin Film (isotropic) 
+     
+       `+` 'Astronomical' Silicate (observation derived) 
+       
+       `+` Crystalline Synthetic Forsterite (E||a + E||c)
+       
+       Refractive indices from 0.06-62 μm, interpolated to fit EGP grid (0.26-227 μm)
+       
+       Silicate pyroxene
+
+   * - :math:`\mathrm{MgSiO_3}`
+     - Enstatite
+     
+       MgSiO3_amorph_glass
+
+     - 
+       .. image:: ../_static/opacity_previews/MgSiO3_amorph_glass.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
+
+        :math:`\hookrightarrow` `DOCCD Link (MgSiO(3) [2/71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (glass, isotropic)
+     
+       Synthetic
+       
+       Silicate pyroxene
+
+   * - :math:`\mathrm{MgSiO_3}`
+     - Enstatite
+     
+       MgSiO3_sol_gel
+
+     - 
+       .. image:: ../_static/opacity_previews/MgSiO3_sol_gel.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (MgSiO(3)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous Sol Gel (synthetic, isotropic)
+     
+       Silicate pyroxene
+
+   * - :math:`\mathrm{MgSiO_3}`
+     - Ortho-Enstatite
+     
+       MgSiO3_crystalline
+
+     - 
+       .. image:: ../_static/opacity_previews/MgSiO3_crystalline.png
+          :width: 400
+          :align: center
+
+     - `Burningham (2021) <https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract>`_
+
+     - `Jager (1998) <https://ui.adsabs.harvard.edu/abs/1998A%26A...339..904J/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link (Enstatite (natural)) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - (0.27, 30) μm
+
+     - Crystalline (Orthorhombic, biaxial)
+     
+       Natural crystal with some talc formations
+       
+       Each polarization (E||a,b,c) averaged
+       
+       Refractive indices from 2-99 μm, interpolated to fit EGP grid (0.26-227 μm)
+       
+       Silicate pyroxene
+
+
+   * - :math:`\mathrm{Mg_{0.4}Fe_{0.6}SiO_3}`
+     - Pyroxene
+     
+       Mg4Fe6SiO3_amorph_glass
+
+     - 
+       .. image:: ../_static/opacity_previews/Mg4Fe6SiO3_amorph_glass.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
+
+        :math:`\hookrightarrow` `DOCCD Link (Mg(0.4)Fe(0.6)SIO(3)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (glass, isotropic)
+     
+       Synthetic
+       
+       Silicate pyroxene
+
+   * - :math:`\mathrm{Mg_{0.5}Fe_{0.5}SiO_3}`
+     - Pyroxene
+     
+       Mg5Fe5SiO3_amorph_glass
+
+     - 
+       .. image:: ../_static/opacity_previews/Mg5Fe5SiO3_amorph_glass.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
+
+        :math:`\hookrightarrow` `DOCCD Link (Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (glass, isotropic)
+     
+       Synthetic
+      
+       Silicate pyroxene
+
+   * - :math:`\mathrm{Mg_{0.8}Fe_{0.2}SiO_3}`
+     - Pyroxene
+     
+       Mg8Fe2SiO3_amorph_glass
+
+     - 
+       .. image:: ../_static/opacity_previews/Mg8Fe2SiO3_amorph_glass.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
+
+        :math:`\hookrightarrow` `DOCCD Link (Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (glass, isotropic)
+     
+       Synthetic
+       
+       Silicate pyroxene
+
+   * - :math:`\mathrm{MgAl_2O_4}`
+     - Spinel
+     
+       MgAl2O4
+
+     - 
+       .. image:: ../_static/opacity_previews/MgAl2O4.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     -  `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...373.1125F/abstract>`_
+
+        :math:`\hookrightarrow` `DOCCD Link (Natural Mg-spinel) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - (1.69, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       Natural (:math:`\mathrm{Mg_{1.02}Al_{1.93}Fe_{0.01}Cr_{0.01}O_4}`)
+       
+       Annealed at 1223K for one hour, induces a disordered phase transition
+
+   *  - :math:`\mathrm{\textbf{Silica}}`
+      - 
+      - 
+      - 
+      -
+      - 
+      - 
+
+   * - :math:`\mathrm{SiC}`
+     - Moissanite / :math:`\alpha` Carborundum
+     
+       SiC
+
+     - 
+       .. image:: ../_static/opacity_previews/SiC.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     -  `Laor & Draine (1993) (C) <https://ui.adsabs.harvard.edu/abs/1993ApJ...402..441L/abstract>`_
+
+        `Philipp & Taft (1960) in Caras (1965) <https://apps.dtic.mil/sti/tr/pdf/AD0464777.pdf>`_
+
+        `Bohren & Huffman (1983) [Sec 9.1, 12.3.4] <https://ui.adsabs.harvard.edu/abs/1983asls.book.....B/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, isotropic). 
+     
+       Lab data + Dampled Oscillator Fit
+
+   * - :math:`\mathrm{SiO}`
+     - Silicon Monoxide
+     
+       SiO
+
+     - 
+       .. image:: ../_static/opacity_previews/SiO.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     -  `Philipp in Palik (1985) (Vol 1, Sec 36) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+        `Wetzel (2013) <https://ui.adsabs.harvard.edu/abs/2013A%26A...553A..92W/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (glass, isotropic)
+     
+       Palik Compilation + Thin Film
+       
+       KH18 filled empty Palik entries with Kramers-Kronig analysis
+
+   * - :math:`\mathrm{SiO_2}`
+     - :math:`\alpha+\beta` Quartz
+     
+       SiO2
+
+     - 
+       .. image:: ../_static/opacity_previews/SiO2.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     -  `Philipp in Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+        `Zeidler (2013) <https://ui.adsabs.harvard.edu/abs/2013A%26A...553A..81Z/abstract>`_
+
+        :math:`\hookrightarrow` `DOCCD Link (SiO2 at 928K, E||c) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - (0.2, 30) μm
+
+     - Short wavelengths is :math:`\alpha` Quartz (crystalline, trigonal, uniaxial)
+     
+       Infrared wavelengths is :math:`\beta` Quartz (crystalline, hexagonal, uniaxial)
+       
+       928K, Extraordinary (E||c) ray was used for :math:`\beta` Quartz
+
+   * - :math:`\mathrm{SiO_2}`
+     - :math:`\alpha` Quartz
+     
+       SiO2_crystalline_2023
+
+     - 
+       .. image:: ../_static/opacity_previews/SiO2_crystalline_2023.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024'_
+
+     -  `Herve Herbin & Petitprez (2023) <https://www.tandfonline.com/doi/full/10.1080/02786826.2023.2165899>`_
+
+     - (0.25, 15.37) μm
+
+     - Crystalline (trigonal, uniaxial)
+     
+       Airborne quartz particles, random orientation
+
+   * - :math:`\mathrm{SiO_2}`
+     - :math:`\alpha` Quartz
+     
+       SiO2_alpha_palik
+
+     - 
+       .. image:: ../_static/opacity_previews/SiO2_alpha_palik.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Philipp in Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (trigonal, uniaxial)
+     
+       Variety of lab sources
+       
+       Kramers-Kronig analysis was utilized to fill in empty Palik entires
+       
+       Indices averaged by polarization (2/3 Ordinary + 1/3 Extraordinary)
+
+   * - :math:`\mathrm{SiO_2}`
+     - :math:`\alpha` Quartz + Silica Glass
+     
+       SiO2_amorph
+
+     - 
+       .. image:: ../_static/opacity_previews/SiO2_amorph.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     -  `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
+
+        :math:`\hookrightarrow` `DOCCD Link (Amorphous SiO2, 300K) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+        `Philipp in Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Short wavelengths is :math:`\alpha` Quartz (crystalline,trigonal,uniaxial)
+     
+       Long wavelengths is amorphous silica (glass, isotropic)
+
+   * -  :math:`\mathrm{SiO_2}`
+     -  Silica Glass
+     
+        SiO2_glass_palik
+
+     - 
+       .. image:: ../_static/opacity_previews/SiO2_glass_palik.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Philipp in Palik (1985) (Vol 1, Sec 35) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (glass, isotropic)
+     
+       Kramers-Kronig analysis was utilized to fill in empty Palik entires
+
+   *  - :math:`\mathrm{\textbf{T-Y Dwarf}}`
+      - 
+      - 
+      - 
+      -
+      - 
+      - 
+
+
+   * - :math:`\mathrm{Cr}`
+     - Chromium
+     
+       Cr
+
+     - 
+       .. image:: ../_static/opacity_previews/Cr.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Lynch & Hunter in Palik (1991) (Vol 2, Sec 15.6) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+
+       `Rakic (1998) <https://ui.adsabs.harvard.edu/abs/1998ApOpt..37.5271R/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, body centered, isotropic) (technically tetragonal, but not by much)
+     
+       Palik compiled lab data + computed from first principles
+
+   * - :math:`\mathrm{MnS}`
+     - :math:`\alpha` Manganese Sulfide
+     
+       MnS
+
+     - 
+       .. image:: ../_static/opacity_previews/MnS.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
+
+     - (0.2, 13) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       Synthetic single crystals
+
+   * - :math:`\mathrm{MnS}`
+     - :math:`\alpha` Manganese Sulfide
+     
+       MnS_KH
+
+     - 
+       .. image:: ../_static/opacity_previews/MnS_KH.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
+
+       `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
+
+       `Palik & Addamiano in Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       Synthetic single crystals + :math:`\mathrm{Na_2S}` and :math:`\mathrm{ZnS}` extrapolation
+       
+       KH18 derived real indices from Kramers-Kronig of imaginary indices
+
+   * - :math:`\mathrm{MnS}`
+     - :math:`\alpha` Manganese Sulfide
+     
+       MnS_Mor
+
+     - 
+       .. image:: ../_static/opacity_previews/MnS_Mor.png
+          :width: 400
+          :align: center
+
+     - `Mullens (2024)`_
+
+     - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
+
+       `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
+
+       `Palik & Addamiano in Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       Synthetic single crystals + :math:`\mathrm{Na_2S}` and :math:`\mathrm{ZnS}` extrapolation
+       
+       Used WS15 indices to 13 μm, and KH18 from 13-30 μm
+
+   * - :math:`\mathrm{Na_2S}`
+     - Sodium Sulfide
+     
+       Na2S
+
+     - 
+       .. image:: ../_static/opacity_previews/Na2S.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Morley (2012) <https://ui.adsabs.harvard.edu/abs/2012ApJ...756..172M/abstract>`_
+     
+       `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
+
+       `Khachai (2009) <https://ui.adsabs.harvard.edu/abs/2009JPCM...21i5404K/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, face centered, isotropic)
+     
+       Compiled by Morley (2012)
+       
+       Synthetic crystal lab data (15K) + computed from first principles
+
+   * - :math:`\mathrm{ZnS}`
+     - Zinc blende / Sphalerite
+     
+       ZnS
+
+     - 
+       .. image:: ../_static/opacity_previews/ZnS.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Querry (1987) <https://apps.dtic.mil/sti/citations/ADA192210>`_
+
+     - (0.22, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       High purity sample
+
+   * - :math:`\mathrm{NaCl}`
+     - Halite / Rock Salt
+     
+       NaCl
+
+     - 
+       .. image:: ../_static/opacity_previews/NaCl.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Eldridge & Palik in Palik (1985) (Vol 1, Sec 38) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       WS15 would assume constant imaginary index to fill in empty Palik entries
+       
+       (causes step-function-like cross section)
+
+   * - :math:`\mathrm{KCl}`
+     - Sylvite
+     
+       KCl
+
+     - 
+       .. image:: ../_static/opacity_previews/KCl.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Palik in Palik (1985) (Vol 1, Sec 33) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       WS15 would assume constant imaginary index to fill in empty Palik entries 
+       
+       (causes step-function-like cross section)
+
+   *  - :math:`\mathrm{\textbf{Ices}}`
+      - 
+      - 
+      - 
+      -
+      - 
+      - 
+
+
+   * - :math:`\mathrm{NH_4H_2PO_4}`
+     - Ammonium Dihydrogen Phosphate
+     
+       ADP
+
+     - 
+       .. image:: ../_static/opacity_previews/ADP.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Zernike (1965) <https://ui.adsabs.harvard.edu/abs/1965JOSA...55..210Z/abstract>`_
+
+       `Querry (1974) <https://ui.adsabs.harvard.edu/abs/1974JOSA...64...39Q/abstract>`_
+
+     - (0.2, 19.99) μm
+
+     - Crystalline (tetragonal, uniaxial) + Liquid 
+     
+       Synthetic crystal + aqueous solution
+
+       Crystalline indices averaged by polarization (2/3 Ordinary + 1/3 Extraordinary)
+
+   * - :math:`\mathrm{H_2O}`
+     - Water (liquid)
+     
+       H2O
+
+     - 
+       .. image:: ../_static/opacity_previews/H2O.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Hale & Querry (1973) (C) <https://ui.adsabs.harvard.edu/abs/1973ApOpt..12..555H/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Room temperature (298.5K) liquid water
+
+   * - :math:`\mathrm{H_2O}`
+     - Ice 1h
+     
+       H2O_ice
+
+     - 
+       .. image:: ../_static/opacity_previews/H2O_ice.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Warren (1984) (C) <https://ui.adsabs.harvard.edu/abs/1984ApOpt..23.1206W/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (hexagonal, uniaxial) (266.15K ice)
+     
+       No ordinary or extraordinary indices listed
+
+   * - :math:`\mathrm{NH_4SH}`
+     - Amonnium Hydrosulfide
+     
+       NH4SH
+
+     - 
+       .. image:: ../_static/opacity_previews/NH4SH.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - Personal Communication
+
+       :math:`\hookrightarrow` `Howett (2007) (C) <https://ui.adsabs.harvard.edu/abs/2007JOSAB..24..126H/abstract>`_
+
+     - (0.5, 30) μm
+
+     - Crystalline (rhombic, biaxial) (~160K)
+     
+       Unpublished dataset, personal communication.
+
+   * - :math:`\mathrm{NH_3}`
+     - Amonnia
+     
+       NH3
+
+     - 
+       .. image:: ../_static/opacity_previews/NH3.png
+          :width: 400
+          :align: center
+
+     - `optool <https://github.com/cdominik/optool/tree/master/lnk_data>`_
+
+     - `Martonchik (1984) (C) <https://ui.adsabs.harvard.edu/abs/1984ApOpt..23..541M/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       Synthetic thin film (77-88K)
+
+   * - :math:`\mathrm{CH_4}`
+     - Methane (liquid)
+     
+       CH4_liquid
+
+     - 
+       .. image:: ../_static/opacity_previews/CH4_liquid.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Martonchik & Orton (1984) (C) <https://ui.adsabs.harvard.edu/abs/1994ApOpt..33.8306M/abstract>`_
+
+     - (0.2, 30) μm
+
+     - 111K Liquid Methane
+     
+       Refractive index data is sometimes absolute lower or upper limit
+
+   * - :math:`\mathrm{CH_4}`
+     - Methane (solid)
+     
+       CH4_solid
+
+     - 
+       .. image:: ../_static/opacity_previews/CH4_solid.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Martonchik & Orton (1984) (C) <https://ui.adsabs.harvard.edu/abs/1994ApOpt..33.8306M/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (cubic, isotropic)
+     
+       90K Solid Methane
+       
+       Refractive index data is sometimes absolute lower or upper limit
+
+   * - Ice Tholins 
+     - Ice Tholins (see notes)
+     
+       IceTholin
+
+     - 
+       .. image:: ../_static/opacity_previews/IceTholin.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Khare (1993) <https://ui.adsabs.harvard.edu/abs/1993Icar..103..290K/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (isotropic)
+     
+       :math:`\mathrm{C_2H_6}`/:math:`\mathrm{H_2O}` (1:6 ratio) irradiation residue (77K)
+
+
+   *  - :math:`\mathrm{\textbf{Soots and Hazes}}`
+      - 
+      - 
+      - 
+      -
+      - 
+      - 
+
+   * - :math:`\mathrm{C}`
+     - Graphite
+     
+       C
+
+     - 
+       .. image:: ../_static/opacity_previews/C.png
+          :width: 400
+          :align: center
+
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+     - `Draine (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1017D/abstract>`_
+
+       `Draine (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1026D/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (hexagonal, uniaxial)
+    
+       Indices averaged by polarization (2/3 Ordinary + 1/3 Extraordinary)
+
+   * - ExoHaze
+     - ExoHaze (see notes)
+     
+       ExoHaze_1000xSolar_300K
+
+     - 
+       .. image:: ../_static/opacity_previews/ExoHaze_1000xSolar_300K.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
+
+     - (0.4, 28.6) μm
+
+     - Amorphous (isotropic)
+     
+       66% H2O, 6.6% CH4, 6.5% N2, 4.9% CO2, and 16% He irradiation residue
+
+   * - ExoHaze
+     - ExoHaze (see notes)
+     
+       ExoHaze_1000xSolar_400K
+
+     - 
+       .. image:: ../_static/opacity_previews/ExoHaze_1000xSolar_400K.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
+
+     - (0.4, 28.6) μm
+
+     - Amorphous (isotropic)
+     
+       56% H2O, 11% CH4, 10% CO2, 6.4% N2, 1.9% H2, and 14.7% He irradiation residue
+
+   * - :math:`\mathrm{C}`
+     - Flame Soot
+     
+       Soot
+
+     - 
+       .. image:: ../_static/opacity_previews/Soot.png
+          :width: 400
+          :align: center
+
+     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+
+     - `Lavvas & Koskinen (2017) (C) <https://ui.adsabs.harvard.edu/abs/2017ApJ...847...32L/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (isotropic)
+     
+       Lavvas & Koskinen (2017) used Kramers-Kronig analysis on extant lab data for soots
+
+   * - :math:`\mathrm{C_6H_{12}}`
+     - 1-Hexene
+     
+       Hexene
+
+     - 
+       .. image:: ../_static/opacity_previews/Hexene.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Anderson (2000) <https://apps.dtic.mil/sti/citations/ADA379578>`_
+
+     - (2, 25) μm
+
+     - Liquid (linear alpha olefin)
+  
+   * - :math:`\mathrm{H_2SO_4}`
+     - Sulfuric Acid
+     
+       H2SO4
+
+     - 
+       .. image:: ../_static/opacity_previews/H2SO4.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Palmer & Williams (1975) <https://ui.adsabs.harvard.edu/abs/1975ApOpt..14..208P/abstract>`_
+
+     - (0.36, 24.98) μm
+
+     - Liquid (300K, 84.5% solution)
+     
+       0.702-0.360 μm imaginary indices fit with an exponent
+       
+       2.564-2.770 μm fit with an exponent and offset to match data
+
+   * - :math:`\mathrm{S_8}`
+     - Cyclo-Octasulfur / 
+     
+       Orthorhombic Sulfur / :math:`\alpha` Sulfur
+     
+       S8
+
+     - 
+       .. image:: ../_static/opacity_previews/S8.png
+          :width: 400
+          :align: center
+
+     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+
+     - `Fuller, Downing, & Querry in Palik (1998) (Vo 3, Sec 42) (C) <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
+
+     - (0.2, 30) μm
+
+     - Crystalline (orthorhombic, biaxial)
+     
+       Palik only records 'ordinary ray' (averaged E||a and E||b)
+
+   * - Saturn Haze
+     - Saturn Phosphorus Haze (see notes)
+     
+       Saturn-Phosphorus-Haze
+
+     - 
+       .. image:: ../_static/opacity_previews/Saturn-Phosphorus-Haze.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Noy (1981) <https://ui.adsabs.harvard.edu/abs/1981JGR....8611985N/abstract>`_
+
+       `Fletcher (2023) <https://ui.adsabs.harvard.edu/abs/2023JGRE..12807924F/abstract>`_
+
+       `Sromovsky (2019) <https://ui.adsabs.harvard.edu/abs/2020Icar..34413398S/abstract>`_
+
+     - (0.2, 20) μm
+
+     - Amorphous (isotropic)
+     
+       Diphosphine haze proxy
+      
+       Imaginary indices from Noy (1981) and Fletcher (2023)
+       Real from Sromovsky (2019) (white phosphorus)
+
+   * - :math:`\mathrm{C}`
+     - Soot 6mm (see notes)
+     
+       Soot_6mm
+
+     - 
+       .. image:: ../_static/opacity_previews/Soot_6mm.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Chang & Charalampopoulos (1990) <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
+
+     - (0.2, 28.4) μm
+
+     - Amorphous (isotropic)
+     
+       Optical indices measured 6mm above burner
+
+   * - Titan Tholin
+     - Tholin (see notes)
+     
+       Tholin
+
+     - 
+       .. image:: ../_static/opacity_previews/Tholin.png
+          :width: 400
+          :align: center
+
+     - `Wakeford & Sing (2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+     - `Khare (1984) <https://ui.adsabs.harvard.edu/abs/1984Icar...60..127K/abstract>`_
+
+       `Ramirez (2002) <https://ui.adsabs.harvard.edu/abs/2002Icar..156..515R/abstract>`_
+
+     - (0.2, 30) μm
+
+     - Amorphous (isotropic)
+     
+       Both tholin references are :math:`\mathrm{N2}` - :math:`\mathrm{CH_4}` irradiation residue
+       
+       Khare (1984) is 9:1 and Ramirez (2002) is 9.8:0.2
+       
+       Ramirez (2002) indices are used from 0.2-0.4 μm due to issues in Khare (1984)
+
+   * - Oxygenated Tholin
+     - Tholin (C/O=1, see notes)
+     
+       Tholin-CO-1
+
+     - 
+       .. image:: ../_static/opacity_previews/Tholin-CO-1.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
+
+     - (0.2, 9.99) μm
+
+     - Amorphous (isotropic)
+     
+       :math:`\mathrm{N2}` - :math:`\mathrm{CH_4}` - :math:`\mathrm{CO_2}` (C/O = 1, 9:0.5:0.5) irradiation residue
+
+   * - Oxygenated Tholin
+     - Tholin (C/O=0.625, see notes)
+     
+       Tholin-CO-0625
+
+     - 
+       .. image:: ../_static/opacity_previews/Tholin-CO-0625.png
+          :width: 400
+          :align: center
+
+     - `Mullens 2024`_
+
+     - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
+
+     - (0.2, 9.99) μm
+
+     - Amorphous (isotropic)
+     
+       :math:`\mathrm{N2}` - :math:`\mathrm{CH_4}` - :math:`\mathrm{CO_2}` (C/O = 0.625, 9:0.8:0.2) irradiation residue
+
+
+`(C)` refers to references that compile refractive index data (sometimes to supplement their own lab data). See Aerosol-Database-Readme.txt for more details.
+
+`*` :math:`\mathrm{MgSiO_3}` has four altnernative entries that explore assumptions that go into how aerosol properties are precomputed. See Make-Aerosol-Database.ipynb tutorial for more details.
+
+Refractive indices are room temperature unless specifically noted.
+
+Plots display refractive indices (real and imaginary) (x represents actual refractive indices, line is interpolated), effective extinction cross section (combined scattering and absorption)
+for mean particle sizes (1e-3 to 10 um) assuming a lognormal particle distribution with a width of 0.5. Median asymmetry parameter and 
+single scattering albedo for mean particle sizes (1e-3 to 10 um) assuming a lognormal particle distribution with a width of 0.5.
+
+Short summaries on each refractive index paper, as well as when you would expect each aerosol to form with planetary-specific references for each entry and class, are listed on Aerosol-Database-Readme.txt.
+
+Please address any request for new aerosols to: eem85@cornell.edu.
+
+A description of the original public release POSEIDON opacity database can be found in 
 `MacDonald & Lewis (2022) <https://ui.adsabs.harvard.edu/abs/2021arXiv211105862M/abstract>`_
 (Appendix C).

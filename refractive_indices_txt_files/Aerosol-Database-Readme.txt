@@ -1,15 +1,19 @@
-Aerosol Database README 
-Author: Elijah Mullens 
+POSEIDON V1.2 Base Aerosol Database README 
+Author: Elijah Mullens (eem85@cornell.edu)
 Date : 8/12/2024
 
-Thanks to Hannah Wakeford, Daniel Kitzmann, Elspeth Lee, Ben Burningham, Mark Marley, and Sarah Moran for help putting this together.
+Thanks to Hannah Wakeford, Daniel Kitzmann, Elspeth Lee, Ben Burningham, Mark Marley, and Sarah Moran for help putting this together (Thanks y'all!).
 
 This readme corresponds to Table 1 in Mullens et al. 2024
 'Implementation of Aerosol Mie Scattering in POSEIDON with Application to the hot Jupiter HD 189733 b's Transmission, Emission, and Reflected Light Spectrum'
 
-Refractive Indices for POSEIDON are found under the 'refractive_indices_txt_files' folder. Each txt file is split up into folders depending on which database they originate from. There is a separate folder where each txt file has their name exactly as it appears in POSEIDON supported_species.py.
+Refractive Indices for POSEIDON are found under the 'refractive_indices_txt_files' folder. Each txt file is split up into folders depending on which database they originate from. There is a separate folder where each txt file has their name exactly as it appears in POSEIDON supported_species.py. 
+
+Images showing the precomputed aerosol properties, as well as the refractive indices from 0.2 to 30 um are shown in the aerosol_database.pdf and also the png previews in the opacity database tab in POSEIDON's readthedocs.
 
 Please, please, please double check things if you end up using a reference! 
+
+Sorry in advance for any typos
 
 #################################
 Databases
@@ -18,13 +22,15 @@ Databases
 The refractive indices used to compute the radiative properties of the aerosols in Table 1 of Mullens et al. 2024 were compiled from 5 databases. 
 
 ---------------------------------
-Wakeford and Sing (2015) - WS15
+Wakeford & Sing (2015) - WS15
+
 ADS   : https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract
 Table : 1
 
-Wakeford and Sing (2015) compiled aerosol refractive indices for aerosols predicted to form in the upper atmospheres of hot Jupiters. Their philosophy was to never interpolate or extrapolate indices, and stuck to lab data. Wakeford and Sing (2015) utilized both plot digitizers and tables.
+Wakeford and Sing (2015) compiled aerosol refractive indices for aerosols predicted to form in the upper atmospheres of hot Jupiters. Their philosophy was to never interpolate or extrapolate indices, and stuck to lab data. Wakeford & Sing (2015) utilized both plot digitizers and tables.
 
 Some refractive indices were updated for the follow-up paper:
+
 Wakeford (2017)
 ADS    : https://ui.adsabs.harvard.edu/abs/2017MNRAS.464.4247W/abstract
 Table  : N/A
@@ -32,11 +38,12 @@ Table  : N/A
 Updated indices from 2015 to 2017 will be noted below
 
 ---------------------------------
-Kitzmann and Heng (2018) - KH18
+Kitzmann & Heng (2018) - KH18
+
 ADS    : https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract
 Table  : 1
 
-Kitzmann and Heng (2018) compiled aerosol refractive indices for aerosols expected to form in extrasolar planets and brown dwarfs. Their philosophy was to utilize the Kramers-Kronig relation to recover missing real and imaginary indices from datasets. Kitzmann and Heng (2018) utilized both a plot digitizer and tables.
+Kitzmann & Heng (2018) compiled aerosol refractive indices for aerosols expected to form in extrasolar planets and brown dwarfs. Their philosophy was to utilize the Kramers-Kronig relation to recover missing real and imaginary indices from datasets. Kitzmann & Heng (2018) utilized both a plot digitizer and tables.
 
 Additionally, when an aerosol is considered to be anisotropic, they would weigh the dielectric functions in each direction by 1/3 and convert them to refractive indices. 
 
@@ -45,21 +52,26 @@ NOTE: STILL WAITING FOR EMAIL BACK FROM KITZMANN ABOUT GENERAL ASSUMPTIONS THEY 
 ---------------------------------
 gcmCRT 
 
+ADS    : https://ui.adsabs.harvard.edu/abs/2022ApJ...929..180L/abstract
+
 This database is available on GitHub and includes aerosols for an exoplanet GCM.
 
 https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables
 
 ---------------------------------
 Burningham (2021) - B21
+
 ADS    : https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract
 Table  : 3 
 
-Compiled aerosols for retrievals of brown dwarf 2M224-0158. Note that the refractive indices have been interpolated to match the wavelength grid found in the EGP Moe code (which means that all these entries have the same wavelength grid from 0.268 to 227.5 um). 
+Compiled aerosols for retrievals of brown dwarf 2M224-0158. Note that the refractive indices have been interpolated to match the wavelength grid found in the EGP Mie code (which means that all these entries have the same wavelength grid from 0.268 to 227.5 um). 
 
 Sometimes, this means that things are interpolated to shorter to longer wavelengths to fit the grid, which we will note below. 
 
 ---------------------------------
 OpacityTool - optool
+
+ADS    : https://ui.adsabs.harvard.edu/abs/2021ascl.soft04010D/abstract
 
 This database is available on GitHub and includes aerosols to compute properties of.
 
@@ -77,9 +89,10 @@ There are four common sources of refractive indices that are useful tools to fin
 
 ---------------------------------
 Handbook of Optical Constants of Solids
-Edited by Edward D. Malik 
+Edited by Edward D. Palik 
 
-There are three versions of this book. 
+There are three versions of this book: 
+
 Volume 1 : 1985
 ADS      : https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract
 
@@ -92,9 +105,12 @@ ADS      : N/A
 This is a great resource to find refractive indices in. The book can usually be accessed through a university log-in from the following websites: 
 
 https://www.sciencedirect.com/book/9780125444156/handbook-of-optical-constants-of-solids
+
 https://app.knovel.com/kn/resources/kpHOCS000M/toc
 
-In their 'Critiques' sections, Palik and co-authors compile refractive index from multiple lab sources. If a Palik entry is used, be sure to dig up the chapter in the textbook in order to see where the data comes from. Note that their tables will often list the scientific notation for the first and last entry that has that same scientific notation (I.e. it will start with 1e-2 and end with 1e-2 and it is implied that every value between has a 1e-2 value).
+In their 'Critiques' sections, Palik and co-authors compile refractive index from multiple lab sources. If a Palik entry is used, be sure to dig up the chapter in the textbook in order to see where the data comes from.
+
+Note that their tables will often list the scientific notation for the first and last entry that has that same scientific notation (I.e. it will start with 1e-2 and end with 1e-2 and it is implied that every value between has a 1e-2 value).
 
 Citations for Palik entries include the author of the specific section of the textbook, and Palik (i.e. Ribarsky in Palik (1985)).
 
@@ -119,7 +135,7 @@ https://science.gsfc.nasa.gov/691/cosmicice/constants.html
 ---------------------------------
 The Optical Constants Database
 
-Run by the NASA Ames Astrophysics and Astrochemistry Laboratory.
+Run by the NASA AMES Astrophysics and Astrochemistry Laboratory.
 
 Compiles many ices and organic refractory materials. While none are in POSEIDON at the moment, feel free to pull constants from this website and add them. 
 
@@ -164,7 +180,7 @@ There are a multitude of lab techniques utilized to measure the refractive const
 
 - Thin Film 
 
-Aerosols are deposited on a thin film and then reflectance measurements are made. The thickness of the film here is important to measure. From these measurements, one can derive the real refractive indices (and get the imaginary through Kramers-Kronig). It is also possible to get the transmittance through a film and derive imaginary refractive indices (and get the real through Kramers Kronig).
+Aerosols are deposited on a thin film and then reflectance measurements are made. The thickness of the film is important to measure. From these measurements, one can derive the real refractive indices (and get the imaginary through Kramers-Kronig). It is also possible to get the transmittance through a film and derive imaginary refractive indices (and get the real through Kramers Kronig).
 
 - Ellipsometry 
 
@@ -176,11 +192,11 @@ Ground powder of aerosols can be deposited on KBr pellets, which are optically t
 
 - Natural Crystal
 
-Crystals from Earth (homegrown). Can perform both reflective and transmittance measurements. Crystals are usually cut and polished to find crystallographic axes easier. 
+Crystals from Earth. Can perform both reflective and transmittance measurements. Crystals are usually cut and polished to find crystallographic axes easier. 
 
 - Single Crystal
 
-Crystals are grown in a lab (usually defined as a 'single crystal').
+Crystals are grown in a lab (usually defined as a 'single crystal' or 'synthetic').
 
 - Airborne 
 
@@ -253,7 +269,7 @@ Evidence for disequilibrium cloud formation has come from observations of quartz
 ---------------------------------
 Particle size vs Refractive Indices 
 
-The short wavelength, UVIS, radiative properties of aerosols mostly depends on particle size (weakly dependent on species) whereas absorption feature depends on refractive indices (strongly dependent on species). 
+The short wavelength, UVIS, radiative properties of aerosols mostly depends on particle size (weakly dependent on species) whereas absorption features depends on refractive indices (strongly dependent on species). 
 
 Note that some species can have absorption features or non-linear scattering properties (good examples are C, MnS, etc) but that many species have scattering that depends mostly on particle size. 
 
@@ -263,17 +279,8 @@ Atmospheric Radiation: Theoretical Basis by Goody & Yung (1989), chapter 7 and 8
 Giant Planets of Our Solar System by Irwin (2009), chapter 6
 Exoplanet Atmospheres:Physical Processes by Seager (2010), chapter 8
 
-#################################
-Super-Hot Aerosols
-#################################
-
-We start with aerosols that are expected to form on super/ultra-Hot Jupiters.
-
-These are condensates found in the M-L transition space. Specifically, Ca, Ti, and Al bearing species have been found to condense out. It is expected the hibonite, cordunum, and perovskite will condense out. Are expected to deplete atmosphere of Aluminum. 
-
-Wakeford (2017) (Application of these aerosols to exoplanets, see Figure 1)
-ADS : https://ui.adsabs.harvard.edu/abs/2017MNRAS.464.4247W/abstract
 ---------------------------------
+Structure of the aerosol entries 
 ---------------------------------
 
 Aerosol Name      : 
@@ -293,14 +300,25 @@ Paper Info :
 
 Exoplanet/Brown Dwarf Papers:
 
+#################################
+Super-Hot Aerosols
+#################################
+
+We start with aerosols that are expected to form on super/ultra-Hot Jupiters.
+
+These are condensates found in the M-L transition space. Specifically, Ca, Ti, and Al bearing species have been found to condense out. It is expected that hibonite, cordunum, and perovskite will condense out. These species are expected to deplete atmosphere of aluminum. 
+
+Wakeford (2017) (Application of these aerosols to exoplanets, see Figure 1)
+ADS : https://ui.adsabs.harvard.edu/abs/2017MNRAS.464.4247W/abstract
 ---------------------------------
 ---------------------------------
+
 Aerosol Name      : Hibonite
 Name in POSEIDON  : Hibonite
 Database          : W15 (Updated for W17)
 Wavelengths       : 2-1000 um
 
-Chemical Formula  : CaAl[12]O[19] (really, Ca]0.85]Al[11.37]Ti[0.26]Fe[0.38]O[19])
+Chemical Formula  : CaAl[12]O[19] (really, Ca[0.85]Al[11.37]Ti[0.26]Fe[0.38]O[19])
 Crystal or Amorph : Crystalline 
 Crystal Shape     : Hexagonal (Uniaxial)
 
@@ -314,7 +332,7 @@ Paper Info :
  
 Measured the optical constants via IR reflectance of crystalline, natural Hibonite crystals from Evisa and Antsirabe Madagascar. The refractive indices of the txt file are made up of the extraordinary refractive indices of the Antsirabe crystals. 
 
-Also on DOCDD (Hibonite E||c)
+Also on DOCCD (Hibonite E||c)
 https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
 --------------
 
@@ -343,7 +361,7 @@ Paper Info :
 
 Used two different kinds of gamma corundum (a commercially available Alumina and a combustion product ISAS). Used the KBr pellet method. Indices available on Table A1. 0.3-0.4 um utilized the ISAS column, 0.5,0.6,0.7,0.8,0.9,1.0,2.0,...,10.0,10.1,...150 um utilized the Alumina Column. 
 
-Still a mystery where the other wavelength data comes from (the in between wavelengths, for example, between 1-2 um). It can be assumed that this was either an extrapolation, or a plot dither of Figure 7.
+Still a mystery where the other wavelength data comes from (the in between wavelengths, for example, between 1-2 um). It can be assumed that this was either an extrapolation, or a plot digitizer of Figure 7.
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -363,22 +381,22 @@ Wavelengths       : 0.2-500 um
 
 Chemical Formula  : Al[2]O[3]
 Crystal or Amorph : Mixed
-Crystal Shape     : Gamma is Cubic, Alpha is Hexagonal
+Crystal Shape     : Gamma is Cubic, Amorphous is N/A
 
 Refractive Index References:
 --------------
-Begemann 1997 (7.8-500 um)
+Begemann et al. (1997) (7.8-500 um)
 
 ADS        : https://ui.adsabs.harvard.edu/abs/1997ApJ...476..199B/abstract
 
 Paper Info :
 
-Amorphous alumina was produced using the sol-gel technique. It was found that amorphous alumina transforms to gamma-crystalline around 723-873K, and alpha-crystalline above 1273K. Paper has both compact and porous Al2O3 in Table 1. It is assumed that the porous indices were used since they go up to 500 um, but that they don't match directly from txt file to paper. 
+Amorphous alumina was produced using the sol-gel technique. It was found that amorphous alumina transforms to gamma-crystalline (cubic) around 723-873K, and alpha-crystalline (hexagonal) above 1273K. Paper has both compact and porous Al2O3 in Table 1. It is assumed that the porous indices were used since they go up to 500 um, but that they don't match directly from txt file to paper. 
 
-Also found in DOCDD
+Also found in DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
 --------------
-Koike 1996 (0.12-12 um)
+Koike (1995) (0.12-12 um)
 
 ADS        : https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract
 
@@ -417,7 +435,7 @@ Paper Info :
 
 Pseudocubic natural perovskite crystals for reflectance measurements. Measured two faces to check for anisotropy (Figure 9), but probably took an average of the two faces to get the refractive indices. 
 
-Also on DOCDD
+Also on DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 
@@ -451,7 +469,7 @@ Paper Info :
 
 Same reference used in WS15 entry.
 
-Also on DOCDD
+Also on DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 Ueda (1998) (0.02-2 um)
@@ -497,7 +515,7 @@ Paper Info :
 
 Measured transmittance spectra of natural anatase for both the extraordinary and ordinary directions. KH18 took a weighted average of these directions (2/3-1/3).
 
-Also on DOCDD
+Also on DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 Posch (2003) (10-6e3 um)
@@ -510,12 +528,12 @@ Measured reflectance spectra of natural crystals that were un-annealed from Diam
 
 In this paper, they also measured a partially annealed anatase from Hardangervidda Norway to demonstrate how annealed anatase starts to show features of rutile. Notes that anatase is a uniaxial, optically negative crystal (resulting in an oblate spheroid crystal).
 
-Also on DOCDD
+Also on DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 Siefke (2016) (0.1-125 um)
 
-ADS        : https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract
+ADS        : https://ui.adsabs.harvard.edu/abs/2016arXiv160704866S/abstract
 
 Paper Info :
 
@@ -570,7 +588,7 @@ The indices for the rutile txt file are a mesh-mash of both references listed ab
 
 This text file is specifically composted of the ordinary direction (E⟂c or E||a,b).
 
-Also on DOCDD
+Also on DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 
@@ -838,7 +856,7 @@ Reflection measurements were made of FeS embedded into an epoxy resin and polish
 
 This paper is unclear on whether it is amorphous or crystalline, but Figure 1b has a lot of fine structure, which leads me to believe that it is crystalline. 
 
-Also on DOCDD
+Also on DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/sulfides.html
 --------------
 
@@ -872,7 +890,7 @@ Refractive Index References:
 --------------
 Unpublished, created by Amaury H.M.J. Triaud 
 
-Found on DOCDD
+Found on DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html
 
 The website only includes the ordinary ray (E||a,b), which matches the txt file.
@@ -934,9 +952,9 @@ Paper Info :
 
 Paper is specifically looking at crystalline olivines. Looked at the reflection spectra of single, synthetic crystals. Single crystals are grown using the scull method where 1-2 kg of polycrystalline fayalite was inductively molten and slowly cooled under a defined oxygen partial pressure. 6mm crystals. Confirmed to be entirely fayalite with no inclusions. Figure 8 shows how opacity changes with different Mie assumptions (sphere, CDE1, CDE2, powder)
 
-Hard to compare txt file directly with indices on DOCDD since KH18 average based on direction (each direction gets a 1/3 weighting). 
+Hard to compare txt file directly with indices on DOCCD since KH18 average based on direction (each direction gets a 1/3 weighting). 
 
-Found on DOCDD
+Found on DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
 --------------
 
@@ -1025,7 +1043,7 @@ ADS        : https://ui.adsabs.harvard.edu/abs/2005IAUS..231..457H/abstract
 
 Paper Info :
 
-Review article that was cited in WS15. Indices were most likely taken from Figure 5 with a plot digitizer. Note that this figure is in wavenumber. Comparing and contrasting the txt file with the ones found in the DOCDD, it seems like this entry is most similar to Mg[0.8]Fe[1.2]SiO[4] glass from Dorschner (1995). 
+Review article that was cited in WS15. Indices were most likely taken from Figure 5 with a plot digitizer. Note that this figure is in wavenumber. Comparing and contrasting the txt file with the ones found in the DOCCD, it seems like this entry is most similar to Mg[0.8]Fe[1.2]SiO[4] glass from Dorschner (1995). 
 
 --------------
 Dorschner (1995) (assumed reference)
@@ -1036,7 +1054,7 @@ Paper Info :
 
 Explored many different olivine and pyroxenes. Reflectance and ellipsometric measurements measurements on polished surfaces, transmittance measurements of thin slabs. Glasses were made by quenching a melt. Their glasses required microscopic homogeneity, and any samples showing crystallization (specifically, iron-rich members of olivine) were thrown out. Preparation of samples is more detailed in paper 1 (Jager 1994, https://ui.adsabs.harvard.edu/abs/1994A%26A...292..641J/abstract). 
 
-Found on DOCDD [under, Mg(0.8)Fe(1.2)SiO4]
+Found on DOCCD [under, Mg(0.8)Fe(1.2)SiO4]
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1079,7 +1097,7 @@ The paper compares Fe-poor natural olivine from San Carlos to Fe-rich natural ol
 
 The San Carlos indices were made temperature dependent in Zeidler 2015 and updated on the website. Comparing the txt file from WS15 to the datasets on the website, it looks like E||c/x at room temperature matches the most. 
 
-Also on DOCDD [See San Carlos Olivine in the VIS-NIR and San-Carlos at 300K E||c/x]
+Also on DOCCD [See San Carlos Olivine in the VIS-NIR and San-Carlos at 300K E||c/x]
 https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
 --------------
 
@@ -1198,7 +1216,7 @@ Presents optical constants of pure, amorphous Mg-silicates. Used sol-gel, a chem
 
 Figure 5 shows a comparison of sol-gel and thin-films from Scott and Duley (1996), which was used to make amorphous Mg2SiO4 from B21. Also shows in Figure 9 what assuming an iron core to the sol-gel does to spectra.
 
-Also in DOCDD (Mg(2)SiO(4) matches txt file, in wavenumber on website)
+Also in DOCCD (Mg(2)SiO(4) matches txt file, in wavenumber on website)
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1241,7 +1259,7 @@ Measured infrared reflectance of low temperature (50-295K) crystalline forsterit
 
 Forsterite synthetic, single crystals were grown using the Czochralski method (described in Takei (1978), https://ui.adsabs.harvard.edu/abs/1978JCrGr..43..463T/abstract). Resulted in centimeter sized crystals, polished on each face.
 
-gCMCRT received the indices from the ProDiMo team (Woitke (2009)), which is a disc code. Comparing the txt file to directional data on DOCDD, it looks like E||a and E||b were used. 
+gCMCRT received the indices from the ProDiMo team (Woitke (2009)), which is a disc code. Comparing the txt file to directional data on DOCCD, it looks like E||a and E||b were used. 
 
 --------------
 
@@ -1286,7 +1304,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 
 y = 0.5 entry in Table 5
 
-Found on DOCDD [MgFeSiO[4] [3.71 g/ccm]]
+Found on DOCCD [MgFeSiO[4] [3.71 g/ccm]]
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1326,7 +1344,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 
 y = 0.4 entry in Table 5
 
-Found on DOCDD [Mg(0.8)Fe(1.2)SiO4]
+Found on DOCCD [Mg(0.8)Fe(1.2)SiO4]
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1362,7 +1380,7 @@ ADS        : https://ui.adsabs.harvard.edu/abs/1975AJ.....80..587E/abstract
 
 Paper Info :
 
-Focused on UV measurements of many silicate species. Got a sample of enstatite from a supplier in India that was originally in Huffman & Stamp (1971) (https://ui.adsabs.harvard.edu/abs/1971NPhS..229...45H/abstract). Their samples was natural, brown enstatite which means it was probably crystalline. 
+Focused on UV measurements of many silicate species. Got a sample of enstatite from a supplier in India that was originally in Huffman & Stamp (1971) (https://ui.adsabs.harvard.edu/abs/1971NPhS..229...45H/abstract). Their samples was natural, brown enstatite which means it was probably crystalline, but no polarization was mentioned.
 
 Measured the thickness, transmission, and reflection to get refractive indices. 
 
@@ -1378,7 +1396,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 
 x = 1 entry in Table 4
 
-Found on DOCDD [MgSiO(3) [2/71 g/ccm]]
+Found on DOCCD [MgSiO(3) [2/71 g/ccm]]
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1418,7 +1436,7 @@ Paper Info :
 
 Thin films of amorphous magnesium silicates with compositions similar to enstatite and forsterite are deposited using excimer laser ablation of parent materials. Refractive indices are derived from optical transmission and reflection together with Kramers-Kronig analysis. Measured indices are reported for 0.12-17.5 um and extended to short and longer wavelengths by fitting data reported from other experiments and theoretical predictions. 
 
-Sample for forsterite was made by 308 mm excimer laser ablation of geological, natural samples of polycrystalline forsterite. 
+Sample for enstatite was made by 308 mm excimer laser ablation of geological, natural samples of polycrystalline forsterite. 
 
 Measured imaginary indices and used Kramers-Kronig to derive the real indices, and then iterated using a numerical procedure to obtain consistent sets of n and k. 
 
@@ -1496,7 +1514,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 
 x = 1 entry in Table 4
 
-Found on DOCDD [MgSiO(3) [2/71 g/ccm]]
+Found on DOCCD [MgSiO(3) [2/71 g/ccm]]
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1536,7 +1554,7 @@ Paper Info :
 
 Presents optical constants of pure, amorphous Mg-silicates. Used sol-gel, a chemical technique based on the condensation of Mg- and Si-hydroxides in a liquid phase (crystallize at lower temperatures for some reason). They use sol gel, remove Mg-Si particles, and then densify them to remove porosity. Amorphousness is determined via Xray. For an explanation, see section 2 of this paper.
 
-Also in DOCDD (MgSiO(3) matches txt file, in wavenumber on website)
+Also in DOCCD (MgSiO(3) matches txt file, in wavenumber on website)
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1587,7 +1605,7 @@ Also because it was natural they found the enstatite experienced weathering whic
 
 Refractive indices for all three directions (figures 4A-C).
 
-Also on DOCDD (first entry, Enstatite (natural))
+Also on DOCCD (first entry, Enstatite (natural))
 https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
 --------------
 
@@ -1630,7 +1648,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 
 x = 0.4 entry in Table 5
 
-Found on DOCDD [Mg(0.4)Fe(0.6)SIO(3)]
+Found on DOCCD [Mg(0.4)Fe(0.6)SIO(3)]
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1670,7 +1688,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 
 x = 0.5 entry in Table 5
 
-Found on DOCDD [Mg(0.5)Fe(0.5)SIO(3) [3.2  g/ccm])]
+Found on DOCCD [Mg(0.5)Fe(0.5)SIO(3) [3.2  g/ccm])]
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1710,7 +1728,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 
 x = 0.8 entry in Table 4
 
-Found on DOCDD [Mg(0.8)Fe(0.2)SIO(3)]
+Found on DOCCD [Mg(0.8)Fe(0.2)SIO(3)]
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
@@ -1746,17 +1764,17 @@ ADS        : https://ui.adsabs.harvard.edu/abs/2001A%26A...373.1125F/abstract
 
 Paper Info :
 
-The original WS15 paper cited the DOCDD database as the source of the spinel indices. The website has undergone updates since 2015, however it looks like the indices are from the 'Natural and natural-thermal-processed Mg-spinels (crystalline) (Fabian et al. 2001)' entry, specifically the annealed at 1h, 1223K data, by comparing the plots there with Figure 1 in WS15. 
+The original WS15 paper cited the DOCCD database as the source of the spinel indices. The website has undergone updates since 2015, however it looks like the indices are from the 'Natural and natural-thermal-processed Mg-spinels (crystalline) (Fabian et al. 2001)' entry, specifically the annealed at 1h, 1223K data, by comparing the plots there with Figure 1 in WS15. 
 
 It is assumed that WS15 used a plot digitizer, since the txt file doesn't match any txt file on the website. 
 
-Synthesized a variety of nonstoichiometric spinels, which are available on DOCDD, and investigated natural spinel before and after thermal annealing. 
+Synthesized a variety of nonstoichiometric spinels, which are available on DOCCD, and investigated natural spinel before and after thermal annealing. 
 
 The natural crystal is a dark red, octahedral crystal from Burma. Through EDX, found it was actually Mg[1.02]Al[1.93]Si[0.03]Fe[0.01]Cr[0.01]O[4]. The inclusions shouldn't affect the mid-IR spectra. 
 
 Reflectance, mid-infrared spectra of all samples. Natural spinel was annealed at 1223K for one hour in order to induce a phase transition from ordered to disordered spinel. 
 
-Also on DOCDD
+Also on DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
 --------------
 
@@ -1784,7 +1802,7 @@ Mg(0.95)Fe(0.05)SiO(3) (Table 4)
 Mg(0.7)Fe(0.3)SiO(3) (Table 4)
 Mg(0.6)Fe(0.4)SiO(3) (Table 5)
 Mg(0.5)Fe(0.43)Ca(0.03)Al(0.04)SiO(3) which is actually from Jager 1995, sample 1S, Table 3
-But all of these are easily available on the DOCDD database for future users to add
+But all of these are easily available on the DOCCD database for future users to add
 
 #################################
 Silicates 
@@ -1900,7 +1918,7 @@ Crystal Shape     : N/A
 
 Refractive Index References:
 --------------
-Philipp in Palik (1985) (Voume 1, Section 34)
+Philipp in Palik (1985) (Voume 1, Section 36)
 
 ADS        : https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract
 
@@ -1992,13 +2010,13 @@ https://ui.adsabs.harvard.edu/abs/2023ApJ...956L..32G/abstract
 ---------------------------------
 
 Aerosol Name      : Quartz 
-Name in POSEIDON  : SiO2
+Name in POSEIDON  : SiO2_crystalline_2023
 Database          : Mullens 2024
 Wavelengths       : 0.25 - 15.38 um
 
 Chemical Formula  : SiO[2]
 Crystal or Amorph : Crystalline 
-Crystal Shape     : Alpha (assumed, see below)
+Crystal Shape     : Trigonal (alpha) (assumed, see below)
 
 Refractive Index References:
 --------------
@@ -2036,7 +2054,7 @@ https://ui.adsabs.harvard.edu/abs/2023ApJ...956L..32G/abstract
 ---------------------------------
 ---------------------------------
 
-Aerosol Name      : Quartz (alpha quartz + glass)
+Aerosol Name      : Quartz (alpha quartz + silica glass)
 Name in POSEIDON  : SiO2_amorph
 Database          : KH18
 Wavelengths       : 4.76e-2 - 487 um
@@ -2059,7 +2077,7 @@ Amorphous SiO2 sample for reflection is a commercial quartz glass window (Supras
 
 For transmission, commercially available powder of amorphous powder consisting of mono-sized spherical particles of 500 nm diameter (“Monosphere powder” M 500, MERCK, Darmstadt). 
 
-On DOCDD (Amorphous SiO2 (Low-T data), SiO2 (300K))
+On DOCCD (Amorphous SiO2 (Low-T data), SiO2 (300K))
 https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 Philipp in Palik (1985) (Volume 1, Section 34)
@@ -2145,7 +2163,7 @@ https://ui.adsabs.harvard.edu/abs/2023ApJ...956L..32G/abstract
 ---------------------------------
 ---------------------------------
 
-Aerosol Name      : Quartz 
+Aerosol Name      : Silica Glass
 Name in POSEIDON  : SiO2_glass_palik
 Database          : Mullens 2024
 Wavelengths       : 0.184 - 33.33 um
@@ -2346,10 +2364,18 @@ How they grew the crystals from powder is detailed in Moret & Bill (1977) (https
 
 Two samples done at 15K. One in a H2 atmosphere and one in a Na vapor brought to vacuum. Unsure which indices were used since the paper reports dielectric functions.
 --------------
+Palik & Addamiano in Palik (1985) [Volume 1, Section 27]
+
+ADS        : https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract
+
+Paper Info :
+
+Compiled many different lab sources of cubic ZnS. Assumed reference (see below)
+--------------
 
 NOTE: 
 
-KH18 says they used Na2S and ZnS, but only cite a Na2S paper. Additionally, while their imaginary indices match WS15's, their real indices do not. It is assumed that the imaginary indices were taken from Huffman & Wild and Montaner, and the real indices were derived using the Kramers-Kronig relation. Because of this, the scattering slope shape is different than the one in WS15.
+KH18 says they used Na2S and ZnS, but only cite a Na2S paper. It is assumed that the ZnS in Palik was used, since it has a feature before 30 microns. Additionally, while their imaginary indices match WS15's, their real indices do not. It is assumed that the imaginary indices were taken from Huffman & Wild and Montaner, and the real indices were derived using the Kramers-Kronig relation. Because of this, the scattering slope shape is different than the one in WS15.
 
 Exoplanet/Brown Dwarf Papers:
 
@@ -2407,6 +2433,14 @@ How they grew the crystals from powder is detailed in Moret & Bill (1977) (https
 
 Two samples done at 15K. One in a H2 atmosphere and one in a Na vapor brought to vacuum. Unsure which indices were used since the paper reports dielectric functions.
 --------------
+Palik & Addamiano in Palik (1985) [Volume 1, Section 27]
+
+ADS        : https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract
+
+Paper Info :
+
+Compiled many different lab sources of cubic ZnS. Assumed reference (see below)
+--------------
 
 Exoplanet/Brown Dwarf Papers:
 
@@ -2429,8 +2463,8 @@ Database          : WS15
 Wavelengths       : 0.03 - 74 um
 
 Chemical Formula  : Na[2]S
-Crystal or Amorph : 
-Crystal Shape     : 
+Crystal or Amorph : Crystalline 
+Crystal Shape     : Cubic (face centered cubic)
 
 Refractive Index References:
 --------------
@@ -2448,7 +2482,7 @@ ADS        : https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract
 
 Paper Info :
 
-KH18 took this data from a figure. Experimental infrared data of crystalline (face centered cubic) Na2S. Used low temperature infrared (reflectance) and Raman measurements. 
+Experimental infrared data of crystalline (face centered cubic) Na2S. Used low temperature infrared (reflectance) and Raman measurements. 
 
 How they grew the crystals from powder is detailed in Moret & Bill (1977) (https://ui.adsabs.harvard.edu/abs/1977PSSAR..41..163M/abstract).
 
@@ -2478,14 +2512,14 @@ https://ui.adsabs.harvard.edu/abs/2016ApJ...821....9K/abstract
 ---------------------------------
 ---------------------------------
 
-Aerosol Name      : Zinc Sulfide (Zinc blende, sphalerite, alpha ZnS)
+Aerosol Name      : Zinc Sulfide (Zinc blende, sphalerite)
 Name in POSEIDON  : ZnS
 Database          : WS15
 Wavelengths       : 0.22 - 167 um
 
 Chemical Formula  : ZnS
 Crystal or Amorph : Crystalline
-Crystal Shape     : 
+Crystal Shape     : Cubic
 
 Refractive Index References:
 --------------
@@ -2617,7 +2651,7 @@ Crystal Shape     : Tetragonal
 
 Refractive Index References:
 --------------
-Zernike (1965) (0.2-1.9 um)
+Zernike (1965) (0.2 - 1.9 um)
 
 ADS        : https://ui.adsabs.harvard.edu/abs/1965JOSA...55..210Z/abstract
 
@@ -2640,7 +2674,7 @@ I excluded 2 um here in lieu of the next dataset.
 ADP crystal is piezoelectric, which means it can generate electric signals when stressed (neat!).
 
 --------------
-Querry 1974 (2 to 19.99 um)
+Querry (1974) (2 - 19.99 um)
 
 ADS        : https://ui.adsabs.harvard.edu/abs/1974JOSA...64...39Q/abstract
 
@@ -2990,7 +3024,7 @@ Crystal Shape     : N/A
 
 Refractive Index References:
 --------------
-He (2023) 
+He et al. (2023) 
 
 ADS        : https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract
 Paper Info :
@@ -3026,7 +3060,7 @@ Crystal Shape     : N/A
 
 Refractive Index References:
 --------------
-He (2023) 
+He et al. (2023) 
 
 ADS        : https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract
 Paper Info :
@@ -3219,7 +3253,7 @@ Paper Info :
 
 Orthorhombic sulfur (also known as octasulfur, or alpha-S), only has one stable molecule, which is cyclo-octasulfur (also known as lambda sulfur). From lambda sulfur, you get two different kind of crystal polymorphs: alpha-S (strongly anisotropic orthorhombic crystals) and beta-S (weakly anisotropic monoclinic crystals). Alpha-S is stable at room temperature and turns into beta-S above 368K.
 
-Palik compiled many different sources and only records one polarization axis, specifically the polarizations along the an and b axes. They note that while orthorhombic crystals are usually biaxial, they average the an and b axes to make an effective 'orindary ray'. 
+Palik compiled many different sources and only records one polarization axis, specifically the polarizations along the an and b axes. They note that while orthorhombic crystals are usually biaxial, they average the an and b axes to make an effective 'ordinary ray'. 
 
 Table 1, n_perp and k_perp matches the txt file. 
 --------------
@@ -3296,7 +3330,6 @@ Refractive Index References:
 Chang & Charalampopoulos (1990)
 
 ADS        : https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract
-https://www.researchgate.net/publication/243684728_Determination_of_the_Wavelength_Dependence_of_Refractive_Indices_of_Flame_Soot
 
 Paper Info :
 

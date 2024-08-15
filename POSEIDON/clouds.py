@@ -861,6 +861,7 @@ def database_properties_plot(file_name):
 
     # Change fonts used, and set up styles
     # note that this will change it within a whole kernel
+
     import matplotlib.pyplot as plt
     import matplotlib.style
     from matplotlib import cm
@@ -876,8 +877,8 @@ def database_properties_plot(file_name):
     R = 1000       # Spectral resolution of grid
     wl = wl_grid_constant_R(wl_min, wl_max, R)
     wl_Mie =  wl_grid_constant_R(wl_min, wl_max, R)
-
-    # Get species name, and print 
+    
+    # Load in the grid with the species 
     species = file_name.split('/')[-1].split('.txt')[0]
     aerosol = species
 
@@ -893,7 +894,7 @@ def database_properties_plot(file_name):
     w_array = []
     g_array = []
 
-    # Quiery the aerosol database for each particle size
+    # Query the aerosol database for each particle size
     for r_m in log_r_m_array:
 
         r_m = 10**r_m
@@ -902,8 +903,7 @@ def database_properties_plot(file_name):
         ext_array.append(sigma_Mie_interp_array[species]['eff_ext'])
         w_array.append(sigma_Mie_interp_array[species]['eff_w'])
         g_array.append(sigma_Mie_interp_array[species]['eff_g'])
-
-    # Plot it in a huge combined plot  
+        
     fig_combined = plt.figure(constrained_layout=True, figsize=(11*1.5, 8.5*1.3))    # Change (9,5.5) to alter the aspect ratio
 
     # This function is the magic. Each letter corresponds to one matplotlib axis, which you can then pass to POSEIDON's plotting functions
@@ -926,7 +926,9 @@ def database_properties_plot(file_name):
 
     # Refractive index files either have a commented out header or the first two rows 
     # are the header
+
     try :
+        print('Loading in : ', file_name)
         try:
             file_as_numpy = np.loadtxt(file_name, comments = '#').T
         except:
@@ -995,6 +997,8 @@ def database_properties_plot(file_name):
     # Load the indices, and plot everything up
     real_indices, imaginary_indices = load_refractive_indices_from_file(wl_Mie,file_name)
 
+    actual_indices = np.loadtxt(file_name).T
+
     wl_min = np.min(wl_Mie)
     wl_max = np.max(wl_Mie)
     wl_Mie_new = wl_grid_constant_R(wl_min, wl_max, 1000)
@@ -1005,42 +1009,78 @@ def database_properties_plot(file_name):
     suptitle = 'Refractive Indices for ' + molecule + '\n (' + str(np.min(wl_Mie).round(2)) + ', ' + str(np.max(wl_Mie).round(2)) + ') μm'
     axd['A'].set_title(suptitle) 
 
-    axd['A'].plot(wl_Mie_new, real_indices, c = 'black', lw = 2)
-    axd['B'].plot(wl_Mie_new, imaginary_indices, c = 'black', lw = 2)
+    if len(actual_indices) == 3:
+        wavelengths_actual = actual_indices[0]
+        axd['A'].plot(wl_Mie_new, real_indices, c = 'black', lw = 2)
+        axd['A'].scatter(actual_indices[0], actual_indices[1], c = 'blue', marker = 'x', s = 30)
+        axd['B'].plot(wl_Mie_new, imaginary_indices, c = 'black', lw = 2)
+        axd['B'].scatter(actual_indices[0], actual_indices[2], c = 'blue', marker = 'x', s = 30)
 
+    else:
+        wavelengths_actual = actual_indices[1]
+        axd['A'].plot(wl_Mie_new, real_indices, c = 'black', lw = 2)
+        axd['A'].scatter(actual_indices[1], actual_indices[2], c = 'blue', marker = 'x', s = 30)
+        axd['B'].plot(wl_Mie_new, imaginary_indices, c = 'black', lw = 2)
+        axd['B'].scatter(actual_indices[1], actual_indices[3], c = 'blue', marker = 'x', s = 30)
+    
+    
+    axd['A'].set_ylim((np.min(real_indices)-(np.max(real_indices)/10), np.max(real_indices)+(np.max(real_indices)/10)))
+    axd['B'].set_ylim((np.min(imaginary_indices)-(np.max(imaginary_indices)/10), np.max(imaginary_indices)+(np.max(imaginary_indices)/10)))
+
+    #axd['A'].set_xlabel('Wavelength (μm)')
+    #axd['B'].set_xlabel('Wavelength (μm)')
     axd['A'].set_xlim((0,30))
     axd['B'].set_xlim((0,30))
-    axd['A'].set_ylabel('Real Indices',fontsize = 14)
-    axd['B'].set_ylabel('Imaginary Indices',fontsize = 14)
+    axd['A'].set_ylabel('Real Indices')
+    axd['B'].set_ylabel('Imaginary Indices')
 
     for i in range(len(log_r_m_array)):
         label = 'r$_m$ : ' + str(r_m_array[i]) + ' μm'
         eff_ext_cross_section = ext_array[i]
         axd['C'].plot(wl, np.log10(eff_ext_cross_section), label = label, c = color[i], lw = 2)
     title = aerosol + ' Effective Extinction Cross Section\n$\sigma_{\mathrm{ext},\,\mathrm{eff}}$ = $\sigma_{\mathrm{abs},\,\mathrm{eff}}$ + $\sigma_{\mathrm{scat},\,\mathrm{eff}}$'
-    axd['C'].set_title(title,fontsize = 14)
-    axd['C'].set_ylabel('log$_{10}$ ($\sigma_{\mathrm{ext},\,\mathrm{eff}}$)', fontsize = 14)
+    axd['C'].set_title(title)
+    #plt.legend(loc = 'upper right', framealpha = 1)
+    #axd['C'].set_xlabel('Wavelength (μm)')
+    axd['C'].set_ylabel('log$_{10}$ ($\sigma_{ext}$)')
     axd['C'].set_xlim((0,30))
+
+    # Only plot up to the max wavelength 
+    if np.max(wavelengths_actual) < 30:
+        wl_max = np.max(wavelengths_actual)
+        wl_max_index = find_nearest(wl,wl_max)
+    
+    else:
+        wl_max = 30
+        wl_max_index = find_nearest(wl,wl_max)
+
+    if np.min(wavelengths_actual) > 0.2:
+        wl_min = np.min(wavelengths_actual)  
+        wl_min_index = find_nearest(wl,wl_min)
+    
+    else:
+        wl_min = 0.2
+        wl_min_index = find_nearest(wl,wl_min)
 
     for i in range(len(log_r_m_array)):
         label = 'r$_m$ : ' + str(r_m_array[i]) + ' μm'
         w = w_array[i]
-        axd['D'].plot(wl, w, label = label, c = color[i], lw = 2)
+        axd['D'].plot(wl[wl_min_index:wl_max_index], w[wl_min_index:wl_max_index], label = label, c = color[i], lw = 2)
     title = aerosol + ' Single Scattering Albedos $\omega$\n0 (black, completely absorbing) to 1 (white, completely scattering)'
     axd['D'].set_title(title)
-    axd['D'].set_ylabel('$\omega$',fontsize = 14)
-    axd['D'].set_xlabel('Wavelength (μm)',fontsize = 14)
+    axd['D'].set_ylabel('$\omega$')
+    axd['D'].set_xlabel('Wavelength (μm)')
     axd['D'].set_ylim((-0.05,1.05))
     axd['D'].set_xlim((0,30))
 
     for i in range(len(g_array)):
         label = 'r$_m$ : ' + str(r_m_array[i]) + ' μm'
         g= g_array[i]
-        axd['E'].plot(wl, g, label = label, c = color[i], lw = 2)
+        axd['E'].plot(wl[wl_min_index:wl_max_index], g[wl_min_index:wl_max_index], label = label, c = color[i], lw = 2)
     title = aerosol + ' Asymmetry Parameter $g$\n0 (Rayleigh Limit) to 1 (Total Forward Scattering)'
     axd['E'].set_title(title)
-    axd['E'].set_ylabel('$g$',fontsize = 14)
-    axd['E'].set_xlabel('Wavelength (μm)',fontsize = 14)
+    axd['E'].set_ylabel('$g$')
+    axd['E'].set_xlabel('Wavelength (μm)')
 
     if np.min(g_array) <= 0:
         axd['E'].set_ylim((np.min(g_array)-0.05, 1.05))
@@ -1056,7 +1096,6 @@ def database_properties_plot(file_name):
     handles, labels = axd['C'].get_legend_handles_labels()
     axd['C'].legend(handles[::-1], labels[::-1],loc='center left', shadow = True, prop = {'size':12}, 
                                     ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
-
 
     plt.show()
 

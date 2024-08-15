@@ -14,7 +14,7 @@ supported_species = np.array(['AlH', 'AlO', 'BeH', 'C2H2', 'CH', 'CH4', 'CO',
                               'PH3', 'PN', 'PO', 'PS', 'Rb', 'SH', 'SO2', 'ScH', 
                               'SiH', 'SiO', 'Ti', 'Ti+', 'TiH', 'TiO', 'VO',
                               'Mg', 'Mg+', 'Ca', 'Ca+', 'Mn' 'Cr', 'V', 'V+',
-                              'Ba', 'Ba+', 'Al', 'Ni', 'O', 'Sc', 'H',
+                              'Ba', 'Ba+', 'Al', 'Ni', 'O', 'Sc', 
                               'CH3', 'CS2', 'C2H4', 'C2H6', 'CH3CN', 'CH3OH', 'GeH4'])
 
 # Chemical species supported in the fastchem equilibrium grid
@@ -32,19 +32,19 @@ supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2',
                           'O2-CO2', 'O2-N2'])
 
 # Species treated as spectrally inactive (in standard cross section treatment)
-inactive_species = np.array(['H2', 'He', 'e-', 'H-'])  # H- handled separately
+inactive_species = np.array(['H2', 'He', 'e-', 'H-', 'H'])  # H- handled separately
 
 # Aerosol Supported Species
 aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4_liquid', 'CH4_solid', 'CaTiO3', 'CaTiO3_KH', 'Cr', 'ExoHaze_1000xSolar_300K', 
                                       'ExoHaze_1000xSolar_400K','Fe', 'Fe2O3', 'Fe2SiO4_KH', 'FeO', 'FeS',
-                                      'FeSiO3', 'H2O', 'H2SO4', 'Hexene', 'Hibonite', 'IceTholin', 'KCl', 'Mg2SiO4_amorph_sol_gel', 'Mg2SiO4_amorph',
+                                      'FeSiO3', 'H2O', 'H2O_ice', 'H2SO4', 'Hexene', 'Hibonite', 'IceTholin', 'KCl', 'Mg2SiO4_amorph_sol_gel', 'Mg2SiO4_amorph',
                                       'Mg2SiO4_Fe_poor', 'Mg2SiO4_Fe_rich', 'Mg2SiO4_crystalline',
                                       'Mg4Fe6SiO3_amorph_glass', 'Mg5Fe5SiO3_amorph_glass', 'Mg8Fe12SiO4_amorph_glass',
                                       'Mg8Fe2SiO3_amorph_glass', 'MgAl2O4', 'MgFeSiO4_amorph_glass', 'MgO', 'MgSiO3_amorph', 'MgSiO3_crystalline',
                                       'MgSiO3', 'MgSiO3_amorph_glass', 'MgSiO3_sol_gel', 'MnS', 'MnS_KH', 'MnS_Mor', 'Na2S', 'NaCl', 'NanoDiamonds', 'NH3', 'NH4SH', 'S8',
-                                      'Saturn-Phosphorus-Haze', 'SiC', 'SiO', 'SiO2', 'SiO2_amorph','SiO2_crystalline_2023', 'Soot', 'Soot_6mm', 'Tholin', 'Tholin-CO-0625', 'Tholin-CO-1',
+                                      'Saturn-Phosphorus-Haze', 'SiC', 'SiO', 'SiO2', 'SiO2_amorph','SiO2_crystalline_2023', 'SiO2_alpha_palik', 'SiO2_glass_palik', 'Soot', 'Soot_6mm', 'Tholin', 'Tholin-CO-0625', 'Tholin-CO-1',
                                       'TiC', 'TiO2_anatase', 'TiO2_rutile', 'VO', 'ZnS',
-                                      'MgSiO3_r_m_std_dev_01','MgSiO3_r_m_std_dev_1','MgSiO3_g_w_calc_mean','MgSiO3_g_w_calc_trap', 'MgSiO3_1e-4_100_um'])
+                                      'MgSiO3_r_m_std_dev_01','MgSiO3_r_m_std_dev_1','MgSiO3_g_w_calc_mean','MgSiO3_g_w_calc_trap'])
 
 # Super Secret Project :) 
 directional_temperature_aerosols =  np.array(['SiO2_alpha_crystal_A2_295K', 'SiO2_alpha_crystal_E_295K', 'SiO2_alpha_crystal_E_346K', 'SiO2_alpha_crystal_E_480K', 'SiO2_alpha_crystal_E_600K', 'SiO2_alpha_crystal_E_705K', 'SiO2_alpha_crystal_E_790K',
@@ -80,5 +80,7 @@ directional_temperature_aerosols =  np.array(['SiO2_alpha_crystal_A2_295K', 'SiO
                                     'CaAl12O19_crystal_natural_extraordinary','CaAl12O19_crystal_natural_ordinary',
                                     'SiO2_alpha_crystal_300K_averaged','SiO2_beta_crystal_928K_averaged',
                                     'Mg2SiO4_295K_averaged','Mg2SiO4_1000K_averaged',
-                                    'Mg092Fe009SiO3_crystal_300K_averaged','Mg092Fe009SiO3_crystal_928K_averaged'])
+                                    'Mg092Fe009SiO3_crystal_300K_averaged','Mg092Fe009SiO3_crystal_928K_averaged',
+                                    'SiO2_alpha_cristobalite_295K',
+                                    'SiO2_palik_alpha_crystal_ordinary'])
 
