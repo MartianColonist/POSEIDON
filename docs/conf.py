@@ -57,6 +57,7 @@ source_suffix = '.rst'
 # a list of builtin themes.
 #
 html_theme = 'sphinx_rtd_theme'
+html_style = 'css/updated_theme.css'
 html_logo = '_static/POSEIDON_logo_clear.png'
 
 # Add any paths that contain custom static files (such as style sheets) here,
