@@ -1281,6 +1281,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # Identify the opacity database being used
         opacity_database = opac['opacity_database']
 
+        # Load the version of the opacity database
+        database_version = opac['database_version']
+
         # Unpack pre-computed Rayleigh cross sections
         Rayleigh_stored = opac['Rayleigh_stored']
 
@@ -1293,7 +1296,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                            enable_haze, enable_deck,
                                                            enable_surface, N_sectors, 
                                                            N_zones, P_surf, opacity_database, 
-                                                           disable_continuum, suppress_print)
+                                                           disable_continuum, suppress_print,
+                                                           database_version)
         
     # If using opacity sampling, we can use pre-interpolated cross sections
     elif (opac['opacity_treatment'] == 'opacity_sampling'):
