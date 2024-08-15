@@ -734,7 +734,8 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
 
 def read_opacities(model, wl, opacity_treatment = 'opacity_sampling', 
                    T_fine = None, log_P_fine = None, opacity_database = 'High-T',
-                   device = 'cpu', wl_interp = 'sample', testing = False):
+                   device = 'cpu', wl_interp = 'sample', testing = False,
+                   database_version = '1.2'):
     '''
     Load the various cross sections required by a given model. When using 
     opacity sampling, the native high-resolution are pre-interpolated onto 
@@ -799,7 +800,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
                                               active_species, CIA_pairs, 
                                               ff_pairs, bf_species, T_fine,
                                               log_P_fine, opacity_database, 
-                                              wl_interp, testing)
+                                              wl_interp, testing, database_version)
                     
     elif (opacity_treatment == 'line_by_line'):   
         
@@ -824,7 +825,8 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
             'opacity_treatment': opacity_treatment, 'sigma_stored': sigma_stored, 
             'CIA_stored': CIA_stored, 'Rayleigh_stored': Rayleigh_stored, 
             'eta_stored': eta_stored, 'ff_stored': ff_stored, 
-            'bf_stored': bf_stored, 'T_fine': T_fine, 'log_P_fine': log_P_fine
+            'bf_stored': bf_stored, 'T_fine': T_fine, 'log_P_fine': log_P_fine,
+            'database_version': database_version,
            }
 
     return opac
@@ -1279,6 +1281,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # Identify the opacity database being used
         opacity_database = opac['opacity_database']
 
+        # Load the version of the opacity database
+        database_version = opac['database_version']
+
         # Unpack pre-computed Rayleigh cross sections
         Rayleigh_stored = opac['Rayleigh_stored']
 
@@ -1291,7 +1296,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                            enable_haze, enable_deck,
                                                            enable_surface, N_sectors, 
                                                            N_zones, P_surf, opacity_database, 
-                                                           disable_continuum, suppress_print)
+                                                           disable_continuum, suppress_print,
+                                                           database_version)
         
     # If using opacity sampling, we can use pre-interpolated cross sections
     elif (opac['opacity_treatment'] == 'opacity_sampling'):
@@ -1907,6 +1913,12 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
         half_bin = np.concatenate([half_bin, half_bin_i])  
         ydata = np.concatenate([ydata, ydata_i])
         err_data = np.concatenate([err_data, err_data_i])
+
+        # Check that the model wavelength grid covers all the data bins
+        if (np.any((wl_data - half_bin) < wl_model[0])):
+            raise Exception("Some data lies below the lowest model wavelength, reduce wl_min.")
+        elif (np.any((wl_data + half_bin) > wl_model[-1])):
+            raise Exception("Some data lies above the highest model wavelength, increase wl_max.")
         
         # Length of each dataset (used for indexing the combined dataset, if necessary to extract one specific dataset later)
         len_data = np.concatenate([len_data, np.array([len(ydata_i)])])
@@ -2036,12 +2048,6 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
         offset_2_data_end = 0
         offset_3_data_start = 0
         offset_3_data_end = 0
-        
-    # Check that the model wavelength grid covers all the data bins
-    if (np.any((wl_data - half_bin) < wl_model[0])):
-        raise Exception("Some data lies below the lowest model wavelength, reduce wl_min.")
-    elif (np.any((wl_data + half_bin) > wl_model[-1])):
-        raise Exception("Some data lies above the highest model wavelength, increase wl_max.")
     
     # Package data properties
     data = {'datasets': datasets, 'instruments': instruments, 'wl_data': wl_data,

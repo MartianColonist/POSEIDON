@@ -683,7 +683,7 @@ def H_minus_free_free(wl_um, T_arr):
 def opacity_tables(rank, comm, wl_model, chemical_species, active_species, 
                    cia_pairs, ff_pairs, bf_species, T_fine, log_P_fine,
                    opacity_database = 'High-T', wl_interp = 'sample', 
-                   testing = False):
+                   testing = False, database_version = '1.2'):
     ''' 
     Initialisation function to read in and pre-interpolate all opacities.
         
@@ -755,7 +755,20 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
 
             # Open HDF5 files containing molecular + atomic opacities
             if (opacity_database == 'High-T'):        # High T database
-                opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1.hdf5', 'r')  
+
+                # By default, use the new POSEIDON v1.2 opacity database
+                if (database_version == '1.2'):
+                    opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.2.hdf5', 'r')
+
+                # Or for backwards compatibility, you can use the old v1.0 database
+                # (this file used to be called 'Opacity_database_0.01cm-1.hdf5')
+                elif (database_version == '1.0'):
+                    opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.0.hdf5', 'r')  # Original POSEIDON opac database 
+            
+                else:
+                    raise Exception("Invalid opacity database version.\n"
+                                    "The options are: '1.0' or '1.2'.")
+                
             elif (opacity_database == 'Temperate'):   # Low T database
                 opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
 
@@ -1362,7 +1375,7 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
     log_P = np.log10(P)  # Log of model pressure grid
     
     # Array of indices on opacity pressure opacity grid prior to model atmosphere layer pressures
-    x = np.zeros(N_layers).astype(int) 
+    x = np.zeros(N_layers).astype(np.int64)
     
     w_P = np.zeros(N_layers)  # Pressure weights
     
@@ -1638,7 +1651,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                    a, gamma, P_cloud, kappa_cloud_0, Rayleigh_stored, enable_haze, 
                    enable_deck, enable_surface, N_sectors, N_zones, P_surf,
                    opacity_database = 'High-T', disable_continuum = False,
-                   suppress_print = False):
+                   suppress_print = False, database_version = '1.2'):
     
     ''' Evaluate extinction coefficients for molecules / atoms, Rayleigh 
         scattering, hazes, and clouds. Special function optimised for 
@@ -1687,9 +1700,23 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                         "your .bashrc or .bash_profile to point to the " +
                         "directory containing the POSEIDON opacity database.")
     
+
     # Open HDF5 files containing molecular + atomic opacities
     if (opacity_database == 'High-T'):        # High T database
-        opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1.hdf5', 'r')  
+
+        # By default, use the new POSEIDON v1.2 opacity database
+        if (database_version == '1.2'):
+            opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.2.hdf5', 'r')
+
+        # Or for backwards compatibility, you can use the old v1.0 database
+        # (this file used to be called 'Opacity_database_0.01cm-1.hdf5')
+        elif (database_version == '1.0'):
+            opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.0.hdf5', 'r')  # Original POSEIDON opac database 
+    
+        else:
+            raise Exception("Invalid opacity database version.\n"
+                            "The options are: '1.0' or '1.2'.")
+
     elif (opacity_database == 'Temperate'):   # Low T database
         opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
     

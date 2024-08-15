@@ -288,6 +288,8 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         # No atmosphere dictionary needed if atmosphere disabled
         atmosphere = None
 
+        lnprior_TP = 0   # Not needed for flat lines, so set to zero
+
     else:
 
         # Unpack reference pressure if set as a free parameter
