@@ -734,7 +734,8 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
 
 def read_opacities(model, wl, opacity_treatment = 'opacity_sampling', 
                    T_fine = None, log_P_fine = None, opacity_database = 'High-T',
-                   device = 'cpu', wl_interp = 'sample', testing = False):
+                   device = 'cpu', wl_interp = 'sample', testing = False,
+                   database_version = '1.2'):
     '''
     Load the various cross sections required by a given model. When using 
     opacity sampling, the native high-resolution are pre-interpolated onto 
@@ -799,7 +800,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
                                               active_species, CIA_pairs, 
                                               ff_pairs, bf_species, T_fine,
                                               log_P_fine, opacity_database, 
-                                              wl_interp, testing)
+                                              wl_interp, testing, database_version)
                     
     elif (opacity_treatment == 'line_by_line'):   
         
@@ -824,7 +825,8 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
             'opacity_treatment': opacity_treatment, 'sigma_stored': sigma_stored, 
             'CIA_stored': CIA_stored, 'Rayleigh_stored': Rayleigh_stored, 
             'eta_stored': eta_stored, 'ff_stored': ff_stored, 
-            'bf_stored': bf_stored, 'T_fine': T_fine, 'log_P_fine': log_P_fine
+            'bf_stored': bf_stored, 'T_fine': T_fine, 'log_P_fine': log_P_fine,
+            'database_version': database_version,
            }
 
     return opac
