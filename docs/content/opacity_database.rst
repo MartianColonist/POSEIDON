@@ -48,6 +48,16 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
       -
       - 
 
+
+   *  - :math:`\mathrm{\textbf{Common}}`
+        
+        :math:`\mathrm{\textbf{Species}}`
+      - 
+      - 
+      - 
+      -
+      - 
+
    * - :math:`\mathrm{H_2O}`
      - `POKAZATEL <https://www.exomol.com/data/molecules/H2O/1H2-16O/POKAZATEL/>`_
        
@@ -58,6 +68,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - MARVELised 
      - 
+       .. image:: ../_static/opacity_previews/gases/H2O.png
+          :width: 50
        .. image:: ../_static/opacity_previews/gases/H2O.png
           :width: 50
           :align: center
@@ -74,6 +86,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/CO2.png
           :width: 50
+       .. image:: ../_static/opacity_previews/gases/CO2.png
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{CH_4}`
@@ -86,6 +100,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - New Line List
      - 
+       .. image:: ../_static/opacity_previews/gases/CH4.png
+          :width: 50
        .. image:: ../_static/opacity_previews/gases/CH4.png
           :width: 50
           :align: center
@@ -102,6 +118,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/CO.png
           :width: 50
+       .. image:: ../_static/opacity_previews/gases/CO.png
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{Na}`
@@ -114,6 +132,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
 
        Vacuum
      - 
+       .. image:: ../_static/opacity_previews/gases/Na.png
+          :width: 50
        .. image:: ../_static/opacity_previews/gases/Na.png
           :width: 50
           :align: center
@@ -130,6 +150,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/K.png
           :width: 50
+       .. image:: ../_static/opacity_previews/gases/K.png
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{NH_3}`
@@ -142,6 +164,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - MARVELised 
      - 
+       .. image:: ../_static/opacity_previews/gases/NH3.png
+          :width: 50
        .. image:: ../_static/opacity_previews/gases/NH3.png
           :width: 50
           :align: center
@@ -158,6 +182,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/HCN.png
           :width: 50
+       .. image:: ../_static/opacity_previews/gases/HCN.png
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{SO_2}`
@@ -170,6 +196,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - MARVELised
      - 
+       .. image:: ../_static/opacity_previews/gases/SO2.png
+          :width: 50
        .. image:: ../_static/opacity_previews/gases/SO2.png
           :width: 50
           :align: center
@@ -188,6 +216,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/H2S.png
           :width: 50
+       .. image:: ../_static/opacity_previews/gases/H2S.png
+          :width: 50
           :align: center
 
    * - :math:`\mathrm{PH_3}`
@@ -200,6 +230,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - No Change
      - 
+       .. image:: ../_static/opacity_previews/gases/PH3.png
+          :width: 50
        .. image:: ../_static/opacity_previews/gases/PH3.png
           :width: 50
           :align: center
@@ -216,8 +248,18 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/C2H2.png
           :width: 50
+       .. image:: ../_static/opacity_previews/gases/C2H2.png
+          :width: 50
           :align: center
 
+   *  - :math:`\mathrm{\textbf{Metal}}`
+
+        :math:`\mathrm{\textbf{Oxides}}`
+      - 
+      - 
+      - 
+      -
+      - 
    *  - :math:`\mathrm{\textbf{Metal}}`
 
         :math:`\mathrm{\textbf{Oxides}}`
@@ -1284,6 +1326,9 @@ ________________
 POSEIDON v1.2 includes an extensive database of Mie scattering properties for
 atmospheric aerosols. The database and its computation are detailed in full in
 Mullens et al. (2024).
+POSEIDON v1.2 includes an extensive database of Mie scattering properties for
+atmospheric aerosols. The database and its computation are detailed in full in
+Mullens et al. (2024).
 
 .. list-table::
    :widths: 20 20 20 20 20 20 20
@@ -1293,9 +1338,19 @@ Mullens et al. (2024).
      - Common Name
      
        (Name in POSEIDON)
+       (Name in POSEIDON)
      - Plot
 
        (Click)
+     - Database 
+     
+       Reference
+     - Refractive Index 
+     
+       References
+     - Wavelength
+     
+       Range
      - Database 
      
        Reference
@@ -1376,9 +1431,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Begemann et al. (1997) <https://ui.adsabs.harvard.edu/abs/1997ApJ...476..199B/abstract>`_
      
@@ -1392,7 +1445,7 @@ Mullens et al. (2024).
 
      - Mix of amorphous alumina (porous, isotropic) 
      
-       `+` :math:`\gamma` crystalline corundum (cubic, isotropic, Alumina + ISAS)
+       `+` :math:`\gamma` crystalline corundum (cubic, isotropic, ISAS)
 
    * - :math:`\mathrm{CaTiO_{3}}`
      - Perovskite
@@ -1430,9 +1483,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
      
@@ -1466,9 +1517,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
 
@@ -1498,7 +1547,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+     - `gCMCRT <https://ui.adsabs.harvard.edu/abs/2022ApJ...929..180L/abstract>`_
+     
+       :math:`\hookrightarrow` `GitHub <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
 
      - `Ribarsky in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
      
@@ -1528,9 +1579,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Koide (1990) <https://ui.adsabs.harvard.edu/abs/1990PhRvB..42.4979K/abstract>`_
      
@@ -1552,7 +1601,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+     - `gCMCRT <https://ui.adsabs.harvard.edu/abs/2022ApJ...929..180L/abstract>`_
+     
+       :math:`\hookrightarrow` `GitHub <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
 
      - `Wan et al. (2019) <https://ui.adsabs.harvard.edu/abs/2019AnP...53100188W/abstract>`_
 
@@ -1574,7 +1625,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Mutschke (2004) <https://ui.adsabs.harvard.edu/abs/2004A%26A...423..983M/abstract>`_
 
@@ -1606,9 +1659,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-     - `Lynch & Hunter in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
-     
-       `Palik (1991) (Vol 2, Sec 15) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+     - `Lynch & Hunter in Palik (1991) (Vol 2, Sec 15) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
 
      - 0.2–30 μm
 
@@ -1646,9 +1697,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Pollack (1994) (C) <https://ui.adsabs.harvard.edu/abs/1994ApJ...421..615P/abstract>`_
 
@@ -1722,9 +1771,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...378..228F/abstract>`_
 
@@ -1758,9 +1805,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Roessler & Huffman in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
 
@@ -1770,7 +1815,7 @@ Mullens et al. (2024).
 
      - Crystalline (cubic, isotropic)
      
-       KH18 filled empty Palik entries with Kramers-Kronig analysis
+       KH18 filled empty Palik entries with Kramers-Kronig analysis or spline interpolation
 
    * - :math:`\mathrm{Mg_{0.8}Fe_{1.2}SiO4}`
      - Forsterite 
@@ -1876,9 +1921,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
@@ -1900,7 +1943,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+     - `gCMCRT <https://ui.adsabs.harvard.edu/abs/2022ApJ...929..180L/abstract>`_
+     
+       :math:`\hookrightarrow` `GitHub <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
 
      - `Suto (2006) <https://ui.adsabs.harvard.edu/abs/2006MNRAS.370.1599S/abstract>`_
 
@@ -1924,9 +1969,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -1950,9 +1993,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2038,9 +2079,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2066,9 +2105,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
@@ -2125,9 +2162,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2153,9 +2188,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2181,9 +2214,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2247,9 +2278,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      -  `Laor & Draine (1993) (C) <https://ui.adsabs.harvard.edu/abs/1993ApJ...402..441L/abstract>`_
 
@@ -2281,9 +2310,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-       `Palik (1985) (Vol 1, Sec 36) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+     -  `Philipp in Palik (1985) (Vol 1, Sec 36) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
        `Wetzel (2013) <https://ui.adsabs.harvard.edu/abs/2013A%26A...553A..92W/abstract>`_
 
@@ -2293,7 +2320,7 @@ Mullens et al. (2024).
      
        Palik Compilation + Thin Film
        
-       KH18 filled empty Palik entries with Kramers-Kronig analysis
+       KH18 filled empty Palik entries with spline interpolation
 
    * - :math:`\mathrm{SiO_2}`
      - :math:`\alpha+\beta` Quartz
@@ -2337,7 +2364,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens 2024'_
 
      -  `Herve Herbin & Petitprez (2023) <https://www.tandfonline.com/doi/full/10.1080/02786826.2023.2165899>`_
 
@@ -2357,13 +2384,13 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
 
-     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
-       `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+     - `Philipp in Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
-     - 0.2–30 μm
+     - (0.2, 30) μm
 
      - Crystalline (trigonal, uniaxial)
      
@@ -2387,7 +2414,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-     - `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
+     -  `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
 
        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
@@ -2413,13 +2440,13 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
 
-     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
-       `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+     - `Philipp in Palik (1985) (Vol 1, Sec 35) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
-     - 0.2–30 μm
+     - (0.2, 30) μm
 
      - Amorphous (glass, isotropic)
      
@@ -2448,9 +2475,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-     - `Lynch & Hunter in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
-
-       `Palik (1991) (Vol 2, Sec 15.6) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+     - `Lynch & Hunter in Palik (1991) (Vol 2, Sec 15.6) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
 
        `Rakic (1998) <https://ui.adsabs.harvard.edu/abs/1998ApOpt..37.5271R/abstract>`_
 
@@ -2492,25 +2517,19 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
        `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
 
-       `Palik & Addamiano in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+       `Palik & Addamiano in Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
-       `Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-     - 0.2–30 μm
+     - (0.2, 30) μm
 
      - Crystalline (cubic, isotropic)
      
-       Synthetic single crystals + :math:`\mathrm{Na_2S}` and :math:`\mathrm{ZnS}` extrapolation
-       
-       KH18 derived real indices from Kramers-Kronig of imaginary indices
+       Synthetic single crystals + :math:`\mathrm{Na_2S}` extrapolation
 
    * - :math:`\mathrm{MnS}`
      - :math:`\alpha` Manganese Sulfide
@@ -2522,21 +2541,21 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens (2024)`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
        `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
 
-       `Palik & Addamiano in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+       `Palik & Addamiano in Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
-       `Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-     - 0.2–30 μm
+     - (0.2, 30) μm
 
      - Crystalline (cubic, isotropic)
      
-       Synthetic single crystals + :math:`\mathrm{Na_2S}` and :math:`\mathrm{ZnS}` extrapolation
+       Synthetic single crystals + :math:`\mathrm{Na_2S}` extrapolation
        
        Used WS15 indices to 13 μm, and KH18 from 13-30 μm
 
@@ -2663,7 +2682,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Zernike (1965) <https://ui.adsabs.harvard.edu/abs/1965JOSA...55..210Z/abstract>`_
 
@@ -2729,7 +2750,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - Personal Communication
 
@@ -2751,7 +2774,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `optool <https://github.com/cdominik/optool/tree/master/lnk_data>`_
+     - `optool <https://ui.adsabs.harvard.edu/abs/2021ascl.soft04010D/abstract>`_
+     
+       :math:`\hookrightarrow` `Github <https://github.com/cdominik/optool/tree/master/lnk_data>`_
 
      - `Martonchik (1984) (C) <https://ui.adsabs.harvard.edu/abs/1984ApOpt..23..541M/abstract>`_
 
@@ -2819,7 +2844,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Khare (1993) <https://ui.adsabs.harvard.edu/abs/1993Icar..103..290K/abstract>`_
 
@@ -2848,9 +2875,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
-
-       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
      - `Draine (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1017D/abstract>`_
 
@@ -2874,7 +2899,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
@@ -2896,7 +2923,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
@@ -2916,7 +2945,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+     - `gCMCRT <https://ui.adsabs.harvard.edu/abs/2022ApJ...929..180L/abstract>`_
+     
+       :math:`\hookrightarrow` `GitHub <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
 
      - `Lavvas & Koskinen (2017) (C) <https://ui.adsabs.harvard.edu/abs/2017ApJ...847...32L/abstract>`_
 
@@ -2956,7 +2987,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Palmer & Williams (1975) <https://ui.adsabs.harvard.edu/abs/1975ApOpt..14..208P/abstract>`_
 
@@ -2982,13 +3015,13 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `gCMCRT <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
+     - `gCMCRT <https://ui.adsabs.harvard.edu/abs/2022ApJ...929..180L/abstract>`_
+     
+       :math:`\hookrightarrow` `GitHub <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
 
-     - `Fuller, Downing, & Querry in <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
+     - `Fuller, Downing, & Querry in Palik (1998) (Vo 3, Sec 42) (C) <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
 
-       `Palik (1998) (Vo 3, Sec 42) (C) <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
-
-     - 0.2–30 μm
+     - (0.2, 30) μm
 
      - Crystalline (orthorhombic, biaxial)
      
@@ -3006,7 +3039,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Noy (1981) <https://ui.adsabs.harvard.edu/abs/1981JGR....8611985N/abstract>`_
 
@@ -3035,13 +3070,13 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
 
-     - `Chang & Charalampopoulos <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
-       `(1990) <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
+     - `Chang & Charalampopoulos (1990) <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
 
-     - 0.2–28.4 μm
+     - (0.2, 28.4) μm
 
      - Amorphous (isotropic)
      
@@ -3091,7 +3126,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
 
@@ -3115,7 +3152,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024`_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
 
