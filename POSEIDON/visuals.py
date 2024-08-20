@@ -3881,12 +3881,21 @@ def plot_histograms(planet, models, plot_parameters,
                             ratio = param
                         elements = ratio.split('/')   # Split into constituent elements
                         element_1, element_2 = elements
-                        element_ratio = elemental_ratio_samples(chemical_species, X_stored, 
-                                                                element_1, element_2)
-                        if (element_2 == 'H'):
-                            element_ratio_norm = element_ratio / 10**(solar_abundances[element_1]-12.0)
+
+                        # For metallicity, sum the C, O, N, P, and S abundances
+                        if (ratio == 'M/H'):
+                            element_ratio_norm = np.zeros(N_samples)
+                            for element_i in ['C', 'O', 'N', 'P', 'S']:
+                                element_ratio = elemental_ratio_samples(chemical_species, X_stored, 
+                                                                        element_i, element_2)
+                                element_ratio_norm += element_ratio / 10**(solar_abundances[element_i]-12.0)
                         else:
-                            element_ratio_norm = element_ratio
+                            element_ratio = elemental_ratio_samples(chemical_species, X_stored, 
+                                                                    element_1, element_2)
+                            if (element_2 == 'H'):
+                                element_ratio_norm = element_ratio / 10**(solar_abundances[element_1]-12.0)
+                            else:
+                                element_ratio_norm = element_ratio
 
                         # Plot either the log of the elemental ratio or the ratio itself
                         if ('log_' in param): 
