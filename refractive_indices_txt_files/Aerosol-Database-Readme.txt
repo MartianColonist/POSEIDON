@@ -43,11 +43,15 @@ Kitzmann & Heng (2018) - KH18
 ADS    : https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract
 Table  : 1
 
-Kitzmann & Heng (2018) compiled aerosol refractive indices for aerosols expected to form in extrasolar planets and brown dwarfs. Their philosophy was to utilize the Kramers-Kronig relation to recover missing real and imaginary indices from datasets. Kitzmann & Heng (2018) utilized both a plot digitizer and tables.
+Also available on GitHub 
+
+https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation
+
+Kitzmann & Heng (2018) compiled aerosol refractive indices for aerosols expected to form in extrasolar planets and brown dwarfs. Their philosophy was to utilize the Kramers-Kronig relation or spline interpolation to recover missing real and imaginary indices from datasets. Kitzmann & Heng (2018) utilized both a plot digitizer and tables.
 
 Additionally, when an aerosol is considered to be anisotropic, they would weigh the dielectric functions in each direction by 1/3 and convert them to refractive indices. 
 
-NOTE: STILL WAITING FOR EMAIL BACK FROM KITZMANN ABOUT GENERAL ASSUMPTIONS THEY MADE, AS WELL AS AL2O3,TIC,SIO,CR, AND MNS (HOW WERE OVERLAPPING WAVELENGTHS HANDLED)
+When wavelengths for datasets overlapped, a specific dataset was chosen in order to make the refractive indices look smooth without jumps. 
 
 ---------------------------------
 gcmCRT 
@@ -80,6 +84,10 @@ https://github.com/cdominik/optool/tree/master/lnk_data
 ---------------------------------
 
 The remainder of the references are from Mullens et al 2024.
+
+ADS : 
+
+https://github.com/MartianColonist/POSEIDON/tree/Elijah_V12/refractive_indices_txt_files/Misc
 
 #################################
 Secondary Databases
@@ -383,6 +391,12 @@ Chemical Formula  : Al[2]O[3]
 Crystal or Amorph : Mixed
 Crystal Shape     : Gamma is Cubic, Amorphous is N/A
 
+Note from Daniel Kitzmann: 
+
+'For Al2O3, I used the porous data from Begemann that goes up to 500 microns and the ISAS data from Koike (their Table A1). The data sets were stitched together at about 12 microns. Presumably I did that because that formed a smooth transition between the two data sets.
+
+The joined data was then interpolated onto a new wavelength grid with 200 values equidistantly on logarithmic wavelength space. This is why the data points in my compilation don't exactly match those from the two papers.'
+
 Refractive Index References:
 --------------
 Begemann et al. (1997) (7.8-500 um)
@@ -391,7 +405,7 @@ ADS        : https://ui.adsabs.harvard.edu/abs/1997ApJ...476..199B/abstract
 
 Paper Info :
 
-Amorphous alumina was produced using the sol-gel technique. It was found that amorphous alumina transforms to gamma-crystalline (cubic) around 723-873K, and alpha-crystalline (hexagonal) above 1273K. Paper has both compact and porous Al2O3 in Table 1. It is assumed that the porous indices were used since they go up to 500 um, but that they don't match directly from txt file to paper. 
+Amorphous alumina was produced using the sol-gel technique. It was found that amorphous alumina transforms to gamma-crystalline (cubic) around 723-873K, and alpha-crystalline (hexagonal) above 1273K. Paper has both compact and porous Al2O3 in Table 1. The porous indices were used since they go up to 500 um.
 
 Also found in DOCCD
 https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
@@ -402,7 +416,7 @@ ADS        : https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract
 
 Paper Info :
 
-Same as above (used in WS15 Al2O3 entry). 0.2-0.4 um utilize the ISAS column. 0.5-5 um might be an average of Alumina and ISAS columns, but it isn't clear. Starting at 5 um, Table A2 contains amorphous gamma corundum data that might or might not have been used. 
+Same as above (used in WS15 Al2O3 entry). 0.2-0.4 um in the txt file utilize the ISAS column. See note above. 
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -618,6 +632,11 @@ Wavelengths       : 1.5e-2 - 207 um
 Chemical Formula  : TiC
 Crystal or Amorph : Crystalline
 Crystal Shape     : Cubic (Face-centered)
+
+Note from Daniel Kitzmann: 
+
+'I do have have file that has the reflectance of the Henning & Mutschke (2001) paper in it. I guess I must have found it somewhere. I don't think that I have taken it directly from the figure because the x-axis strangely is given in angular frequency instead of wavelength. Furthermore, the reflectance in this file is not just the one from the Henning & Mutschke (2001) paper but includes extended data
+towards much smaller wavelengths from, presumably, additional data sources. Unfortunately, I can't remember from where I got the file from, though. However, I only used the wavelength range from the Henning & Mutschke paper and converted the stated reflectance into the usual optical constants that were then joined with the data from Koide.'
 
 Refractive Index References:
 --------------
@@ -1924,7 +1943,7 @@ ADS        : https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract
 
 Paper Info :
 
-Noncrystalline, glassy, amorphous SiO forms when SiO is cooled rapidly. The txt file matches the table in Palik for the most part, when imaginary indices were missing Kramers-Kronig was preformed to fill in the gap. Palik compiled the data from many different sources. Reports 0.04959 - 14 um.
+Noncrystalline, glassy, amorphous SiO forms when SiO is cooled rapidly. The txt file matches the table in Palik for the most part, when imaginary indices were missing a spline interpolation was preformed to fill in the gap. Palik compiled the data from many different sources. Reports 0.04959 - 14 um.
 --------------
 Wetzel (2013)
 
@@ -1934,7 +1953,7 @@ Paper Info :
 
 Around S-stars with equal carbon and oxygen, it is expected that oxygen is locked up in SiO and CO. SiO can condense into solid SiO. Thin films of amorphous SiO were formed by SiO vapor deposition on a Si(111) wafer and the dielectric function was fit with a Brendel oscillator model from 2 to 100 um at 300K. Figure 3 shows the dielectric functions, real and imaginary. 
 
-The real indices in the txt file match Figure 3, but the imaginary don't. I assume that the real indices were found by taking the square root of the real dielectric function, and the imaginary were derived with Kramers-Kronig analysis. Additionally, it looks like these filled in wavelengths from 14 to 100 um.
+The real indices in the txt file match Figure 3, but the imaginary don't. I assume that the real indices were found by taking the square root of the real dielectric function, and the imaginary were derived with Kramers-Kronig analysis or spline interpolation. Additionally, it looks like these filled in wavelengths from 14 to 100 um.
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -2242,6 +2261,10 @@ Chemical Formula  : Cr
 Crystal or Amorph : Crystalline 
 Crystal Shape     : Cubic (body centered cubic) (bulk growth) but technically tetragonal
 
+Note from Daniel Kitzmann:
+
+'Up until 20.66 this should be the data from Palik. Beyond that Rakic is used.'
+
 Refractive Index References:
 --------------
 Lynch & Hunter in Palik (1991) [Volume 2, Section 15.6] (0.04-31 um)
@@ -2304,7 +2327,9 @@ Single crystal samples were grown from alpha MnS powder. Used three different te
 Transparent regime - transmission - 4.5 to 20 um
 Shorter and longer wavelengths used UV and infrared reflectance
 
-WS15 used a plot digitizer on Figure 5. 
+WS15 used a plot digitizer on Figure 5, which is in photon energy (eV) where 12 eV is 0.1 um, 6 eV is 0.2 um, and 1 eV is 1.2 um. 
+
+Note that the real indices in the file do not match Table 1 in the paper. 
 
 Note that alpha MnS is cubic, beta MnS (similar to zinc blende, ZnS) is cubic, and gamma MnS (similar to wurtzite, ZnS) is hexagonal.
 --------------
@@ -2336,6 +2361,12 @@ Crystal Shape     : Cubic
 Note from KH18:
 
 ‘In case of MnS, no infrared data was available, which includes in particular the sulphur feature. Here, we follow the approach of Morley et al. (2012) and use extrapolations based on the other two sulphur-bearing species Na2S and ZnS to reconstruct the missing part.’
+
+Note from Daniel Kitzmann: 
+
+'I took the real index directly from the Table 1 in Huffman & Wild and extended it using their Fig. 5. The imaginary part has also been taken from Fig. 5, with the missing data reconstructed by using the Kramers-Kronig relations.'
+
+'Since, as far I as I was aware when I made the compilation, no MnS data was available that covered the sulphur feature, I used the same approach as explained in one of Caroline Morley's papers. We both took the sulphur feature from NaS2 and transplanted it into the data for MnS. In my case, I only took the real part from NaS2 and then used the Kramers-Kronig relations to compute the imaginary part. My choice of using NaS2 is, therefore, mainly influenced by Caroline's paper. Technically, one could have also used ZnS just as well, I suppose. However, both choices are probably equally wrong in the end. Without adequate MnS data in the wavelength region of the expected sulphur feature, we therefore should be very careful in trusting our data set too much.'
 
 Refractive Index References:
 --------------
