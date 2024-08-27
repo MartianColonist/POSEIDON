@@ -1385,6 +1385,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Mutschke (2002) <https://ui.adsabs.harvard.edu/abs/2002A%26A...392.1047M/abstract>`_
        
        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
@@ -1413,6 +1415,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Koike et al. (1995) <https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract>`_
 
      - 0.34–30 μm
@@ -1431,7 +1435,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Begemann et al. (1997) <https://ui.adsabs.harvard.edu/abs/1997ApJ...476..199B/abstract>`_
      
@@ -1461,6 +1469,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
      
        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
@@ -1483,7 +1493,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
      
@@ -1517,7 +1531,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
 
@@ -1579,7 +1597,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Koide (1990) <https://ui.adsabs.harvard.edu/abs/1990PhRvB..42.4979K/abstract>`_
      
@@ -1627,7 +1649,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Mutschke (2004) <https://ui.adsabs.harvard.edu/abs/2004A%26A...423..983M/abstract>`_
 
@@ -1659,7 +1681,11 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-     - `Lynch & Hunter in Palik (1991) (Vol 2, Sec 15) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+
+     - `Lynch & Hunter in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+     
+       `Palik (1991) (Vol 2, Sec 15) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
 
      - 0.2–30 μm
 
@@ -1679,6 +1705,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Begemann (1995) <https://ui.adsabs.harvard.edu/abs/1995P%26SS...43.1257B/abstract>`_
 
      - 0.21–30 μm
@@ -1697,7 +1725,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Pollack (1994) (C) <https://ui.adsabs.harvard.edu/abs/1994ApJ...421..615P/abstract>`_
 
@@ -1727,6 +1759,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - Unpublished, Triaud in DOCCD
 
        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html>`_
@@ -1753,6 +1787,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Day (1981) <https://ui.adsabs.harvard.edu/abs/1981ApJ...246..110D/abstract>`_
 
      - 8.22–30 μm
@@ -1771,7 +1807,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...378..228F/abstract>`_
 
@@ -1805,7 +1845,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Roessler & Huffman in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
 
@@ -1832,6 +1876,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      - `Henning (2005) (C) <https://ui.adsabs.harvard.edu/abs/2005IAUS..231..457H/abstract>`_
 
@@ -1862,6 +1908,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
 
@@ -1921,7 +1969,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
@@ -1969,7 +2021,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -1993,7 +2049,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2020,6 +2080,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      - `Egan & Hilgeman (1975) <https://ui.adsabs.harvard.edu/abs/1975AJ.....80..587E/abstract>`_
      
@@ -2079,7 +2141,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2105,7 +2171,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
@@ -2162,7 +2232,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2188,7 +2262,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2214,7 +2292,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2243,6 +2325,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      -  `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...373.1125F/abstract>`_
 
@@ -2278,7 +2362,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Laor & Draine (1993) (C) <https://ui.adsabs.harvard.edu/abs/1993ApJ...402..441L/abstract>`_
 
@@ -2310,7 +2398,11 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-     -  `Philipp in Palik (1985) (Vol 1, Sec 36) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+
+     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       `Palik (1985) (Vol 1, Sec 36) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
        `Wetzel (2013) <https://ui.adsabs.harvard.edu/abs/2013A%26A...553A..92W/abstract>`_
 
@@ -2335,6 +2427,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2364,7 +2458,9 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens 2024'_
+     - `Mullens et al. (2024) <>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      -  `Herve Herbin & Petitprez (2023) <https://www.tandfonline.com/doi/full/10.1080/02786826.2023.2165899>`_
 
@@ -2386,7 +2482,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Philipp in Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2396,7 +2492,9 @@ Mullens et al. (2024).
      
        Variety of lab sources
        
-       Kramers-Kronig analysis was utilized to fill in empty Palik entires
+       Kramers-Kronig analysis was utilized to fill in empty Palik entries
+
+       :math:`\hookrightarrow` `pyElli (Kramers-Kronig code) <https://github.com/PyEllips/pyElli>`_
        
        Indices averaged by polarization (2/3 Ordinary + 1/3 Extraordinary)
 
@@ -2414,7 +2512,9 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-     -  `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+
+     - `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
 
        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
@@ -2442,7 +2542,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Philipp in Palik (1985) (Vol 1, Sec 35) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2450,7 +2550,9 @@ Mullens et al. (2024).
 
      - Amorphous (glass, isotropic)
      
-       Kramers-Kronig analysis was utilized to fill in empty Palik entires
+       Kramers-Kronig analysis was utilized to fill in empty Palik entries
+
+       :math:`\hookrightarrow` `pyElli (Kramers-Kronig code) <https://github.com/PyEllips/pyElli>`_
 
    *  - :math:`\mathrm{\textbf{T-Y Dwarf}}`
       - 
@@ -2475,7 +2577,11 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-     - `Lynch & Hunter in Palik (1991) (Vol 2, Sec 15.6) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+
+     - `Lynch & Hunter in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
+
+       `Palik (1991) (Vol 2, Sec 15.6) (C) <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
 
        `Rakic (1998) <https://ui.adsabs.harvard.edu/abs/1998ApOpt..37.5271R/abstract>`_
 
@@ -2499,6 +2605,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
      - 0.2–13 μm
@@ -2517,7 +2625,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
@@ -2543,7 +2655,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
@@ -2573,6 +2685,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Morley (2012) <https://ui.adsabs.harvard.edu/abs/2012ApJ...756..172M/abstract>`_
      
        `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
@@ -2601,6 +2715,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Querry (1987) <https://apps.dtic.mil/sti/citations/ADA192210>`_
 
      - 0.22–30 μm
@@ -2622,6 +2738,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      - `Eldridge & Palik in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2648,6 +2766,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      - `Palik in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2684,7 +2804,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Zernike (1965) <https://ui.adsabs.harvard.edu/abs/1965JOSA...55..210Z/abstract>`_
 
@@ -2712,6 +2832,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Hale & Querry (1973) (C) <https://ui.adsabs.harvard.edu/abs/1973ApOpt..12..555H/abstract>`_
 
      - 0.2–30 μm
@@ -2731,6 +2853,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      - `Warren (1984) (C) <https://ui.adsabs.harvard.edu/abs/1984ApOpt..23.1206W/abstract>`_
 
@@ -2752,7 +2876,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - Personal Communication
 
@@ -2800,6 +2924,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Martonchik & Orton (1984) (C) <https://ui.adsabs.harvard.edu/abs/1994ApOpt..33.8306M/abstract>`_
 
      - 0.2–30 μm
@@ -2821,6 +2947,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      - `Martonchik & Orton (1984) (C) <https://ui.adsabs.harvard.edu/abs/1994ApOpt..33.8306M/abstract>`_
 
@@ -2846,7 +2974,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Khare (1993) <https://ui.adsabs.harvard.edu/abs/1993Icar..103..290K/abstract>`_
 
@@ -2875,7 +3003,11 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Kitzmann & Heng (2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+     - `Kitzmann & Heng <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+       `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
+
+        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Draine (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1017D/abstract>`_
 
@@ -2901,7 +3033,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
@@ -2925,7 +3057,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
@@ -2971,6 +3103,8 @@ Mullens et al. (2024).
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
+
      - `Anderson (2000) <https://apps.dtic.mil/sti/citations/ADA379578>`_
 
      - 2–25 μm
@@ -2989,7 +3123,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Palmer & Williams (1975) <https://ui.adsabs.harvard.edu/abs/1975ApOpt..14..208P/abstract>`_
 
@@ -3041,7 +3175,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Noy (1981) <https://ui.adsabs.harvard.edu/abs/1981JGR....8611985N/abstract>`_
 
@@ -3072,7 +3206,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Chang & Charalampopoulos (1990) <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
 
@@ -3097,6 +3231,8 @@ Mullens et al. (2024).
      - `Wakeford & Sing <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
 
        `(2015) <https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract>`_
+
+       :math:`\hookrightarrow` `Link <https://stellarplanet.org/science/condensates/>`_
 
      - `Khare (1984) <https://ui.adsabs.harvard.edu/abs/1984Icar...60..127K/abstract>`_
 
@@ -3128,7 +3264,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
 
@@ -3154,7 +3290,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
 

@@ -1230,7 +1230,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  data_alpha = 0.8, data_edge_width = 0.8,
                  line_widths = [], xlabels = True, ylabels = True,
                  line_styles = [],
-                 alphas = []):
+                 alphas = [],
+                 legend_n_columns = 0):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1737,10 +1738,14 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         ax.tick_params(labelleft=False)  
     
     # Switch to two columns if many spectra are being plotted
-    if (N_spectra >= 6):
-        n_columns = 2
+    if legend_n_columns == 0:
+        if (N_spectra >= 6):
+            n_columns = 2
+        else:
+            n_columns = 1
+    
     else:
-        n_columns = 1
+        n_columns = legend_n_columns
 
     # Add box around legend
     if (legend_box == True) and (legend_location != 'outside right'):

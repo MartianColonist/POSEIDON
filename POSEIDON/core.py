@@ -1111,7 +1111,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      disable_continuum = False, suppress_print = False,
                      Gauss_quad = 2, use_photosphere_radius = True,
                      device = 'cpu', y_p = np.array([0.0]),
-                     return_albedo = False):
+                     return_albedo = False,
+                     return_kappa_cloud = False):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -1830,6 +1831,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
     if return_albedo == True:
         return spectrum, albedo
+    
+    elif return_kappa_cloud == True:
+        return spectrum, kappa_cloud
 
     else:
         return spectrum
