@@ -48,16 +48,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
       -
       - 
 
-
-   *  - :math:`\mathrm{\textbf{Common}}`
-        
-        :math:`\mathrm{\textbf{Species}}`
-      - 
-      - 
-      - 
-      -
-      - 
-
    * - :math:`\mathrm{H_2O}`
      - `POKAZATEL <https://www.exomol.com/data/molecules/H2O/1H2-16O/POKAZATEL/>`_
        
@@ -68,8 +58,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - MARVELised 
      - 
-       .. image:: ../_static/opacity_previews/gases/H2O.png
-          :width: 50
        .. image:: ../_static/opacity_previews/gases/H2O.png
           :width: 50
           :align: center
@@ -86,8 +74,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/CO2.png
           :width: 50
-       .. image:: ../_static/opacity_previews/gases/CO2.png
-          :width: 50
           :align: center
 
    * - :math:`\mathrm{CH_4}`
@@ -100,8 +86,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - New Line List
      - 
-       .. image:: ../_static/opacity_previews/gases/CH4.png
-          :width: 50
        .. image:: ../_static/opacity_previews/gases/CH4.png
           :width: 50
           :align: center
@@ -118,8 +102,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/CO.png
           :width: 50
-       .. image:: ../_static/opacity_previews/gases/CO.png
-          :width: 50
           :align: center
 
    * - :math:`\mathrm{Na}`
@@ -132,8 +114,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
 
        Vacuum
      - 
-       .. image:: ../_static/opacity_previews/gases/Na.png
-          :width: 50
        .. image:: ../_static/opacity_previews/gases/Na.png
           :width: 50
           :align: center
@@ -150,8 +130,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/K.png
           :width: 50
-       .. image:: ../_static/opacity_previews/gases/K.png
-          :width: 50
           :align: center
 
    * - :math:`\mathrm{NH_3}`
@@ -164,8 +142,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - MARVELised 
      - 
-       .. image:: ../_static/opacity_previews/gases/NH3.png
-          :width: 50
        .. image:: ../_static/opacity_previews/gases/NH3.png
           :width: 50
           :align: center
@@ -182,8 +158,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/HCN.png
           :width: 50
-       .. image:: ../_static/opacity_previews/gases/HCN.png
-          :width: 50
           :align: center
 
    * - :math:`\mathrm{SO_2}`
@@ -196,8 +170,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - MARVELised
      - 
-       .. image:: ../_static/opacity_previews/gases/SO2.png
-          :width: 50
        .. image:: ../_static/opacity_previews/gases/SO2.png
           :width: 50
           :align: center
@@ -216,8 +188,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/H2S.png
           :width: 50
-       .. image:: ../_static/opacity_previews/gases/H2S.png
-          :width: 50
           :align: center
 
    * - :math:`\mathrm{PH_3}`
@@ -230,8 +200,6 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - :math:`\mathrm{H_2}` + :math:`\mathrm{He}`
      - No Change
      - 
-       .. image:: ../_static/opacity_previews/gases/PH3.png
-          :width: 50
        .. image:: ../_static/opacity_previews/gases/PH3.png
           :width: 50
           :align: center
@@ -248,18 +216,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - 
        .. image:: ../_static/opacity_previews/gases/C2H2.png
           :width: 50
-       .. image:: ../_static/opacity_previews/gases/C2H2.png
-          :width: 50
           :align: center
 
-   *  - :math:`\mathrm{\textbf{Metal}}`
-
-        :math:`\mathrm{\textbf{Oxides}}`
-      - 
-      - 
-      - 
-      -
-      - 
    *  - :math:`\mathrm{\textbf{Metal}}`
 
         :math:`\mathrm{\textbf{Oxides}}`
@@ -1326,9 +1284,6 @@ ________________
 POSEIDON v1.2 includes an extensive database of Mie scattering properties for
 atmospheric aerosols. The database and its computation are detailed in full in
 Mullens et al. (2024).
-POSEIDON v1.2 includes an extensive database of Mie scattering properties for
-atmospheric aerosols. The database and its computation are detailed in full in
-Mullens et al. (2024).
 
 .. list-table::
    :widths: 20 20 20 20 20 20 20
@@ -1338,19 +1293,9 @@ Mullens et al. (2024).
      - Common Name
      
        (Name in POSEIDON)
-       (Name in POSEIDON)
      - Plot
 
        (Click)
-     - Database 
-     
-       Reference
-     - Refractive Index 
-     
-       References
-     - Wavelength
-     
-       Range
      - Database 
      
        Reference
@@ -1439,7 +1384,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Begemann et al. (1997) <https://ui.adsabs.harvard.edu/abs/1997ApJ...476..199B/abstract>`_
      
@@ -1497,7 +1442,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
      
@@ -1535,7 +1480,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
 
@@ -1601,7 +1546,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Koide (1990) <https://ui.adsabs.harvard.edu/abs/1990PhRvB..42.4979K/abstract>`_
      
@@ -1681,7 +1626,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Lynch & Hunter in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
      
@@ -1729,7 +1674,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Pollack (1994) (C) <https://ui.adsabs.harvard.edu/abs/1994ApJ...421..615P/abstract>`_
 
@@ -1811,7 +1756,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...378..228F/abstract>`_
 
@@ -1849,7 +1794,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Roessler & Huffman in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
 
@@ -1973,7 +1918,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
@@ -2025,7 +1970,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2053,7 +1998,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2145,7 +2090,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2175,7 +2120,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
@@ -2236,7 +2181,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2266,7 +2211,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2296,7 +2241,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
@@ -2366,7 +2311,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      -  `Laor & Draine (1993) (C) <https://ui.adsabs.harvard.edu/abs/1993ApJ...402..441L/abstract>`_
 
@@ -2398,7 +2343,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2460,7 +2405,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
      -  `Herve Herbin & Petitprez (2023) <https://www.tandfonline.com/doi/full/10.1080/02786826.2023.2165899>`_
 
@@ -2484,9 +2429,11 @@ Mullens et al. (2024).
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
-     - `Philipp in Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
-     - (0.2, 30) μm
+       `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
 
      - Crystalline (trigonal, uniaxial)
      
@@ -2512,7 +2459,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
 
@@ -2544,9 +2491,11 @@ Mullens et al. (2024).
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
-     - `Philipp in Palik (1985) (Vol 1, Sec 35) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+     - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
-     - (0.2, 30) μm
+       `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2–30 μm
 
      - Amorphous (glass, isotropic)
      
@@ -2577,7 +2526,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Lynch & Hunter in <https://ui.adsabs.harvard.edu/abs/1991hocs.book.....P/abstract>`_
 
@@ -2629,15 +2578,13 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
        `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
 
-       `Palik & Addamiano in Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-     - (0.2, 30) μm
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -2661,9 +2608,7 @@ Mullens et al. (2024).
 
        `Montaner (1979) <https://ui.adsabs.harvard.edu/abs/1979PSSAR..52..597M/abstract>`_
 
-       `Palik & Addamiano in Palik (1985) (Vol 1, Sec 27) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
-
-     - (0.2, 30) μm
+     - 0.2–30 μm
 
      - Crystalline (cubic, isotropic)
      
@@ -3007,7 +2952,7 @@ Mullens et al. (2024).
 
        `(2018) <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_
 
-        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Draine (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJ...598.1017D/abstract>`_
 
@@ -3153,9 +3098,11 @@ Mullens et al. (2024).
      
        :math:`\hookrightarrow` `GitHub <https://github.com/ELeeAstro/gCMCRT/tree/main/data/nk_tables>`_
 
-     - `Fuller, Downing, & Querry in Palik (1998) (Vo 3, Sec 42) (C) <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
+     - `Fuller, Downing, & Querry in <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
 
-     - (0.2, 30) μm
+       `Palik (1998) (Vo 3, Sec 42) (C) <https://books.google.com/books/about/Handbook_of_Optical_Constants_of_Solids.html?id=nxoqxyoHfbIC>`_
+
+     - 0.2–30 μm
 
      - Crystalline (orthorhombic, biaxial)
      
@@ -3208,9 +3155,11 @@ Mullens et al. (2024).
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
-     - `Chang & Charalampopoulos (1990) <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
+     - `Chang & Charalampopoulos <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
 
-     - (0.2, 28.4) μm
+       `(1990) <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
+
+     - 0.2–28.4 μm
 
      - Amorphous (isotropic)
      

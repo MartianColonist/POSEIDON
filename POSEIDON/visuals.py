@@ -1317,6 +1317,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Line styles for binned spectra, '-' default
         alphas (list of float, optional):
             Alpha values for binned spectra, '0.8' default
+        legend_n_columns (integer):
+            Manually set the number of columns for the legend
 
     Returns:
         fig (matplotlib figure object):
@@ -2138,7 +2140,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            data_alpha = 0.8, data_edge_width = 0.8, sigma_to_plot = 2,
                            line_widths = [], model = None, add_retrieved_offsets = False,
                            verbose_offsets = True,
-                           xlabels = True, ylabels = True
+                           xlabels = True, ylabels = True,
+                           legend_n_columns = 0
                         ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2239,6 +2242,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             If false, will remove x_ticks and x_label.
         y_labels (bool, optional):
             If false, will remove y_ticks and y_label.
+        legend_n_columns (integer):
+            Manually set the number of columns for the legend
      
     Returns:
         fig (matplotlib figure object):
@@ -2765,20 +2770,27 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     if ylabels == False:
         ax.tick_params(labelleft=False)  
 
+    # Switch to two columns if many spectra are being plotted
+    if legend_n_columns == 0:
+        n_columns = 1
+    
+    else:
+        n_columns = legend_n_columns
+
     # Add box around legend
     if (legend_box == True):
         legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon = True)    # Legend settings
+                            ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
 
     elif legend_location == 'outside right':
         legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))
+                            ncol = n_columns, frameon=False,bbox_to_anchor=(1, 0.5))
         
     else:
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon=False)    # Legend settings
+                            ncol = n_columns, frameon=False)    # Legend settings
             
     plt.tight_layout()
 
