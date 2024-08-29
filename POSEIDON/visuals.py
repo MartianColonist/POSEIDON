@@ -3616,19 +3616,22 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             #    ax.xaxis.set_major_locator(xmajorLocator)
             #    ax.xaxis.set_minor_locator(xminorLocator)
 
-            if (param in ['T_spot', 'T_fac', 'T_phot']):
+            if (param in ['T_spot', 'T_fac', 'T_phot', 'T_het', 'Delta_T_het']):
                 if ((param_max - param_min) < 400):
                     xmajor_interval = 100
-                    xmajor_interval = 50
+                    xminor_interval = 50
                 elif (((param_max - param_min) >= 400) and ((param_max - param_min) < 800)):
                     xmajor_interval = 200
                     xminor_interval = 100
-                elif ((param_max - param_min) >= 800):
+                elif (((param_max - param_min) >= 800) and ((param_max - param_min) < 2000)):
                     xmajor_interval = 400
                     xminor_interval = 200
+                elif ((param_max - param_min) >= 2000):
+                    xmajor_interval = 1000
+                    xminor_interval = 500
 
                 xmajorLocator = MultipleLocator(xmajor_interval)
-                xminorLocator = MultipleLocator(xmajor_interval)
+                xminorLocator = MultipleLocator(xminor_interval)
                 ax.xaxis.set_major_locator(xmajorLocator)
                 ax.xaxis.set_minor_locator(xminorLocator)
 
