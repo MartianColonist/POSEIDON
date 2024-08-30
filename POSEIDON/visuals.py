@@ -3352,13 +3352,13 @@ def plot_stellar_flux(flux, wl, wl_min = None, wl_max = None, flux_min = None,
     return fig
 
 
-def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array):
+def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array, alpha_hist):
     
   #  weights = np.ones_like(vals)/float(len(vals))
     
     # Plot histogram
     x,w,patches = ax.hist(vals, bins=nbins, color=colour, histtype='stepfilled', 
-                          alpha=0.4, edgecolor='None', density=True, stacked=True)
+                          alpha=alpha_hist, edgecolor='None', density=True, stacked=True)
 
     # Plot histogram border
     x,w,patches = ax.hist(vals, bins=nbins, histtype='stepfilled', lw = 0.8, 
@@ -3374,10 +3374,10 @@ def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array):
 
 
 def plot_parameter_panel(ax, param_vals, N_bins, param, 
-                         param_min, param_max, colour, x_max_array):
+                         param_min, param_max, colour, x_max_array, alpha_hist):
     
     # Plot histogram
-    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array)
+    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array, alpha_hist)
 
     # Adjust x-axis extent
     ax.set_xlim(param_min, param_max)
@@ -3391,7 +3391,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                               retrieval_colour_list, retrieval_labels, span, truths, 
                               N_rows, N_columns, N_bins,
                               vertical_lines, vertical_lines_colors, tick_labelsize = 8, title_fontsize = 12,
-                              custom_labels = [], custom_ticks = []):
+                              custom_labels = [], custom_ticks = [], alpha_hist = 0.4):
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3488,7 +3488,8 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
-                                                    param_min, param_max, colour, x_max_array = x_max_array,)
+                                                    param_min, param_max, colour, x_max_array = x_max_array,
+                                                    alpha_hist = alpha_hist)
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
@@ -3598,7 +3599,8 @@ def plot_histograms(planet_name, models, plot_parameters,
                     external_param_names = [], plt_label = None, 
                     save_fig = True,
                     vertical_lines = [], vertical_line_colors = [], tick_labelsize = 8, title_fontsize = 12,
-                    custom_labels = [], custom_ticks = []):
+                    custom_labels = [], custom_ticks = [],
+                    alpha_hist = 0.4):
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -3751,7 +3753,8 @@ def plot_histograms(planet_name, models, plot_parameters,
                                     N_rows, N_columns, N_bins,
                                     vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize,
                                     custom_labels = custom_labels,
-                                    custom_ticks = custom_ticks )
+                                    custom_ticks = custom_ticks,
+                                    alpha_hist = alpha_hist)
     
     # Save figure to file
     if (save_fig == True):
