@@ -1387,12 +1387,12 @@ Mullens et al. (2024).
        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Begemann et al. (1997) <https://ui.adsabs.harvard.edu/abs/1997ApJ...476..199B/abstract>`_
+
+       `Koike et al (1995) <https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract>`_
      
        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
        :math:`\hspace{1.0em}` `(Porous) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
-
-       `Koike et al (1995) <https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract>`_
 
      - 0.2–30 μm
 
@@ -1445,12 +1445,12 @@ Mullens et al. (2024).
        :math:`\hookrightarrow` `GitHub <https://github.com/NewStrangeWorlds/LX-MIE/tree/master/compilation>`_
 
      - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
+
+       `Ueda (1998) <https://ui.adsabs.harvard.edu/abs/1998JPCM...10.3669U/abstract>`_
      
        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
        :math:`\hspace{1.0em}` `(CaTiO3) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
-
-       `Ueda (1998) <https://ui.adsabs.harvard.edu/abs/1998JPCM...10.3669U/abstract>`_
 
      - 0.2–30 μm
 
@@ -1486,11 +1486,11 @@ Mullens et al. (2024).
 
        `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
 
+       `Siefke (2016) <https://ui.adsabs.harvard.edu/abs/2016arXiv160704866S/abstract>`_
+
        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
        :math:`\hspace{1.0em}` `(Anatase) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
-
-       `Siefke (2016) <https://ui.adsabs.harvard.edu/abs/2016arXiv160704866S/abstract>`_
 
      - 0.2–30 μm
 
@@ -2463,13 +2463,13 @@ Mullens et al. (2024).
 
      - `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
-
-       :math:`\hspace{1.0em}` `(Amorphous SiO2, 300K) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
-
        `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
        `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+
+       :math:`\hspace{1.0em}` `(Amorphous SiO2, 300K) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -3271,7 +3271,6 @@ each aerosol to form with planetary-specific references for each entry and class
 are listed on Aerosol-Database-Readme.txt.
 
 Please address any request for new aerosols to: eem85@cornell.edu.
-
 
 
 

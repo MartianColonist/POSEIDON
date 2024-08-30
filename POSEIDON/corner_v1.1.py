@@ -349,8 +349,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                labels=None, param_names=None, label_kwargs=None,
                show_titles=True, title_kwargs=None, truths=None, 
                truth_colour='red', truth_kwargs=None, max_n_ticks=5, 
-               top_ticks=False, use_math_text=False, verbose=False, 
-               fig=None, model_i = None):
+               top_ticks=False, use_math_text=False, verbose=False, fig=None):
     '''
     Generate a corner plot of the 1D and 2D marginalised posteriors.
 
@@ -510,21 +509,16 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
     whspace = 0.05  # size of width/height margin
     plotdim = factor * ndim + factor * (ndim - 1.) * whspace  # plot size
     dim = lbdim + plotdim + trdim  # total size
-        
+
     # Initialize figure.
-    if (fig is None and model_i is None) or (fig is None and model_i == 0):
+    if fig is None:
         fig, axes = plt.subplots(ndim, ndim, figsize=(dim, dim))
-    elif fig is not None and model_i is not None:
+    else:
         try:
             fig, axes = fig
             axes = np.array(axes).reshape((ndim, ndim))
-            # show_titles = False
         except:
             raise ValueError("Mismatch between axes and dimension.")
-    else:
-        raise ValueError(
-            "Must provide both existing figure and overplot index when overplotting."
-        )
 
     # Format figure.
     lb = lbdim / dim
@@ -604,60 +598,44 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                  for t in truths[i]]
             except:
                 ax.axvline(truths[i], color=truth_colour, **truth_kwargs)
-        
         # Set titles.
         if show_titles:
             title = None
-
+                
             ql, qm, qh = _quantile(x, quantiles, weights=weights)
             q_minus, q_plus = qm - ql, qh - qm
-
-            if (("T" in param_name) or ("T_" in param_name)) and (
-                "log" not in param_name
-            ):
-                title_fmt = ".0f"
-            elif (param_name == "a") or (
-                param_name == "b"
-            ):  # for high res scaling parameters
-                title_fmt = ".2f"
-            elif "delta_rel" in param_name:
-                title_fmt = ".0f"
-            elif "R_p_ref" in param_name:
-                label_exponent = round_sig_figs(
-                    np.floor(np.log10(np.abs(0.5 * (qh - ql)))), 1
-                )
-                if label_exponent == -2.0:
-                    title_fmt = ".2f"
-                elif label_exponent == -3.0:
-                    title_fmt = ".3f"
-                elif label_exponent == -4.0:
-                    title_fmt = ".4f"
+            
+            if ((('T' in param_name) or ('T_' in param_name)) and ('log' not in param_name)):
+                title_fmt = '.0f'
+            elif (('alpha' in param_name) and ('T_int' not in param_names)):
+                title_fmt = '.0f'
+            elif (('beta' in param_name) and ('T_int' not in param_names)):
+                title_fmt = '.0f'
+            elif ('delta_rel' in param_name):
+                title_fmt = '.0f'
+            elif ('R_p_ref' in param_name):
+                
+                label_exponent = round_sig_figs(np.floor(np.log10(np.abs(0.5*(qh - ql)))), 1)
+                
+                if (label_exponent == -2.0):
+                    title_fmt = '.2f'
+                elif (label_exponent == -3.0):
+                    title_fmt = '.3f'
+                elif (label_exponent == -4.0):
+                    title_fmt = '.4f'
                 else:
-                    title_fmt = ".2f"
-            elif "d" in param_name:
-                title_fmt = ".3f"
+                    title_fmt = '.2f'
+            elif ('d' in param_name):
+                title_fmt = '.3f'
+                    
             else:
                 title_fmt = title_fmt_default
-
+                
             fmt = "{{0:{0}}}".format(title_fmt).format
             title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
             title = title.format(fmt(qm), fmt(q_minus), fmt(q_plus))
             title = "{0} = {1}".format(labels[i], title)
-            if model_i is not None:
-                ax.text(
-                    0.5,
-                    1 + model_i * 0.1,
-                    title,
-                    horizontalalignment="center",
-                    verticalalignment="bottom",
-                    color=colour_plt,
-                    transform=ax.transAxes,
-                    **title_kwargs,
-                )
-            else:
-                ax.set_title(title, **title_kwargs)
-        else:
-            ax.set_title(None)
+            ax.set_title(title, **title_kwargs)
 
         for j, y in enumerate(samples):
             if np.shape(samples)[0] == 1:
@@ -739,8 +717,8 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
     return (fig, axes)
 
 
-def generate_cornerplot(planet, model, params_to_plot = None, 
-                        retrieval_name = None, true_vals = None,
+
+def generate_cornerplot(planet, model, retrieval_name = None, true_vals = None,
                         colour_scheme = '#984ea3', span = None):
     '''
     Generate giant triangle plot of doom to visualise the results of a 
@@ -798,21 +776,14 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         s = a.get_stats()
         
         print('Generating corner plot ...')
-
+        
         # Extract quantities needed to use the Dynesty corner plotting script
         data = a.get_data()
-        i = data[:, 1].argsort()[::-1]
-        if params_to_plot is not None:
-            indices_to_plot = [
-                list(param_names).index(param) for param in params_to_plot
-            ]
-            samples = data[i][:, [2 + index for index in indices_to_plot]]
-        else:
-            params_to_plot = param_names
-            samples = data[i, 2:]
-        weights = data[i, 0]
-        loglike = data[i, 1]
-        Z = s["global evidence"]
+        i = data[:,1].argsort()[::-1]
+        samples = data[i,2:]
+        weights = data[i,0]
+        loglike = data[i,1]
+        Z = s['global evidence']
         logvol = np.log(weights) + 0.5 * loglike + Z
         logvol = logvol - logvol.max()
         
@@ -821,152 +792,22 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         
         # Calculate 2D levels for 1, 2, 3 sigma contours    
         levels = 1.0 - np.exp(-0.5 * np.array([1.0, 2.0, 3.0]) ** 2)
-
+        
         # Generate LaTeX names for each parameter for plot axes
-        params_latex = generate_latex_param_names(params_to_plot)
+        params_latex = generate_latex_param_names(param_names)
         
         # Generate corner plot
         fig, axes = cornerplot(results, quantiles=[0.1587, 0.5, 0.8413],  
                                smooth_hist=30, smooth_corr=0.02, colour_plt=colour_scheme,
                                colour_quantile='royalblue', show_titles=True, labels=params_latex, 
-                               param_names=params_to_plot, truths=true_vals, span=span,
+                               param_names=param_names, truths=true_vals, span=span,
                                truth_colour='green', label_kwargs={'fontsize':18}, 
                                hist_kwargs={'histtype':'stepfilled','edgecolor':None},
                                hist2d_kwargs={'plot_contours':True,'fill_contours':True,
                                                 'levels':levels,'plot_datapoints':False})
             
-        # Save corner plot in results directories
+        # Save corner plot in results directory
         plt.savefig(results_prefix + '_corner.pdf', bbox_inches='tight')
 
-        return (fig, axes)
-
-
-def generate_overplot(planet, models, params_to_plot=None, 
-                      model_display_names=None, true_vals=None,
-                      truth_colour='green', 
-                      colour_schemes=['purple', 'green'], span=None):
-    '''
-    Generate overplotted giant triangle plot of doom to visualise the results 
-    of multiple POSEIDON retrievals.
-
-    Args:
-        planet (dict):
-            Collection of planetary properties used by POSEIDON.
-        model (dict):
-            Dictionary containing the description of the POSEIDON model.
-        retrieval_name (str):
-            Optional retrieval name suffix after the model name.
-        true_vals (list of float):
-            True values of parameters to overplot.
-        colour_scheme (str with hex code):
-            Desired colour for the histograms and probability contours.
-        span (list of tuples of float):
-            Range to plot for each parameter (overrules default +/- 5σ range).
-
-    Returns:
-        fig (matplotlib figure object):
-            Your new triangle plot of doom. Use responsibly!
-
-    '''
-
-    # Only generate a cornerplot using the first core
-    if rank == 0:
-        # Unpack planet name
-        planet_name = planet["planet_name"]
-
-        existing_fig = None
-        if model_display_names is None:
-            model_display_names = [model["model_name"] for model in models]
-        for model_i, model in enumerate(models):
-            # Unpack model properties
-            model_name = model["model_name"]
-            param_names = model["param_names"]
-            n_params = len(param_names)
-
-            # Identify output directory location
-            output_dir = "./POSEIDON_output/" + planet_name + "/retrievals/"
-
-            # Load relevant output directory
-
-            output_prefix = output_dir + "MultiNest_raw/" + model_name + "-"
-
-            # Run PyMultiNest analyser to extract posterior samples and model evidence
-            a = pymultinest.Analyzer(
-                n_params, outputfiles_basename=output_prefix, verbose=False
-            )
-            s = a.get_stats()
-
-            print(f"Generating corner plot {model_i}...")
-
-            # Extract quantities needed to use the Dynesty corner plotting script
-            data = a.get_data()
-            i = data[:, 1].argsort()[::-1]
-            if params_to_plot is not None:
-                indices_to_plot = [
-                    list(param_names).index(param) for param in params_to_plot
-                ]
-                samples = data[i][:, [2 + index for index in indices_to_plot]]
-            else:
-                samples = data[i, 2:]
-            weights = data[i, 0]
-            loglike = data[i, 1]
-            Z = s["global evidence"]
-            logvol = np.log(weights) + 0.5 * loglike + Z
-            logvol = logvol - logvol.max()
-
-            # Package results dictionary expected by the cornerplot function
-            results = dict(samples=samples, weights=weights, logvol=logvol)
-
-            # Calculate 2D levels for 1, 2, 3 sigma contours
-            levels = 1.0 - np.exp(-0.5 * np.array([1.0, 2.0, 3.0]) ** 2)
-
-            # Generate LaTeX names for each parameter for plot axes
-            params_latex = generate_latex_param_names(params_to_plot)
-
-            # Generate corner plot
-            existing_fig = cornerplot(
-                results,
-                quantiles=[0.1587, 0.5, 0.8413],
-                smooth_hist=30,
-                smooth_corr=0.02,
-                colour_plt=colour_schemes[model_i],
-                colour_quantile=colour_schemes[model_i],
-                show_titles=True,
-                labels=params_latex,
-                param_names=params_to_plot,
-                truths=true_vals,
-                span=span,
-                truth_colour=truth_colour,
-                label_kwargs={"fontsize": 18},
-                hist_kwargs={"histtype": "stepfilled", "edgecolor": None},
-                hist2d_kwargs={
-                    "plot_contours": True,
-                    "fill_contours": True,
-                    "levels": levels,
-                    "plot_datapoints": False,
-                },
-                fig=existing_fig,
-                model_i=model_i,
-            )
-
-            existing_fig[0].text(
-                0.6,
-                0.75 + 0.05 * model_i,
-                colour_schemes[model_i].capitalize()
-                + ": "
-                + model_display_names[model_i],
-                horizontalalignment="left",
-                fontsize=20,
-                color=colour_schemes[model_i],
-            )
-
-        # Save corner plot in results directory
-        overplot_name = ""
-        for model_display_name in model_display_names:
-            overplot_name += model_display_name
-        results_prefix = output_dir + "results/" + overplot_name
-
-        plt.savefig(results_prefix + "_corner_overplot.pdf", bbox_inches="tight")
-
-        return existing_fig
+        return fig
 

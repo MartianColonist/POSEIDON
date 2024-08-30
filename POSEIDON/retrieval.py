@@ -1133,12 +1133,13 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
 
 def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = None, 
-                             median=True, best_fit=False,
+                             median = True, best_fit = False,
                              P_param_set = 1.0e-2, He_fraction = 0.17,
                              N_slice_EM = 2, N_slice_DN = 4, 
                              constant_gravity = False, chemistry_grid = None,
+                             specific_param_values = [],
                              verbose = False):
-    """
+    '''
     Creates the atmosphere dictionary for the median or best fit spectrum of a retrieval.
 
     Args:
@@ -1167,12 +1168,15 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
         chemistry_grid (dict):
             For models with a pre-computed chemistry grid only, this dictionary
             is produced in chemistry.py.
+        specific_param_values (list):
+            If a specific parameter combination is provided, this will be used
+            instead of the median or best fit parameters.
 
     Returns:
         atmosphere (dict):
                 Collection of atmospheric properties required to compute the
                 resultant spectrum of the planet.
-    """
+    '''
 
     # unpack planet
     planet_name = planet['planet_name']
@@ -1190,49 +1194,56 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     T_input = []
     X_input = []
 
-    # Identify output directory location
-    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+    # Use specific parameter combination if provided
+    if (specific_param_values != []):
+        param_values = specific_param_values
 
-    # Load relevant output directory
-    output_prefix = model['model_name'] + '-'
+    # Or load the median or best-fitting parameters from the MultiNest output
+    else:
 
-    # Change directory into MultiNest result file folder
-    os.chdir(output_dir + 'MultiNest_raw/')
+        # Identify output directory location
+        output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
 
-    # Run PyMultiNest analyser to extract posterior samples
-    analyzer = pymultinest.Analyzer(len(param_names), outputfiles_basename = output_prefix,
-                                    verbose = False)
-    
-    # get parameter values for either the median or best fit model
-    if median == True and best_fit == False:
+        # Load relevant output directory
+        output_prefix = model['model_name'] + '-'
 
-        # get stats 
-        stats = analyzer.get_stats()
+        # Change directory into MultiNest result file folder
+        os.chdir(output_dir + 'MultiNest_raw/')
 
-        # create empty list to store parameter values
-        param_values = []
+        # Run PyMultiNest analyser to extract posterior samples
+        analyzer = pymultinest.Analyzer(len(param_names), outputfiles_basename = output_prefix,
+                                        verbose = False)
         
-        # loop over all parameters in model
-        for i in range(len(param_names)):
-            param_values.append(stats['marginals'][i]['median'])
+        # get parameter values for either the median or best fit model
+        if median == True and best_fit == False:
 
-    
-    elif median == False and best_fit == True:
+            # get stats 
+            stats = analyzer.get_stats()
 
-        # get best fit parameter values
-        best_fit = analyzer.get_best_fit()
-        param_values = best_fit['parameters']
+            # create empty list to store parameter values
+            param_values = []
+            
+            # loop over all parameters in model
+            for i in range(len(param_names)):
+                param_values.append(stats['marginals'][i]['median'])
+
+        
+        elif median == False and best_fit == True:
+
+            # get best fit parameter values
+            best_fit = analyzer.get_best_fit()
+            param_values = best_fit['parameters']
 
 
-    # catch cases where median and best fit are both true or both false
-    elif (median == False and best_fit == False) or (median == True and best_fit == True):
+        # catch cases where median and best fit are both true or both false
+        elif (median == False and best_fit == False) or (median == True and best_fit == True):
+            # Change directory back to directory where user's python script is located
+            os.chdir('../../../../')
+            raise Exception("Please specify either median or best fit model as True")
+        
+
         # Change directory back to directory where user's python script is located
         os.chdir('../../../../')
-        raise Exception("Please specify either median or best fit model as True")
-    
-
-    # Change directory back to directory where user's python script is located
-    os.chdir('../../../../')
 
 
     # split parameters into each atmosphere category
@@ -1277,7 +1288,7 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
         log_g = None
 
     # Unpack surface pressure if set as a free parameter
-    if (surface == True):
+    if ((surface == True) and ('log_P_surf' in physical_param_names)):
         P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
     else:
         P_surf = None
@@ -1300,7 +1311,6 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
                                  chemistry_grid = chemistry_grid)
     
     return atmosphere
-
 
 
 #***** Compute Bayes factors, sigma significance etc *****#
