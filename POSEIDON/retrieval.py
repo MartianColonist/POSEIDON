@@ -1136,7 +1136,8 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
                              median=True, best_fit=False,
                              P_param_set = 1.0e-2, He_fraction = 0.17,
                              N_slice_EM = 2, N_slice_DN = 4, 
-                             constant_gravity = False, chemistry_grid = None):
+                             constant_gravity = False, chemistry_grid = None,
+                             verbose = False):
     """
     Creates the atmosphere dictionary for the median or best fit spectrum of a retrieval.
 
@@ -1281,6 +1282,12 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     else:
         P_surf = None
 
+    if verbose == True:
+        print('R_p_ref = ', physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]], '* ', radius_unit)
+        print('PT_params = np.array(', PT_params,')')
+        print('log_X_params = np.array(', log_X_params,')')
+        print('cloud_params = np.array(', cloud_params,')')
+        print('geometry_params = np.array(', geometry_params,')')
     
     # make atmosphere 
     atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
