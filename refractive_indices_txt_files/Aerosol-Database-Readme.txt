@@ -2,7 +2,7 @@ POSEIDON V1.2 Base Aerosol Database README
 Author: Elijah Mullens (eem85@cornell.edu)
 Date : 8/12/2024
 
-Thanks to Hannah Wakeford, Daniel Kitzmann, Elspeth Lee, Ben Burningham, Mark Marley, and Sarah Moran for help putting this together (Thanks y'all!).
+Thanks to Dr. Hannah Wakeford, Dr. Daniel Kitzmann, Dr. Elspeth Lee, Dr. Ben Burningham, Dr. Mark Marley, and Dr. Sarah Moran for help putting this together (Thanks y'all!).
 
 This readme corresponds to Table 1 in Mullens et al. 2024
 'Implementation of Aerosol Mie Scattering in POSEIDON with Application to the hot Jupiter HD 189733 b's Transmission, Emission, and Reflected Light Spectrum'
@@ -26,6 +26,10 @@ Wakeford & Sing (2015) - WS15
 
 ADS   : https://ui.adsabs.harvard.edu/abs/2015A%26A...573A.122W/abstract
 Table : 1
+
+Also available on Dr. Wakeford's site:
+
+https://stellarplanet.org/science/condensates/
 
 Wakeford and Sing (2015) compiled aerosol refractive indices for aerosols predicted to form in the upper atmospheres of hot Jupiters. Their philosophy was to never interpolate or extrapolate indices, and stuck to lab data. Wakeford & Sing (2015) utilized both plot digitizers and tables.
 
@@ -68,6 +72,8 @@ Burningham (2021) - B21
 ADS    : https://ui.adsabs.harvard.edu/abs/2021MNRAS.506.1944B/abstract
 Table  : 3 
 
+This database is available by emailing Dr. Ben Burningham.
+
 Compiled aerosols for retrievals of brown dwarf 2M224-0158. Note that the refractive indices have been interpolated to match the wavelength grid found in the EGP Mie code (which means that all these entries have the same wavelength grid from 0.268 to 227.5 um). 
 
 Sometimes, this means that things are interpolated to shorter to longer wavelengths to fit the grid, which we will note below. 
@@ -88,6 +94,8 @@ The remainder of the references are from Mullens et al 2024.
 ADS : 
 
 https://github.com/MartianColonist/POSEIDON/tree/Elijah_V12/refractive_indices_txt_files/Misc
+
+Or Zenodo
 
 #################################
 Secondary Databases
@@ -147,7 +155,7 @@ Run by the NASA AMES Astrophysics and Astrochemistry Laboratory.
 
 Compiles many ices and organic refractory materials. While none are in POSEIDON at the moment, feel free to pull constants from this website and add them. 
 
-https://ocdb.smce.nasa.gov/#:~:text=The%20Optical%20Constants%20database%20(OCdb,and%20interpretation%20of%20observational%20data
+https://ocdb.smce.nasa.gov/
 
 ---------------------------------
 
@@ -391,7 +399,7 @@ Chemical Formula  : Al[2]O[3]
 Crystal or Amorph : Mixed
 Crystal Shape     : Gamma is Cubic, Amorphous is N/A
 
-Note from Daniel Kitzmann: 
+Note from Dr. Daniel Kitzmann: 
 
 'For Al2O3, I used the porous data from Begemann that goes up to 500 microns and the ISAS data from Koike (their Table A1). The data sets were stitched together at about 12 microns. Presumably I did that because that formed a smooth transition between the two data sets.
 
@@ -633,7 +641,7 @@ Chemical Formula  : TiC
 Crystal or Amorph : Crystalline
 Crystal Shape     : Cubic (Face-centered)
 
-Note from Daniel Kitzmann: 
+Note from Dr. Daniel Kitzmann: 
 
 'I do have have file that has the reflectance of the Henning & Mutschke (2001) paper in it. I guess I must have found it somewhere. I don't think that I have taken it directly from the figure because the x-axis strangely is given in angular frequency instead of wavelength. Furthermore, the reflectance in this file is not just the one from the Henning & Mutschke (2001) paper but includes extended data
 towards much smaller wavelengths from, presumably, additional data sources. Unfortunately, I can't remember from where I got the file from, though. However, I only used the wavelength range from the Henning & Mutschke paper and converted the stated reflectance into the usual optical constants that were then joined with the data from Koide.'
@@ -1958,7 +1966,10 @@ The real indices in the txt file match Figure 3, but the imaginary don't. I assu
 
 Exoplanet/Brown Dwarf Papers:
 
-Not particularly mentioned often, but SiO gas is predicted to be important in hot Jupiters as a silicate cloud precursor. 
+Not particularly mentioned often, but SiO gas is predicted to be important in hot Jupiters as a silicate cloud precursor, or to form onto TiO2 seed particles in specific situations. 
+
+Lee (2018)
+https://ui.adsabs.harvard.edu/abs/2018A%26A...614A.126L/abstract
 
 Lothringer (2022)
 https://ui.adsabs.harvard.edu/abs/2022Natur.604...49L/abstract
@@ -2156,6 +2167,8 @@ Note that the ordinary, imaginary indices in the wavelength region from 0.1494 u
 
 The extraordinary imaginary indices from 0.185 to 5.8 um were generated from real indices using the Kramers-Kronig relation in Mullens 2024. 
 
+I specifically iterated the Kramers-Kronig relation twice using the pyElli package (and code from Dr. Sarah Moran) to get a self consistent set of real and imaginary indices, and offset them to match the original Palik data. 
+
 The two were then averaged using the (2/3 Ordinary) + (1/3 Extraordinary) weighting of refractive indices. 
 --------------
 
@@ -2204,6 +2217,8 @@ Compiled many glass references. Notes that getting the imaginary indices is diff
 Kramers-Kronig was utilized to compute the imaginary indices from 0.184 to 3.55 um, 6.75 to 7.63 um, real indices in gaps from 3.63 to 6.9 um. 
  
 Both k (taken from reflection) and k_abs (taken from transmission) were included in the txt file. When a row had both values listed, an average of the two was taken. 
+
+I specifically iterated the Kramers-Kronig relation twice using the pyElli package (and code from Dr. Sarah Moran) to get a self consistent set of real and imaginary indices, and offset them to match the original Palik data.
 --------------
 
 Note on wavelength coverage:
@@ -2261,7 +2276,7 @@ Chemical Formula  : Cr
 Crystal or Amorph : Crystalline 
 Crystal Shape     : Cubic (body centered cubic) (bulk growth) but technically tetragonal
 
-Note from Daniel Kitzmann:
+Note from Dr. Daniel Kitzmann:
 
 'Up until 20.66 this should be the data from Palik. Beyond that Rakic is used.'
 
@@ -2362,7 +2377,7 @@ Note from KH18:
 
 ‘In case of MnS, no infrared data was available, which includes in particular the sulphur feature. Here, we follow the approach of Morley et al. (2012) and use extrapolations based on the other two sulphur-bearing species Na2S and ZnS to reconstruct the missing part.’
 
-Note from Daniel Kitzmann: 
+Note from Dr. Daniel Kitzmann: 
 
 'I took the real index directly from the Table 1 in Huffman & Wild and extended it using their Fig. 5. The imaginary part has also been taken from Fig. 5, with the missing data reconstructed by using the Kramers-Kronig relations.'
 
