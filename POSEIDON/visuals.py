@@ -1232,7 +1232,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  data_alpha = 0.8, data_edge_width = 0.8,
                  line_widths = [], xlabels = True, ylabels = True,
                  line_styles = [],
-                 alphas = []):
+                 alphas = [],
+                 legend_n_columns = 0):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1318,6 +1319,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Line styles for binned spectra, '-' default
         alphas (list of float, optional):
             Alpha values for binned spectra, '0.8' default
+        legend_n_columns (integer):
+            Manually set the number of columns for the legend
 
     Returns:
         fig (matplotlib figure object):
@@ -1739,10 +1742,14 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         ax.tick_params(labelleft=False)  
     
     # Switch to two columns if many spectra are being plotted
-    if (N_spectra >= 6):
-        n_columns = 2
+    if legend_n_columns == 0:
+        if (N_spectra >= 6):
+            n_columns = 2
+        else:
+            n_columns = 1
+    
     else:
-        n_columns = 1
+        n_columns = legend_n_columns
 
     # Add box around legend
     if (legend_box == True) and (legend_location != 'outside right'):
@@ -2141,7 +2148,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            add_retrieved_offsets = False, verbose_offsets = True,
                            xlabels = True, ylabels = True,
                            plot_style = 'standard',
-                        ):
+                           legend_n_columns = 0
+                           ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
@@ -2250,6 +2258,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             If false, will remove x_ticks and x_label.
         y_labels (bool, optional):
             If false, will remove y_ticks and y_label.
+        legend_n_columns (integer):
+            Manually set the number of columns for the legend
      
     Returns:
         fig (matplotlib figure object):
@@ -2837,20 +2847,27 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     if ylabels == False:
         ax.tick_params(labelleft=False)  
 
+    # Switch to two columns if many spectra are being plotted
+    if legend_n_columns == 0:
+        n_columns = 1
+    
+    else:
+        n_columns = legend_n_columns
+
     # Add box around legend
     if (legend_box == True):
         legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon = True, framealpha = 1.0)
+                            ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90')
 
     elif legend_location == 'outside right':
-        legend = ax1.legend(loc = 'center left', shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon = False, bbox_to_anchor = (1, 0.5))
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+                            ncol = n_columns, frameon = False, bbox_to_anchor = (1, 0.5))
         
     else:
-        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
-                            ncol = 1, frameon = False)
+        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
+                            ncol = n_columns, frameon = False)    # Legend settings
             
     legend.set_zorder(200)   # Make legend always appear in front of everything
 
@@ -3414,13 +3431,13 @@ def plot_stellar_flux(flux, wl, wl_min = None, wl_max = None, flux_min = None,
     return fig
 
 
-def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array):
+def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array, alpha_hist):
     
   #  weights = np.ones_like(vals)/float(len(vals))
     
     # Plot histogram
     x,w,patches = ax.hist(vals, bins=nbins, color=colour, histtype='stepfilled', 
-                          alpha=0.4, edgecolor='None', density=True, stacked=True)
+                          alpha=alpha_hist, edgecolor='None', density=True, stacked=True)
 
     # Plot histogram border
     x,w,patches = ax.hist(vals, bins=nbins, histtype='stepfilled', lw = 0.8, 
@@ -3436,10 +3453,10 @@ def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array):
 
 
 def plot_parameter_panel(ax, param_vals, N_bins, param, 
-                         param_min, param_max, colour, x_max_array):
+                         param_min, param_max, colour, x_max_array, alpha_hist):
     
     # Plot histogram
-    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array)
+    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array, alpha_hist)
 
     # Adjust x-axis extent
     ax.set_xlim(param_min, param_max)
@@ -3454,7 +3471,9 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                               N_rows, N_columns, N_bins,
                               vertical_lines, vertical_lines_colors, 
                               tick_labelsize = 8, title_fontsize = 12,
-                              custom_labels = [], custom_ticks = []):
+                              custom_labels = [], custom_ticks = [],
+                              alpha_hist = 0.4,
+                              ):
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3551,7 +3570,8 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
-                                                    param_min, param_max, colour, x_max_array = x_max_array,)
+                                                    param_min, param_max, colour, x_max_array = x_max_array,
+                                                    alpha_hist = alpha_hist)
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
@@ -3738,9 +3758,12 @@ def plot_histograms(planet, models, plot_parameters,
                     retrieval_codes = [], external_samples = [],
                     external_param_names = [], plt_label = None, 
                     save_fig = True,
-                    vertical_lines = [], vertical_line_colors = [], 
+                    vertical_lines = [], vertical_line_colors = [],
                     tick_labelsize = 8, title_fontsize = 12,
-                    custom_labels = [], custom_ticks = []):
+                    custom_labels = [], custom_ticks = [],
+                    alpha_hist = 0.4
+                    ):
+
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -3927,7 +3950,8 @@ def plot_histograms(planet, models, plot_parameters,
                                     N_rows, N_columns, N_bins,
                                     vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize,
                                     custom_labels = custom_labels,
-                                    custom_ticks = custom_ticks )
+                                    custom_ticks = custom_ticks,
+                                    alpha_hist = alpha_hist)
     
     # Save figure to file
     if (save_fig == True):
@@ -3942,9 +3966,9 @@ def plot_histograms(planet, models, plot_parameters,
 
 
 def vary_one_parameter_PT(model, planet, param_name, vary_list,
-                           P, P_ref, R_p_ref,
-                       PT_params_og, log_X_params_og, cloud_params_og,
-                       ax = None,legend_location = 'upper right'):
+                          P, P_ref, R_p_ref,
+                          PT_params_og, log_X_params_og, cloud_params_og,
+                          ax = None,legend_location = 'upper right'):
     
     '''
     This function is used in the tutorial notebooks to show how turning a knob 

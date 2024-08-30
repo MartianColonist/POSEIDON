@@ -1056,7 +1056,7 @@ def database_properties_plot(file_name):
 
     if np.min(wavelengths_actual) > 0.2:
         wl_min = np.min(wavelengths_actual)  
-        wl_min_index = find_nearest(wl,wl_min)
+        wl_min_index = find_nearest(wl,wl_min) + 1
     
     else:
         wl_min = 0.2
@@ -1304,7 +1304,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     aerosol_species = np.array(aerosol_species)
     
     # Open aerosol grid HDF5 file
-    database = h5py.File(input_file_path + 'opacity/'  + grid + '_database_emission.hdf5', 'r')
+    database = h5py.File(input_file_path + 'opacity/'  + grid + '_database.hdf5', 'r')
 
     # Load the dimensions of the grid
     wl_grid = np.array(database['Info/Wavelength grid'])
@@ -3394,7 +3394,7 @@ def make_aerosol_database():
         aerosols_dict[aerosol_list[i] + '_w'] = eff_w 
 
     # Initialize and generate new data_base 
-    database = h5py.File(input_file_path + 'opacity/aerosol_database_emission.hdf5', 'w')
+    database = h5py.File(input_file_path + 'opacity/aerosol_database.hdf5', 'w')
 
     h = database.create_group('Info')
     h1 = h.create_dataset('Wavelength grid', data=wavelengths, compression='gzip', dtype='float64', shuffle=True)
@@ -3438,7 +3438,7 @@ def make_aerosol_database():
 
     print('---------------------')
     print('Saving new aerosol database as')
-    print(input_file_path + 'opacity/aerosol_database_emission.hdf5')
+    print(input_file_path + 'opacity/aerosol_database.hdf5')
     print('---------------------')
 
     database.close()
