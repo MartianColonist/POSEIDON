@@ -1,7 +1,7 @@
 ''' 
 POSEIDON CORE ROUTINE.
 
-Copyright 2023, Ryan J. MacDonald.
+Copyright 2023-2024, Ryan J. MacDonald.
 
 '''
 
@@ -1111,8 +1111,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      disable_continuum = False, suppress_print = False,
                      Gauss_quad = 2, use_photosphere_radius = True,
                      device = 'cpu', y_p = np.array([0.0]),
-                     return_albedo = False,
-                     return_kappa_cloud = False):
+                     return_albedo = False):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -1325,7 +1324,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 # Load in the aerosol grid for compositionally specific aerosols
                 aerosol_grid = model['aerosol_grid']
 
-                # Create a wl_Mie array (which is at R = 1000) for file_read or cosntant
+                # Create a wl_Mie array (which is at R = 1000) for file_read or constant
                 # refractive indices
                 wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
 
@@ -1491,7 +1490,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # Else, we need to restructure w_cloud and g_cloud to span by layer 
             # For Mie models with 1 species, the g and w can be held constant with each layer since
             # Kappa cloud will encode where clouds are
-            # For models that are cloud free, you still need a g and w thats just an array of 0s
+            # For models that are cloud free, you still need a g and w that's just an array of 0s
             # For Mie models with more than one species, we need to be more careful with the g and w array
             elif scattering == True or reflection == True:
                 if len(aerosol_species) == 1 or aerosol_species == []:
@@ -1671,14 +1670,14 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 w_cloud_cut = w_cloud[:,:,:,:index_5um]
                 g_cloud_cut = g_cloud[:,:,:,:index_5um]
 
-                # Compute the albedo using PICASO's implenetation (see emission.py for details)
+                # Compute the albedo using PICASO's implementation (see emission.py for details)
                 albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
-                                            kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
-                                            w_cloud_cut, g_cloud_cut, zone_idx,
-                                            single_phase = 3, multi_phase = 0,
-                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                            Gauss_quad = 5, numt = 1,
-                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                                             kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
+                                             w_cloud_cut, g_cloud_cut, zone_idx,
+                                             single_phase = 3, multi_phase = 0,
+                                             frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                             Gauss_quad = 5, numt = 1,
+                                             toon_coefficients=0, tridiagonal=0, b_top=0)
                 
                 # Create an albedo of 0's from 5um onwards
                 albedo_zeros = np.zeros(len(wl[index_5um:]))
@@ -1831,9 +1830,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
     if return_albedo == True:
         return spectrum, albedo
-    
-    elif return_kappa_cloud == True:
-        return spectrum, kappa_cloud
 
     else:
         return spectrum
@@ -1875,11 +1871,11 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
         skiprows (int):
             The number of rows to skip (e.g. use 1 if file has a header line).
         offset_1_datasets (list of str):
-            Specifially lumps together multiple datasets to have one offset applied (delta_rel_1)
+            Specifically lumps together multiple datasets to have one offset applied (delta_rel_1)
         offset_2_datasets (list of str):
-            Specifially lumps together multiple datasets to have one offset applied (delta_rel_2)
+            Specifically lumps together multiple datasets to have one offset applied (delta_rel_2)
         offset_3_datasets (list of str):
-            Specifially lumps together multiple datasets to have one offset applied (delta_rel_3)
+            Specifically lumps together multiple datasets to have one offset applied (delta_rel_3)
 
     Returns:
         data (dict):

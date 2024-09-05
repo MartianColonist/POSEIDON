@@ -1133,7 +1133,7 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
 
 def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = None, 
-                             median = True, best_fit = False,
+                             median = False, best_fit = True,
                              P_param_set = 1.0e-2, He_fraction = 0.17,
                              N_slice_EM = 2, N_slice_DN = 4, 
                              constant_gravity = False, chemistry_grid = None,

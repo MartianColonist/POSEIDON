@@ -1102,7 +1102,7 @@ def database_properties_plot(file_name):
 
 def vary_one_parameter(model, planet, star, param_name, vary_list,
                        wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og,
-                       spectrum_type = 'transmission'):
+                       spectrum_type = 'transmission', y_unit = 'transit_depth'):
     
     '''
     This function is utilized in tutorial noteooks to show how turning a knob on a parameter changes a resultant spectrum
@@ -1247,11 +1247,14 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
             spectra = plot_collection(spectra_array[s], wl, collection = spectra)
 
     label = 'Varying ' + param_name
+    
     fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                   plt_label = label,
-                   spectra_labels = spectra_labels,
-                   plot_full_res = False,
-                   save_fig = False)
+                       plt_label = label,
+                       spectra_labels = spectra_labels,
+                       plot_full_res = False,
+                       save_fig = False,
+                       y_unit = y_unit,
+                       )
 
 ############################################################################################
 # Loading Saved Array 

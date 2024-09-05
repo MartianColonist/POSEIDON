@@ -1250,6 +1250,8 @@ def generate_latex_param_names(param_names):
         if ('delta_rel_' in param):
             offset_number = param[-1]
             string = '$\\delta_{\\mathrm{rel, \\, ' + offset_number + '}}$'
+            latex_names += [string]
+            continue
 
         # Find which components are in this parameter's name, and where they occur
         if ('log' in param):

@@ -24,8 +24,8 @@ from matplotlib.colors import LinearSegmentedColormap, colorConverter
 from matplotlib.ticker import ScalarFormatter
 from scipy.ndimage import gaussian_filter as norm_kde
 
-from .utility import generate_latex_param_names, round_sig_figs
-from .constants import R_J
+from POSEIDON.utility import generate_latex_param_names, round_sig_figs
+from POSEIDON.constants import R_J
 
 try:
     str_type = types.StringTypes
@@ -896,7 +896,7 @@ def generate_overplot(planet, models, params_to_plot=None,
             )
             s = a.get_stats()
 
-            print(f"Generating corner plot {model_i}...")
+            print(f"Generating corner plot {model_i+1}...")
 
             # Extract quantities needed to use the Dynesty corner plotting script
             data = a.get_data()
@@ -907,6 +907,7 @@ def generate_overplot(planet, models, params_to_plot=None,
                 ]
                 samples = data[i][:, [2 + index for index in indices_to_plot]]
             else:
+                params_to_plot = param_names
                 samples = data[i, 2:]
             weights = data[i, 0]
             loglike = data[i, 1]

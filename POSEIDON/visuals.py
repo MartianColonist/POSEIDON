@@ -1790,7 +1790,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
               plt_label = None, data_colour_list = [], data_labels = [], 
               data_marker_list = [], data_marker_size_list = [],
               err_colour = 'black', wl_axis = 'log', figure_shape = 'default', 
-              legend_location = 'upper right', legend_box = False,
+              legend_location = 'upper right', legend_box = True,
               show_data_bin_width = True, show_data_cap = True,
               data_alpha = 0.8, data_edge_width = 0.8,
               ax = None, save_fig = True,
@@ -3636,7 +3636,10 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             #    ax.xaxis.set_major_locator(xmajorLocator)
             #    ax.xaxis.set_minor_locator(xminorLocator)
 
-            if (param in ['T_spot', 'T_fac', 'T_phot', 'T_het', 'Delta_T_het']):
+         #   if (param in ['T_spot', 'T_fac', 'T_phot', 'T_het', 'Delta_T_het']):
+            
+            # Better axis label spacing for temperatures
+            if ('T' in param):
                 if ((param_max - param_min) < 400):
                     xmajor_interval = 100
                     xminor_interval = 50
@@ -3649,6 +3652,26 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 elif ((param_max - param_min) >= 2000):
                     xmajor_interval = 1000
                     xminor_interval = 500
+
+                xmajorLocator = MultipleLocator(xmajor_interval)
+                xminorLocator = MultipleLocator(xminor_interval)
+                ax.xaxis.set_major_locator(xmajorLocator)
+                ax.xaxis.set_minor_locator(xminorLocator)
+
+            # Better axis label spacing for mixing ratios
+            if ('log_' in param):
+                if ((param_max - param_min) <= 1.0):
+                    xmajor_interval = 0.4
+                    xminor_interval = 0.1
+                elif (((param_max - param_min) > 1.0) and ((param_max - param_min) <= 2.0)):
+                    xmajor_interval = 0.5
+                    xminor_interval = 0.1
+                elif (((param_max - param_min) > 2.0) and ((param_max - param_min) <= 4.0)):
+                    xmajor_interval = 1.0
+                    xminor_interval = 0.2
+                elif ((param_max - param_min) >= 4.0):
+                    xmajor_interval = 2.0
+                    xminor_interval = 0.5
 
                 xmajorLocator = MultipleLocator(xmajor_interval)
                 xminorLocator = MultipleLocator(xminor_interval)
@@ -3759,7 +3782,7 @@ def plot_histograms(planet, models, plot_parameters,
                     external_param_names = [], plt_label = None, 
                     save_fig = True,
                     vertical_lines = [], vertical_line_colors = [],
-                    tick_labelsize = 8, title_fontsize = 12,
+                    tick_labelsize = 12, title_fontsize = 12,
                     custom_labels = [], custom_ticks = [],
                     alpha_hist = 0.4
                     ):

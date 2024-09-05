@@ -14,38 +14,23 @@ import numpy as np
 from numba.core.decorators import jit
 import scipy.constants as sc
 from mpi4py import MPI
-from spectres import spectres
-from scipy.constants import parsec
 import cmasher as cmr
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
 from .constants import R_J, R_E
-from .utility import create_directories, write_spectrum, read_data, prior_index, prior_index_V2, closest_index, closest_index_GPU, \
-                     shared_memory_array, mock_missing, bin_spectrum
-from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
-                     open_pymsg_grid
-from .supported_chemicals import supported_species, supported_cia, inactive_species, \
-                                 fastchem_supported_species, aerosol_supported_species
-from .parameters import assign_free_params, generate_state, \
-                        unpack_geometry_params, unpack_cloud_params
-from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
-                        extinction_LBL, extinction_GPU, extinction_spectrum_contribution, extinction_spectrum_pressure_contribution
-from .geometry import atmosphere_regions, angular_grids
-from .atmosphere import profiles
-from .instrument import init_instrument
+from .utility import closest_index, mock_missing, bin_spectrum
+
+from .absorption import extinction, extinction_LBL
+
 from .transmission import TRIDENT
 from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon, reflection_Toon
 
-from .species_data import polarisabilities
-
-from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid
+from .clouds import Mie_cloud, Mie_cloud_free
 
 from .utility import mock_missing
-
-from .core import compute_spectrum
 
 try:
     import cupy as cp

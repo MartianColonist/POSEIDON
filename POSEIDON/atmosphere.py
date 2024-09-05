@@ -76,8 +76,8 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_set, P_set):
     elif (log_P_set_i >= log_P1):   # Temperature parameter in layer 2
         
         # Use the temperature parameter to compute the boundary temperatures
-        T2 = T_set - ((1.0/a2)*(log_P_set_i - log_P2))**2  
-        T1 = T2 + ((1.0/a2)*(log_P1 - log_P2))**2   
+        T2 = T_set - ((1.0/a2)*(log_P_set_i - log_P2))**2
+        T1 = T2 + ((1.0/a2)*(log_P1 - log_P2))**2
         T3 = T2 + ((1.0/a2)*(log_P3 - log_P2))**2
         T0 = T1 - ((1.0/a1)*(log_P1 - log_P_min))**2   
         
@@ -224,7 +224,7 @@ def compute_T_Guillot(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
     https://petitradtrans.readthedocs.io/en/latest/content/notebooks/nat_cst_utility.html#Guillot-temperature-model
     https://gitlab.com/mauricemolli/petitRADTRANS/-/blob/master/petitRADTRANS/physics.py?ref_type=heads
 
-    Sets f = 0.25, which is the value for the terminator and directly imaged brown darfs
+    Sets f = 0.25, which is the value for the terminator and directly imaged brown dwarfs
 
     Args:
         P (np.array of float):
@@ -234,7 +234,7 @@ def compute_T_Guillot(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
         log_kappa_IR (float):
             The infrared opacity in units of m^2/kg
         log_gamma (float):
-            The ratio between the visual and infrated opacity.
+            The ratio between the visual and infrared opacity.
         T_int (float):
             The planetary internal temperature (in units of K).
         T_equ (float):
@@ -295,7 +295,7 @@ def compute_T_Guillot_dayside(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
         log_kappa_IR (float):
             The infrared opacity in units of m^2/kg
         log_gamma (float):
-            The ratio between the visual and infrated opacity.
+            The ratio between the visual and infrared opacity.
         T_int (float):
             The planetary internal temperature (in units of K).
         T_equ (float):
@@ -343,7 +343,7 @@ def compute_T_Line(P, g, T_eq, log_kappa_IR, log_gamma, log_gamma_2, alpha, beta
     Computes the temperature profile for an atmosphere using the P-T 
     profile parametrisation defined in Line et al (2013).
     http://adsabs.harvard.edu/abs/2013ApJ...775..137L, Equation 13 - 16'
-    Specifically, the platon implementation ('set_from_radiative_solution') :
+    Specifically, the PLATON implementation ('set_from_radiative_solution') :
     https://platon.readthedocs.io/en/latest/source/platon.html?highlight=line#platon.TP_profile.Profile.set_from_radiative_solution
 
 
@@ -357,9 +357,9 @@ def compute_T_Line(P, g, T_eq, log_kappa_IR, log_gamma, log_gamma_2, alpha, beta
         log_kappa_IR (float):
             The infrared opacity in units of m^2/kg
         log_gamma (float):
-            The ratio between the visual and infrated opacity (channel 1) (kappa_vis_1 is baked into this)
+            The ratio between the visual and infrared opacity (channel 1) (kappa_vis_1 is baked into this)
         log_gamma_2 (float):
-            The ratio between the visual and infrated opacity (channel 2) (kappa_vis_2 is baked into this)
+            The ratio between the visual and infrared opacity (channel 2) (kappa_vis_2 is baked into this)
         alpha (float):
             Ranges 0-1. Partitions flux between two visible streams
         beta (float) :
@@ -382,7 +382,7 @@ def compute_T_Line(P, g, T_eq, log_kappa_IR, log_gamma, log_gamma_2, alpha, beta
     # In guillot : T_irr = f * sqrt(2) * T_eq where T_eq is the 'free' parameter,
     #              f = 1/2 for dayside and 1/4 for transmission/directly imaged, sqrt(2) = geometric argument
     # Here, beta is a catch all and is what you retrieve on (T_eq is input to planet object)
-    # It accounts for heat redistribution (f), geometric argument (sqrt2), emissitivity, albedo, and errors in T_eq
+    # It accounts for heat redistribution (f), geometric argument (sqrt2), emissivity, albedo, and errors in T_eq
     T_irr = beta * T_eq
 
     # Compute tau (P in bars)
@@ -890,7 +890,7 @@ def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_spec
 def compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones):
     '''
     The function takes in four parameters and returns an array of values called log_X  that represent the
-    output of the function, which is an array of numbers that would be used to plot the profle of the chemical species.
+    output of the function, which is an array of numbers that would be used to plot the profile of the chemical species.
     This is done by taking the difference in the logarithm of the pressures and the original array, log_xi
     and multiplying it by the slope of the isochemical line (angle between the isochemical line and the
     array log_xi). The volume mixing ratio log_xi is the number density / the total volume.
