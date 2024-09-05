@@ -3,7 +3,7 @@ Opacity Database
 
 
 Molecular, atomic, and aerosol opacities are a required input to any radiative 
-transfer codes. POSEIDON's opacity database includes high-resolution 
+transfer code. POSEIDON's opacity database includes high-resolution 
 (:math:`R \sim 10^6`) line-by-line absorption cross sections and continuum 
 absorption processes, alongside Mie scattering extinction cross sections, 
 single scattering albedos, and asymmetry parameters.
@@ -3255,7 +3255,8 @@ supplement their own lab data). See Aerosol-Database-Readme.txt for more details
 
 `*` :math:`\mathrm{MgSiO_3}` has four altnernative entries that explore 
 assumptions that go into how aerosol properties are precomputed. 
-See Make-Aerosol-Database.ipynb tutorial for more details.
+See the `"Making an Aerosol Database" <notebooks/aerosol_database.html>`_ 
+tutorial for more details.
 
 Refractive indices are room temperature unless specifically noted.
 
@@ -3268,7 +3269,7 @@ assuming a lognormal particle distribution with a width of 0.5.
 
 Short summaries on each refractive index paper, as well as when you would expect 
 each aerosol to form with planetary-specific references for each entry and class, 
-are listed on Aerosol-Database-Readme.txt.
+are listed in `aerosol_database_readme.txt <../_static/Aerosol-Database-Readme.txt>`_.
 
 Please address any request for new aerosols to: eem85@cornell.edu.
 
