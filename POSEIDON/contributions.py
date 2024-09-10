@@ -15,6 +15,7 @@ from numba.core.decorators import jit
 import scipy.constants as sc
 from mpi4py import MPI
 import cmasher as cmr
+from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
@@ -2755,7 +2756,6 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
                             total_pressure_contribution = False,
                             verbose = False):
 
-
     '''
     Computes the pressure contribution function by looping over each layer in the Pressure array
 
@@ -2855,38 +2855,42 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     # For denominator of contribution function (not used in current code, but returned just in case)
     norm = np.zeros(shape=(contribution_length,len(wl)))   # Running sum for contribution
 
-    # Loop over each layer in the pressure array, and compute spectra by removing specific opacities in that layer 
-    for i in range(len(P)):
+    # Create progress bar
+    with tqdm(total=len(P), desc = "Progress") as pbar:
 
-        if verbose == True:
-            print(i)
+        # Loop over each layer in the pressure array, and compute spectra by removing specific opacities in that layer 
+        for i in range(len(P)):
 
-        spectrum, spectrum_contribution_list_names, spectrum_contribution_list = pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                                                                                                        spectrum_type = spectrum_type, save_spectrum = save_spectrum,
-                                                                                                                        disable_continuum = disable_continuum, suppress_print = suppress_print,
-                                                                                                                        Gauss_quad = Gauss_quad, use_photosphere_radius = use_photosphere_radius,
-                                                                                                                        device = device, y_p = y_p,
-                                                                                                                        contribution_species_list = contribution_species_list,
-                                                                                                                        bulk_species = bulk_species, 
-                                                                                                                        cloud_contribution = cloud_contribution, 
-                                                                                                                        cloud_species_list = cloud_species_list,
-                                                                                                                        cloud_total_contribution = cloud_total_contribution,
-                                                                                                                        total_pressure_contribution = total_pressure_contribution,
-                                                                                                                        layer_to_ignore = i)
-        
+            if verbose == True:
+                print(i)
 
-        # Loop through and take the difference of the full spectrum and the one where opacity is removed from a layer                                                                                       
-        for j in range(len(spectrum_contribution_list)):
-        
-            # Find the difference between spectrums
-            diff = spectrum - spectrum_contribution_list[j]
+            spectrum, spectrum_contribution_list_names, spectrum_contribution_list = pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                                                                                                            spectrum_type = spectrum_type, save_spectrum = save_spectrum,
+                                                                                                                            disable_continuum = disable_continuum, suppress_print = suppress_print,
+                                                                                                                            Gauss_quad = Gauss_quad, use_photosphere_radius = use_photosphere_radius,
+                                                                                                                            device = device, y_p = y_p,
+                                                                                                                            contribution_species_list = contribution_species_list,
+                                                                                                                            bulk_species = bulk_species, 
+                                                                                                                            cloud_contribution = cloud_contribution, 
+                                                                                                                            cloud_species_list = cloud_species_list,
+                                                                                                                            cloud_total_contribution = cloud_total_contribution,
+                                                                                                                            total_pressure_contribution = total_pressure_contribution,
+                                                                                                                            layer_to_ignore = i)
 
-            # Add to contribution function (not yet normalized)
-            Contribution[j,i,:] = np.abs(diff)
+            # Loop through and take the difference of the full spectrum and the one where opacity is removed from a layer                                                                                       
+            for j in range(len(spectrum_contribution_list)):
 
-            # Increment normalization factor 
-            norm[j,:] += diff
-    
+                # Find the difference between spectrums
+                diff = spectrum - spectrum_contribution_list[j]
+
+                # Add to contribution function (not yet normalized)
+                Contribution[j,i,:] = np.abs(diff)
+
+                # Increment normalization factor 
+                norm[j,:] += diff
+
+            # Update progress bar
+            pbar.update(1)
 
     return Contribution, norm, spectrum_contribution_list_names
 
