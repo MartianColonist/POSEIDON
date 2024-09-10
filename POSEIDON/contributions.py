@@ -161,7 +161,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
         sector, and wavelength.
 
         In the spectral contribution plots, each extinction coefficient
-        is turned off except for the one being analyzed.
+        is turned off except for the one being analysed.
     
     '''
     
@@ -210,7 +210,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
             if contribution_species == active_species[i]:
                 contribution_molecule_active_index = i
 
-        # Find the idnex in the list of CIA pairs
+        # Find the index in the list of CIA pairs
         cia_indices = []
         for i in range(len(cia_pairs)):
             pair_1, pair_2 = cia_pairs[i].split('-')
@@ -323,7 +323,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                     if bulk_species == False and cloud_contribution == False and bound_free == False:
 
                         # There is a bug when He is considered a param_species instead of an bulk species
-                        # Since He is param, but isn't an active species, it doens't have an active_index
+                        # Since He is param, but isn't an active species, it doesn't have an active_index
 
                         if contribution_species == 'He':
                             n_q = 0
@@ -642,7 +642,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         enable_haze = 0
 
     # Check if a cloud deck is enabled in the cloud model
-    # The cloud deck is handled differently for Mie calclations
+    # The cloud deck is handled differently for Mie calculations
     if ('deck' in model['cloud_type'] and 'Mie' not in model['cloud_model']):
         enable_deck = 1
     else:
@@ -897,7 +897,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                     spectrum_contribution_list_names.append(contribution_species_list[i])
 
-            # Cloud contribuiton 
+            # Cloud contribution 
             if cloud_contribution == True:
 
                 # Do the total cloud contribution first 
@@ -1018,7 +1018,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             # Else, we need to restructure w_cloud and g_cloud to span by layer 
             # For Mie models with 1 species, the g and w can be help constant with each layer since
             # Kappa cloud will encode where clouds are
-            # For models that are cloud free, you still need a g and w thats just an array of 0s
+            # For models that are cloud free, you still need a g and w that's just an array of 0s
             # For Mie models with more than one species, we need to be more careful with the g and w array
             if len(aerosol_species) == 1 or aerosol_species == []:
                 w_cloud = np.ones_like(kappa_cloud)*w_cloud
@@ -1040,7 +1040,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         else:
             raise Exception("Error: Invalid scattering option")
 
-        # Add in the seperate reflection  
+        # Add in the separate reflection  
         if (reflection == True):
 
             albedo = reflection_Toon(P, wl, dtau_tot,
@@ -1172,7 +1172,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 # Else, we need to restructure w_cloud and g_cloud to span by layer 
                 # For Mie models with 1 species, the g and w can be help constant with each layer since
                 # Kappa cloud will encode where clouds are
-                # For models that are cloud free, you still need a g and w thats just an array of 0s
+                # For models that are cloud free, you still need a g and w that's just an array of 0s
                 # For Mie models with more than one species, we need to be more careful with the g and w array
                 if len(aerosol_species) == 1 or aerosol_species == []:
                     w_cloud = np.ones_like(kappa_cloud)*w_cloud
@@ -1195,7 +1195,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             else:
                 raise Exception("Error: Invalid scattering option")
             
-                    # Add in the seperate reflection  
+                    # Add in the separate reflection  
             if (reflection == True):
 
                 albedo = reflection_Toon(P, wl, dtau_tot,
@@ -1334,7 +1334,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
             The unit of the y-axis
             (Options: 'transit_depth', 'eclipse_depth', '(Rp/Rs)^2', 
             '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp').
-        brightness_tempearture (bool, optional):
+        brightness_temperature (bool, optional):
             If True, will convert spectrum and spectrum_contribution_list_names to brightness temperature
         star (dict, optional):
             Collection of stellar properties used by POSEIDON.
@@ -1348,7 +1348,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         save_fig (bool, optional):
             If True, saves a PDF in the POSEIDON output folder.
         line_widths (array of floats, optional):
-            Optional line widths. We reccomend the full spectra be larger than the contributing ones
+            Optional line widths. We recommend the full spectra be larger than the contributing ones
         colour_list (list, optional):
             A list of colours for the model spectra
         return_fig (bool, optional):
@@ -1362,7 +1362,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
     spectra = []
 
-    # If brightness_temperature is true, convert from FpFs (or Fp) to brightness temeperature 
+    # If brightness_temperature is true, convert from FpFs (or Fp) to brightness temperature 
     if brightness_temperature == True:
         
         y_unit = 'T_bright'
@@ -1903,7 +1903,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
 
-    In the pressure contribution plots, the extinction coeeficient in one pressure layer 
+    In the pressure contribution plots, the extinction coefficient in one pressure layer 
     (either total or individual species) is turned off
     and the spectrum is recomputed
 
@@ -2056,7 +2056,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         enable_haze = 0
 
     # Check if a cloud deck is enabled in the cloud model
-    # The cloud deck is handled differently for Mie calclations
+    # The cloud deck is handled differently for Mie calculations
     if ('deck' in model['cloud_type'] and 'Mie' not in model['cloud_model']):
         enable_deck = 1
     else:
@@ -2310,7 +2310,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
                     spectrum_contribution_list_names.append(contribution_species_list[i])
 
-            # Cloud contribuiton 
+            # Cloud contribution 
             if cloud_contribution == True:
 
                 # Do the total cloud contribution first 
@@ -2364,7 +2364,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
                         spectrum_contribution_list_names.append(cloud_species_list[i])
 
-            # If you want to run the total pressure contribuiton 
+            # If you want to run the total pressure contribution 
             if total_pressure_contribution == True:
                 
                 kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
@@ -2454,7 +2454,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             # Else, we need to restructure w_cloud and g_cloud to span by layer 
             # For Mie models with 1 species, the g and w can be help constant with each layer since
             # Kappa cloud will encode where clouds are
-            # For models that are cloud free, you still need a g and w thats just an array of 0s
+            # For models that are cloud free, you still need a g and w that's just an array of 0s
             # For Mie models with more than one species, we need to be more careful with the g and w array
             if len(aerosol_species) == 1 or aerosol_species == []:
                 w_cloud = np.ones_like(kappa_cloud)*w_cloud
@@ -2478,7 +2478,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         else:
             raise Exception("Error: Invalid scattering option")
         
-        # Add in the seperate reflection  
+        # Add in the separate reflection  
         if (reflection == True):
 
             albedo = reflection_Toon(P, wl, dtau_tot,
@@ -2611,7 +2611,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 # Else, we need to restructure w_cloud and g_cloud to span by layer 
                 # For Mie models with 1 species, the g and w can be help constant with each layer since
                 # Kappa cloud will encode where clouds are
-                # For models that are cloud free, you still need a g and w thats just an array of 0s
+                # For models that are cloud free, you still need a g and w that's just an array of 0s
                 # For Mie models with more than one species, we need to be more careful with the g and w array
                 if len(aerosol_species) == 1 or aerosol_species == []:
                     w_cloud = np.ones_like(kappa_cloud_temp)*w_cloud
@@ -2634,7 +2634,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             else:
                 raise Exception("Error: Invalid scattering option")
             
-                    # Add in the seperate reflection  
+                    # Add in the separate reflection  
             if (reflection == True):
 
                 albedo = reflection_Toon(P, wl, dtau_tot,
@@ -2824,7 +2824,7 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     
     # Warning message
     if len(wl) > 10000:
-        print('Given current resolution (R), this will take more than a few hours to run. We reccomend to lower the resolution to 1000.')
+        print('Given current resolution (R), this will take more than a few hours to run. We recommend to lower the resolution to 1000.')
 
     # Load in the pressure object
     P = atmosphere['P']
@@ -2832,7 +2832,7 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     # Find how many elements you need 
     contribution_length = 0 
 
-    # Need to figure out if cloud contribution for non aerosols counts here or not(it doesnt)
+    # Need to figure out if cloud contribution for non aerosols counts here or not(it doesn't)
     if bulk_species == True:
         contribution_length += 1
     # This only matters of aerosol models with multiple cloud species 
@@ -2938,7 +2938,7 @@ def plot_pressure_contribution(wl,P,
 
             X_bin, Y_bin = np.meshgrid(wl_binned, P)
             
-            # Plot binned contribution functio
+            # Plot binned contribution function
             contour_plot = plt.contourf(X_bin, Y_bin, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
             #contour_plot = plt.contourf(wl_binned, P, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
 
@@ -3041,7 +3041,7 @@ def photometric_contribution_function(wl, P, Contribution,
     if treat_wlmin_as_zero == True:
         bins[0] = np.min(wl)
 
-    # Make it so the last bin includes the max wavelength (if not it will be a seperate bin)
+    # Make it so the last bin includes the max wavelength (if not it will be a separate bin)
     bins[-1] += binsize
     bin_indices = np.digitize(wl, bins)
     bins[-1] -= binsize
@@ -3058,7 +3058,7 @@ def photometric_contribution_function(wl, P, Contribution,
 
     # Now to find photometric contribution 
 
-    # [molecule][photometric conitrbution for each bin]
+    # [molecule][photometric contribution for each bin]
     photometric_contribution = []
 
     # Loop over each molecule
@@ -3098,7 +3098,7 @@ def plot_photometric_contribution(wl,P,
                                   return_fig = False):
     
     '''
-    Plots the photoemtric contributions directly from outputs of photometric_contribution_function()
+    Plots the photometric contributions directly from outputs of photometric_contribution_function()
 
     Args:
         wl (np.array of float):
