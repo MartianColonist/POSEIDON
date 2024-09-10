@@ -242,7 +242,7 @@ def load_refractive_indices_from_file(wl,file_name):
     return interp_reals(wl_Mie), interp_complexes(wl_Mie)
 
 
-def plot_refractive_indices_from_file(wl, file_name):
+def plot_refractive_indices_from_file(wl, file_name, species = None):
 
     '''
     Plots the refractive indices from a txt file (columns : wl n k)
@@ -252,9 +252,10 @@ def plot_refractive_indices_from_file(wl, file_name):
     Args:
         wl (np.array of float):
             Model wavelength grid (μm).
-
         file_name (string):
             File name (with directory included)
+        species (string, optional):
+            Species name for the title of the plot.
 
     Returns: 
         Outputs a plot of wl (x) vs refractive indices (y)
@@ -276,21 +277,24 @@ def plot_refractive_indices_from_file(wl, file_name):
     # Plot the real and imaginary indices
     fig, (ax1, ax2) = plt.subplots(1, 2)
     fig.set_size_inches(10, 6)
-    suptitle = 'Refractive Indices for ' + molecule
-    #suptitle = 'Refractive Indices for H$_2$O'
-    fig.suptitle(suptitle)
+
+    if (species != None):
+        suptitle = 'Refractive Indices for ' + species
+        fig.suptitle(suptitle)
+
     ax1.plot(wl_Mie, real_indices)
     ax2.plot(wl_Mie, imaginary_indices)
 
-    ax1.set_xlabel('Wavelength ($\mu$m)')
-    ax2.set_xlabel('Wavelength ($\mu$m)')
+    ax1.set_xlabel('Wavelength (μm)')
+    ax2.set_xlabel('Wavelength (μm)')
     ax1.set_ylabel('Real Indices')
     ax2.set_ylabel('Imaginary Indices')
 
     plt.show()
+    plt.tight_layout()
 
 
-def plot_effective_cross_section_from_file(wl, r_m, file_name):
+def compute_and_plot_aerosol_cross_section_from_file(wl, r_m, file_name, species = None):
 
     '''
     Plots the effective cross sections from a txt file (columns : wl n k)
@@ -302,12 +306,12 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     Args:
         wl (np.array of float):
             Model wavelength grid (μm).
-
         r_m (float):
-            Mean particle size (um)
-
+            Mean particle size (um).
         file_name (string):
-            File name (with directory included)
+            File name (with directory included).
+        species (string, optional):
+            Species name for the title of the plot.
 
     Returns: 
         Outputs a plot of wl (x) vs different cross sections, asymmetry parameter, and single scattering albedo (y)
@@ -321,83 +325,97 @@ def plot_effective_cross_section_from_file(wl, r_m, file_name):
     wl_Mie = wl_grid_constant_R(wl_min, wl_max, 1000)
 
     # Compute cross sections directly from LX-Mie
-    eff_ext_cross_section, eff_scat_cross_section, eff_abs_cross_section, eff_back_cross_section, eff_w, eff_g = precompute_cross_sections_from_indices(wl_Mie,r_i_real,r_i_complex, r_m)
+    eff_ext_cross_section, eff_scat_cross_section, \
+    eff_abs_cross_section, eff_back_cross_section, \
+    eff_w, eff_g = precompute_cross_sections_from_indices(wl_Mie,r_i_real,r_i_complex, r_m)
 
     # Plot cross sections
     plt.figure(figsize=(10,6))
-    label = 'r_m ' + str(r_m) + ' (um)'
-    plt.plot(wl_Mie, eff_ext_cross_section, label = label)
-    title = 'Effective Extinction (Scattering + Absorption) Cross Sections ' + file_name.split('/')[1][:-4] + '\n'
-    plt.title(title)
-    plt.ylabel('Effective Cross Section')
-    plt.xlabel('Wavelength (um)')
+    label = '$r_m$ = ' + str(r_m) + ' μm'
+    
+    plt.semilogy(wl_Mie, eff_ext_cross_section, label = label)
+    if (species != None):
+        title = 'Effective Extinction (Scattering + Absorption) Cross Sections for ' + species + '\n'
+        plt.title(title)
+    plt.ylabel('Effective Cross Section (m$^2$)')
+    plt.xlabel('Wavelength (μm)')
     plt.legend()
     plt.show()
 
     plt.figure(figsize=(10,6))
-    label = 'r_m ' + str(r_m) + ' (um)'
-    plt.plot(wl_Mie, eff_scat_cross_section, label = label)
-    title = 'Effective Scattering Cross Sections ' + file_name.split('/')[1][:-4]+ '\n'
-    plt.title(title)
-    plt.ylabel('Effective Cross Section')
-    plt.xlabel('Wavelength (um)')
+    label = '$r_m$ = ' + str(r_m) + ' μm'
+    plt.semilogy(wl_Mie, eff_scat_cross_section, label = label)
+    if (species != None):
+        title = 'Effective Scattering Cross Sections for ' + species + '\n'
+        plt.title(title)
+    plt.ylabel('Effective Cross Section (m$^2$)')
+    plt.xlabel('Wavelength (μm)')
     plt.legend()
     plt.show()
 
     plt.figure(figsize=(10,6))
-    label = 'r_m ' + str(r_m) + ' (um)'
-    plt.plot(wl_Mie, eff_abs_cross_section, label = label)
-    title = 'Effective Absorption Cross Sections ' + file_name.split('/')[1][:-4]+ '\n'
-    plt.title(title)
-    plt.ylabel('Effective Cross Section')
-    plt.xlabel('Wavelength (um)')
+    label = '$r_m$ = ' + str(r_m) + ' μm'
+    plt.semilogy(wl_Mie, eff_abs_cross_section, label = label)
+    if (species != None):
+        title = 'Effective Absorption Cross Sections for ' + species + '\n'
+        plt.title(title)
+    plt.ylabel('Effective Cross Section (m$^2$)')
+    plt.xlabel('Wavelength (μm)')
     plt.legend()
     plt.show()
 
     plt.figure(figsize=(10,6))
-    label = 'r_m ' + str(r_m) + ' (um)'
-    plt.plot(wl_Mie, eff_back_cross_section, label = label)
-    title = 'Effective Back-Scattering Cross Sections ' + file_name.split('/')[1][:-4]+ '\n'
-    plt.title(title)
-    plt.ylabel('Effective Cross Section')
-    plt.xlabel('Wavelength (um)')
+    label = '$r_m$ = ' + str(r_m) + ' μm'
+    plt.semilogy(wl_Mie, eff_back_cross_section, label = label)
+    if (species != None):
+        title = 'Effective Back-Scattering Cross Sections for ' + species + '\n'
+        plt.title(title)
+    plt.ylabel('Effective Cross Section (m$^2$)')
+    plt.xlabel('Wavelength (μm)')
     plt.legend()
     plt.show()
 
     plt.figure(figsize=(10,6))
-    label = 'r_m ' + str(r_m) + ' (um)'
+    label = '$r_m$ = ' + str(r_m) + ' μm'
     plt.plot(wl_Mie, eff_w, label = label)
-    title = 'Single Scattering Albedo ' + file_name.split('/')[1][:-4] + '\n0 (black, completely absorbing) to 1 (white, completely scattering)'+ '\n'
-    plt.title(title)
+    if (species != None):
+        title = ('Single Scattering Albedo for ' + species + '\n' + 
+                '0 (black, completely absorbing) to 1 (white, completely scattering)'+ '\n')
+        plt.title(title)
     plt.ylabel('SSA')
-    plt.xlabel('Wavelength (um)')
+    plt.xlabel('Wavelength (μm)')
     plt.legend()
     plt.show()
 
     plt.figure(figsize=(10,6))
-    label = 'r_m ' + str(r_m) + ' (um)'
+    label = '$r_m$ = ' + str(r_m) + ' μm'
     plt.plot(wl_Mie, eff_g, label = label)
-    title = 'Asymmetry Parameter ' + file_name.split('/')[1][:-4] + '\n0 (Rayleigh limit) and +1 (total foward scattering limit) '+ '\n'
-    plt.title(title)
+    if (species != None):
+        title = ('Asymmetry Parameter for ' + species + '\n' + 
+                '0 (Rayleigh limit) and +1 (total forward scattering limit)'+ '\n')
+        plt.title(title)
     plt.ylabel('g')
-    plt.xlabel('Wavelength (um)')
+    plt.xlabel('Wavelength (μm)')
     plt.legend()
     plt.show()
 
-    molecule = file_name.split('/')[1][:-4]
-    molecule = molecule.split('_')[0]
-    title = molecule + ' : Normalized $\sigma_{ext}$ , Asymmetry Parameter, and Single Scattering Albedo' + '\n $r_m$ = ' + str(round(r_m, 3)) + ' ($\mu$m)' +  '\n $\omega$ : 0 (black, completely absorbing) to 1 (white, completely scattering)'+ '\n g : 0 (Rayleigh Limit) to 1 (Total Forward Scattering) '+ '\n'
+    if (species != None):
+        title = (species + ' : Normalized $\sigma_{ext}$ , Asymmetry Parameter, ' +
+                 'and Single Scattering Albedo' + '\n $r_m$ = ' + str(round(r_m, 3)) + 
+                 ' ($\mu$m)' +  '\n $\omega$ : 0 (black, completely absorbing) to 1 ' + 
+                 '(white, completely scattering)'+ '\n g : 0 (Rayleigh Limit) to 1 (Total Forward Scattering) '+ '\n')
     plt.figure(figsize=(10,6))
-    plt.plot(wl_Mie, eff_ext_cross_section/np.max(eff_ext_cross_section), label = '$\sigma_{ext}$ = $\sigma_{abs}$ + $\sigma_{scat}$ (Normalized)')
+    plt.plot(wl_Mie, eff_ext_cross_section/np.max(eff_ext_cross_section), 
+             label = '$\sigma_{ext}$ = $\sigma_{abs}$ + $\sigma_{scat}$ (Normalized)')
     plt.plot(wl_Mie, eff_w, label = 'Single Scattering Albedo ($\omega$)')
     plt.plot(wl_Mie, eff_g, label = 'Asymmetry Parameter (g)')
     plt.title(title)
-    plt.xlabel('Wavelength ($\mu$m)')
+    plt.xlabel('Wavelength (μm)')
     plt.legend()
     plt.show()
 
 
-def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
+def compute_and_plot_effective_cross_section_constant(wl, r_m, r_i_real, r_i_complex):
 
     '''
     Plots the effective cross sections for a constant (with wavelength) refractive index
@@ -407,13 +425,10 @@ def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
     Args:
         wl (np.array of float):
             Model wavelength grid (μm).
-
         r_m (float):
             Mean particle size (um)
-
         r_i_real (float) :
             Real refractive index (only used for constant, free refractive index)
-
         r_i_complex (float) :
             Complex refractive index (only used for constant, free refractive index)
 
@@ -489,13 +504,13 @@ def plot_effective_cross_section_free(wl, r_m, r_i_real, r_i_complex):
     eff_ext = interp(wl)
 
     # Plot the interpolated effective cross sections
-    label = 'r_m (um) : ' + str(r_m)
-    title = "Index = " + str(r_i_real) + " + " + str(r_i_complex) + "j Effective Cross Section"
+    label = '$r_m$ = ' + str(r_m) + ' μm'
+    title = "Index = " + str(r_i_real) + " + " + str(r_i_complex) + "i"
     plt.figure(figsize=(10,6))
-    plt.plot(wl,eff_ext, label = label)
+    plt.semilogy(wl,eff_ext, label = label)
     plt.legend()
-    plt.xlabel('Wavelengths (um)')
-    plt.ylabel('Effective Cross Section')
+    plt.xlabel('Wavelength (μm)')
+    plt.ylabel('Effective Cross Section (m$^2$)')
     plt.title(title)
     plt.show()
 
@@ -633,7 +648,7 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
         P_cloud_index_top = find_nearest(P,P_cloud)
         P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
 
-        # catch case where user specificed colours have not accounted for the cloud extent
+        # catch case where user specified colours have not accounted for the cloud extent
         if len(colour_list) == len(aerosol_species):
             # plot cloud pressure extent
             ax.axhspan(log_P[P_cloud_index_top], log_P[P_cloud_index_bttm], alpha=0.5, color = 'silver', label = 'Slab Pressure Extent')
@@ -1100,9 +1115,10 @@ def database_properties_plot(file_name):
     plt.show()
 
 
-def vary_one_parameter(model, planet, star, param_name, vary_list,
-                       wl, opac, P, P_ref, R_p_ref, PT_params_og, log_X_params_og, cloud_params_og,
-                       spectrum_type = 'transmission', y_unit = 'transit_depth'):
+def vary_one_parameter(model, planet, star, param_name, vary_list, wl, opac, 
+                       P, P_ref, R_p_ref, PT_params_og, log_X_params_og, 
+                       cloud_params_og, spectrum_type = 'transmission', 
+                       y_min = None, y_max = None, y_unit = 'transit_depth'):
     
     '''
     This function is utilized in tutorial noteooks to show how turning a knob on a parameter changes a resultant spectrum
@@ -1138,6 +1154,14 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
             The type of spectrum for POSEIDON to compute
             (Options: transmission / emission / direct_emission / 
                       transmission_time_average).
+        y_min (float):
+            Minimum value for the y-axis.
+        y_max (float): 
+            Maximum value for the y-axis.
+        y_unit (str):
+            The unit of the y-axis
+            (Options: 'transit_depth', 'eclipse_depth', '(Rp/Rs)^2', 
+            '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp').
 
     Returns: 
         Outputs a plot of resultant spectra with the param_name at the vary_list values.
@@ -1254,6 +1278,7 @@ def vary_one_parameter(model, planet, star, param_name, vary_list,
                        plot_full_res = False,
                        save_fig = False,
                        y_unit = y_unit,
+                       y_min = y_min, y_max = y_max,
                        )
 
 ############################################################################################
@@ -1469,7 +1494,7 @@ def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array,
 # Main Cloud Functions
 # - Mie_cloud is what is going to be called the most frequently, since it pulls from the database
 # - The functions below it generate aerosol properties on-the-fly, or are used
-# - to generate new entires for the database
+# - to generate new entries for the database
 ############################################################################################
 
 
