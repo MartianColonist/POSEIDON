@@ -75,3 +75,10 @@ POSEIDON includes many P-T profile prescriptions, including:
 * The 'Line' profile from `Line et al. (2013) <https://ui.adsabs.harvard.edu/abs/2013ApJ...775..137L/abstract>`_.
 * The 'Slope' profile from `Piette & Madhusudhan (2021) <https://ui.adsabs.harvard.edu/abs/2020MNRAS.497.5136P/abstract>`_.
 * The 'Pelletier' profile from `Pelletier et al. (2021) <https://ui.adsabs.harvard.edu/abs/2021AJ....162...73P/abstract>`_.
+
+
+Contribution Functions
+----------------------
+
+For contribution functions (transmission or emission), added in POSEIDON v1.2, 
+please cite Mullens et al. 2024.
