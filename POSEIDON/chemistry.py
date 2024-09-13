@@ -87,7 +87,7 @@ def load_chemistry_grid(chemical_species, grid = 'fastchem',
     N_species = len(chemical_species)
 
     # Create array to store the log mixing ratios from the grid 
-    log_X_grid = shared_memory_array(rank, comm, (N_species, Met_num, C_O_num, T_num, P_num))
+    log_X_grid, _ = shared_memory_array(rank, comm, (N_species, Met_num, C_O_num, T_num, P_num))
     
     # Only first core needs to load the mixing ratios into shared memory
     if (rank == 0):

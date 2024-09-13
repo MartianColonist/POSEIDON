@@ -487,12 +487,21 @@ def extend_rad_transfer_grids(phi_edge, theta_edge, R_s, d, R_max, f_cloud,
         
     # If planet partially overlaps star
     elif (d > (R_s - R_max)):
-            
-        N_phi = N_phi_max                                    # Divide terminator into slices defined by N_phi_max (top of this function)
-        dphi_0 = (2.0*np.pi)/N_phi                           # Polar angle integration element resolution
-        dphi_grid = dphi_0 * np.ones(N_phi)                  # Polar integration element array (trivial here, all elements dphi_0)
-        phi_grid = np.cumsum(dphi_grid) - (dphi_grid/2.0)    # Angles in centre of each area element
-  
+
+        # For a 1D atmosphere, we can use an analytic area formula later in TRIDENT
+        if (N_sectors == 1):
+            N_phi = N_sectors
+            dphi_grid = dphi_all   # Won't be used in this case
+            phi_grid = phi_all     # Won't be used in this case
+
+        # For multiple sectors with a grazing transit, we'll use numerical polar integration
+        else:
+
+            N_phi = N_phi_max                                    # Divide terminator into slices defined by N_phi_max (top of this function)
+            dphi_0 = (2.0*np.pi)/N_phi                           # Polar angle integration element resolution
+            dphi_grid = dphi_0 * np.ones(N_phi)                  # Polar integration element array (trivial here, all elements dphi_0)
+            phi_grid = np.cumsum(dphi_grid) - (dphi_grid/2.0)    # Angles in centre of each area element
+
     # Now create arrays storing which original sector and background sector
     # a given angle lies in (to avoid computing transmissivities multiple times)
     
@@ -678,6 +687,38 @@ def delta_ray_geom(N_phi, N_b, b, b_p, y_p, phi_grid, R_s_sq):
     return delta_ray
 
 
+def area_overlap_circles(d, r_1, r_2):
+    '''
+    Calculate the overlapping area of two circles.
+
+    Args:
+        d (float):
+            Distance between centres of circles.
+        r_1 (float):
+            Radius of first circle (nominally the planet).
+        r_2 (float):
+            Radius of second circle (nominally the star).
+
+    Returns:
+        A_overlap (float):
+            Overlapping area of the two circles.
+    '''
+
+    d_sq = d**2
+    r_1_sq = r_1**2
+    r_2_sq = r_2**2
+
+    # Compute angles from star-planet line to R_p = R_s intersection
+    phi_1 = np.arccos((d_sq + r_1_sq - r_2_sq)/(2 * d * r_1))  # Angle at planet centre
+    phi_2 = np.arccos((d_sq + r_2_sq - r_1_sq)/(2 * d * r_2))  # Angle at star centre
+        
+    # Evaluate the overlapping area analytically
+    A_overlap = (r_1_sq * (phi_1 - 0.5 * np.sin(2.0 * phi_1)) +
+                 r_2_sq * (phi_2 - 0.5 * np.sin(2.0 * phi_2)))
+    
+    return A_overlap
+
+
 #@jit(nopython = True)
 def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck, 
             enable_haze, b_p, y_p, R_s, f_cloud, phi_0, theta_0, phi_edge, theta_edge):
@@ -828,10 +869,28 @@ def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck,
     #***** Step 4: Calculate atmosphere area matrices *****#
 
     # Populate elements of atmosphere area matrix
-    dA_atm = np.outer((b * db), dphi_grid)
+    # dA_atm = np.outer((b * db), dphi_grid)
                 
     # Find overlapping area matrix of atmosphere (zero if rays don't intersect the star)
-    dA_atm_overlap = delta_ray * dA_atm
+    # dA_atm_overlap = delta_ray * dA_atm
+
+    # Grazing transit 1D model (special case) 
+    if ((d > (R_s - R_max)) and (d < (R_s + R_max)) and (N_sectors == 1)):
+
+        # Use analytic area of circles to find partial annulus area for 1D grazing atmosphere 
+        dA_atm = np.outer((area_overlap_circles(d, r_up[:,0,0], R_s) - area_overlap_circles(d, r_low[:,0,0], R_s)), 
+                          np.ones_like(dphi_grid))
+
+        dA_atm_overlap = dA_atm   # No delta_ray needed since we calculated the overlapping area exactly
+
+    # General case
+    else:
+
+        # Polar coordinate system area for multi-dimensional atmosphere
+        dA_atm = np.outer((b * db), dphi_grid)
+
+        # Find overlapping area matrix of atmosphere (zero if rays don't intersect the star)
+        dA_atm_overlap = delta_ray * dA_atm
     
     #***** Step 5: Calculate path distribution tensor *****#
     
@@ -883,5 +942,4 @@ def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck,
     transit_depth = (A_overlap - A_atm_overlap_eff)/(np.pi * R_s_sq)
                 
     return transit_depth
-
 

@@ -337,7 +337,7 @@ def shared_memory_array(rank, comm, shape):
     assert itemsize == MPI.DOUBLE.Get_size() 
     array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
     
-    return array
+    return array, win
 
 
 def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half', 
@@ -425,19 +425,19 @@ def read_data(data_dir, fname, wl_unit = 'micron', bin_width = 'half',
     return wl_data, half_bin, spectrum, err
 
     
-def read_spectrum(planet_name, fname, wl_unit = 'micron'):
+def read_spectrum(fname, wl_unit = 'micron', skiprows = None):
     '''
     Read a previously computed spectrum from the POSEIDON output folder
     (POSEIDON_output/planet_name/spectra).
 
     Args:
-        planet_name (str):
-            Identifier for planet object (e.g. HD209458b).
         fname (str):
-            Name of spectrum file.
+            File path and name of spectrum file (e.g. './my_file.txt')
         wl_unit (str):
             Unit of wavelength column (first column in file)
-            (Options: micron (or equivalent) / nm / A / m)
+            (Options: micron (or equivalent) / nm / A / m).
+        skiprows (int):
+            The number of rows to skip (e.g. use 1 if file has a header line).
 
     Returns:
         wavelength (np.array of float): 
@@ -448,11 +448,11 @@ def read_spectrum(planet_name, fname, wl_unit = 'micron'):
     '''
 
     # Load POSEIDON directory location where the spectrum is stored
-    input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
+  #  input_dir = './POSEIDON_output/' + planet_name + '/spectra/'
     
     # Open file
-    data = pd.read_csv(input_dir + fname, sep = '[\\s]{1,20}', 
-                       engine = 'python', header=None)
+    data = pd.read_csv(fname, sep = '[\\s]{1,20}', 
+                       header=None, skiprows = skiprows, engine = 'python')
 
     # Load wavelength then convert to μm
     if (wl_unit in ['micron', 'um', 'μm']):
@@ -668,10 +668,11 @@ def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
         # Cut out first and last values to avoid SpectRes boundary NaNs
         wl_binned = wl_binned[1:-1]
         spectrum_binned = spectrum_binned[1:-1]
+        err_binned = err_binned[1:-1]
 
         # Replace Spectres boundary NaNs with second and penultimate values
-        err_binned[0] = err_binned[1]
-        err_binned[-1] = err_binned[-2]
+     #   err_binned[0] = err_binned[1]
+     #   err_binned[-1] = err_binned[-2]
 
     # Call Spectres routine
     else:
@@ -1097,13 +1098,161 @@ def generate_latex_param_names(param_names):
     
     # Loop over each free parameter
     for param in param_names:
-        
+            
         components = []    # Array of 'special' components for this parameter (e.g. 'log', 'bar')
         idxs = []          # Indices where each component starts
         lens= []           # Number of characters in each component
         
         captured_characters = np.zeros(len(param)).astype(np.int64)  # Stays zero for entries with solo letters (e.g. 'H' in 'H2O')
-                
+
+        # Note that many of these temporary fixes are made obsolete
+        # due to plot_histograms now having custom_labels() argument
+        
+        # Temporary fix for 'slope' P-T profile parameters
+        if (param in ['Delta_T_10-1mb', 'Delta_T_100-10mb', 'Delta_T_1-0.1b',
+                      'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 'Delta_T_32-10b',
+                      'Delta_T_100-32b']):
+            latex_names += ['$\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
+            continue
+
+        # Temporary fix for aerosol parameter names 
+        if ('Pbase' in param):
+            string = '$\\log \\, \\mathrm{P_{base}} \\, \\mathrm{SiO_2}$'
+            latex_names += [string]
+            continue
+        if ('log_X_SiO2_base' in param):
+            string = '$\\log \\, \\, \\mathrm{SiO_2} \\, \\mathrm{_{base}}$'
+            latex_names += [string]
+            continue
+        if ('r_m' in param):
+
+            aerosol_name = param.split('_')[3]
+
+            if('SiO2' in param):
+                string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{SiO_2}$'
+                latex_names += [string]
+                continue
+            if('Fe2O3' in param):
+                string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{Fe_2O_3}$'
+                latex_names += [string]
+                continue
+            else:
+                string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{' + aerosol_name + '}$'
+                latex_names += [string]
+                continue
+
+        if ('X' in param):
+            
+            # Grab the aerosol name 
+            aerosol_name = param.split('_')[2]
+
+            if('SiO2' in param):
+                string = '$\\log \\, \\mathrm{SiO_2}$'
+                latex_names += [string]
+                continue
+            if('Fe2O3' in param):
+                string = '$\\log \\, \\mathrm{Fe_2O_3}$'
+                latex_names += [string]
+                continue
+            if('MgSiO3' in param):
+                string = '$\\log \\, \\mathrm{MgSiO_3}$'
+                latex_names += [string]
+                continue
+            else:
+                string = '$\\log \\, \\mathrm{' + aerosol_name + '}$'
+                latex_names += [string]
+                continue
+            
+        if ('C_to_O' in param):
+            string = '$\\mathrm{C} \\, / \\, \\mathrm{O}$'
+            latex_names += [string]
+            continue
+
+        if ('alpha_Line' == param):
+            string = '$\\alpha_{\\mathrm{Line}}$'
+            latex_names += [string]
+            continue
+
+        if ('beta_Line' == param):
+            string = '$\\beta_{\\mathrm{Line}}$'
+            latex_names += [string]
+            continue
+
+        if ('Delta_log_P_' in param):
+            if('SiO2' in param):
+                string = '$\\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{SiO_2}$'
+                latex_names += [string]
+                continue
+            if('Fe2O3' in param):
+                string = '$\\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{Fe_2O_3}$'
+                latex_names += [string]
+                continue
+            if('MgSiO3' in param):
+                string = '$\\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{MgSiO_3}$'
+                latex_names += [string]
+                continue
+            else:
+                aerosol_name = param.split('_')[3]
+                string = '$\\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{' + aerosol_name + '}$'
+                latex_names += [string]
+                continue
+
+        if ('log_P_cloud_' in param):
+            if('SiO2' in param):
+                string = '$\\log \\, \\mathrm{P_{cloud}} \\, \\mathrm{SiO_2}$'
+                latex_names += [string]
+                continue
+            if('Fe2O3' in param):
+                string = '$\\log \\, \\mathrm{P_{cloud}} \\, \\mathrm{Fe_2O_3}$'
+                latex_names += [string]
+                continue
+
+        if ('log_P_top_slab' in param):
+            if('SiO2' in param):
+                string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{SiO_2}$'
+                latex_names += [string]
+                continue
+            if('MgSiO3' in param):
+                string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{MgSiO_3}$'
+                latex_names += [string]
+                continue
+            # If one_slab, then it will print out this without the species alongside it 
+            if('log_P_top_slab' == param):
+                string = '$\\log \\, \\mathrm{P_{top,slab}}$'
+                latex_names += [string]
+                continue
+            # Else, it just grabs the beggining of the aerosol_name 
+            else:
+                aerosol_name = param.split('_')[4]
+                string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{' + aerosol_name + '}$'
+                latex_names += [string]
+                continue
+
+        #  Quick fix for cloud_type = 'one_slab'
+        # 'Delta_log_P_' will not be recognised so new if statement can be made
+        if ('Delta_log_P' == param):
+            string = '$\\Delta \\, \\log \\, \mathrm{P}$'
+            latex_names += [string]
+            continue
+
+
+        # Quick fix for log_Na + K
+        #if ('log_Na' in param):
+        #    string = '$\\log \\, \mathrm{Na} \\, (+ 0.1 \\, \mathrm{K})$'
+        #    latex_names += [string]
+        #    continue
+
+        if ('T_equ' in param):
+            string = '$\\mathrm{T_{equ}}$'
+            latex_names += [string]
+            continue
+
+        if ('delta_rel_' in param):
+            offset_number = param[-1]
+            string = '$\\delta_{\\mathrm{rel, \\, ' + offset_number + '}}$'
+            latex_names += [string]
+            continue
+
         # Find which components are in this parameter's name, and where they occur
         if ('log' in param):
             idx = find_str(param, 'log')  # Find index where 'log' starts
@@ -1118,6 +1267,7 @@ def generate_latex_param_names(param_names):
             components += ['bar']
             lens += [3]
             captured_characters[idx:idx+3] = 1
+
             
         for letter in greek_letters_low:
             if (letter == 'eta'):   # Special check for 'eta', since  contained in 'beta' and 'theta'
@@ -1582,7 +1732,105 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
                        stats, ln_Z, ln_Z_err, reduced_chi_square, best_chi_square,
                        dof, best_fit_params, wl, R, instruments, datasets,
                        radius_unit)
+
+
+def get_vmr(name, mol, planet_name):
+
+    ''' 
+    Gets the vmr from the results.txt file
+
+    INPUTS:
+        name (string):
+            model name
+        mol (string):
+            name of parameters to grab
+        planet_name (string)
+            name of planet (to load results file)
+
+    OUTPUTS:
+        vmr (float):
+            The vmr of the variable (or just the value before the +/-)
+        sig1, sig2 (float):
+            Upper and lower 1 sigma values
     
+    '''
+
+    outdir = './POSEIDON_output/'+planet_name+'/retrievals/results/'
+    with open(outdir + name + '_results.txt') as f:
+        lines = f.readlines()
+        for l in lines:
+            if l.startswith(mol):
+                # VMR
+                vmr = float(l.split()[2])
+
+                # +1sigma
+                sig1 = l.split()[3]
+                sig1 = sig1.replace('(', '')
+                sig1 = sig1.replace(')', '')
+                sig1 = sig1.replace('+', '')
+                sig1 = float(sig1)
+
+                # -1sigma
+                sig2 = l.split()[4]
+                sig2 = sig2.replace('(', '')
+                sig2 = sig2.replace(')', '')
+                sig2 = float(sig2)
+
+                # If we continue, there are other lines that will fulfill
+                # if criteria and overwrite what we want with wider
+                # (2, 3,  5 sigma) bounds
+                return vmr, sig1, sig2
+            
+        # If the model doesn't have a param
+        return -1, -1, -1
+
+
+def make_latex_table_from_results(model_names_array, variables, planet_name):
+
+    ''' 
+    Gets the vmr from the results.txt file
+
+    INPUTS:
+        model_names_array (array of string):
+            model names for each model to print out
+        variables (array of string):
+            name of parameters to grab
+        planet_name (string)
+            name of planet (to load results file)
+
+    OUTPUTS:
+        Prints out a latex friendly table
+    
+    '''
+            
+    refs = model_names_array
+
+    mols = variables
+
+    for im, m in enumerate(mols):
+        line = m + ' & '
+        for i in range(len(refs)):
+
+            vmr, hisig, losig = get_vmr(refs[i], m, planet_name)
+
+            # Model doesn't have parameter
+            if (vmr, hisig, losig) == (-1, -1, -1):
+                line += ' --- &'
+            
+            else:
+                if i != len(refs)-1:
+                    if m == 'R_p_ref':
+                        line += ' ${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
+                    else:
+                        line += ' ${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
+                else:
+                    if m == 'R_p_ref':
+                        line += ' ${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\ '.format(vmr, hisig, losig)
+                    else:
+                        line += ' ${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\'.format(vmr, hisig, losig)
+        
+        print(line)
+
 
 def mock_missing(name):
     def init(self, *args, **kwargs):

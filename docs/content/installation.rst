@@ -7,9 +7,9 @@ ____________________________
 POSEIDON requires various input files (opacity data, stellar models, etc.) that
 are stored separately from the GitHub repository (due to file size limitations).
 Before installing POSEIDON, you will need to download these input files, which
-have been packaged for convenience as a single .zip file (37 GB):
+have been packaged for convenience as a single .zip file (67 GB):
 
-* `inputs.zip <https://drive.google.com/file/d/18ZpFugRG0mwiNmya7XdVokDTa8zzTBH8/view?usp=share_link>`_
+* `inputs.zip <https://drive.google.com/file/d/1q6EdElKflzdsMaLkgkR5UtgwK0Lq4Yob/view?usp=sharing>`_
 
 You can also find all the required input files on `Zenodo 
 <https://zenodo.org/record/7927435#.ZF22itLMJhE>`_.

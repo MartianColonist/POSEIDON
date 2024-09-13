@@ -10,12 +10,13 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 def assign_free_params(param_species, object_type, PT_profile, X_profile, 
-                       cloud_model, cloud_type, gravity_setting, stellar_contam, 
-                       offsets_applied, error_inflation, PT_dim, X_dim, cloud_dim, 
-                       TwoD_type, TwoD_param_scheme, species_EM_gradient, 
-                       species_DN_gradient, species_vert_gradient,
+                       cloud_model, cloud_type, gravity_setting, mass_setting,
+                       stellar_contam, offsets_applied, error_inflation, 
+                       PT_dim, X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
+                       species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
-                       sharp_DN_transition, reference_parameter, disable_atmosphere):
+                       sharp_DN_transition, reference_parameter, disable_atmosphere,
+                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -33,15 +34,18 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
              file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / file_read).
+            (Options: isochem / gradient / two-gradients / lever / file_read).
         cloud_model (str):
             Chosen cloud parametrisation 
-            (Options: cloud-free / MacMad17 / Iceberg).
+            (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
             Cloud extinction type to consider 
             (Options: deck / haze / deck_haze).
         gravity_setting (str):
             Whether log_g is fixed or a free parameter.
+            (Options: fixed / free).
+        mass_setting (str):
+            Whether the planetary mass is fixed or a free parameter.
             (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
@@ -49,7 +53,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
              two_spots_free_log_g).
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset 
-            (Options: single_dataset).
+            (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
             (Options: Line15).
@@ -95,6 +99,17 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
+        aerosol_species (list of string):
+            Either 'free' or specific aerosol(s).
+        log_P_slope_array (np.array of float):
+            Log pressures where the temperature difference parameters are 
+            defined (Piette & Madhusudhan 2020 profile only).
+        number_P_knots (float):
+            Number of uniform knots in pressure space 
+            (only for the Pelletier 2021 P-T profile).
+        PT_penalty (bool):
+            If True, introduces the sigma_smooth parameter for retrievals
+            (only for the Pelletier 2021 P-T profile).
 
     Returns:
         params (np.array of str):
@@ -125,7 +140,6 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     geometry_params = []  # Geometry parameters
     stellar_params = []   # Stellar parameters
 
-
     # Models with no atmosphere only have Rp as a free parameter
     if (disable_atmosphere == True):
 
@@ -145,17 +159,25 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** Physical property parameters *****#
 
         if (reference_parameter == 'R_p_ref'):
-            physical_params += ['R_p_ref']        # Reference radius parameter (in R_J or R_E)
+            physical_params += ['R_p_ref']                  # Reference radius parameter (in R_J or R_E)
         elif (reference_parameter == 'P_ref'):
-            physical_params += ['log_P_ref']      # Reference pressure
+            physical_params += ['log_P_ref']                # Reference pressure
+        elif (reference_parameter == 'R_p_ref+P_ref'):
+            physical_params += ['R_p_ref', 'log_P_ref']     # Reference radius and pressure
         else:
             raise Exception("Error: Only R_p_ref or P_ref are supported reference parameters.")
         
-        if ((reference_parameter == 'log_P_ref') and (Atmosphere_dimension > 1)):
+        if (('log_P_ref' in reference_parameter) and (Atmosphere_dimension > 1)):
             raise Exception("Error: P_ref is not a valid parameter for multidimensional models.")
+
+        if ((gravity_setting == 'free') and (mass_setting == 'free')):
+            raise Exception("Error: only one of mass or gravity can be a free parameter.")
 
         if (gravity_setting == 'free'):
             physical_params += ['log_g']         # log_10 surface gravity (cm / s^2)
+
+        if (mass_setting == 'free'):
+            physical_params += ['M_p']           # Planetary mass
 
         if (object_type == 'directly_imaged'):
             physical_params += ['d']             # Distance to system (pc)
@@ -169,7 +191,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         #***** PT profile parameters *****#
 
         if (PT_profile not in ['isotherm', 'gradient', 'two-gradients', 'Madhu', 
-                            'slope', 'file_read']):
+                               'slope', 'Pelletier', 'Guillot', 'Guillot_dayside',
+                               'Line', 'file_read']):
             raise Exception("Error: unsupported P-T profile.")
 
         # Check profile settings are supported
@@ -178,6 +201,18 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             
         if ((PT_profile == 'Madhu') and (PT_dim > 1)):
             raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Pelletier') and (PT_dim > 1)):
+            raise Exception("Pelletier (2021) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Guillot') and (PT_dim > 1)):
+            raise Exception("Guillot (2010) (pRT implementation) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Guillot_dayside') and (PT_dim > 1)):
+            raise Exception("Guillot (dayside) (2010) (pRT implementation) profile only supported for 1D models")
+        
+        if ((PT_profile == 'Line') and (PT_dim > 1)):
+            raise Exception("Line (2013) (platon implementation) profile only supported for 1D models")
 
         if ((PT_profile == 'slope') and (PT_dim > 1)):
             raise Exception("Slope profile only supported for 1D models")
@@ -194,9 +229,23 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             elif (PT_profile == 'Madhu'):     
                 PT_params += ['a1', 'a2', 'log_P1', 'log_P2', 'log_P3', 'T_ref']
             elif (PT_profile == 'slope'):
-                PT_params += ['T_phot', 'Delta_T_10-1mb', 'Delta_T_100-10mb', 
-                            'Delta_T_1-0.1b', 'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 
-                            'Delta_T_32-10b', 'Delta_T_100-32b']
+                PT_params += ['T_phot_PT']
+                for i in range(len(log_P_slope_arr)):
+                    PT_params += ['Delta_T_' + str(i+1)]
+            elif (PT_profile == 'Pelletier'):
+                if number_P_knots < 3:
+                    raise Exception('number_P_knots must be at least 3. (Captures top, bottom, middle pressures in log space)')
+                for i in range(number_P_knots):
+                    PT_params += ['T_' + str(i+1)]
+                if PT_penalty == True:
+                    PT_params += ['sigma_s']
+            elif (PT_profile == 'Guillot'):
+                PT_params += ['log_kappa_IR', 'log_gamma', 'T_int', 'T_equ']
+            elif (PT_profile == 'Guillot_dayside'):
+                PT_params += ['log_kappa_IR', 'log_gamma', 'T_int', 'T_equ']
+            elif (PT_profile == 'Line'):
+                PT_params += ['log_kappa_IR', 'log_gamma', 'log_gamma_2', 
+                              'alpha_Line', 'beta_Line', 'T_int']
             
         # 2D model (asymmetric terminator or day-night transition)
         elif (PT_dim == 2):
@@ -264,8 +313,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         
         #***** Mixing ratio parameters *****#
 
-        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'chem_eq']):
+        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'lever', 'chem_eq']):
             raise Exception("Error: unsupported mixing ratio profile.")
+        
+        if (X_profile == 'lever') and (X_dim != 1):
+            raise Exception("Error: Level profile currently only implemented for 1D atmospheres.")
             
         if X_profile != 'chem_eq':
         
@@ -281,7 +333,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                             X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                         elif (X_profile == 'two-gradients'):  
                             X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                         'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                        elif (X_profile == 'lever'):
+                            X_params += ['log_' + species + '_iso', 'log_P_' + species, 'Upsilon_' + species]
                     else:
                         X_params += ['log_' + species]
                 
@@ -533,7 +587,128 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 
             if ('haze' not in cloud_type) and ('deck' not in cloud_type):
                 raise Exception("Error: unsupported cloud model.")
-                
+
+        # Mie scattering     
+        elif (cloud_model == 'Mie'):
+
+            # If working with a 2D patchy cloud model
+            if (cloud_dim == 2):
+                cloud_params += ['f_cloud']
+
+            if (cloud_type =='fuzzy_deck'):
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    cloud_params += ['log_P_top_deck']
+                    cloud_params += ['log_r_m', 'log_n_max', 'f']
+                    cloud_params += ['r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_P_top_deck_' + aerosol]
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_n_max_' + aerosol]
+                        cloud_params += ['f_' + aerosol]
+
+            elif (cloud_type == 'slab'):
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    print('Only one slab can be defined with free or file_read')
+                    cloud_params += ['log_P_top_slab']
+                    cloud_params += ['Delta_log_P']
+                    cloud_params += ['log_r_m']
+                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_P_top_slab_' + aerosol]
+                        cloud_params += ['Delta_log_P_' + aerosol]
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+
+            elif (cloud_type == 'fuzzy_deck_plus_slab'):
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    raise Exception('Error : Cannot use more than one aerosol species for file_read or free. Add aerosol to database first')
+                else:
+                    print('This mode assumes that the first aerosol in the list is the deck species, rest are slab species')
+                    for index in range(len(aerosol_species)):
+                        aerosol = aerosol_species[index]
+                        if index == 0:
+                            cloud_params += ['log_P_top_deck_' + aerosol]
+                            cloud_params += ['log_r_m_' + aerosol]
+                            cloud_params += ['log_n_max_' + aerosol]
+                            cloud_params += ['f_' + aerosol]
+                        else:
+                            cloud_params += ['log_P_top_slab_' + aerosol]
+                            cloud_params += ['Delta_log_P_' + aerosol]
+                            cloud_params += ['log_r_m_' + aerosol]
+                            cloud_params += ['log_X_' + aerosol]
+
+            elif (cloud_type == 'opaque_deck_plus_slab'):
+
+                cloud_params += ['log_P_top_deck']
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                        print('Only one slab can be defined with free or file_read')
+                        cloud_params += ['log_P_top_slab']
+                        cloud_params += ['Delta_log_P']
+                        cloud_params += ['log_r_m']
+                        cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_P_top_slab_' + aerosol]
+                        cloud_params += ['Delta_log_P_' + aerosol]
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+ 
+            elif (cloud_type == 'uniform_X'):
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    cloud_params += ['log_r_m']
+                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+
+            elif (cloud_type == 'opaque_deck_plus_uniform_X'):
+
+                cloud_params += ['log_P_top_deck']
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    cloud_params += ['log_r_m']
+                    cloud_params += ['log_X_Mie','r_i_real', 'r_i_complex']
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+            
+            # One slab defined with multiple species included
+            elif (cloud_type == 'one_slab'):
+
+                if (aerosol_species == ['free'] or aerosol_species == ['file_read']):
+                    raise Exception('Only one cloud species can be defined when using free or file_read. Use slab instead')
+
+                else:
+                    # define slab top pressure and extent
+                    cloud_params += ['log_P_top_slab']
+                    cloud_params += ['Delta_log_P']
+                    
+                    # add aerosol specific parameters
+                    for aerosol in aerosol_species: 
+                        cloud_params += ['log_r_m_' + aerosol]
+                        cloud_params += ['log_X_' + aerosol]
+
+            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab', 'opaque_deck_plus_uniform_X', 'one_slab']):
+                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, one_slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X.")
+        
+        elif (cloud_model == 'eddysed'):
+            # If working with a 2D patchy cloud model
+            if (cloud_dim == 2):
+                cloud_params += ['f_cloud']
+
+            cloud_params += ['kappa_cloud_eddysed']
+            cloud_params += ['g_cloud_eddysed']
+            cloud_params += ['w_cloud_eddysed']
+
+
         else:
             raise Exception("Error: unsupported cloud model.")
             
@@ -580,6 +755,12 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     if (offsets_applied == 'single_dataset'):
         params += ['delta_rel']
         N_offset_params = 1
+    elif (offsets_applied == 'two_datasets'):
+        params += ['delta_rel_1', 'delta_rel_2']
+        N_offset_params = 2
+    elif (offsets_applied == 'three_datasets'):
+        params += ['delta_rel_1', 'delta_rel_2', 'delta_rel_3']
+        N_offset_params = 3
     elif (offsets_applied == None):
         N_offset_params = 0
     else:
@@ -588,7 +769,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     #***** Error adjustment parameters *****#
 
     if (error_inflation == 'Line15'): 
-        params += ['log_b']                  # TBD: CHECK definition
+        params += ['b']
         N_error_params = 1
     elif (error_inflation == None):    
         N_error_params = 0
@@ -738,6 +919,14 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_PT = 8     
     elif (PT_profile == 'Madhu'):   # Madhusudhan & Seager (2009) profile
         len_PT = 6
+    elif (PT_profile == 'Pelletier'): # Pelletier (2021)
+        len_PT = len(PT_in)
+    elif (PT_profile == 'Guillot'): # Guillot (2010)
+        len_PT = 4
+    elif (PT_profile == 'Guillot_dayside'): # Guillot with f = 0.5 (2010)
+        len_PT = 4
+    elif (PT_profile == 'Line'): # Line (2013)
+        len_PT = 6
     elif (PT_profile == 'slope'):   # Piette & Madhusudhan (2020) profile
         len_PT = 8
     elif (PT_profile == 'file_read'):   # User provided file
@@ -748,6 +937,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_X = 4      # (log_X_bar_term_high, Delta_log_X_term_high, Delta_log_X_DN_high, log_X_deep)    
     elif (X_profile == 'two-gradients'):
         len_X = 8
+    elif (X_profile == 'lever'):
+        len_X = 3                     # (log_X_iso, log_P_X, Upsilon_X)
     elif (X_profile == 'isochem'):
         len_X = 4      # To cover multi-D cases, we use same log_X format as gradient profile
     elif (X_profile == 'file_read'):   # User provided file
@@ -786,6 +977,14 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             PT_state = PT_in                # Assign 6 parameters defining this profile
         elif (PT_profile == 'slope'):
             PT_state = PT_in                # Assign 8 parameters defining this profile
+        elif (PT_profile == 'Pelletier'):
+            PT_state = PT_in
+        elif (PT_profile == 'Guillot'):
+            PT_state = PT_in
+        elif (PT_profile == 'Guillot_dayside'):
+            PT_state = PT_in
+        elif (PT_profile == 'Line'):
+            PT_state = PT_in
                
     # 2D atmosphere
     elif (PT_dim == 2):
@@ -938,6 +1137,23 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                         log_X_state[q,5] = 0.0                   # No Day-Night gradient
                         log_X_state[q,6] = -2.0                  # Fix P (X_mid) to 10 mbar for isochem
                         log_X_state[q,7] = log_X_in[count]       # log_X_deep
+                        count += 1
+
+            elif (X_profile == 'lever'):  
+                
+                count = 0  # Counter to make tracking location in log_X_in easier
+                
+                # Loop over parametrised chemical species
+                for q, species in enumerate(param_species):
+                    if ((species_vert_gradient != []) and (species in species_vert_gradient)):
+                        log_X_state[q,0] = log_X_in[count]       # log_X_iso
+                        log_X_state[q,1] = log_X_in[count+1]     # log_P_X
+                        log_X_state[q,2] = log_X_in[count+2]     # Upsilon_X
+                        count += 3
+                    else:   # No altitude variation for this species
+                        log_X_state[q,0] = log_X_in[count]       # log_X_iso
+                        log_X_state[q,1] = -2.0                  # Fix P_X to 10 mbar for isochem
+                        log_X_state[q,2] = 0.0                   # Upsilon_X = 0 for isochem
                         count += 1
 
         # 2D atmosphere
@@ -1347,8 +1563,22 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # Set dummy parameter values, not used when cloud-free
         kappa_cloud_0 = 1.0e250
         P_cloud = 100.0
+        P_slab_bottom = 100.0
         a, gamma = 1.0, -4.0  
         f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
 
     # Patchy cloud model from MacDonald & Madhusudhan (2017)
     if (cloud_model == 'MacMad17'):
@@ -1367,6 +1597,8 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
         else:
             P_cloud = 100.0   # Set to 100 bar for models without a cloud deck
+
+        P_slab_bottom = 100.0  # Not used for this model
             
         # If cloud model has patchy gaps
         if (cloud_dim != 1):
@@ -1379,6 +1611,19 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                 f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0  # 1D uniform cloud
             else:
                 f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0   # Dummy values, not used when cloud-free
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
          
     # 3D patchy cloud model from MacDonald & Lewis (2022)
     elif (cloud_model == 'Iceberg'):
@@ -1418,8 +1663,260 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             kappa_cloud_0 = 1.0e250
             P_cloud = 100.0   
             f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+        P_slab_bottom = 100.0  # Not used for this model
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
+
+    # Mie clouds 
+    elif (cloud_model == 'Mie'):
+
+        # Turn clouds_in into an array 
+        clouds_in = np.asarray(clouds_in)
+        
+        # No haze in this model
+        a, gamma = 1.0, -4.0   # Dummy values, haze extinction disabled here
+
+        # Cloud is opaque up to P_cloud, and then follows an exponential distribution for 
+        # number density of aerosols. This is set by n_cloud 
+        kappa_cloud_0 = 1.0e250
+
+        # Set eddysed values to dummy values 
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
+        
+        if (cloud_dim == 1):
+            f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
+        elif (cloud_dim == 2):
+            try:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
+            except:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0]] 
+
+            phi_0 = -90
+            theta_0 = -90.0       
+
+        # Set the Mie parameters 
+        # Sorry that below is a bit of a mess if anyone is looking at this in the future
+        # There are a lot of different cloud models, and 
+        # numpy gets made depending on if the inputs are an array or a string (file read vs database aerosol)
+        # Details below
+        
+        # If the cloud is a fuzzy_deck, slab, fuzzy_deck_plus_slab, or opaque_deck_plus_slab model 
+        # it will contain the string 'log_P_top' in its parameter names 
+        if any("log_P_top" in s for s in cloud_param_names):
+
+            # If the cloud is a slab model, a fuzzy_deck_plus_slab, or an opaque_deck_plus_slab model 
+            # It will contain the string 'Delta_log_P' in it 
+            if any('Delta_log_P' in s for s in cloud_param_names):
+
+                # If it is a fuzzy_deck_plus_slab or an opaque_deck_plus_slab 
+                # It will contain the string 'log_P_top_deck' in it 
+                if any ('log_P_top_deck' in s for s in cloud_param_names):
+
+                    # If its a fuzzy_deck_plus_slab
+                    # It will contain the string 'log_n_max' in it 
+                    if any ('log_n_max' in s for s in cloud_param_names):
+
+                        # The try except is here because file_read option makes everything into a numpy file
+                        # So you have to add an extra [0] to get the indexing to work correctly 
+                        # Specifically, the file_read option doesn't like the float power line in r_m
+                        try:
+                            # Note of whats going on here 
+                            # np.char.find is finding strings in the cloud param names that have the string 
+                            # And that either returns a list of arrays, or something else, which is why we have the try-except 
+
+                            # Shared parameters, where the first index needs to be the deck species 
+                            # This is why we keep the deck and slab seperate and then join them together
+                            r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                            P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0]])
+                            P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0]])
+                            P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
+
+                            # Deck specific parameters 
+                            log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
+                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+
+                            # Slab specific parameters 
+                            log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                            P_slab_bottom = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top_slab')!= -1)[0]] + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
+                            
+                        except:
+                            r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                            P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0][0]])
+                            P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0][0]])
+                            P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
+
+                            log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
+                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+
+                            log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
+                            P_slab_bottom = np.power(10.0, (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
+                            
+
+                    # Otherwise, it is an opaque_deck_plus_slab
+                    else:
+                        try:
+                            # Shared parameters, where the first index needs to be the deck species 
+                            # This is why we keep the deck and slab seperate and then join them together
+                            r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                            P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0]])
+                            P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0]])
+                            P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
+
+                            # Opaque decks don't have the 'fuzziness' parameters 
+                            log_n_max = 0
+                            fractional_scale_height = 0
+
+                            # Slab specific parameters 
+                            log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                            P_slab_bottom = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top_slab')!= -1)[0]] + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
+                            
+                        except:
+                            r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                            P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0][0]])
+                            P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0][0]])
+                            try:
+                                P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
+                            # Put in because the file_read option doesn't like concatenate for some reason
+                            except:
+                                P_cloud = np.array([P_deck, P_slab])
+
+                            log_n_max = 0
+                            fractional_scale_height = 0
+
+                            log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
+                            P_slab_bottom = np.power(10.0, (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
+
+                
+                # Otherwise, it is just a slab model 
+                else:
+                    try:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
+                        P_slab_bottom = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]] + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0]])
+                    except:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
+                        P_slab_bottom = np.power(10.0, (P_cloud + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
+
+                    # Need to set the deck parameters to dummy values to pass into the cloud object 
+                    log_n_max = 0
+                    fractional_scale_height = 0
             
-    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma
+            # Otherwise, its just a fuzzy deck with no slabs or opaque_deck_plus_uniform_X
+            else:
+
+                # Fuzzy deck 
+                if any ('log_n_max' in s for s in cloud_param_names):
+                
+                    try:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
+                        log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
+                        fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+                    except:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
+                        log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
+                        fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+
+                    # Need to set the slab parameters to dummy values to pass into the cloud object 
+                    log_X_Mie = 100
+                    P_slab_bottom = 100.0
+                
+                # opaque_deck_plus_uniform_x
+                else:
+
+                    try:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+                        
+                    except:
+                        r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                        P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_top')[0][0]])
+                        log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
+
+                    # If uniform_X, you set the slab and deck parameters to dummy values to pass into the cloud object
+                    log_n_max = 0
+                    fractional_scale_height = 0
+                    P_slab_bottom = 100.0
+
+        
+        # If the aerosol is a uniform_X
+        else:
+
+            try:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
+                log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
+            except:
+                r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
+                log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]][0]
+
+            # If uniform_X, you set the slab and deck parameters to dummy values to pass into the cloud object
+            log_n_max = 0
+            fractional_scale_height = 0
+            P_cloud = 100.0
+            P_slab_bottom = 100.0
+
+        # See if its a free or file_read aerosol retrieval or not
+        if ('r_i_real' in cloud_param_names):
+            r_i_real = clouds_in[np.where(cloud_param_names == 'r_i_real')[0][0]]
+            r_i_complex = clouds_in[np.where(cloud_param_names == 'r_i_complex')[0][0]]
+        else:
+            r_i_real = 0
+            r_i_complex = 0
+
+    # This cloud model is to specifically take in kappa_cloud, g_cloud, and w_cloud from eddysed calculations
+    # i.e from PICASO, VIRGA
+    elif (cloud_model =='eddysed'):
+
+        kappa_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'kappa_cloud_eddysed')[0][0]]
+        g_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'g_cloud_eddysed')[0][0]]
+        w_cloud_eddysed = clouds_in[np.where(cloud_param_names == 'w_cloud_eddysed')[0][0]]
+        
+        # Set dummy parameter values, not used when cloud-free
+        kappa_cloud_0 = 1.0e250
+        P_cloud = 100.0
+        P_slab_bottom = 100.0
+        a, gamma = 1.0, -4.0  
+
+        if (cloud_dim == 1):
+            f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
+        elif (cloud_dim == 2):
+            try:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0][0]]    
+            except:
+                f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0]] 
+            phi_0 = -90
+            theta_0 = -90.0   
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+    
+    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
+           fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom, \
+           kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

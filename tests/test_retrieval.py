@@ -62,7 +62,7 @@ def test_continuum_retrieval():
 
     # Create the model object
     model = define_model(model_name, bulk_species, param_species,
-                        PT_profile = 'isotherm')
+                         PT_profile = 'isotherm')
 
     # Specify the pressure grid of the atmosphere
     P_min = 1.0e-7    # 0.1 ubar
@@ -128,7 +128,7 @@ def test_continuum_retrieval():
 
     # Load dataset, pre-load instrument PSF and transmission function
     data = load_data(data_dir, datasets, instruments, wl, wl_unit = 'micron',
-                    bin_width = 'half', spectrum_unit = 'transit_depth', skiprows = None)
+                     bin_width = 'half', spectrum_unit = 'transit_depth', skiprows = None)
 
     #***** Set priors for retrieval *****#
 
@@ -154,8 +154,8 @@ def test_continuum_retrieval():
     #***** Run atmospheric retrieval *****#
 
     run_retrieval(planet, star, model, opac, data, priors, wl, P, P_ref, R = R, 
-                    spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
-                    N_live = 400, verbose = True)
+                  spectrum_type = 'transmission', sampling_algorithm = 'MultiNest', 
+                  N_live = 400, verbose = True)
 
     #***** Read MultiNest retrieval results *****#
 
