@@ -29,22 +29,45 @@ the dependencies for POSEIDON: PyMultiNest and mpi4py.
    We recommend using WSL because PyMultiNest does not natively support Windows.
    However, it will work fine if you use WSL to install and run POSEIDON.
 
-.. attention::
-   We recommend installing POSEIDON in a fresh `Anaconda <https://www.anaconda.com/>`_ 
-   environment. You can create a new Python 3.9 environment via:
+CONDA_SUBDIR=osx-64 conda create -n [environment]   # create a new environment
+conda activate [environment]
+conda env config vars set CONDA_SUBDIR=osx-64  # subsequent commands use intel packages
 
-   .. code-block:: bash
+We recommend installing POSEIDON in a fresh `Anaconda <https://www.anaconda.com/>`_ 
+environment. The following instructions show you how to create the conda environment
+on either Linux (e.g. Ubuntu) or Mac OS.
 
-    conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.9
+Linux conda environment setup
+-----------------------------
 
-   Once the basic Python packages are installed in this fresh environment, you
-   can activate the environment where POSEIDON will dwell:
+POSEIDON currently supports Python versions up to 3.10. You can create a new 
+Python 3.10 anaconda environment via:
 
-   .. code-block:: bash
+.. code-block:: bash
 
-    conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+   conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.10
 
-   Note that POSEIDON currently supports Python up to 3.10.
+Once the basic Python packages are installed in this fresh environment, you
+can activate the environment where POSEIDON will dwell:
+
+.. code-block:: bash
+
+   conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+
+Mac OS conda environment setup
+------------------------------
+
+For Mac OS, you need to set the CONDA_SUBDIR environment variable to osx-64 
+(because PyMultiNest does not currently support ARM chips). You can do this via:
+
+.. code-block:: bash
+
+   CONDA_SUBDIR=osx-64 conda create -n 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.10
+   conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+   conda env config vars set CONDA_SUBDIR=osx-64
+
+Installing PyMultiNest
+----------------------
 
 `MultiNest <https://academic.oup.com/mnras/article/398/4/1601/981502>`_ is the 
 main sampling algorithm used for parameter space exploration in POSEIDON retrievals. 
