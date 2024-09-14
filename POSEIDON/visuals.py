@@ -3849,6 +3849,7 @@ def plot_histograms(planet, models, plot_parameters,
             output_prefix = model_name + '-'
 
             # Change directory into MultiNest result file folder
+            cwd = os.getcwd()
             os.chdir(output_dir + 'MultiNest_raw/')
             
             # Run PyMultiNest analyser to extract posterior samples
@@ -3857,7 +3858,8 @@ def plot_histograms(planet, models, plot_parameters,
             samples = analyzer.get_equal_weighted_posterior()[:,:-1]
 
             # Change directory back to directory where user's python script is located
-            os.chdir('../../../../')
+            os.chdir(cwd)
+            #os.chdir('../../../../')
 
             # Find total number of available posterior samples from MultiNest 
             N_samples = len(samples[:,0])
