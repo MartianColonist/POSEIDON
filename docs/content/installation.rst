@@ -29,10 +29,6 @@ the dependencies for POSEIDON: PyMultiNest and mpi4py.
    We recommend using WSL because PyMultiNest does not natively support Windows.
    However, it will work fine if you use WSL to install and run POSEIDON.
 
-CONDA_SUBDIR=osx-64 conda create -n [environment]   # create a new environment
-conda activate [environment]
-conda env config vars set CONDA_SUBDIR=osx-64  # subsequent commands use intel packages
-
 We recommend installing POSEIDON in a fresh `Anaconda <https://www.anaconda.com/>`_ 
 environment. The following instructions show you how to create the conda environment
 on either Linux (e.g. Ubuntu) or Mac OS.
