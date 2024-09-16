@@ -1764,7 +1764,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
                             ncol = n_columns, frameon = False)    # Legend settings
         
-    for legline in legend.legendHandles:
+    for legline in legend.legend_handles:
         if ((plot_full_res == True) or (show_data == True)):
             legline.set_linewidth(1.0)
         else:
@@ -2108,7 +2108,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     plt.tight_layout()
     
-    for legline in legend.legendHandles:
+    for legline in legend.legend_handles:
         legline.set_linewidth(1.0)
 
     # Write figure to file
