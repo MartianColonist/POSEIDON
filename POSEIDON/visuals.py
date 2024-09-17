@@ -1328,7 +1328,21 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         alphas (list of float, optional):
             Alpha values for binned spectra, '0.8' default
         legend_n_columns (integer):
-            Manually set the number of columns for the legend
+            Manually set the number of columns for the legend.
+        x_tick_fontsize (int, optional):
+            Font size for x-axis tick labels.
+        x_label_fontsize (int, optional):
+            Font size for x-axis label.
+        y_tick_fontsize (int, optional):
+            Font size for y-axis tick labels.
+        y_label_fontsize (int, optional):
+            Font size for y-axis label.
+        legend_fontsize (int, optional):
+            Font size for the legend.
+        plt_label_fontsize (int, optional):
+            Font size for the plot label.
+        planet_name_fontsize (int, optional):
+            Font size for the planet name.
 
     Returns:
         fig (matplotlib figure object):
@@ -2278,7 +2292,21 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         y_labels (bool, optional):
             If false, will remove y_ticks and y_label.
         legend_n_columns (integer):
-            Manually set the number of columns for the legend
+            Manually set the number of columns for the legend.
+        x_tick_fontsize (int, optional):
+            Font size for x-axis tick labels.
+        x_label_fontsize (int, optional):
+            Font size for x-axis label.
+        y_tick_fontsize (int, optional):
+            Font size for y-axis tick labels.
+        y_label_fontsize (int, optional):
+            Font size for y-axis label.
+        legend_fontsize (int, optional):
+            Font size for the legend.
+        plt_label_fontsize (int, optional):
+            Font size for the plot label.
+        planet_name_fontsize (int, optional):
+            Font size for the planet name.
      
     Returns:
         fig (matplotlib figure object):
