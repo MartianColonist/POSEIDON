@@ -430,7 +430,7 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     # Deploy the magic function
     axd = fig_combined.subplot_mosaic(
         """
-        BBBBB.AAAAA
+        BA
         """
     )
 
@@ -454,7 +454,7 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     cb.formatter.set_useOffset(False)
     cb.ax.set_title(r'$T \, \, \rm{(K)}$', horizontalalignment='left', pad=10)
     
-    plt.tight_layout()
+  #  plt.tight_layout()
 
     # Write figure to file
     file_name = output_dir + planet_name + '_' + model_name + '_Geometry.png'
@@ -3513,12 +3513,15 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
                          param_min, param_max, colour, x_max_array, alpha_hist):
     
     # Plot histogram
-    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array, alpha_hist)
+    _, low2, low1, median, high1, high2, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array, alpha_hist)
 
     # Adjust x-axis extent
     ax.set_xlim(param_min, param_max)
 
     ax.tick_params(axis='both', which='major', labelsize=8)
+
+    print(low2)
+    print(high2)
 
     return low1, median, high1
 
@@ -3601,8 +3604,24 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 param_min = span[q][0]
                 param_max = span[q][1]
 
+            if (plot_parameters[q] == 'log_SO2'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'SO$_2$ (%)'
+            if (plot_parameters[q] == 'log_H2'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'H$_2$ (%)'
+            if (plot_parameters[q] == 'log_CO2'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'CO$_2$ (%)'
+            if (plot_parameters[q] == 'log_H2S'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'H$_2$S (%)'
+            if (plot_parameters[q] == 'log_N2'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'N$_2$ (%)'
+
             x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
-                                  alpha=0.0, edgecolor='None', density=True, stacked=True)
+                                                alpha=0.0, edgecolor='None', density=True, stacked=True)
             
             x_max_array.append(x.max())
 
