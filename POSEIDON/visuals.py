@@ -425,12 +425,18 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
 
     # Create figure
-    fig, (ax1, ax2) = plt.subplots(2, figsize=(12,6))
-    gs = gridspec.GridSpec(1, 2, width_ratios=[1,1]) 
-    
-    ax1 = plt.subplot(gs[0])
-    ax2 = plt.subplot(gs[1])
-    
+    fig_combined = plt.figure(constrained_layout=True, figsize=(12, 6))  
+
+    # Deploy the magic function
+    axd = fig_combined.subplot_mosaic(
+        """
+        BBBBB.AAAAA
+        """
+    )
+
+    ax1 = axd['A']
+    ax2 = axd['B']
+
     # Plot terminator plane on LHS axis
     p = plot_transit(ax1, R_p, R_s, b_p, r, T, phi, phi_edge, theta, 
                      theta_edge, 'terminator', plot_labels) 
@@ -440,7 +446,7 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
                      theta_edge, 'day-night', plot_labels) 
     
     # Plot temperature colourbar
-    cbaxes = fig.add_axes([1.01, 0.131, 0.015, 0.786]) 
+    cbaxes = fig_combined.add_axes([1.01, 0.131, 0.015, 0.786]) 
     cb = plt.colorbar(p, cax = cbaxes)  
     tick_locator = ticker.MaxNLocator(nbins=8)
     cb.locator = tick_locator
@@ -455,7 +461,7 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
 
     plt.savefig(file_name, bbox_inches='tight', dpi=800)
 
-    return fig
+    return fig_combined
 
 
 def plot_geometry_spectrum_mixed(planet, star, model, atmosphere, spectra,
