@@ -1233,7 +1233,14 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  line_widths = [], xlabels = True, ylabels = True,
                  line_styles = [],
                  alphas = [],
-                 legend_n_columns = 0):
+                 legend_n_columns = 0,
+                 x_tick_fontsize = 12,
+                 x_label_fontsize = 16,
+                 y_tick_fontsize = 12,
+                 y_label_fontsize = 16,
+                 legend_fontsize = 10,
+                 plt_label_fontsize = 14,
+                 planet_name_fontsize = 16):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1697,35 +1704,35 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         
     # Set axis labels
     if xlabels == True:
-        ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+        ax1.set_xlabel(r'Wavelength (μm)', fontsize = x_label_fontsize)
 
     if ylabels == True:
         if (plot_type == 'transmission'):
             if (y_min_plt < 0.10):
-                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = y_label_fontsize)
             else:
-                ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+                ax1.set_ylabel(r'Transit Depth', fontsize =  y_label_fontsize)
         elif (plot_type == 'planet_star_radius_ratio'):
-            ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
+            ax1.set_ylabel(r'$R_p/R_*$', fontsize =  y_label_fontsize)
         elif (plot_type == 'time_average_transmission'):
-            ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
+            ax1.set_ylabel(r'Average Transit Depth', fontsize =  y_label_fontsize)
         elif (plot_type == 'emission'):
-            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize =  y_label_fontsize)
         elif ((plot_type == 'direct_emission') and (y_unit == 'Fp')):
-            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize =  y_label_fontsize)
         elif ((plot_type == 'direct_emission') and (y_unit in ['Fs', 'F*'])):
-            ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+            ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize =  y_label_fontsize)
         elif (plot_type == 'brightness_temp'):
-            ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
+            ax1.set_ylabel(r'Brightness Temperature (K)', fontsize =  y_label_fontsize)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
-             verticalalignment = 'top', transform = ax1.transAxes, fontsize = 16)
+             verticalalignment = 'top', transform = ax1.transAxes, fontsize = planet_name_fontsize)
   
     # Add plot label
     if (plt_label != None):
         ax1.text(0.03, 0.90, plt_label, horizontalalignment = 'left', 
-                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = 14)
+                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
 
     # Decide at which wavelengths to place major tick labels
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
@@ -1753,15 +1760,15 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
     # Add box around legend
     if (legend_box == True) and (legend_location != 'outside right'):
-        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
+        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
     elif legend_location == 'outside right':
-        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
     else:
-        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
+        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = n_columns, frameon = False)    # Legend settings
         
     for legline in legend.legend_handles:
