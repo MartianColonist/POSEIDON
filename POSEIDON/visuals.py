@@ -3804,7 +3804,7 @@ def plot_histograms(planet, models, plot_parameters,
         parameter_colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
                                  'saddlebrown', 'grey', 'brown']
     elif (N_models == 1) and (parameter_colour_list != []):
-        if (plot_parameters != []):
+        if (len(plot_parameters) != 0):
             if (len(parameter_colour_list) != len(plot_parameters)):
                 raise Exception("Number of parameter colours does not match the " + 
                                 "requested number of parameters to plot.")
