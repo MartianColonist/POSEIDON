@@ -7,7 +7,10 @@ import os.path
 import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d as gauss_conv
-from scipy.integrate import trapz
+try:
+    from scipy.integrate import trapezoid as trapz
+except ImportError:
+    from scipy.integrate import trapz
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 from spectres import spectres
 
