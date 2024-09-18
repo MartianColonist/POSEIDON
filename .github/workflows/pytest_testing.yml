@@ -53,7 +53,7 @@ jobs:
       if: runner.os == 'macOS'
       run: |
         echo "begin: PATH=$PATH;" 
-        CONDA_SUBDIR=osx-64 conda create -name test_install python=${{ matrix.python-version }} -y
+        CONDA_SUBDIR=osx-64 conda create --name test_install python=${{ matrix.python-version }} -y
 
     - name: Install mpi4py and pymultinest on Ubuntu
       if: runner.os == 'Linux'
