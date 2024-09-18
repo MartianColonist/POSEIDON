@@ -1767,11 +1767,11 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     
     # If ylabels = False, don't show them
     if ylabels == False:
-        ax.tick_params(labelleft=False)  
+        ax1.tick_params(labelleft=False)  
 
     # Set the x and y tick fontsizes
-    ax.tick_params(axis='x', labelsize=x_tick_fontsize)
-    ax.tick_params(axis='y', labelsize=y_tick_fontsize)
+    ax1.tick_params(axis='x', labelsize=x_tick_fontsize)
+    ax1.tick_params(axis='y', labelsize=y_tick_fontsize)
     
     # Switch to two columns if many spectra are being plotted
     if legend_n_columns == 0:
@@ -2873,22 +2873,22 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
 
     # Set the x and y tick fontsizes
-    ax.tick_params(axis='x', labelsize=x_tick_fontsize)
-    ax.tick_params(axis='y', labelsize=y_tick_fontsize)
+    ax1.tick_params(axis='x', labelsize=x_tick_fontsize)
+    ax1.tick_params(axis='y', labelsize=y_tick_fontsize)
 
     # Add planet name label
     if (show_planet_name == True):
         ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
-                verticalalignment = 'top', transform = ax1.transAxes, fontsize = planet_name_fontsize)
+                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = planet_name_fontsize)
 
     # Add plot label
     if (plt_label != None):
         if (show_planet_name == True):
             ax1.text(0.03, 0.90, plt_label, horizontalalignment = 'left', 
-                    verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
+                     verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
         else:
             ax1.text(0.03, 0.96, plt_label, horizontalalignment = 'left', 
-                    verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
+                     verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
 
     # Decide at which wavelengths to place major tick labels
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
@@ -2902,7 +2902,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     
     # If ylabels = False, don't show them
     if ylabels == False:
-        ax.tick_params(labelleft=False)  
+        ax1.tick_params(labelleft=False)  
 
     # Switch to two columns if many spectra are being plotted
     if legend_n_columns == 0:
