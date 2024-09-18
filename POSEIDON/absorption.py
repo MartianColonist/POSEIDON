@@ -20,7 +20,7 @@ except ImportError:
     cp = mock_missing('cupy')
 
 
-@jit(nopython = True)
+@jit(nopython = True, fastmath = True)
 def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
                                       x, nu_model, b1, b2, nu_opac, N_nu, 
                                       wl_interp = 'sample'):
@@ -129,7 +129,7 @@ def P_interpolate_wl_initialise_sigma(N_P_fine, N_T, N_P, N_wl, log_sigma,
     return sigma_pre_inp
                     
                 
-@jit(nopython = True)
+@jit(nopython = True, fastmath = True)
 def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_model,nu_cia, N_nu, 
                       wl_interp = 'sample'):
     '''
@@ -195,7 +195,7 @@ def wl_initialise_cia(N_T_cia, N_wl, log_cia, nu_model,nu_cia, N_nu,
     return cia_pre_inp
 
 
-@jit(nopython = True)
+@jit(nopython = True, fastmath = True)
 def T_interpolation_init(N_T_fine, T_grid, T_fine, y):
     ''' 
     Precomputes the T interpolation weight factors, so this does not
@@ -231,7 +231,7 @@ def T_interpolation_init(N_T_fine, T_grid, T_fine, y):
     return w_T
 
 
-@jit(nopython = True)
+@jit(nopython = True, fastmath = True)
 def T_interpolate_sigma(N_P_fine, N_T_fine, N_T, N_wl, sigma_pre_inp, T_grid, 
                         T_fine, y, w_T):
     ''' 
@@ -274,7 +274,7 @@ def T_interpolate_sigma(N_P_fine, N_T_fine, N_T, N_wl, sigma_pre_inp, T_grid,
     return sigma_inp
 
 
-@jit(nopython = True)
+@jit(nopython = True, fastmath = True)
 def T_interpolate_cia(N_T_fine, N_T_cia, N_wl, cia_pre_inp, T_grid_cia, 
                       T_fine, y, w_T):
     ''' 
@@ -954,7 +954,8 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             
     return sigma_stored, cia_stored, Rayleigh_stored, eta_stored, ff_stored, bf_stored
 
-@jit(nopython = True)
+
+@jit(nopython = True, fastmath = True)
 def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species,
                n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
                kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
@@ -1291,7 +1292,7 @@ def extinction_GPU(kappa_gas, kappa_Ray, kappa_cloud, i_bot, N_species, N_specie
 
 #***** Special optimised functions for line-by-line case *****#
 
-@jit(nopython=True)
+@jit(nopython = True, fastmath = True)
 def interpolate_cia_LBL(P, log_cia, nu_model, nu_cia, T, T_grid_cia, N_T_cia, 
                         N_wl, N_nu, y, w_T):
     
@@ -1343,7 +1344,7 @@ def interpolate_cia_LBL(P, log_cia, nu_model, nu_cia, T, T_grid_cia, N_T_cia,
     return cia_inp
 
 
-@jit(nopython=True)
+@jit(nopython = True, fastmath = True)
 def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid,
                           N_T, N_P, N_wl, N_nu, y, w_T):
     
@@ -1502,7 +1503,6 @@ def interpolate_sigma_LBL(log_sigma, nu_model, nu_opac, P, T, log_P_grid, T_grid
     return sigma_inp
 
 
-@jit
 def store_Rayleigh_eta_LBL(wl_model, chemical_species):
     
     ''' In line-by-line case, output refractive index array (eta) and
@@ -1533,7 +1533,7 @@ def store_Rayleigh_eta_LBL(wl_model, chemical_species):
     return Rayleigh_stored, eta_stored
 
 
-@jit(nopython=True)
+@jit(nopython = True, fastmath = True)
 def compute_kappa_LBL(j, k, wl_model, X, X_active, X_cia, X_ff, X_bf, n, P,
                       a, gamma, P_cloud, kappa_cloud_0, N_species, N_species_active,
                       N_cia_pairs, N_ff_pairs, N_bf_species, sigma_interp,
@@ -1860,30 +1860,29 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
     
 @jit(nopython = True)
 def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs, ff_pairs, bf_species,
-                            n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
-                            kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
-                            bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
-                            N_zones, T_fine, log_P_fine, P_surf, P_deep = 1000.0,
-                            contribution_molecule_list = [],
-                            bulk = False):                          # DOES P_DEEP SOLVE BD PROBLEM?!
+                                     n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
+                                     kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
+                                     bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
+                                     N_zones, T_fine, log_P_fine, P_surf, P_deep = 1000.0,
+                                     contribution_molecule_list = [], bulk = False):
+    '''
+    Main function to evaluate extinction coefficients for molecules / atoms,
+    Rayleigh scattering, hazes, and clouds for parameter combination
+    chosen in retrieval step.
+        
+    Takes in cross sections pre-interpolated to 'fine' P and T grids
+    before retrieval run (so no interpolation is required at each step).
+    Instead, for each atmospheric layer the extinction coefficient
+    is simply kappa = n * sigma[log_P_nearest, T_nearest, wl], where the
+    'nearest' values are the closest P_fine, T_fine points to the
+    actual P, T values in each layer. This results in a large speed gain.
     
-    ''' Main function to evaluate extinction coefficients for molecules / atoms,
-        Rayleigh scattering, hazes, and clouds for parameter combination
-        chosen in retrieval step.
-        
-        Takes in cross sections pre-interpolated to 'fine' P and T grids
-        before retrieval run (so no interpolation is required at each step).
-        Instead, for each atmospheric layer the extinction coefficient
-        is simply kappa = n * sigma[log_P_nearest, T_nearest, wl], where the
-        'nearest' values are the closest P_fine, T_fine points to the
-        actual P, T values in each layer. This results in a large speed gain.
-        
-        The output extinction coefficient arrays are given as a function
-        of layer number (indexed from low to high altitude), terminator
-        sector, and wavelength.
+    The output extinction coefficient arrays are given as a function
+    of layer number (indexed from low to high altitude), terminator
+    sector, and wavelength.
 
-        This is to turn off every opacity except one molecule.
-    
+    This is to turn off every opacity except one molecule.
+
     '''
     
     # Store length variables for mixing ratio arrays 
@@ -2090,31 +2089,31 @@ def extinction_spectrum_contribution(chemical_species, active_species, cia_pairs
     return kappa_gas, kappa_Ray, kappa_cloud
 
 
-@jit(nopython = True)
+@jit(nopython = True, fastmath = True)
 def extinction_spectrum_pressure_contribution(chemical_species, active_species, cia_pairs, ff_pairs, bf_species,
-                            n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
-                            kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
-                            bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
-                            N_zones, T_fine, log_P_fine, P_surf, P_deep = 1000.0,
-                            contribution_molecule = '',layer_to_ignore = 0, total = False):                          # DOES P_DEEP SOLVE BD PROBLEM?!
+                                              n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
+                                              kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
+                                              bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
+                                              N_zones, T_fine, log_P_fine, P_surf, P_deep = 1000.0,
+                                              contribution_molecule = '',layer_to_ignore = 0, total = False):                     
+    ''' 
+    Main function to evaluate extinction coefficients for molecules / atoms,
+    Rayleigh scattering, hazes, and clouds for parameter combination
+    chosen in retrieval step.
     
-    ''' Main function to evaluate extinction coefficients for molecules / atoms,
-        Rayleigh scattering, hazes, and clouds for parameter combination
-        chosen in retrieval step.
-        
-        Takes in cross sections pre-interpolated to 'fine' P and T grids
-        before retrieval run (so no interpolation is required at each step).
-        Instead, for each atmospheric layer the extinction coefficient
-        is simply kappa = n * sigma[log_P_nearest, T_nearest, wl], where the
-        'nearest' values are the closest P_fine, T_fine points to the
-        actual P, T values in each layer. This results in a large speed gain.
-        
-        The output extinction coefficient arrays are given as a function
-        of layer number (indexed from low to high altitude), terminator
-        sector, and wavelength.
+    Takes in cross sections pre-interpolated to 'fine' P and T grids
+    before retrieval run (so no interpolation is required at each step).
+    Instead, for each atmospheric layer the extinction coefficient
+    is simply kappa = n * sigma[log_P_nearest, T_nearest, wl], where the
+    'nearest' values are the closest P_fine, T_fine points to the
+    actual P, T values in each layer. This results in a large speed gain.
+    
+    The output extinction coefficient arrays are given as a function
+    of layer number (indexed from low to high altitude), terminator
+    sector, and wavelength.
 
-        This is to turn off the opacity of a single molecule in a single pressure layer 
-        Or, if total = True, turns off the entire layer 
+    This is to turn off the opacity of a single molecule in a single pressure layer 
+    Or, if total = True, turns off the entire layer.
     
     '''
     
