@@ -32,7 +32,8 @@ from .supported_chemicals import supported_species, supported_cia, inactive_spec
                                  fastchem_supported_species, aerosol_supported_species, \
                                   surface_supported_components
 from .parameters import assign_free_params, generate_state, \
-                        unpack_geometry_params, unpack_cloud_params
+                        unpack_geometry_params, unpack_cloud_params, \
+                        unpack_surface_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
                         extinction_LBL, extinction_GPU, extinction_spectrum_contribution, extinction_spectrum_pressure_contribution
 from .geometry import atmosphere_regions, angular_grids
@@ -876,6 +877,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
 
 def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_X_params = [], cloud_params = [], geometry_params = [],
+                    surface_params = [],
                     log_g = None, M_p = None, T_input = [], X_input = [], 
                     P_surf = None, P_param_set = 1.0e-2, He_fraction = 0.17, 
                     N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
@@ -905,6 +907,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             Parameters defining atmospheric aerosols.
         geometry_params (np.array of float):
             Terminator opening angle parameters.
+        surface_params (np.array of float):
+            Surface parameters
         log_g (float):
             Gravitational field of planet - only needed for free log_g parameter.
         M_p (float):
@@ -962,6 +966,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     aerosol_species = model['aerosol_species']
     Na_K_fixed_ratio = model['Na_K_fixed_ratio']
     PT_penalty = model['PT_penalty']
+
+    surface = model['surface']
+    surface_temp = model['surface_temp']
+    surface_model = model['surface_model']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -1071,6 +1079,12 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                                                            cloud_model, cloud_dim, 
                                                            N_params_cum, TwoD_type)
     
+    #***** Store surface properties *****#
+
+    P_surf, T_surf, albedo_surf, surface_component_percentages = unpack_surface_params(param_names, surface_params,
+                                                                                       surface, surface_temp, surface_model,
+                                                                                       N_params_cum)
+    
     # Compute the scale height (for fuzzy deck aerosol models)
     if is_physical == False:
         g = 0
@@ -1095,6 +1109,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie,
                   'P_cloud_bottom' : P_cloud_bottom, 
                   'kappa_cloud_eddysed' : kappa_cloud_eddysed, 'g_cloud_eddysed' : g_cloud_eddysed, 'w_cloud_eddysed' : w_cloud_eddysed,
+                  'T_surf' : T_surf, 'albedo_surf' : albedo_surf, 'surface_component_percentages' : surface_component_percentages
                  }
 
     return atmosphere

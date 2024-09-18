@@ -735,9 +735,14 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
         elif (surface_model == 'lab_data'):
             # If the surface components is greater than one, each component gets a percentage param
+            # For now, we only support two surfaces for now (so that it adds up to 100)
+
+            if len(surface_components) > 3:
+                raise Exception('Only two surface components (max) supported, so that the percentages add up to 100%')
+
             if len(surface_components) > 1:
-                for component in surface_components:
-                        surface_params += [component + '_percentage']
+                for n in range(len(surface_components)-1):
+                        surface_params += [surface_components[n] + '_percentage']
         else:
             raise Exception('Only suface models are gray, constant, and lab_data.')
         
@@ -2096,3 +2101,55 @@ def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
     return f_het, f_spot, f_fac, T_het, T_spot, T_fac, T_phot, log_g_het, \
            log_g_spot, log_g_fac, log_g_phot
 
+def unpack_surface_params(param_names, surface_in,
+                          surface, surface_temp, surface_model,
+                          N_params_cumulative):
+    '''
+    Extract the surface property values
+    from the drawn surface parameters, according to the model
+    specified by the user.
+    
+    Args:
+        param_names (np.array of str):
+            Free parameters defining this POSEIDON model.
+        surface_in (list of float | np.array of float):
+            Drawn values of the surface parameters.
+       surface (bool):
+            If True, model a surface via an opaque cloud deck.
+        surface_temp (bool):
+            If True, will create new parameter (T_surf)
+        surface_model (string):
+            Surface model definition 
+            (Options: gray, constant, lab_data)
+        N_params_cumulative (np.array of int):
+            Cumulative sum of number of parameters (used for indexing).
+
+    Returns:
+        P_surf, T_surf, albedo_surf, surface_component_percentages 
+
+    '''
+    
+    # Unpack names of geometry parameters
+    surface_param_names = param_names[N_params_cumulative[7]:N_params_cumulative[8]]
+
+    if ('log_P_surf' in surface_param_names):
+        P_surf = np.power(10.0, surface_in[np.where(surface_param_names == 'log_P_surf')[0][0]])
+    else:
+        P_surf = 1000
+    
+    if ('T_surf' in surface_param_names):
+        T_surf = surface_in[np.where(surface_param_names == 'T_surf')[0][0]]
+    else:
+        T_surf = 0
+    
+    if ('albedo_surf' in surface_param_names):
+        albedo_surf = surface_in[np.where(surface_param_names == 'albedo_surf')[0][0]]
+    else:
+        albedo_surf = 0
+    
+    if any("percentage" in s for s in surface_param_names):
+        surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+    else:
+        surface_component_percentages = 0
+    
+    return P_surf, T_surf, albedo_surf, surface_component_percentages
