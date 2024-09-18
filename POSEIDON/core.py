@@ -950,17 +950,17 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     bf_species = model['bf_species']
 
     # Checks for validity of user inputs
-    if (((T_input != []) or (X_input != [])) and Atmosphere_dimension > 1):
+    if (((len(T_input) != 0) or (len(X_input) != 0)) and Atmosphere_dimension > 1):
         raise Exception("Only 1D P-T and mixing ratio profiles are currently " +
                         "supported as user inputs. Multidimensional inputs " +
                         "will be added soon!")
-    if ((PT_profile == 'file_read') and (T_input == [])):
+    if ((PT_profile == 'file_read') and (len(T_input) == 0)):
         raise Exception("No user-provided P-T profile. Did you read in a file?")
-    if ((X_profile == 'file_read') and (X_input == [])):
+    if ((X_profile == 'file_read') and (len(X_input) == 0)):
         raise Exception("No user-provided composition profile. Did you read in a file?")
-    if ((cloud_params == []) and (cloud_model != 'cloud-free')):
+    if ((len(cloud_params) == 0) and (cloud_model != 'cloud-free')):
         raise Exception("Cloud parameters must be provided for cloudy models.")
-    if ((geometry_params == []) and (Atmosphere_dimension > 1) and
+    if ((len(geometry_params) == 0) and (Atmosphere_dimension > 1) and
         (sharp_DN_transition == False)):
             raise Exception("Geometry parameters must be provided for 2D or 3D models.")
     
