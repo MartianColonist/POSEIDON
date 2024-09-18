@@ -27,6 +27,7 @@ setup(
                         'pymultinest',
                         'spectres',
                         'jupyter',
-                        'pytest'],
+                        'pytest',
+                        'cmasher'],
     zip_safe = False,
 )
