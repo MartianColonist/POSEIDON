@@ -192,31 +192,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             physical_params += ['d']             # Distance to system (pc)
 
         N_physical_params = len(physical_params)   # Store number of physical parameters
-        params += physical_params                  # Add physical parameter names to combined list
-
-
-        #***** Surface parameters *****#
-    
-        if (surface == True):
-            surface_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
-
-        # Surface Models 
-        if (surface_model == 'constant'):
-            surface_params += ['surface_albedo']
-
-        elif (surface_model == 'lab_data'):
-            # If the surface components is greater than one, each component gets a percentage param
-            if len(surface_components) > 1:
-                for component in surface_components:
-                        surface_params += [component + '_percentage']
-        else:
-            raise Exception('Only suface models are gray, constant, and lab_data.')
-        
-        if surface_temp == True:
-            surface_params += ['T_surf']
-
-        N_surface_params = len(surface_params)   # Store number of physical parameters
-        params += surface_params                  # Add physical parameter names to combined list        
+        params += physical_params                  # Add physical parameter names to combined list    
 
         #***** PT profile parameters *****#
 
@@ -744,6 +720,30 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             
         N_cloud_params = len(cloud_params)   # Store number of cloud parameters
         params += cloud_params               # Add cloud parameter names to combined list
+
+        #***** Surface parameters *****#
+    
+        if (surface == True):
+            surface_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
+
+        if surface_temp == True:
+            surface_params += ['T_surf']
+
+        # Surface Models 
+        if (surface_model == 'constant'):
+            surface_params += ['albedo_surf']
+
+        elif (surface_model == 'lab_data'):
+            # If the surface components is greater than one, each component gets a percentage param
+            if len(surface_components) > 1:
+                for component in surface_components:
+                        surface_params += [component + '_percentage']
+        else:
+            raise Exception('Only suface models are gray, constant, and lab_data.')
+        
+
+        N_surface_params = len(surface_params)   # Store number of physical parameters
+        params += surface_params                  # Add physical parameter names to combined list    
             
         #***** Geometry parameters *****#
         
