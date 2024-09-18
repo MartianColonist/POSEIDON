@@ -1796,11 +1796,18 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = n_columns, frameon = False)    # Legend settings
         
-    for legline in legend.legend_handles:
-        if ((plot_full_res == True) or (show_data == True)):
-            legline.set_linewidth(1.0)
-        else:
-            legline.set_linewidth(2.0)
+    try:
+        for legline in legend.legend_handles:
+            if ((plot_full_res == True) or (show_data == True)):
+                legline.set_linewidth(1.0)
+            else:
+                legline.set_linewidth(2.0)
+    except AttributeError:
+        for legline in legend.legendHandles:
+            if ((plot_full_res == True) or (show_data == True)):
+                legline.set_linewidth(1.0)
+            else:
+                legline.set_linewidth(2.0)
     
     plt.tight_layout()
 
@@ -2140,8 +2147,12 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     plt.tight_layout()
     
-    for legline in legend.legend_handles:
-        legline.set_linewidth(1.0)
+    try:
+        for legline in legend.legend_handles:
+            legline.set_linewidth(1.0)
+    except AttributeError:
+        for legline in legend.legendHandles:
+            legline.set_linewidth(1.0)
 
     # Write figure to file
     if (save_fig == True):
