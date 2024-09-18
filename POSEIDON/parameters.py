@@ -16,7 +16,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
-                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty):
+                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty,
+                       surface_components, surface_model, surface_temp):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -110,6 +111,13 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         PT_penalty (bool):
             If True, introduces the sigma_smooth parameter for retrievals
             (only for the Pelletier 2021 P-T profile).
+        surface_components (list of strings):
+            List of surface components (if surface_model = 'Lab_data')
+        surface_temp (bool):
+            If True, will create new parameter (T_surf)
+        surface_model (string):
+            Surface model definition 
+            (Options: gray, constant, lab_data)
 
     Returns:
         params (np.array of str):
@@ -139,6 +147,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     cloud_params = []     # Cloud parameters
     geometry_params = []  # Geometry parameters
     stellar_params = []   # Stellar parameters
+    surface_params = []   # Surface parameters
 
     # Models with no atmosphere only have Rp as a free parameter
     if (disable_atmosphere == True):
@@ -182,11 +191,32 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         if (object_type == 'directly_imaged'):
             physical_params += ['d']             # Distance to system (pc)
 
-        if (surface == True):
-            physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
-
         N_physical_params = len(physical_params)   # Store number of physical parameters
         params += physical_params                  # Add physical parameter names to combined list
+
+
+        #***** Surface parameters *****#
+    
+        if (surface == True):
+            surface_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
+
+        # Surface Models 
+        if (surface_model == 'constant'):
+            surface_params += ['surface_albedo']
+
+        elif (surface_model == 'lab_data'):
+            # If the surface components is greater than one, each component gets a percentage param
+            if len(surface_components) > 1:
+                for component in surface_components:
+                        surface_params += [component + '_percentage']
+        else:
+            raise Exception('Only suface models are gray, constant, and lab_data.')
+        
+        if surface_temp == True:
+            surface_params += ['T_surf']
+
+        N_surface_params = len(surface_params)   # Store number of physical parameters
+        params += surface_params                  # Add physical parameter names to combined list        
 
         #***** PT profile parameters *****#
 
@@ -786,15 +816,17 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     cloud_params = np.array(cloud_params)
     geometry_params = np.array(geometry_params)
     stellar_params = np.array(stellar_params)
+    surface_params = np.array(surface_params)
     
     # The cumulative sum of the number of each type of parameter saves time indexing later 
     N_params_cumulative = np.cumsum([N_physical_params, N_PT_params, 
                                      N_species_params, N_cloud_params,
                                      N_geometry_params, N_stellar_params, 
-                                     N_offset_params, N_error_params])
+                                     N_offset_params, N_error_params,
+                                     N_surface_params])
     
     return params, physical_params, PT_params, X_params, cloud_params, \
-           geometry_params, stellar_params, N_params_cumulative
+           geometry_params, stellar_params, surface_params, N_params_cumulative
     
     
 def split_params(params_drawn, N_params_cumulative):
