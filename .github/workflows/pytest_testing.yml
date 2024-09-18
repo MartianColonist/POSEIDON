@@ -44,26 +44,26 @@ jobs:
         auto-activate-base: true
 
     - name: Create conda environment on Ubuntu
-      if: runner.os == 'ubuntu-latest'
+      if: runner.os == 'Linux'
       run: |
         echo "begin: PATH=$PATH;" 
         conda create --name test_install python=${{ matrix.python-version }} -y
 
     - name: Create conda environment on MacOS
-      if: runner.os == 'macos-latest'
+      if: runner.os == 'macOS'
       run: |
         echo "begin: PATH=$PATH;" 
         CONDA_SUBDIR=osx-64 conda create -name test_install python=${{ matrix.python-version }} -y
 
     - name: Install mpi4py and pymultinest on Ubuntu
-      if: runner.os == 'ubuntu-latest'
+      if: runner.os == 'Linux'
       run: |
         conda activate test_install || true
         conda install -c conda-forge mpi4py -y
         conda install -c conda-forge pymultinest -y
 
     - name: Install mpi4py and pymultinest on MacOS
-      if: runner.os == 'macos-latest'
+      if: runner.os == 'macOS'
       run: |
         conda activate test_install || true
         conda env config vars set CONDA_SUBDIR=osx-64
