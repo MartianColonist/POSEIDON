@@ -16,7 +16,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
-                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty):
+                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty,
+                       surface_components, surface_model, surface_temp):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -110,6 +111,13 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         PT_penalty (bool):
             If True, introduces the sigma_smooth parameter for retrievals
             (only for the Pelletier 2021 P-T profile).
+        surface_components (list of strings):
+            List of surface components (if surface_model = 'Lab_data')
+        surface_temp (bool):
+            If True, will create new parameter (T_surf)
+        surface_model (string):
+            Surface model definition 
+            (Options: gray, constant, lab_data)
 
     Returns:
         params (np.array of str):
@@ -184,6 +192,23 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
         if (surface == True):
             physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
+        
+        # New surface params
+        
+        # Surface Models 
+        if (surface_model == 'constant'):
+            physical_params += ['surface_albedo']
+
+        elif (surface_model == 'lab_data'):
+            # If the surface components is greater than one, each component gets a percentage param
+            if len(surface_components) > 1:
+                for component in surface_components:
+                        physical_params += [component + '_percentage']
+        else:
+            raise Exception('Only suface models are gray, constant, and lab_data.')
+        
+        if surface_temp == True:
+            physical_params += ['T_surf']
 
         N_physical_params = len(physical_params)   # Store number of physical parameters
         params += physical_params                  # Add physical parameter names to combined list
