@@ -55,11 +55,6 @@ jobs:
         echo "begin: PATH=$PATH;" 
         CONDA_SUBDIR=osx-64 conda create --name test_install python=${{ matrix.python-version }} -y
 
-    - name: Install setuptools_scm
-      run: |
-        conda activate test_install || true
-        pip install setuptools_scm setuptools_scm_git_archive
-
     - name: Install mpi4py and pymultinest on Ubuntu
       if: runner.os == 'Linux'
       run: |
@@ -78,7 +73,6 @@ jobs:
     - name: Install POSEIDON
       run: |
         conda activate test_install || true
-        python -m pip install --upgrade pip
         pip install -e .
 
     - name: Download input files (only CIA opacity for CI tests)
