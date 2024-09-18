@@ -44,9 +44,10 @@ from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon, reflection_Toon
 
-from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid
+from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid, find_nearest_less_than
+from .surfaces import load_surface_components, interpolate_surface_components
 
-from .utility import mock_missing, load_surface_components
+from .utility import mock_missing
 
 try:
     import cupy as cp
@@ -1234,6 +1235,12 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     scattering = model['scattering']
     reflection = model['reflection']
     reflection_up_to_5um = model['reflection_up_to_5um']
+    
+    surface = model['surface']
+    surface_temp = model['surface_temp']
+    surface_model = model['surface_model']
+    surface_component_albedos = model['surface_component_albedos']
+    surface_components = model['surface_components']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1297,6 +1304,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     kappa_cloud_eddysed = atmosphere['kappa_cloud_eddysed']
     g_cloud_eddysed = atmosphere['g_cloud_eddysed']
     w_cloud_eddysed = atmosphere['w_cloud_eddysed']
+
+    T_surf = atmosphere['T_surf']
+    albedo_surf = atmosphere['albedo_surf']
+    surface_component_percentages = atmosphere['surface_component_percentages']
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1559,6 +1570,20 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 # https://github.com/natashabatalha/virga/blob/ffa82d48ba77d841c73bb7b33793397d5a17413d/virga/justdoit.py#L191
                 else:
                     raise Exception('Only 1 aerosol species supported for scattering')
+                
+            # Surfaces : create the surf_reflect object 
+            if surface == True:
+
+                if surface_model == 'gray':
+                    surf_reflect = np.zeros_like(wl)
+                
+                elif surface_model == 'constant':
+                    surf_reflect = np.full_like(wl, albedo_surf)
+
+                elif surface_model == 'lab_data':
+                    surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos,)
+                
+
             
             
         # Running POSEIDON on the GPU
@@ -1682,25 +1707,96 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # With scattering, compute emission using PICASO's Toon implementation
         elif (scattering == True):
 
-            # Compute planet flux including scattering (PICASO implementation), see emission.py for details
-            F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                        kappa_Ray, kappa_cloud, kappa_tot,
-                                        w_cloud, g_cloud, zone_idx,
-                                        hard_surface = 0, tridiagonal = 0, 
-                                        Gauss_quad = 5, numt = 1)
-            
-            dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
+            if surface == True:
 
-            # For 1 + 1D fractional clouds
-            if cloud_dim == 2:
+                # Need to find where P_surf is to cut all the arrays above 
+                index_below_P_surf = find_nearest_less_than(P_surf,P)
+
+                # P is a 1D array
+                # T is a P x 1 x 1 array (for 1d models)
+                # kappa sare P x 1 x 1 x wl (for 1d models)
+                # w_cloud and g_cloud are the same dimensions as kappa
+
+                # If surface temperature is True, replace P_surf temperature with T_surf
+                if surface_temp == True:
+                    T[index_below_P_surf+1][0][0] = T_surf
                 
-                F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
-                                                        kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                                        w_cloud, g_cloud, zone_idx,
-                                                        hard_surface = 0, tridiagonal = 0, 
-                                                        Gauss_quad = 5, numt = 1)
+                # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
+                if (surface_model == 'gray') or (surface_model == 'constant'):
+
+                    # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                    # For surfaces, we cut everything below P_surf [which also makes things run faster! :) ]
+                    F_p, dtau = emission_Toon(P[index_below_P_surf+1:], 
+                                              T[index_below_P_surf+1:,:,:], 
+                                              wl, 
+                                              dtau_tot[index_below_P_surf+1:,:], 
+                                              kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                              kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                              kappa_tot[index_below_P_surf+1:,:,:,:],
+                                              w_cloud[index_below_P_surf+1:,:,:,:], 
+                                              g_cloud[index_below_P_surf+1:,:,:,:], 
+                                              zone_idx,
+                                              surf_reflect,
+                                              hard_surface = 1, tridiagonal = 0, 
+                                              Gauss_quad = 5, numt = 1)
+                    
+
+                    # For 1 + 1D fractional clouds
+                    if cloud_dim == 2:
+                        
+                        F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                                kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                                w_cloud, g_cloud, zone_idx,
+                                                                hard_surface = 0, tridiagonal = 0, 
+                                                                Gauss_quad = 5, numt = 1)
+                        
+                        F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
                 
-                F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+                elif (surface_model == 'lab_data'):
+
+                    # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                    F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                                kappa_Ray, kappa_cloud, kappa_tot,
+                                                w_cloud, g_cloud, zone_idx,
+                                                hard_surface = 0, tridiagonal = 0, 
+                                                Gauss_quad = 5, numt = 1)
+                    
+
+                    # For 1 + 1D fractional clouds
+                    if cloud_dim == 2:
+                        
+                        F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                                kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                                w_cloud, g_cloud, zone_idx,
+                                                                hard_surface = 0, tridiagonal = 0, 
+                                                                Gauss_quad = 5, numt = 1)
+                        
+                        F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+
+                dtau = dtau_tot 
+
+            # Else, its a gas giant (no hard surface)
+            else:
+
+                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                            kappa_Ray, kappa_cloud, kappa_tot,
+                                            w_cloud, g_cloud, zone_idx,
+                                            hard_surface = 0, tridiagonal = 0, 
+                                            Gauss_quad = 5, numt = 1)
+                
+                dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
+
+                # For 1 + 1D fractional clouds
+                if cloud_dim == 2:
+                    
+                    F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                            kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                            w_cloud, g_cloud, zone_idx,
+                                                            hard_surface = 0, tridiagonal = 0, 
+                                                            Gauss_quad = 5, numt = 1)
+                    
+                    F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
                 
         else:
             raise Exception("Error: Invalid scattering option")

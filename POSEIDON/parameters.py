@@ -734,14 +734,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             surface_params += ['albedo_surf']
 
         elif (surface_model == 'lab_data'):
-            # If the surface components is greater than one, each component gets a percentage param
-            # For now, we only support two surfaces for now (so that it adds up to 100)
-
-            if len(surface_components) > 3:
-                raise Exception('Only two surface components (max) supported, so that the percentages add up to 100%')
 
             if len(surface_components) > 1:
-                for n in range(len(surface_components)-1):
+                for n in range(len(surface_components)):
                         surface_params += [surface_components[n] + '_percentage']
         else:
             raise Exception('Only suface models are gray, constant, and lab_data.')
@@ -2149,6 +2144,8 @@ def unpack_surface_params(param_names, surface_in,
     
     if any("percentage" in s for s in surface_param_names):
         surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+        # Normalize the percentages so they add up to one
+        surface_component_percentages = surface_component_percentages/np.sum(surface_component_percentages)
     else:
         surface_component_percentages = 0
     

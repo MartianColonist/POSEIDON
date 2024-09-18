@@ -1838,27 +1838,3 @@ def mock_missing(name):
             f'The module {name} you tried to call is not importable; '
             f'this is likely due to it not being installed.')
     return type(name, (), {'__init__': init})
-
-def load_surface_components(surface_components):
-
-    # Empty surface_component_albedos array
-    surface_component_albedos = []
-
-    # Find the directory where the user downloaded the input grid
-    input_file_path = os.environ.get("POSEIDON_input_data")
-
-    if input_file_path == None:
-        raise Exception("POSEIDON cannot locate the input folder.\n" +
-                        "Please set the 'POSEIDON_input_data' variable in " +
-                        "your .bashrc or .bash_profile to point to the " +
-                        "POSEIDON input folder.")
-    
-    # Load in the aerosol species
-    surface_components = np.array(surface_components)
-
-    for component in surface_components:
-        file_path = input_file_path + 'surface_reflectivities/' + component + '.txt'
-        data = np.loadtxt(file_path).T
-        surface_component_albedos.append(data)
-
-    return surface_component_albedos
