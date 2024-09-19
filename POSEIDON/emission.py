@@ -484,6 +484,7 @@ def tri_diag_solve(l, a, b, c, d):
 def emission_Toon(P, T, wl, dtau_tot, 
                   kappa_Ray, kappa_cloud, kappa_tot,
                   w_cloud, g_cloud, zone_idx,
+                  surf_reflect,
                   hard_surface = 0, tridiagonal = 0, 
                   Gauss_quad = 5, numt = 1):
     
@@ -577,8 +578,10 @@ def emission_Toon(P, T, wl, dtau_tot,
     # ubar 1 is calculated below (outgoing incident angles)
     # IMPORTANT : We end up redefining iubar = ubar1[ng,nt] to iubar = gangle[ng]
     # 
-    # surf_reflect = 0s (for emission, eventually will add support for terresterial planets) 
-    # hard_surface = 0 (support only for gas giants)
+    # surf_reflect = 0s if surface is false or its a gray surface
+    # otherwise, it is constant or from lab data
+    #
+    # hard_surface = 0 (gas giants) or 1 (terrestrial worlds)
     # tridiagonal = 0 (support only for tridiagonal matrices)
     #
     # We additionally loop over the gauss angles at the end
@@ -620,9 +623,6 @@ def emission_Toon(P, T, wl, dtau_tot,
     N_wl = len(wl)
     N_layer = len(P)
     N_level = N_layer + 1 # Number of levels (one more than the number of layers)
-
-    #### No reflective surface (for now)
-    surf_reflect = np.zeros(N_wl)
 
     T_level = np.zeros(N_level)
     log_P_level = np.zeros(N_level)
@@ -723,7 +723,8 @@ def emission_Toon(P, T, wl, dtau_tot,
     b_top = (1.0 - np.exp(-tau_top / mu1 )) * all_b[0,:] * np.pi #  Btop=(1.-np.exp(-tautop/ubari))*B[0]
     #print('hard_surface=',hard_surface)
     if hard_surface:
-        b_surface = all_b[-1,:]*np.pi #for terrestrial, hard surface  
+        emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
+        b_surface =  emissivity*all_b[-1,:]*np.pi #for terrestrial, hard surface  
     else: 
         b_surface= (all_b[-1,:] + b1[-1,:]*mu1)*np.pi #(for non terrestrial)
 
@@ -867,6 +868,7 @@ def numba_cumsum(mat):
 def reflection_Toon(P, wl, dtau_tot,
                     kappa_Ray, kappa_cloud, kappa_tot,
                     w_cloud, g_cloud, zone_idx,
+                    surf_reflect,
                     single_phase = 3, multi_phase = 0,
                     frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                     Gauss_quad = 5, numt = 1,
@@ -1007,7 +1009,8 @@ def reflection_Toon(P, wl, dtau_tot,
     # w0_og = w_tot      calculated below (weighted, combined single scattering albedo)
     # cosb_og = g_cloud  (IMPORTANT : in reflection, we don't take the weighted version)
     #
-    # surf_reflect = 0s (for emission, eventually will add support for terresterial planets) 
+    # surf_reflect = 0s if surface is false or its a gray surface
+    # otherwise, it is constant or from lab data
     #
     # ubar0 (ingoing incident angles) are calculated below with phase_angle 0
     # ubar1 (outgoing incident angles) are calculated below with phase_angle = 0
@@ -1122,9 +1125,7 @@ def reflection_Toon(P, wl, dtau_tot,
     f = np.sin(colatitude)                   # Define to eliminate repetition
     ubar0 = np.outer(np.cos(longitude-phase_angle) , f) #ng by nt 
     ubar1 = np.outer(np.cos(longitude), f) 
- 
-    #### No reflective surface (for now)
-    surf_reflect = np.zeros(N_wl)
+
  
     # FOPI is just an array of 1s (solar)
     F0PI = np.zeros(N_wl) + 1

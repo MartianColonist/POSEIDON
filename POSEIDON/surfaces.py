@@ -67,7 +67,7 @@ def interpolate_surface_components(wl,surface_components,surface_component_albed
             Array of [wavelength,albedo] for each txt file loaded in
     '''
 
-    surf_reflect_array = np.array()
+    surf_reflect_array = []
 
     for n in range(len(surface_component_albedos)):
 
@@ -75,8 +75,8 @@ def interpolate_surface_components(wl,surface_components,surface_component_albed
         albedo_txt_file = surface_component_albedos[n][1]
 
         if (np.min(wl) < np.min(wavelength_txt_file)) or (np.max(wl) > np.max(wavelength_txt_file)):
-            exception_txt = ('The wl grid exceeds the wavelengths of the albedo file: ' + surface_components[n] + '(' + 
-                             str(np.min(wavelength_txt_file)) + ', ' + str(np.ax(wavelength_txt_file)) + ')')
+            exception_txt = ('The wl grid exceeds the wavelengths of the albedo file: ' + surface_components[n] + ' (' + 
+                             str(np.min(wavelength_txt_file)) + ', ' + str(np.max(wavelength_txt_file)) + ')')
             raise Exception(exception_txt)
         
         # Create interpolate object

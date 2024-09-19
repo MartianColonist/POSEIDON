@@ -738,6 +738,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             if len(surface_components) > 1:
                 for n in range(len(surface_components)):
                         surface_params += [surface_components[n] + '_percentage']
+        elif (surface_model == 'gray'):
+            pass
         else:
             raise Exception('Only suface models are gray, constant, and lab_data.')
         

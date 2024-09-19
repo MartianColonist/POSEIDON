@@ -44,8 +44,8 @@ from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon, reflection_Toon
 
-from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid, find_nearest_less_than
-from .surfaces import load_surface_components, interpolate_surface_components
+from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid
+from .surfaces import load_surface_components, interpolate_surface_components, find_nearest_less_than
 
 from .utility import mock_missing
 
@@ -558,8 +558,8 @@ def define_model(model_name, bulk_species, param_species,
     
     # Same with T_surface (needs scattering on)
     if surface == True and surface_temp == True:
-        if scattering != True:
-            raise Exception('An emitting surface requires scattering = True')
+    #    if scattering != True:
+    #        raise Exception('An emitting surface requires scattering = True')
         if surface_model == 'gray':
             raise Exception('Surface temperatures only apply to non-gray surfaces (surface_model = lab_data or constant)')
 
@@ -578,6 +578,9 @@ def define_model(model_name, bulk_species, param_species,
         if 'K' not in param_species or 'Na' not in param_species:
             raise Exception('If Na_K_fixed_ratio = True, please include Na and K in the param species')
         param_species = [i for i in param_species if i != 'K']
+
+    if reflection_up_to_5um == True and surface == True:
+        raise Exception('Reflection up to 5 um only available for gas giants')
 
     # If PT_penalty = True but PT_profile != Pelletier, need to throw up an error
     if PT_penalty == True and PT_profile != 'Pelletier':
@@ -1719,7 +1722,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
                 # If surface temperature is True, replace P_surf temperature with T_surf
                 if surface_temp == True:
-                    T[index_below_P_surf+1][0][0] = T_surf
+                    # At this point, the temperature array T is 1D
+                    T[index_below_P_surf+1] = T_surf
                 
                 # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
                 if (surface_model == 'gray') or (surface_model == 'constant'):
@@ -1727,12 +1731,12 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     # Compute planet flux including scattering (PICASO implementation), see emission.py for details
                     # For surfaces, we cut everything below P_surf [which also makes things run faster! :) ]
                     F_p, dtau = emission_Toon(P[index_below_P_surf+1:], 
-                                              T[index_below_P_surf+1:,:,:], 
+                                              T[index_below_P_surf+1:], 
                                               wl, 
                                               dtau_tot[index_below_P_surf+1:,:], 
                                               kappa_Ray[index_below_P_surf+1:,:,:,:], 
                                               kappa_cloud[index_below_P_surf+1:,:,:,:], 
-                                              kappa_tot[index_below_P_surf+1:,:,:,:],
+                                              kappa_tot[index_below_P_surf+1:,:],
                                               w_cloud[index_below_P_surf+1:,:,:,:], 
                                               g_cloud[index_below_P_surf+1:,:,:,:], 
                                               zone_idx,
@@ -1743,36 +1747,74 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
                     # For 1 + 1D fractional clouds
                     if cloud_dim == 2:
-                        
-                        F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
-                                                                kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                                                w_cloud, g_cloud, zone_idx,
-                                                                hard_surface = 0, tridiagonal = 0, 
-                                                                Gauss_quad = 5, numt = 1)
+
+                        F_p_clear, dtau_clear = emission_Toon(P[index_below_P_surf+1:], 
+                                                              T[index_below_P_surf+1:], 
+                                                              wl, 
+                                                              dtau_tot_clear[index_below_P_surf+1:,:], 
+                                                              kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                              kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                              kappa_tot_clear[index_below_P_surf+1:,:],
+                                                              w_cloud[index_below_P_surf+1:,:,:,:], 
+                                                              g_cloud[index_below_P_surf+1:,:,:,:], 
+                                                              zone_idx,
+                                                              surf_reflect,
+                                                              hard_surface = 1, tridiagonal = 0, 
+                                                              Gauss_quad = 5, numt = 1)
                         
                         F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
                 
+                # If we aer using lab data, we need to loop over each component 
                 elif (surface_model == 'lab_data'):
-
-                    # Compute planet flux including scattering (PICASO implementation), see emission.py for details
-                    F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                                kappa_Ray, kappa_cloud, kappa_tot,
-                                                w_cloud, g_cloud, zone_idx,
-                                                hard_surface = 0, tridiagonal = 0, 
-                                                Gauss_quad = 5, numt = 1)
                     
+                    F_p_array = []
 
-                    # For 1 + 1D fractional clouds
-                    if cloud_dim == 2:
+                    for surf_reflect in surf_reflect_array:
+
+                        # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                        # For surfaces, we cut everything below P_surf [which also makes things run faster! :) ]
+                        F_p_temp, dtau = emission_Toon(P[index_below_P_surf+1:], 
+                                                T[index_below_P_surf+1:], 
+                                                wl, 
+                                                dtau_tot[index_below_P_surf+1:,:], 
+                                                kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                                kappa_tot[index_below_P_surf+1:,:],
+                                                w_cloud[index_below_P_surf+1:,:,:,:], 
+                                                g_cloud[index_below_P_surf+1:,:,:,:], 
+                                                zone_idx,
+                                                surf_reflect,
+                                                hard_surface = 1, tridiagonal = 0, 
+                                                Gauss_quad = 5, numt = 1)
                         
-                        F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
-                                                                kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                                                w_cloud, g_cloud, zone_idx,
-                                                                hard_surface = 0, tridiagonal = 0, 
+
+                        # For 1 + 1D fractional clouds
+                        if cloud_dim == 2:
+
+                            F_p_clear, dtau_clear = emission_Toon(P[index_below_P_surf+1:], 
+                                                                T[index_below_P_surf+1:], 
+                                                                wl, 
+                                                                dtau_tot_clear[index_below_P_surf+1:,:], 
+                                                                kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                                kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                                kappa_tot_clear[index_below_P_surf+1:,:],
+                                                                w_cloud[index_below_P_surf+1:,:,:,:], 
+                                                                g_cloud[index_below_P_surf+1:,:,:,:], 
+                                                                zone_idx,
+                                                                surf_reflect,
+                                                                hard_surface = 1, tridiagonal = 0, 
                                                                 Gauss_quad = 5, numt = 1)
-                        
-                        F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+                            
+                            F_p_temp = (f_cloud*F_p_temp) + ((1-f_cloud)*F_p_clear)
 
+                        F_p_array.append(F_p_temp)
+                    
+                    # Need to take the weighted averaged 
+                    F_p = np.zeros_like(wl)
+                    for n in range(len(surface_component_percentages)):
+                        F_p += surface_component_percentages[n]*F_p_array[n]
+                
+                # Reset the dtau used in photosphere measurements back to dtau_tot (the non cut version)
                 dtau = dtau_tot 
 
             # Else, its a gas giant (no hard surface)
@@ -1803,85 +1845,180 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         # If reflection is being computed
         if (reflection == True):
-            
-            # This option will only compute reflection up to 5 um 
-            # to speed up retrievals 
-            if reflection_up_to_5um == True:
-                
-                # Make sure the wavelength grid actually goes up to 5 um
-                try:
-                    index_5um = find_nearest(wl,5)
-                except:
-                    raise Exception('Does the wavelength object go up to 5um? (reflection_up_to_5um = True)')
-                
-                # Make new, temporary arrays of inputs only up to 5 um
-                wl_cut = wl[:index_5um]
-                dtau_tot_cut = dtau_tot[:,:index_5um]
-                kappa_Ray_cut = kappa_Ray[:,:,:,:index_5um]
-                kappa_cloud_cut = kappa_cloud[:,:,:,:index_5um]
-                kappa_tot_cut = kappa_tot[:,:index_5um]
-                w_cloud_cut = w_cloud[:,:,:,:index_5um]
-                g_cloud_cut = g_cloud[:,:,:,:index_5um]
 
-                # Compute the albedo using PICASO's implementation (see emission.py for details)
-                albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
-                                             kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
-                                             w_cloud_cut, g_cloud_cut, zone_idx,
+            if surface == True:
+
+                # Need to find where P_surf is to cut all the arrays above 
+                index_below_P_surf = find_nearest_less_than(P_surf,P)
+
+                # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
+                if (surface_model == 'gray') or (surface_model == 'constant'):
+                    
+                    albedo = reflection_Toon(P[index_below_P_surf+1:], 
+                                             wl, 
+                                             dtau_tot[index_below_P_surf+1:,:],
+                                             kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                             kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                             kappa_tot[index_below_P_surf+1:,:],
+                                             w_cloud[index_below_P_surf+1:,:,:,:],
+                                             g_cloud[index_below_P_surf+1:,:,:,:], 
+                                             zone_idx, 
+                                             surf_reflect,
                                              single_phase = 3, multi_phase = 0,
                                              frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                              Gauss_quad = 5, numt = 1,
                                              toon_coefficients=0, tridiagonal=0, b_top=0)
-                
-                # Create an albedo of 0's from 5um onwards
-                albedo_zeros = np.zeros(len(wl[index_5um:]))
-
-                # Joint both arrays together
-                albedo = np.concatenate((albedo_cut, albedo_zeros))
-
-                # For 1 + 1D patchy clouds
-                if cloud_dim == 2:
-
-                    dtau_tot_clear_cut = dtau_tot_clear[:,:index_5um]
-                    kappa_cloud_clear_cut = kappa_cloud_clear[:,:,:,:index_5um]
-                    kappa_tot_clear_cut = kappa_tot_clear[:,:index_5um]
-
-                    albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
-                                                    kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
-                                                    w_cloud_cut, g_cloud_cut, zone_idx,
-                                                    single_phase = 3, multi_phase = 0,
-                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                                    Gauss_quad = 5, numt = 1,
-                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
                     
+                    if cloud_dim == 2:
 
-                    albedo_clear = np.concatenate((albedo_clear_cut, albedo_zeros))
+                        albedo_clear = reflection_Toon(P[index_below_P_surf+1:], 
+                                                       wl, 
+                                                       dtau_tot_clear[index_below_P_surf+1:,:],
+                                                       kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                       kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                       kappa_tot_clear[index_below_P_surf+1:,:],
+                                                       w_cloud[index_below_P_surf+1:,:,:,:], 
+                                                       g_cloud[index_below_P_surf+1:,:,:,:], 
+                                                       zone_idx, 
+                                                       surf_reflect,
+                                                       single_phase = 3, multi_phase = 0,
+                                                       frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                       Gauss_quad = 5, numt = 1,
+                                                       toon_coefficients=0, tridiagonal=0, b_top=0)
+                        
+
+                        albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+
+                # If we aer using lab data, we need to loop over each component 
+                elif (surface_model == 'lab_data'):
                     
-                    albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+                    albedo_array = []
 
+                    for surf_reflect in surf_reflect_array:
 
-            # Else, just use the default arrays
+                        albedo_temp = reflection_Toon(P[index_below_P_surf+1:], 
+                                                wl, 
+                                                dtau_tot[index_below_P_surf+1:,:],
+                                                kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                                kappa_tot[index_below_P_surf+1:,:],
+                                                w_cloud[index_below_P_surf+1:,:,:,:],
+                                                g_cloud[index_below_P_surf+1:,:,:,:], 
+                                                zone_idx, 
+                                                surf_reflect,
+                                                single_phase = 3, multi_phase = 0,
+                                                frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                Gauss_quad = 5, numt = 1,
+                                                toon_coefficients=0, tridiagonal=0, b_top=0)
+                        
+                        if cloud_dim == 2:
+
+                            albedo_clear = reflection_Toon(P[index_below_P_surf+1:], 
+                                                        wl, 
+                                                        dtau_tot_clear[index_below_P_surf+1:,:],
+                                                        kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                        kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                        kappa_tot_clear[index_below_P_surf+1:,:],
+                                                        w_cloud[index_below_P_surf+1:,:,:,:], 
+                                                        g_cloud[index_below_P_surf+1:,:,:,:], 
+                                                        zone_idx, 
+                                                        surf_reflect,
+                                                        single_phase = 3, multi_phase = 0,
+                                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                        Gauss_quad = 5, numt = 1,
+                                                        toon_coefficients=0, tridiagonal=0, b_top=0)
+                            
+
+                            albedo_temp = (f_cloud*albedo_temp) + ((1-f_cloud)*albedo_clear)
+
+                        albedo_array.append(albedo_temp)
+                    
+                    # Need to take the weighted averaged 
+                    albedo = np.zeros_like(wl)
+                    for n in range(len(surface_component_percentages)):
+                        albedo += surface_component_percentages[n]*albedo_array[n]
+
+            # Gas Giants
             else:
-                
-                albedo = reflection_Toon(P, wl, dtau_tot,
-                            kappa_Ray, kappa_cloud, kappa_tot,
-                            w_cloud, g_cloud, zone_idx,
-                            single_phase = 3, multi_phase = 0,
-                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                            Gauss_quad = 5, numt = 1,
-                            toon_coefficients=0, tridiagonal=0, b_top=0)
-                
-                if cloud_dim == 2:
 
-                    albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
-                                            kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                            w_cloud, g_cloud, zone_idx,
-                                            single_phase = 3, multi_phase = 0,
-                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                            Gauss_quad = 5, numt = 1,
-                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                # This option will only compute reflection up to 5 um 
+                # to speed up retrievals 
+                if reflection_up_to_5um == True:
                     
+                    # Make sure the wavelength grid actually goes up to 5 um
+                    try:
+                        index_5um = find_nearest(wl,5)
+                    except:
+                        raise Exception('Does the wavelength object go up to 5um? (reflection_up_to_5um = True)')
+                    
+                    # Make new, temporary arrays of inputs only up to 5 um
+                    wl_cut = wl[:index_5um]
+                    dtau_tot_cut = dtau_tot[:,:index_5um]
+                    kappa_Ray_cut = kappa_Ray[:,:,:,:index_5um]
+                    kappa_cloud_cut = kappa_cloud[:,:,:,:index_5um]
+                    kappa_tot_cut = kappa_tot[:,:index_5um]
+                    w_cloud_cut = w_cloud[:,:,:,:index_5um]
+                    g_cloud_cut = g_cloud[:,:,:,:index_5um]
 
-                    albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+                    # Compute the albedo using PICASO's implementation (see emission.py for details)
+                    albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
+                                                kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
+                                                w_cloud_cut, g_cloud_cut, zone_idx,
+                                                single_phase = 3, multi_phase = 0,
+                                                frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                Gauss_quad = 5, numt = 1,
+                                                toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    # Create an albedo of 0's from 5um onwards
+                    albedo_zeros = np.zeros(len(wl[index_5um:]))
+
+                    # Joint both arrays together
+                    albedo = np.concatenate((albedo_cut, albedo_zeros))
+
+                    # For 1 + 1D patchy clouds
+                    if cloud_dim == 2:
+
+                        dtau_tot_clear_cut = dtau_tot_clear[:,:index_5um]
+                        kappa_cloud_clear_cut = kappa_cloud_clear[:,:,:,:index_5um]
+                        kappa_tot_clear_cut = kappa_tot_clear[:,:index_5um]
+
+                        albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
+                                                        kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
+                                                        w_cloud_cut, g_cloud_cut, zone_idx,
+                                                        single_phase = 3, multi_phase = 0,
+                                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                        Gauss_quad = 5, numt = 1,
+                                                        toon_coefficients=0, tridiagonal=0, b_top=0)
+                        
+
+                        albedo_clear = np.concatenate((albedo_clear_cut, albedo_zeros))
+                        
+                        albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+
+
+                # Else, just use the default arrays
+                else:
+                    
+                    albedo = reflection_Toon(P, wl, dtau_tot,
+                                kappa_Ray, kappa_cloud, kappa_tot,
+                                w_cloud, g_cloud, zone_idx,
+                                single_phase = 3, multi_phase = 0,
+                                frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                Gauss_quad = 5, numt = 1,
+                                toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    if cloud_dim == 2:
+
+                        albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
+                                                kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                w_cloud, g_cloud, zone_idx,
+                                                single_phase = 3, multi_phase = 0,
+                                                frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                Gauss_quad = 5, numt = 1,
+                                                toon_coefficients=0, tridiagonal=0, b_top=0)
+                        
+
+                        albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
 
                     
         # Calculate effective photosphere radius at tau = 2/3
