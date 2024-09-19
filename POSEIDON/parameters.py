@@ -1683,7 +1683,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
     elif (cloud_model == 'Mie'):
 
         # Turn clouds_in into an array 
-        clouds_in = np.asarray(clouds_in)
+        try:
+            clouds_in = np.asarray(clouds_in)
+
+        # New in python 3.11, this if for file_read and free
+        except:
+            clouds_in = np.asarray(clouds_in, dtype = 'object')
         
         # No haze in this model
         a, gamma = 1.0, -4.0   # Dummy values, haze extinction disabled here
