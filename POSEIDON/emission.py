@@ -725,7 +725,8 @@ def emission_Toon(P, T, wl, dtau_tot,
     #print('hard_surface=',hard_surface)
     if hard_surface:
         emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
-        b_surface =  emissivity*planck_lambda_arr([T_surf], wl)[-1,:]*np.pi #for terrestrial, hard surface  
+        #b_surface =  emissivity*planck_lambda_arr([T_surf], wl)[-1,:]*np.pi #for terrestrial, hard surface
+        b_surface =  emissivity*all_b[-1,:]*np.pi #for terrestrial, hard surface  
     else: 
         b_surface= (all_b[-1,:] + b1[-1,:]*mu1)*np.pi #(for non terrestrial)
 
