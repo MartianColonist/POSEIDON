@@ -555,6 +555,10 @@ def define_model(model_name, bulk_species, param_species,
     if surface == True and surface_model != 'gray':
         if scattering != True and reflection != True:
             raise Exception('Non gray surfaces (emitting or reflecting) must have scattering or reflection = True')
+        
+    # TEMPORARILY REMOVE T_SURF FOR NOW
+    if surface_temp == True:
+        raise Exception('A surface temperature disentangled from PT profile not available (yet)')
     
     # Same with T_surface (needs scattering on)
     if surface == True and surface_temp == True:

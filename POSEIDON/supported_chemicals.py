@@ -47,4 +47,9 @@ aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4_liqu
                                       'TiC', 'TiO2_anatase', 'TiO2_rutile', 'VO', 'ZnS',
                                       'MgSiO3_r_m_std_dev_01','MgSiO3_r_m_std_dev_1','MgSiO3_g_w_calc_mean','MgSiO3_g_w_calc_trap'])
 
-surface_supported_components = np.array(['Alkaline_basalt_small', 'Lunar_mare_basalt', 'Mars_breccia'])
+surface_supported_components = np.array(['Albite_dust', 'Alkaline_basalt_large', 'Alkaline_basalt_small', 
+                                         'Andesite', 'Basalt_glass', 'Basalt_tuff', 'Diorite', 'Gabbro', 
+                                         'Granite', 'Harzburgite', 'Hematite', 'Lherzolite', 'Lunar_anorthosite', 
+                                         'Lunar_mare_basalt', 'Magnesium_sulfate', 'Mars_basalt_shergottites', 
+                                         'Mars_breccia', 'Norite', 'Phonolite', 'Pyrite', 'Rhyolite', 'Tephrite', 
+                                         'Tholeiitic_basalt', 'Trachybasalt', 'Trachyte', ])
