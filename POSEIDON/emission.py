@@ -486,7 +486,8 @@ def emission_Toon(P, T, wl, dtau_tot,
                   w_cloud, g_cloud, zone_idx,
                   surf_reflect,
                   hard_surface = 0, tridiagonal = 0, 
-                  Gauss_quad = 5, numt = 1):
+                  Gauss_quad = 5, numt = 1,
+                  T_surf = 0):
     
     ###############################################
     # ORIGINAL PICASO PREAMBLE (fluxes.py, get_thermal_1d())
@@ -724,7 +725,7 @@ def emission_Toon(P, T, wl, dtau_tot,
     #print('hard_surface=',hard_surface)
     if hard_surface:
         emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
-        b_surface =  emissivity*all_b[-1,:]*np.pi #for terrestrial, hard surface  
+        b_surface =  emissivity*planck_lambda_arr([T_surf], wl)[-1,:]*np.pi #for terrestrial, hard surface  
     else: 
         b_surface= (all_b[-1,:] + b1[-1,:]*mu1)*np.pi #(for non terrestrial)
 

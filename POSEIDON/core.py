@@ -558,8 +558,8 @@ def define_model(model_name, bulk_species, param_species,
     
     # Same with T_surface (needs scattering on)
     if surface == True and surface_temp == True:
-    #    if scattering != True:
-    #        raise Exception('An emitting surface requires scattering = True')
+        if scattering != True:
+            raise Exception('An emitting surface tempearture (disentangled from PT profile) requires scattering = True')
         if surface_model == 'gray':
             raise Exception('Surface temperatures only apply to non-gray surfaces (surface_model = lab_data or constant)')
 
@@ -1719,11 +1719,6 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 # T is a P x 1 x 1 array (for 1d models)
                 # kappa sare P x 1 x 1 x wl (for 1d models)
                 # w_cloud and g_cloud are the same dimensions as kappa
-
-                # If surface temperature is True, replace P_surf temperature with T_surf
-                if surface_temp == True:
-                    # At this point, the temperature array T is 1D
-                    T[index_below_P_surf+1] = T_surf
                 
                 # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
                 if (surface_model == 'gray') or (surface_model == 'constant'):
@@ -1742,7 +1737,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                               zone_idx,
                                               surf_reflect,
                                               hard_surface = 1, tridiagonal = 0, 
-                                              Gauss_quad = 5, numt = 1)
+                                              Gauss_quad = 5, numt = 1,
+                                              T_surf = T_surf)
                     
 
                     # For 1 + 1D fractional clouds
@@ -1760,7 +1756,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                               zone_idx,
                                                               surf_reflect,
                                                               hard_surface = 1, tridiagonal = 0, 
-                                                              Gauss_quad = 5, numt = 1)
+                                                              Gauss_quad = 5, numt = 1,
+                                                              T_surf = T_surf)
                         
                         F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
                 
@@ -1785,7 +1782,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                 zone_idx,
                                                 surf_reflect,
                                                 hard_surface = 1, tridiagonal = 0, 
-                                                Gauss_quad = 5, numt = 1)
+                                                Gauss_quad = 5, numt = 1,
+                                                T_surf = T_surf)
                         
 
                         # For 1 + 1D fractional clouds
@@ -1803,7 +1801,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                                 zone_idx,
                                                                 surf_reflect,
                                                                 hard_surface = 1, tridiagonal = 0, 
-                                                                Gauss_quad = 5, numt = 1)
+                                                                Gauss_quad = 5, numt = 1,
+                                                                T_surf = T_surf)
                             
                             F_p_temp = (f_cloud*F_p_temp) + ((1-f_cloud)*F_p_clear)
 
