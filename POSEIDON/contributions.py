@@ -17,13 +17,16 @@ from mpi4py import MPI
 import cmasher as cmr
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+import matplotlib.style
 import matplotlib.colors as colors
 
-from .constants import R_J, R_E
+plt.style.use('classic')
+plt.rc('font', family = 'serif')
+matplotlib.rcParams['svg.fonttype'] = 'none'
+matplotlib.rcParams['figure.facecolor'] = 'white'
+
 from .utility import closest_index, mock_missing, bin_spectrum
-
 from .absorption import extinction, extinction_LBL
-
 from .transmission import TRIDENT
 from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
@@ -134,17 +137,21 @@ def check_atmosphere_physical(atmosphere, opac):
 # Spectral Contribution Functions
 #################################
 
-def extinction_spectral_contribution(chemical_species, active_species, cia_pairs, ff_pairs, bf_species, aerosol_species,
-               n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
-               kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
-               bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
-               N_zones, T_fine, log_P_fine, P_surf, enable_Mie, n_aerosol_array, 
-               sigma_Mie_array, P_deep = 1000.0,
-               contribution_species = '',
-               bulk_species = False,
-               cloud_contribution = False,
-               cloud_species = '',
-               cloud_total_contribution = False,):
+@jit(nopython = True)
+def extinction_spectral_contribution(chemical_species, active_species, cia_pairs, 
+                                     ff_pairs, bf_species, aerosol_species,
+                                     n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, 
+                                     a, gamma, P_cloud, kappa_cloud_0, sigma_stored,
+                                     cia_stored, Rayleigh_stored, ff_stored, 
+                                     bf_stored, enable_haze, enable_deck, 
+                                     enable_surface, N_sectors, N_zones, 
+                                     T_fine, log_P_fine, P_surf, enable_Mie,
+                                     n_aerosol_array, sigma_Mie_array, 
+                                     P_deep = 1000.0, contribution_species = '',
+                                     bulk_species = False,
+                                     cloud_contribution = False,
+                                     cloud_species = '', 
+                                     cloud_total_contribution = False):
     
     ''' Main function to evaluate extinction coefficients for molecules / atoms,
         Rayleigh scattering, hazes, and clouds for parameter combination
@@ -271,7 +278,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
                             n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
                         else:
-                            n_n_cia = 0
+                            n_n_cia = 0.0
 
                     # If bulk is true or cloud contribution is true, we are only interested in the bulk species contribution 
                     if bulk_species == True or cloud_contribution == True:
@@ -281,7 +288,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                             n_n_cia = n_cia_1*n_cia_2            # Product of number densities of cia pair
                     
                         else:
-                            n_n_cia = 0
+                            n_n_cia = 0.0
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -308,7 +315,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                     if bound_free == True:
                         n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
                     else:
-                        n_q = 0
+                        n_q = 0.0
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -327,17 +334,17 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                         # Since He is param, but isn't an active species, it doesn't have an active_index
 
                         if contribution_species == 'He':
-                            n_q = 0
+                            n_q = 0.0
                         
                         elif q == contribution_molecule_active_index:
                             n_q = n_level*X_active[q,i,j,k]   # Number density of this active species
                 
                         else:
-                            n_q = 0
+                            n_q = 0.0
                     
                     else:
                         # If bulk is true, cloud is true, or bound_free is True, then everything in active is turned off 
-                        n_q = 0
+                        n_q = 0.0
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -355,14 +362,14 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                         elif q in bulk_species_indices:
                             n_q = n_level*X[q,i,j,k]   # Number density of given species
                         else:
-                            n_q = 0
+                            n_q = 0.0
 
                     else:
                         # If bulk is true, cloud is true, and bound_free is true, only keep the bulk species on 
                         if q in bulk_species_indices:
                             n_q = n_level*X[q,i,j,k]   # Number density of given species
                         else:
-                            n_q = 0
+                            n_q = 0.0
                     
                     # For each wavelength
                     for l in range(N_wl):
@@ -370,8 +377,6 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                         # Add Rayleigh scattering to total extinction in layer i, sector j, zone k, for each wavelength
                         kappa_Ray[i,j,k,l] += n_q * Rayleigh_stored[q,l]
         
-
-            
             # CLOUD CONTRIBUTION 
             # If haze is enabled in this model  
             if (enable_haze == 1):
@@ -386,7 +391,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                         
                         # If we are not looking at the cloud contribution 
                         if cloud_contribution == False:
-                            haze_amp = 0
+                            haze_amp = 0.0
                     
                         # Add haze scattering to total extinction in layer i, sector j, for each wavelength
                         kappa_cloud[i,j,k,l] += haze_amp * slope[l]
@@ -395,7 +400,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
             if (enable_deck == 1):
 
                 if cloud_contribution == False:
-                    kappa_cloud_0 = 0
+                    kappa_cloud_0 = 0.0
 
                 # Set extinction inside cloud deck
                 kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
@@ -417,32 +422,32 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
 
                 # If cloud contribution = True, we need to find the species we want the contribution of 
                 if cloud_contribution == True and cloud_total_contribution == False:
-                    for n in range(len(aerosol_species)):
-                        if cloud_species == aerosol_species[n]:
-                            aerosol_species_index = n
+                    for q in range(len(aerosol_species)):
+                        if cloud_species == aerosol_species[q]:
+                            aerosol_species_index = q
 
                 # No opaque clouds 
                 if len(n_aerosol_array) == len(sigma_Mie_array):
                     for aerosol in range(len(n_aerosol_array)):
                         for i in range(i_bot,N_layers):
-                            for q in range(len(wl)):
+                            for l in range(len(wl)):
                                 
                                 # If we don't want the cloud contribution 
                                 if cloud_contribution == False:
-                                    kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * 0
+                                    kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
 
                                 # If we want one species of cloud contribution 
                                 elif cloud_contribution == True and cloud_total_contribution == False:
 
                                     if aerosol == aerosol_species_index:
-                                        kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
+                                        kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][l]
 
                                     else:
-                                        kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * 0
+                                        kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
 
                                 # If we want the total cloud contribution 
                                 elif cloud_total_contribution == True:
-                                    kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
+                                    kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][l]
                         
 
                 # Opaque Deck is the first element in n_aerosol_array
@@ -451,55 +456,55 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                 else:
                     for aerosol in range(len(n_aerosol_array)):
                             
-                            if cloud_contribution == False:
-                                if aerosol == 0:
-                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += 0
+                        if cloud_contribution == False:
+                            if aerosol == 0:
+                                kappa_cloud[(P > P_cloud[0]),j,k,:] += 0.0
 
-                                else:
-                                    for i in range(i_bot,N_layers):
-                                        for q in range(len(wl)):
-                                            kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* 0
-                            
-                            elif cloud_contribution == True and cloud_total_contribution == False:
+                            else:
+                                for i in range(i_bot,N_layers):
+                                    for l in range(len(wl)):
+                                        kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
+                        
+                        elif cloud_contribution == True and cloud_total_contribution == False:
 
-                                if aerosol == 0:
-                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += 0
+                            if aerosol == 0:
+                                kappa_cloud[(P > P_cloud[0]),j,k,:] += 0.0
 
-                                else:
-                                    for i in range(i_bot,N_layers):
-                                        for q in range(len(wl)):
-                                            if aerosol - 1 == aerosol_species_index:
-                                                kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
-                                            else:
-                                                kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* 0
+                            else:
+                                for i in range(i_bot,N_layers):
+                                    for l in range(len(wl)):
+                                        if aerosol-1 == aerosol_species_index:
+                                            kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
+                                        else:
+                                            kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
 
-                            elif cloud_total_contribution == True:
-                                    
-                                if aerosol == 0:
-                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += 1.0e250
+                        elif cloud_total_contribution == True:
+                                
+                            if aerosol == 0:
+                                kappa_cloud[(P > P_cloud[0]),j,k,:] += 1.0e250
 
-                                else:
-                                    for i in range(i_bot,N_layers):
-                                        for q in range(len(wl)):
-                                                kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
+                            else:
+                                for i in range(i_bot,N_layers):
+                                    for l in range(len(wl)):
+                                            kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
 
     return kappa_gas, kappa_Ray, kappa_cloud
 
 
 def spectral_contribution(planet, star, model, atmosphere, opac, wl,
-                     spectrum_type = 'transmission', save_spectrum = False,
-                     disable_continuum = False, suppress_print = False,
-                     Gauss_quad = 2, use_photosphere_radius = True,
-                     device = 'cpu', y_p = np.array([0.0]),
-                     contribution_species_list = [],
-                     bulk_species = True, 
-                     cloud_contribution = False, 
-                     cloud_species_list = [],
-                     cloud_total_contribution = False):
+                          spectrum_type = 'transmission', save_spectrum = False,
+                          disable_continuum = False, suppress_print = False,
+                          Gauss_quad = 2, use_photosphere_radius = True,
+                          device = 'cpu', y_p = np.array([0.0]),
+                          contribution_species_list = [],
+                          bulk_species = True, 
+                          cloud_contribution = False, 
+                          cloud_species_list = [],
+                          cloud_total_contribution = False):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere
-    in order to get the spectral contribution of species
+    in order to get the spectral contribution of each species.
 
     Args:
         planet (dict):
@@ -826,7 +831,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 w_cloud = np.zeros_like(wl)
                 g_cloud = np.zeros_like(wl)
 
-
+                aerosol_species = np.array(aerosol_species)
+                
             # Calculate extinction coefficients in standard mode
 
             # Numba will get mad if P_cloud is not an array (because you can have more than one cloud now)
@@ -851,22 +857,23 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             kappa_gas_contribution_array = []
             kappa_cloud_contribution_array = []
             spectrum_contribution_list_names = []
-            
+      
             # If you want to see only the bulk species contribution, this runs first 
             if bulk_species == True:
     
-                kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_spectral_contribution(chemical_species, active_species,
-                                                                                    CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                                                                    n, T, P, wl, X, X_active, X_CIA, 
-                                                                                    X_ff, X_bf, a, gamma, P_cloud, 
-                                                                                    kappa_cloud_0, sigma_stored, 
-                                                                                    CIA_stored, Rayleigh_stored, 
-                                                                                    ff_stored, bf_stored, enable_haze, 
-                                                                                    enable_deck, enable_surface,
-                                                                                    N_sectors, N_zones, T_fine, 
-                                                                                    log_P_fine, P_surf, enable_Mie, 
-                                                                                    n_aerosol, sigma_ext_cloud,
-                                                                                    bulk_species = True)
+                kappa_gas_temp, kappa_Ray_temp, \
+                kappa_cloud_temp = extinction_spectral_contribution(chemical_species, active_species,
+                                                                    CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                    n, T, P, wl, X, X_active, X_CIA, 
+                                                                    X_ff, X_bf, a, gamma, P_cloud, 
+                                                                    kappa_cloud_0, sigma_stored, 
+                                                                    CIA_stored, Rayleigh_stored, 
+                                                                    ff_stored, bf_stored, enable_haze, 
+                                                                    enable_deck, enable_surface,
+                                                                    N_sectors, N_zones, T_fine, 
+                                                                    log_P_fine, P_surf, enable_Mie, 
+                                                                    n_aerosol, sigma_ext_cloud,
+                                                                    bulk_species = True)
 
                 kappa_gas_contribution_array.append(kappa_gas_temp)
                 kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -878,20 +885,21 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                 for i in range(len(contribution_species_list)):
 
-                    kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_spectral_contribution(chemical_species, active_species,
-                                                                                    CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                                                                    n, T, P, wl, X, X_active, X_CIA, 
-                                                                                    X_ff, X_bf, a, gamma, P_cloud, 
-                                                                                    kappa_cloud_0, sigma_stored, 
-                                                                                    CIA_stored, Rayleigh_stored, 
-                                                                                    ff_stored, bf_stored, enable_haze, 
-                                                                                    enable_deck, enable_surface,
-                                                                                    N_sectors, N_zones, T_fine, 
-                                                                                    log_P_fine, P_surf, enable_Mie, 
-                                                                                    n_aerosol, sigma_ext_cloud,
-                                                                                    contribution_species=contribution_species_list[i],
-                                                                                    bulk_species = False,
-                                                                                    cloud_contribution = False)
+                    kappa_gas_temp, kappa_Ray_temp, \
+                    kappa_cloud_temp = extinction_spectral_contribution(chemical_species, active_species,
+                                                                        CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                        n, T, P, wl, X, X_active, X_CIA, 
+                                                                        X_ff, X_bf, a, gamma, P_cloud, 
+                                                                        kappa_cloud_0, sigma_stored, 
+                                                                        CIA_stored, Rayleigh_stored, 
+                                                                        ff_stored, bf_stored, enable_haze, 
+                                                                        enable_deck, enable_surface,
+                                                                        N_sectors, N_zones, T_fine, 
+                                                                        log_P_fine, P_surf, enable_Mie, 
+                                                                        n_aerosol, sigma_ext_cloud,
+                                                                        contribution_species=contribution_species_list[i],
+                                                                        bulk_species = False,
+                                                                        cloud_contribution = False)
 
                     kappa_gas_contribution_array.append(kappa_gas_temp)
                     kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -905,19 +913,20 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 # Default for the non Mie clouds 
                 if cloud_total_contribution == True or enable_Mie == False:
 
-                    kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_spectral_contribution(chemical_species, active_species,
-                                                                CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                                                n, T, P, wl, X, X_active, X_CIA, 
-                                                                X_ff, X_bf, a, gamma, P_cloud, 
-                                                                kappa_cloud_0, sigma_stored, 
-                                                                CIA_stored, Rayleigh_stored, 
-                                                                ff_stored, bf_stored, enable_haze, 
-                                                                enable_deck, enable_surface,
-                                                                N_sectors, N_zones, T_fine, 
-                                                                log_P_fine, P_surf, enable_Mie, 
-                                                                n_aerosol, sigma_ext_cloud,
-                                                                cloud_contribution = True,
-                                                                cloud_total_contribution = True)
+                    kappa_gas_temp, kappa_Ray_temp, \
+                    kappa_cloud_temp = extinction_spectral_contribution(chemical_species, active_species,
+                                                                        CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                        n, T, P, wl, X, X_active, X_CIA, 
+                                                                        X_ff, X_bf, a, gamma, P_cloud, 
+                                                                        kappa_cloud_0, sigma_stored, 
+                                                                        CIA_stored, Rayleigh_stored, 
+                                                                        ff_stored, bf_stored, enable_haze, 
+                                                                        enable_deck, enable_surface,
+                                                                        N_sectors, N_zones, T_fine, 
+                                                                        log_P_fine, P_surf, enable_Mie, 
+                                                                        n_aerosol, sigma_ext_cloud,
+                                                                        cloud_contribution = True,
+                                                                        cloud_total_contribution = True)
 
                     kappa_gas_contribution_array.append(kappa_gas_temp)
                     kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -931,19 +940,20 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                     
                     for i in range(len(cloud_species_list)):
 
-                        kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_spectral_contribution(chemical_species, active_species,
-                                            CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                            n, T, P, wl, X, X_active, X_CIA, 
-                                            X_ff, X_bf, a, gamma, P_cloud, 
-                                            kappa_cloud_0, sigma_stored, 
-                                            CIA_stored, Rayleigh_stored, 
-                                            ff_stored, bf_stored, enable_haze, 
-                                            enable_deck, enable_surface,
-                                            N_sectors, N_zones, T_fine, 
-                                            log_P_fine, P_surf, enable_Mie, 
-                                            n_aerosol, sigma_ext_cloud,
-                                            cloud_contribution = True,
-                                            cloud_species = cloud_species_list[i])
+                        kappa_gas_temp, kappa_Ray_temp, \
+                        kappa_cloud_temp = extinction_spectral_contribution(chemical_species, active_species,
+                                                                            CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                            n, T, P, wl, X, X_active, X_CIA, 
+                                                                            X_ff, X_bf, a, gamma, P_cloud, 
+                                                                            kappa_cloud_0, sigma_stored, 
+                                                                            CIA_stored, Rayleigh_stored, 
+                                                                            ff_stored, bf_stored, enable_haze, 
+                                                                            enable_deck, enable_surface,
+                                                                            N_sectors, N_zones, T_fine, 
+                                                                            log_P_fine, P_surf, enable_Mie, 
+                                                                            n_aerosol, sigma_ext_cloud,
+                                                                            cloud_contribution = True,
+                                                                            cloud_species = cloud_species_list[i])
 
                         kappa_gas_contribution_array.append(kappa_gas_temp)
                         kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -963,9 +973,9 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         
         # Total Spectrum First 
         spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray), 
-                            kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
-                            R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
-                            theta_edge)
+                           kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
+                           R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                           theta_edge)
 
         spectrum_contribution_list = []
 
@@ -976,9 +986,9 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         
             # Call the core TRIDENT routine to compute the transmission spectrum
             spectrum_temp = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas_temp + kappa_Ray), 
-                            kappa_cloud_temp, enable_deck, enable_haze, b_p, y_p[0],
-                            R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
-                            theta_edge)
+                                    kappa_cloud_temp, enable_deck, enable_haze, b_p, y_p[0],
+                                    R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                                    theta_edge)
             
             spectrum_contribution_list.append(spectrum_temp)
 
@@ -1031,10 +1041,10 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
             # Compute planet flux including scattering (PICASO implementation), see emission.py for details
             F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                        kappa_Ray, kappa_cloud, kappa_tot,
-                                        w_cloud, g_cloud, zone_idx,
-                                        hard_surface = 0, tridiagonal = 0, 
-                                        Gauss_quad = 5, numt = 1)
+                                      kappa_Ray, kappa_cloud, kappa_tot,
+                                      w_cloud, g_cloud, zone_idx,
+                                      hard_surface = 0, tridiagonal = 0, 
+                                      Gauss_quad = 5, numt = 1)
             
             dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
@@ -1045,12 +1055,12 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         if (reflection == True):
 
             albedo = reflection_Toon(P, wl, dtau_tot,
-                                    kappa_Ray, kappa_cloud, kappa_tot,
-                                    w_cloud, g_cloud, zone_idx,
-                                    single_phase = 3, multi_phase = 0,
-                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                    Gauss_quad = 5, numt = 1,
-                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                                     kappa_Ray, kappa_cloud, kappa_tot,
+                                     w_cloud, g_cloud, zone_idx,
+                                     single_phase = 3, multi_phase = 0,
+                                     frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                     Gauss_quad = 5, numt = 1,
+                                     toon_coefficients=0, tridiagonal=0, b_top=0)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -1185,10 +1195,10 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                 # Compute planet flux including scattering (PICASO implementation), see emission.py for details
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                            kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                            w_cloud, g_cloud, zone_idx,
-                                            hard_surface = 0, tridiagonal = 0, 
-                                            Gauss_quad = 5, numt = 1)
+                                          kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                          w_cloud, g_cloud, zone_idx,
+                                          hard_surface = 0, tridiagonal = 0, 
+                                          Gauss_quad = 5, numt = 1)
             
                 
                 dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
@@ -1196,16 +1206,16 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             else:
                 raise Exception("Error: Invalid scattering option")
             
-                    # Add in the separate reflection  
+            # Add in the separate reflection  
             if (reflection == True):
 
                 albedo = reflection_Toon(P, wl, dtau_tot,
-                                        kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                        w_cloud, g_cloud, zone_idx,
-                                        single_phase = 3, multi_phase = 0,
-                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                        Gauss_quad = 5, numt = 1,
-                                        toon_coefficients=0, tridiagonal=0, b_top=0)
+                                         kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                         w_cloud, g_cloud, zone_idx,
+                                         single_phase = 3, multi_phase = 0,
+                                         frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                         Gauss_quad = 5, numt = 1,
+                                         toon_coefficients=0, tridiagonal=0, b_top=0)
 
             # Calculate effective photosphere radius at tau = 2/3
             if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -1213,7 +1223,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 # Running POSEIDON on the CPU
                 if (device == 'cpu'):
                     R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]),
-                                                        wl, photosphere_tau = 2/3)
+                                                          wl, photosphere_tau = 2/3)
                 
                 # Running POSEIDON on the GPU
                 elif (device == 'gpu'):
@@ -1470,20 +1480,23 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 # Pressure Contribution Functions
 #################################
 
-
-def extinction_pressure_contribution(chemical_species, active_species, cia_pairs, ff_pairs, bf_species, aerosol_species,
-               n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, a, gamma, P_cloud, 
-               kappa_cloud_0, sigma_stored, cia_stored, Rayleigh_stored, ff_stored, 
-               bf_stored, enable_haze, enable_deck, enable_surface, N_sectors, 
-               N_zones, T_fine, log_P_fine, P_surf, enable_Mie, n_aerosol_array, 
-               sigma_Mie_array, P_deep = 1000.0,
-               contribution_species = '',
-               bulk_species = False,
-               cloud_contribution = False,
-               cloud_species = '',
-               cloud_total_contribution = False,
-               layer_to_ignore = 0,
-               total_pressure_contribution = False):
+@jit(nopython = True)
+def extinction_pressure_contribution(chemical_species, active_species, cia_pairs, 
+                                     ff_pairs, bf_species, aerosol_species,
+                                     n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, 
+                                     a, gamma, P_cloud, kappa_cloud_0, sigma_stored,
+                                     cia_stored, Rayleigh_stored, ff_stored, 
+                                     bf_stored, enable_haze, enable_deck,
+                                     enable_surface, N_sectors, N_zones,
+                                     T_fine, log_P_fine, P_surf, enable_Mie, 
+                                     n_aerosol_array, sigma_Mie_array,
+                                     P_deep = 1000.0, contribution_species = '',
+                                     bulk_species = False,
+                                     cloud_contribution = False,
+                                     cloud_species = '',
+                                     cloud_total_contribution = False,
+                                     layer_to_ignore = 0,
+                                     total_pressure_contribution = False):
     
     ''' Main function to evaluate extinction coefficients for molecules / atoms,
         Rayleigh scattering, hazes, and clouds for parameter combination
@@ -1520,8 +1533,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
     bulk_species_indices = range(N_bulk_species)
     bulk_species_names = chemical_species[:N_bulk_species]
 
-    # Find the name of the bulk species and check to see if they are 
-    # also in the CIA list 
+    # Find the name of the bulk species and check to see if they are also in the CIA list 
     bulk_cia_indices = []
     for i in range(len(cia_pairs)):
         pair_1, pair_2 = cia_pairs[i].split('-')
@@ -1577,7 +1589,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
     
     # Find index of deep pressure below which atmosphere is opaque
     i_bot = np.argmin(np.abs(P - P_deep))
-    
+
     # If haze is enabled in this model
     if (enable_haze == 1):
         
@@ -1591,7 +1603,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
         for k in range(N_zones):
             
             # For each layer, find closest pre-computed cross section to P_fine, T_fine
-            for i in range(i_bot,N_layers):
+            for i in range(i_bot, N_layers):
                 
                 n_level = n[i,j,k]
                 
@@ -1609,13 +1621,13 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                     # If bulk_species == True, we only turn off the bulk cia species 
                     # for the layer we are ignoring
                     if (bulk_species == True) and (q in bulk_species_indices) and (i == layer_to_ignore):
-                        n_n_cia = 0
+                        n_n_cia = 0.0
 
                     # If its not a bulk species, we still need to turn off the contributing CIA
                     elif (bulk_species == False) and (cloud_contribution == False) and (total_pressure_contribution == False):
                         # We split the if statements because cia_indices is only defined if bulk_species = False
                         if (q in cia_indices) and (i == layer_to_ignore):
-                            n_n_cia = 0
+                            n_n_cia = 0.0
                         else:
                             n_cia_1 = n_level*X_cia[0,q,i,j,k]   # Number density of first cia species in pair
                             n_cia_2 = n_level*X_cia[1,q,i,j,k]   # Number density of second cia species in pair
@@ -1623,7 +1635,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
 
                     # If its the total pressure contribution, we turn everything off no matter what 
                     elif (total_pressure_contribution == True) and (i == layer_to_ignore):
-                        n_n_cia = 0
+                        n_n_cia = 0.0
 
                     # If we are looking at cloud contribution, we keep all the cia on in every layer 
                     else:
@@ -1637,13 +1649,12 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         # Add CIA to total extinction in layer i, sector j, zone k, for each wavelength
                         kappa_gas[i,j,k,l] += n_n_cia * cia_stored[q, idx_T_fine, l]
                         
-                # For each free-free absorption pair
-                # NOTE : Need to be updated like cia
+                # For each free-free absorption pair, update like cia
                 for q in range(N_ff_pairs): 
 
                     # If its the total pressure contribution, we turn everything off no matter what 
                     if (total_pressure_contribution == True) and (i == layer_to_ignore):
-                        n_n_f = 0
+                        n_n_ff = 0.0
 
                     else:
                         n_ff_1 = n_level*X_ff[0,q,i,j,k]   # Number density of first species in ff pair
@@ -1661,11 +1672,11 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
 
                     # If its the total pressure contribution, we turn everything off no matter what 
                     if (total_pressure_contribution == True) and (i == layer_to_ignore):
-                        n_q = 0
+                        n_q = 0.0
 
                     # We are looking at H- only
                     elif (bound_free == True) and (i == layer_to_ignore):
-                        n_q
+                        n_q = 0.0
                     
                     else:
                         n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
@@ -1690,16 +1701,15 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         
                         # There is a bug when He is in param species since it doesn't have an active index 
                         if contribution_species == 'He':
-                            n_q = 0
+                            n_q = 0.0
                         elif (q == contribution_molecule_active_index) and (i == layer_to_ignore):
-                            n_q = 0
+                            n_q = 0.0
                         else:
                             n_q = n_level*X_active[q,i,j,k] 
                     
-                    # if we are doing the total contribution, turn everything off 
-
+                    # If we are doing the total contribution, turn everything off 
                     elif (total_pressure_contribution == True) and (i == layer_to_ignore):
-                        n_q = 0
+                        n_q = 0.0
 
                     else:
                         n_q = n_level*X_active[q,i,j,k] 
@@ -1715,13 +1725,13 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
 
                     if (bulk_species == False) and (cloud_contribution == False) and (total_pressure_contribution == False):
                         if (q == contribution_molecule_species_index) and (i == layer_to_ignore):
-                            n_q = 0
+                            n_q = 0.0
                         else:
                             n_q = n_level*X[q,i,j,k] 
                     
                     # if we are doing the total contribution, turn everything off 
                     elif (total_pressure_contribution == True) and (i == layer_to_ignore):
-                        n_q = 0
+                        n_q = 0.0
 
                     else:
                         n_q = n_level*X[q,i,j,k] 
@@ -1745,9 +1755,9 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                         
                         # If we are looking at the cloud contribution in that layer 
                         if (cloud_contribution == True) and (i == layer_to_ignore):
-                            haze_amp = 0
+                            haze_amp = 0.0
                         elif (total_pressure_contribution == True) and (i == layer_to_ignore):
-                            haze_amp = 0
+                            haze_amp = 0.0
                         else:
                             haze_amp = (n[i,j,k] * a * 5.31e-31) 
                     
@@ -1763,9 +1773,9 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                 for i in range(i_bot,N_layers):
 
                     if (cloud_contribution == True) and (i == layer_to_ignore):
-                        kappa_cloud[i,j,k,:] = 0
+                        kappa_cloud[i,j,k,:] = 0.0
                     if (total_pressure_contribution == True) and (i == layer_to_ignore):
-                        kappa_cloud[i,j,k,:] = 0
+                        kappa_cloud[i,j,k,:] = 0.0
 
             # If a surface is enabled in this model
             if (enable_surface == 1):
@@ -1783,38 +1793,38 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
 
                 # If cloud contribution = True, we need to find the species we want the contribution of 
                 if cloud_contribution == True and cloud_total_contribution == False:
-                    for n in range(len(aerosol_species)):
-                        if cloud_species == aerosol_species[n]:
-                            aerosol_species_index = n
+                    for q in range(len(aerosol_species)):
+                        if cloud_species == aerosol_species[q]:
+                            aerosol_species_index = q
 
                 # No opaque clouds 
                 if len(n_aerosol_array) == len(sigma_Mie_array):
                     for aerosol in range(len(n_aerosol_array)):
                         for i in range(i_bot,N_layers):
-                            for q in range(len(wl)):
+                            for l in range(len(wl)):
 
                                 # If we want one species of cloud contribution 
                                 if (cloud_contribution == True) and (cloud_total_contribution == False) and (i == layer_to_ignore):
 
 
                                     if aerosol != aerosol_species_index:
-                                        kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
+                                        kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][l]
 
                                     else:
-                                        kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * 0
+                                        kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
 
                                 # If we want the total cloud contribution 
                                 elif (cloud_total_contribution == True) and (i == layer_to_ignore):
-                                    kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * 0
+                                    kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
 
                                 # If we just want total pressure contribution 
                                 elif (total_pressure_contribution == True) and (i == layer_to_ignore):
-                                    kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * 0
+                                    kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
                                     
 
                                 # Else, don't turn off clouds
                                 else:
-                                    kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
+                                    kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][l]
                         
 
                 # Opaque Deck is the first element in n_aerosol_array
@@ -1823,83 +1833,83 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
                 else:
                     for aerosol in range(len(n_aerosol_array)):
                             
-                            if (cloud_contribution == True) and (cloud_total_contribution == True):
+                        if (cloud_contribution == True) and (cloud_total_contribution == True):
 
-                                # Turn off the deck first 
-                                if aerosol == 0:
-                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
-                                    # Loop through and find the layer to turn off 
-                                    for i in range(i_bot,N_layers):
-                                        if i == layer_to_ignore:
-                                            kappa_cloud[i,j,k,:] = 0
-
-                                else:
-                                    for i in range(i_bot,N_layers):
-                                        for q in range(len(wl)):
-                                            if i == layer_to_ignore:
-                                                kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* 0
-                                            else:
-                                                 kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
-                            
-                            elif (cloud_contribution == True) and (cloud_total_contribution == False):
-                                
-                                # Deck doesn't count 
-                                if aerosol == 0:
-                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
-
-                                else:
-                                    for i in range(i_bot,N_layers):
-                                        for q in range(len(wl)):
-                                            if (aerosol - 1 == aerosol_species_index) and (i == layer_to_ignore):
-                                                kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* 0
-                                            else:
-                                                kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
-
-                            elif (total_pressure_contribution == True):
-
-                                # Turn off the deck first 
-                                if aerosol == 0:
-                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
-                                    # Loop through and find the layer to turn off 
-                                    for i in range(i_bot,N_layers):
-                                        if i == layer_to_ignore:
-                                            kappa_cloud[i,j,k,:] -= kappa_cloud_0
-
-                                else:
-
-                                    for i in range(i_bot,N_layers):
-                                        for q in range(len(wl)):
-                                            if i == layer_to_ignore:
-                                                kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* 0
-                                            else:
-                                                 kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
-
+                            # Turn off the deck first 
+                            if aerosol == 0:
+                                kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
+                                # Loop through and find the layer to turn off 
+                                for i in range(i_bot,N_layers):
+                                    if i == layer_to_ignore:
+                                        kappa_cloud[i,j,k,:] = 0.0
 
                             else:
-                                    
-                                if aerosol == 0:
-                                    kappa_cloud[(P > P_cloud[0]),j,k,:] += 1.0e250
+                                for i in range(i_bot,N_layers):
+                                    for l in range(len(wl)):
+                                        if i == layer_to_ignore:
+                                            kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
+                                        else:
+                                                kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
+                        
+                        elif (cloud_contribution == True) and (cloud_total_contribution == False):
+                            
+                            # Deck doesn't count 
+                            if aerosol == 0:
+                                kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
 
-                                else:
-                                    for i in range(i_bot,N_layers):
-                                        for q in range(len(wl)):
-                                                kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
+                            else:
+                                for i in range(i_bot,N_layers):
+                                    for l in range(len(wl)):
+                                        if (aerosol - 1 == aerosol_species_index) and (i == layer_to_ignore):
+                                            kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
+                                        else:
+                                            kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
+
+                        elif (total_pressure_contribution == True):
+
+                            # Turn off the deck first 
+                            if aerosol == 0:
+                                kappa_cloud[(P > P_cloud[0]),j,k,:] += kappa_cloud_0
+                                # Loop through and find the layer to turn off 
+                                for i in range(i_bot,N_layers):
+                                    if i == layer_to_ignore:
+                                        kappa_cloud[i,j,k,:] -= kappa_cloud_0
+
+                            else:
+
+                                for i in range(i_bot,N_layers):
+                                    for l in range(len(wl)):
+                                        if i == layer_to_ignore:
+                                            kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
+                                        else:
+                                                kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
+
+
+                        else:
+                                
+                            if aerosol == 0:
+                                kappa_cloud[(P > P_cloud[0]),j,k,:] += 1.0e250
+
+                            else:
+                                for i in range(i_bot,N_layers):
+                                    for l in range(len(wl)):
+                                            kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
 
     return kappa_gas, kappa_Ray, kappa_cloud
 
 
 def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                     spectrum_type = 'transmission', save_spectrum = False,
-                     disable_continuum = False, suppress_print = False,
-                     Gauss_quad = 2, use_photosphere_radius = True,
-                     device = 'cpu', y_p = np.array([0.0]),
-                     contribution_species_list = [],
-                     bulk_species = True, 
-                     cloud_contribution = False, 
-                     cloud_species_list = [],
-                     cloud_total_contribution = False,
-                     total_pressure_contribution = False,
-                     layer_to_ignore = 0):
+                                           spectrum_type = 'transmission', save_spectrum = False,
+                                           disable_continuum = False, suppress_print = False,
+                                           Gauss_quad = 2, use_photosphere_radius = True,
+                                           device = 'cpu', y_p = np.array([0.0]),
+                                           contribution_species_list = [],
+                                           bulk_species = True, 
+                                           cloud_contribution = False, 
+                                           cloud_species_list = [],
+                                           cloud_total_contribution = False,
+                                           total_pressure_contribution = False,
+                                           layer_to_ignore = 0):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -2238,6 +2248,8 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 w_cloud = np.zeros_like(wl)
                 g_cloud = np.zeros_like(wl)
 
+                aerosol_species = np.array(aerosol_species)
+
             # Calculate extinction coefficients in standard mode
 
             # Numba will get mad if P_cloud is not an array (because you can have more than one cloud now)
@@ -2266,19 +2278,20 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             # If you want to see only the bulk species contribution, this runs first 
             if bulk_species == True:
     
-                kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
-                                                                                    CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                                                                    n, T, P, wl, X, X_active, X_CIA, 
-                                                                                    X_ff, X_bf, a, gamma, P_cloud, 
-                                                                                    kappa_cloud_0, sigma_stored, 
-                                                                                    CIA_stored, Rayleigh_stored, 
-                                                                                    ff_stored, bf_stored, enable_haze, 
-                                                                                    enable_deck, enable_surface,
-                                                                                    N_sectors, N_zones, T_fine, 
-                                                                                    log_P_fine, P_surf, enable_Mie, 
-                                                                                    n_aerosol, sigma_ext_cloud,
-                                                                                    bulk_species = True,
-                                                                                    layer_to_ignore = layer_to_ignore)
+                kappa_gas_temp, kappa_Ray_temp, \
+                kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
+                                                                    CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                    n, T, P, wl, X, X_active, X_CIA, 
+                                                                    X_ff, X_bf, a, gamma, P_cloud, 
+                                                                    kappa_cloud_0, sigma_stored, 
+                                                                    CIA_stored, Rayleigh_stored, 
+                                                                    ff_stored, bf_stored, enable_haze, 
+                                                                    enable_deck, enable_surface,
+                                                                    N_sectors, N_zones, T_fine, 
+                                                                    log_P_fine, P_surf, enable_Mie, 
+                                                                    n_aerosol, sigma_ext_cloud,
+                                                                    bulk_species = True,
+                                                                    layer_to_ignore = layer_to_ignore)
 
                 kappa_gas_contribution_array.append(kappa_gas_temp)
                 kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -2290,21 +2303,22 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
                 for i in range(len(contribution_species_list)):
 
-                    kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
-                                                                                    CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                                                                    n, T, P, wl, X, X_active, X_CIA, 
-                                                                                    X_ff, X_bf, a, gamma, P_cloud, 
-                                                                                    kappa_cloud_0, sigma_stored, 
-                                                                                    CIA_stored, Rayleigh_stored, 
-                                                                                    ff_stored, bf_stored, enable_haze, 
-                                                                                    enable_deck, enable_surface,
-                                                                                    N_sectors, N_zones, T_fine, 
-                                                                                    log_P_fine, P_surf, enable_Mie, 
-                                                                                    n_aerosol, sigma_ext_cloud,
-                                                                                    contribution_species=contribution_species_list[i],
-                                                                                    bulk_species = False,
-                                                                                    cloud_contribution = False,
-                                                                                    layer_to_ignore = layer_to_ignore)
+                    kappa_gas_temp, kappa_Ray_temp, \
+                    kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
+                                                                        CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                        n, T, P, wl, X, X_active, X_CIA, 
+                                                                        X_ff, X_bf, a, gamma, P_cloud, 
+                                                                        kappa_cloud_0, sigma_stored, 
+                                                                        CIA_stored, Rayleigh_stored, 
+                                                                        ff_stored, bf_stored, enable_haze, 
+                                                                        enable_deck, enable_surface,
+                                                                        N_sectors, N_zones, T_fine, 
+                                                                        log_P_fine, P_surf, enable_Mie, 
+                                                                        n_aerosol, sigma_ext_cloud,
+                                                                        contribution_species=contribution_species_list[i],
+                                                                        bulk_species = False,
+                                                                        cloud_contribution = False,
+                                                                        layer_to_ignore = layer_to_ignore)
 
                     kappa_gas_contribution_array.append(kappa_gas_temp)
                     kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -2318,20 +2332,21 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 # Default for the non Mie clouds 
                 if cloud_total_contribution == True or enable_Mie == False:
 
-                    kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
-                                                                CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                                                n, T, P, wl, X, X_active, X_CIA, 
-                                                                X_ff, X_bf, a, gamma, P_cloud, 
-                                                                kappa_cloud_0, sigma_stored, 
-                                                                CIA_stored, Rayleigh_stored, 
-                                                                ff_stored, bf_stored, enable_haze, 
-                                                                enable_deck, enable_surface,
-                                                                N_sectors, N_zones, T_fine, 
-                                                                log_P_fine, P_surf, enable_Mie, 
-                                                                n_aerosol, sigma_ext_cloud,
-                                                                cloud_contribution = True,
-                                                                cloud_total_contribution = True,
-                                                                layer_to_ignore = layer_to_ignore)
+                    kappa_gas_temp, kappa_Ray_temp, \
+                    kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
+                                                                        CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                        n, T, P, wl, X, X_active, X_CIA, 
+                                                                        X_ff, X_bf, a, gamma, P_cloud, 
+                                                                        kappa_cloud_0, sigma_stored, 
+                                                                        CIA_stored, Rayleigh_stored, 
+                                                                        ff_stored, bf_stored, enable_haze, 
+                                                                        enable_deck, enable_surface,
+                                                                        N_sectors, N_zones, T_fine, 
+                                                                        log_P_fine, P_surf, enable_Mie, 
+                                                                        n_aerosol, sigma_ext_cloud,
+                                                                        cloud_contribution = True,
+                                                                        cloud_total_contribution = True,
+                                                                        layer_to_ignore = layer_to_ignore)
 
                     kappa_gas_contribution_array.append(kappa_gas_temp)
                     kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -2345,20 +2360,21 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                     
                     for i in range(len(cloud_species_list)):
 
-                        kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
-                                            CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                            n, T, P, wl, X, X_active, X_CIA, 
-                                            X_ff, X_bf, a, gamma, P_cloud, 
-                                            kappa_cloud_0, sigma_stored, 
-                                            CIA_stored, Rayleigh_stored, 
-                                            ff_stored, bf_stored, enable_haze, 
-                                            enable_deck, enable_surface,
-                                            N_sectors, N_zones, T_fine, 
-                                            log_P_fine, P_surf, enable_Mie, 
-                                            n_aerosol, sigma_ext_cloud,
-                                            cloud_contribution = True,
-                                            cloud_species = cloud_species_list[i],
-                                            layer_to_ignore=layer_to_ignore)
+                        kappa_gas_temp, kappa_Ray_temp, \
+                        kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
+                                                                            CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                            n, T, P, wl, X, X_active, X_CIA, 
+                                                                            X_ff, X_bf, a, gamma, P_cloud, 
+                                                                            kappa_cloud_0, sigma_stored, 
+                                                                            CIA_stored, Rayleigh_stored, 
+                                                                            ff_stored, bf_stored, enable_haze, 
+                                                                            enable_deck, enable_surface,
+                                                                            N_sectors, N_zones, T_fine, 
+                                                                            log_P_fine, P_surf, enable_Mie, 
+                                                                            n_aerosol, sigma_ext_cloud,
+                                                                            cloud_contribution = True,
+                                                                            cloud_species = cloud_species_list[i],
+                                                                            layer_to_ignore=layer_to_ignore)
 
                         kappa_gas_contribution_array.append(kappa_gas_temp)
                         kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -2368,19 +2384,20 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             # If you want to run the total pressure contribution 
             if total_pressure_contribution == True:
                 
-                kappa_gas_temp, kappa_Ray_temp, kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
-                                        CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                        n, T, P, wl, X, X_active, X_CIA, 
-                                        X_ff, X_bf, a, gamma, P_cloud, 
-                                        kappa_cloud_0, sigma_stored, 
-                                        CIA_stored, Rayleigh_stored, 
-                                        ff_stored, bf_stored, enable_haze, 
-                                        enable_deck, enable_surface,
-                                        N_sectors, N_zones, T_fine, 
-                                        log_P_fine, P_surf, enable_Mie, 
-                                        n_aerosol, sigma_ext_cloud,
-                                        total_pressure_contribution=True,
-                                        layer_to_ignore = layer_to_ignore)
+                kappa_gas_temp, kappa_Ray_temp, \
+                kappa_cloud_temp = extinction_pressure_contribution(chemical_species, active_species,
+                                                                    CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                    n, T, P, wl, X, X_active, X_CIA, 
+                                                                    X_ff, X_bf, a, gamma, P_cloud, 
+                                                                    kappa_cloud_0, sigma_stored, 
+                                                                    CIA_stored, Rayleigh_stored, 
+                                                                    ff_stored, bf_stored, enable_haze, 
+                                                                    enable_deck, enable_surface,
+                                                                    N_sectors, N_zones, T_fine, 
+                                                                    log_P_fine, P_surf, enable_Mie, 
+                                                                    n_aerosol, sigma_ext_cloud,
+                                                                    total_pressure_contribution=True,
+                                                                    layer_to_ignore = layer_to_ignore)
 
                 kappa_gas_contribution_array.append(kappa_gas_temp)
                 kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -2399,9 +2416,9 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         
         # Total Spectrum First 
         spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray), 
-                            kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
-                            R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
-                            theta_edge)
+                           kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
+                           R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                           theta_edge)
 
         spectrum_contribution_list = []
 
@@ -2412,9 +2429,9 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         
             # Call the core TRIDENT routine to compute the transmission spectrum
             spectrum_temp = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas_temp + kappa_Ray), 
-                            kappa_cloud_temp, enable_deck, enable_haze, b_p, y_p[0],
-                            R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
-                            theta_edge)
+                                    kappa_cloud_temp, enable_deck, enable_haze, b_p, y_p[0],
+                                    R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
+                                    theta_edge)
             
             spectrum_contribution_list.append(spectrum_temp)
 
@@ -2467,10 +2484,10 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
             # Compute planet flux including scattering (PICASO implementation), see emission.py for details
             F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                        kappa_Ray, kappa_cloud, kappa_tot,
-                                        w_cloud, g_cloud, zone_idx,
-                                        hard_surface = 0, tridiagonal = 0, 
-                                        Gauss_quad = 5, numt = 1)
+                                      kappa_Ray, kappa_cloud, kappa_tot,
+                                      w_cloud, g_cloud, zone_idx,
+                                      hard_surface = 0, tridiagonal = 0, 
+                                      Gauss_quad = 5, numt = 1)
         
             
             dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
@@ -2483,12 +2500,13 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         if (reflection == True):
 
             albedo = reflection_Toon(P, wl, dtau_tot,
-                                    kappa_Ray, kappa_cloud, kappa_tot,
-                                    w_cloud, g_cloud, zone_idx,
-                                    single_phase = 3, multi_phase = 0,
-                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                    Gauss_quad = 5, numt = 1,
-                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                                     kappa_Ray, kappa_cloud, kappa_tot,
+                                     w_cloud, g_cloud, zone_idx,
+                                     single_phase = 3, multi_phase = 0,
+                                     frac_a = 1, frac_b = -1, frac_c = 2, 
+                                     constant_back = -0.5, constant_forward = 1,
+                                     Gauss_quad = 5, numt = 1,
+                                     toon_coefficients=0, tridiagonal=0, b_top=0)
 
         # Calculate effective photosphere radius at tau = 2/3
         if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -2624,10 +2642,10 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
                 # Compute planet flux including scattering (PICASO implementation), see emission.py for details
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                            kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                            w_cloud, g_cloud, zone_idx,
-                                            hard_surface = 0, tridiagonal = 0, 
-                                            Gauss_quad = 5, numt = 1)
+                                          kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                          w_cloud, g_cloud, zone_idx,
+                                          hard_surface = 0, tridiagonal = 0, 
+                                          Gauss_quad = 5, numt = 1)
             
                 
                 dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
@@ -2639,12 +2657,12 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             if (reflection == True):
 
                 albedo = reflection_Toon(P, wl, dtau_tot,
-                                        kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                        w_cloud, g_cloud, zone_idx,
-                                        single_phase = 3, multi_phase = 0,
-                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                        Gauss_quad = 5, numt = 1,
-                                        toon_coefficients=0, tridiagonal=0, b_top=0)
+                                         kappa_Ray, kappa_cloud_temp, kappa_tot,
+                                         w_cloud, g_cloud, zone_idx,
+                                         single_phase = 3, multi_phase = 0,
+                                         frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                         Gauss_quad = 5, numt = 1,
+                                         toon_coefficients=0, tridiagonal=0, b_top=0)
 
             # Calculate effective photosphere radius at tau = 2/3
             if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
@@ -2652,7 +2670,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 # Running POSEIDON on the CPU
                 if (device == 'cpu'):
                     R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]),
-                                                        wl, photosphere_tau = 2/3)
+                                                          wl, photosphere_tau = 2/3)
                 
                 # Running POSEIDON on the GPU
                 elif (device == 'gpu'):
@@ -2744,17 +2762,17 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
 
 def pressure_contribution(planet, star, model, atmosphere, opac, wl,
-                            spectrum_type = 'transmission', save_spectrum = False,
-                            disable_continuum = False, suppress_print = False,
-                            Gauss_quad = 2, use_photosphere_radius = True,
-                            device = 'cpu', y_p = np.array([0.0]),
-                            contribution_species_list = [],
-                            bulk_species = True, 
-                            cloud_contribution = False, 
-                            cloud_species_list = [],
-                            cloud_total_contribution = False,
-                            total_pressure_contribution = False,
-                            verbose = False):
+                          spectrum_type = 'transmission', save_spectrum = False,
+                          disable_continuum = False, suppress_print = False,
+                          Gauss_quad = 2, use_photosphere_radius = True,
+                          device = 'cpu', y_p = np.array([0.0]),
+                          contribution_species_list = [],
+                          bulk_species = True, 
+                          cloud_contribution = False, 
+                          cloud_species_list = [],
+                          cloud_total_contribution = False,
+                          total_pressure_contribution = False,
+                          verbose = False):
 
     '''
     Computes the pressure contribution function by looping over each layer in the Pressure array
@@ -2821,10 +2839,6 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
         spectrum_contribution_list_names (np.array of string):
             Array used for plotting (contains names and order of spectral contribution spectra)
     '''
-    
-    # Warning message
-    if len(wl) > 10000:
-        print('Given current resolution (R), this will take more than a few hours to run. We recommend to lower the resolution to 1000.')
 
     # Load in the pressure object
     P = atmosphere['P']
@@ -2864,18 +2878,22 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
             if verbose == True:
                 print(i)
 
-            spectrum, spectrum_contribution_list_names, spectrum_contribution_list = pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                                                                                                            spectrum_type = spectrum_type, save_spectrum = save_spectrum,
-                                                                                                                            disable_continuum = disable_continuum, suppress_print = suppress_print,
-                                                                                                                            Gauss_quad = Gauss_quad, use_photosphere_radius = use_photosphere_radius,
-                                                                                                                            device = device, y_p = y_p,
-                                                                                                                            contribution_species_list = contribution_species_list,
-                                                                                                                            bulk_species = bulk_species, 
-                                                                                                                            cloud_contribution = cloud_contribution, 
-                                                                                                                            cloud_species_list = cloud_species_list,
-                                                                                                                            cloud_total_contribution = cloud_total_contribution,
-                                                                                                                            total_pressure_contribution = total_pressure_contribution,
-                                                                                                                            layer_to_ignore = i)
+            spectrum, spectrum_contribution_list_names, \
+            spectrum_contribution_list = pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                                                                spectrum_type = spectrum_type, 
+                                                                                save_spectrum = save_spectrum,
+                                                                                disable_continuum = disable_continuum, 
+                                                                                suppress_print = suppress_print,
+                                                                                Gauss_quad = Gauss_quad, 
+                                                                                use_photosphere_radius = use_photosphere_radius,
+                                                                                device = device, y_p = y_p,
+                                                                                contribution_species_list = contribution_species_list,
+                                                                                bulk_species = bulk_species, 
+                                                                                cloud_contribution = cloud_contribution, 
+                                                                                cloud_species_list = cloud_species_list,
+                                                                                cloud_total_contribution = cloud_total_contribution,
+                                                                                total_pressure_contribution = total_pressure_contribution,
+                                                                                layer_to_ignore = i)
 
             # Loop through and take the difference of the full spectrum and the one where opacity is removed from a layer                                                                                       
             for j in range(len(spectrum_contribution_list)):
@@ -3136,7 +3154,7 @@ def plot_photometric_contribution(wl,P,
 
         fig, ax = plt.subplots(figsize=(10, 10))
 
-        if bins == []:
+        if (len(bins) == 0):
             for b in range(len(photometric_contribution[i])):
                 ax.plot(photometric_contribution[i][b],np.log10(P))
         

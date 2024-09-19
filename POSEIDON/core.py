@@ -33,7 +33,7 @@ from .supported_chemicals import supported_species, supported_cia, inactive_spec
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
-                        extinction_LBL, extinction_GPU, extinction_spectrum_contribution, extinction_spectrum_pressure_contribution
+                        extinction_LBL, extinction_GPU
 from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
 from .instrument import init_instrument
@@ -144,7 +144,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
     '''
 
     # If the user did not specify a wavelength grid for the stellar spectrum 
-    if (wl == []):
+    if (len(wl) == 0):
 
         # Create fiducial wavelength grid
         wl_min = 0.2  # μm
@@ -168,7 +168,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
     elif (stellar_grid == 'custom'):
 
-        if ((user_wl == []) or (user_spectrum == [])):
+        if ((len(user_wl) == 0) or (len(user_spectrum) == 0)):
             raise Exception("Error: for a custom stellar spectrum you need to provide " +
                             "both 'user_wl' and 'user_spectrum'. Note that 'user_wl' " +
                             "will generally not be the same as the model wavelength " +
@@ -280,7 +280,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
         # Evaluate total stellar flux as a weighted sum of each region 
         F_star = np.pi * ((f_spot * I_spot) + (f_fac * I_fac) + 
-                            (1.0 - (f_spot + f_fac)) * I_phot)
+                          (1.0 - (f_spot + f_fac)) * I_phot)
         
     else:
         raise Exception("Error: unsupported heterogeneity type. Supported " +
