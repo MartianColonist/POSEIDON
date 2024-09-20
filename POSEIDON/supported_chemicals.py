@@ -54,7 +54,7 @@ surface_supported_components = np.array(['Albite_dust', 'Alkaline_basalt_large',
                                          'Mars_breccia', 'Norite', 'Phonolite', 'Pyrite', 'Rhyolite', 'Tephrite', 
                                          'Tholeiitic_basalt', 'Trachybasalt', 'Trachyte',
                                          'Cyanobacteria_blue_green_anabaena_UTEX2576', 'Cyanobacteria_blue_green_anabaena_UTEX2576_dry',
-                                         'Cyanobacteria_purple_gloeobacter_violaceius_PCC7421', 'Cyanobacteria_purple_gloeobacter_violaceius_PCC7421_dry', 
+                                         'Cyanobacteria_purple_gloeobacter_violaceus_PCC7421', 'Cyanobacteria_purple_gloeobacter_violaceus_PCC7421_dry', 
                                          'Purple_nonsulfur_bacteria_orange_rhodomicrobium_vannielii', 'Purple_nonsulfur_bacteria_orange_rhodomicrobium_vannielii_dry', 
                                          'Purple_nonsulfur_bacteria_pink_E01', 'Purple_nonsulfur_bacteria_pink_E01_dry', 
                                          'Purple_nonsulfur_bacteria_pink_E11', 'Purple_nonsulfur_bacteria_pink_E11_dry', 
@@ -76,7 +76,7 @@ surface_supported_components = np.array(['Albite_dust', 'Alkaline_basalt_large',
                                          'Purple_sulfur_bacteria_pink_E41', 'Purple_sulfur_bacteria_pink_E41_dry', 
                                          'Purple_sulfur_bacteria_pink_E50', 'Purple_sulfur_bacteria_pink_E50_dry', 
                                          'Purple_sulfur_bacteria_pink_E51_grey_goose', 'Purple_sulfur_bacteria_pink_E51_grey_goose_dry', 
-                                         'Purple_sulfur_bacteria_pink_berries_E52_mud', 'Purple_sulfur_bacteria_pink_berries_E52_mud_dry',
+                                         'Purple_sulfur_bacteria_pink_berries_E53_mud', 'Purple_sulfur_bacteria_pink_berries_E53_mud_dry',
                                          ])
 
 # Super Secret Project :) 
