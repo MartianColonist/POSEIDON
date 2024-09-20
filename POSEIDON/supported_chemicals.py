@@ -47,12 +47,14 @@ aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4_liqu
                                       'TiC', 'TiO2_anatase', 'TiO2_rutile', 'VO', 'ZnS',
                                       'MgSiO3_r_m_std_dev_01','MgSiO3_r_m_std_dev_1','MgSiO3_g_w_calc_mean','MgSiO3_g_w_calc_trap'])
 
-surface_supported_components = np.array(['Albite_dust', 'Alkaline_basalt_large', 'Alkaline_basalt_small', 
+surface_supported_components = np.array([ # Surfaces from Hammond 2024 
+                                         'Albite_dust', 'Alkaline_basalt_large', 'Alkaline_basalt_small', 
                                          'Andesite', 'Basalt_glass', 'Basalt_tuff', 'Diorite', 'Gabbro', 
                                          'Granite', 'Harzburgite', 'Hematite', 'Lherzolite', 'Lunar_anorthosite', 
                                          'Lunar_mare_basalt', 'Magnesium_sulfate', 'Mars_basalt_shergottites', 
                                          'Mars_breccia', 'Norite', 'Phonolite', 'Pyrite', 'Rhyolite', 'Tephrite', 
                                          'Tholeiitic_basalt', 'Trachybasalt', 'Trachyte',
+                                          # Purple bacteria from Coelho 2024
                                          'Cyanobacteria_blue_green_anabaena_UTEX2576', 'Cyanobacteria_blue_green_anabaena_UTEX2576_dry',
                                          'Cyanobacteria_purple_gloeobacter_violaceus_PCC7421', 'Cyanobacteria_purple_gloeobacter_violaceus_PCC7421_dry', 
                                          'Purple_nonsulfur_bacteria_orange_rhodomicrobium_vannielii', 'Purple_nonsulfur_bacteria_orange_rhodomicrobium_vannielii_dry', 
@@ -77,6 +79,13 @@ surface_supported_components = np.array(['Albite_dust', 'Alkaline_basalt_large',
                                          'Purple_sulfur_bacteria_pink_E50', 'Purple_sulfur_bacteria_pink_E50_dry', 
                                          'Purple_sulfur_bacteria_pink_E51_grey_goose', 'Purple_sulfur_bacteria_pink_E51_grey_goose_dry', 
                                          'Purple_sulfur_bacteria_pink_berries_E53_mud', 'Purple_sulfur_bacteria_pink_berries_E53_mud_dry',
+                                          # Solar system albedo from Madden & Kaltenegger 2018
+                                         'Callisto_MK18', 'Ceres_MK18', 'Dione_MK18', 'Earth_MK18', 'Enceladus_MK18', 
+                                         'Europa_MK18', 'Ganymede_MK18', 'Io_MK18', 'Jupiter_MK18', 'Mars_MK18', 
+                                         'Mercury_MK18', 'Moon_MK18', 'Neptune_1_MK18', 'Neptune_2_MK18', 'Neptune_3_MK18', 
+                                         'Neptune_4_MK18', 'Pluto_MK18', 'Rhea_MK18', 'Saturn_1_wRing_MK18', 'Saturn_2_north_pole_MK18', 
+                                         'Saturn_3_wRing_MK18', 'Saturn_4_wRing_MK18', 'Titan_1_MK18', 'Titan_2_MK18', 'Titan_3_MK18', 
+                                         'Uranus_1_MK18', 'Uranus_2_MK18', 'Venus_MK18', 
                                          ])
 
 # Super Secret Project :) 
