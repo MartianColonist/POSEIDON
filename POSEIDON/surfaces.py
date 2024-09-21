@@ -15,8 +15,12 @@ from scipy.interpolate import interp1d as Interp
 
 
 def find_nearest_less_than(searchVal, array):
+
     diff = array - searchVal
-    diff[diff>0] = -np.inf
+    try:
+        diff[diff>0] = -np.inf
+    except:
+        pass
     idx = diff.argmax()
     return idx
 

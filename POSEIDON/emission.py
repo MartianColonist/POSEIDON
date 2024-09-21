@@ -1416,3 +1416,111 @@ def reflection_Toon(P, wl, dtau_tot,
     albedo = sym_fac * 0.5 * albedo /F0PI * (cos_theta + 1.0)
 
     return albedo
+
+#@jit(nopython = True)
+def emission_bare_surface(T, wl, surf_reflect, Gauss_quad = 5):
+    '''
+    Compute the emergent top-of-atmosphere flux from a bare rock 
+
+    This function  considers only pure thermal emission (i.e. no scattering).
+    Uses gauss weights of 5 to stay consistent with emission_Toon
+
+    Args:
+        T (np.array of float):
+            Temperatures in each atmospheric layer (K).
+        wl (np.array of float): 
+            Wavelength grid (μm).
+        surf_reflect : numpy.ndarray    
+            Surface reflectivity as a function of wavelength. 
+        Gauss_quad (int):
+            Gaussian quadrature order for integration over emitting surface
+            (Options: 2 / 3).
+    
+    Returns:
+        F (np.array of float):
+            Spectral surface flux in SI units (W/m^2/sr/m).
+
+    '''
+    
+    # Load weights and cos(theta) values for desired Gaussian quadrature scheme
+    # W = gweight
+    # mu = gangle
+    if (Gauss_quad == 5):
+        W = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])
+        mu = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
+    
+    # Calculate Planck function in each layer and each wavelength
+    B = planck_lambda_arr(T, wl)
+    
+    # Initial intensity at the base of the atmosphere is a Planck function 
+    emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
+    I = np.ones(shape=(len(mu),len(wl))) * B[0,:] * emissivity * np.pi
+    
+    # Initialise surface flux array
+    F = np.zeros(len(wl))
+    
+    # For each wavelength
+    for k in range(len(wl)):
+    
+        # For each ray travelling at mu = cos(theta)
+        for j in range(len(mu)):
+                
+            # Add contribution of this ray/angle to the surface flux
+            F[k] += 2.0 * np.pi * mu[j] * I[j,k] * W[j]
+    
+    return F
+
+#@jit(nopython = True)
+def reflection_bare_surface(wl, surf_reflect, Gauss_quad = 5):
+    '''
+    Compute the emergent top-of-atmosphere flux from a bare rock 
+
+    This function  considers only pure thermal emission (i.e. no scattering).
+    Uses gauss weights of 5 to stay consistent with emission_Toon
+
+    Args:
+        wl (np.array of float): 
+            Wavelength grid (μm).
+        surf_reflect : numpy.ndarray    
+            Surface reflectivity as a function of wavelength. 
+        Gauss_quad (int):
+            Gaussian quadrature order for integration over emitting surface
+            (Options: 2 / 3).
+    
+    Returns:
+        F (np.array of float):
+            Spectral surface flux in SI units (W/m^2/sr/m).
+
+    '''
+    
+    N_wl = len(wl)
+
+    if (Gauss_quad == 5):
+        gangle = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
+        gweight = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])
+
+    # Only 5th order Gaussian quadrature is currently supported
+    else:
+        gangle = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
+        gweight = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])  
+
+    # Default tangle and tweight
+    tangle,tweight = np.array([0]), np.array([1])
+
+    cos_theta = 1.0     #cos(phase_angle)
+
+    # FOPI is just an array of 1s (solar)
+    F0PI = np.zeros(N_wl) + 1
+
+    ng = len(gweight)
+    nt = len(tweight)
+    if nt==1 : sym_fac = 2*np.pi #azimuthal symmetry  
+    else: sym_fac = 1
+    albedo=np.zeros(N_wl)
+
+    for ig in range(ng): 
+        for it in range(nt): 
+            albedo = albedo + surf_reflect * gweight[ig] * tweight[it]
+    albedo = sym_fac * 0.5 * albedo /F0PI * (cos_theta + 1.0)
+    
+    return albedo
