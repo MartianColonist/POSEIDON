@@ -1418,7 +1418,7 @@ def reflection_Toon(P, wl, dtau_tot,
     return albedo
 
 #@jit(nopython = True)
-def emission_bare_surface(T, wl, surf_reflect, Gauss_quad = 5):
+def emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5):
     '''
     Compute the emergent top-of-atmosphere flux from a bare rock 
 
@@ -1450,6 +1450,8 @@ def emission_bare_surface(T, wl, surf_reflect, Gauss_quad = 5):
         mu = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
     
     # Calculate Planck function in each layer and each wavelength
+    T = np.array([T_surf])
+    
     B = planck_lambda_arr(T, wl)
     
     # Initial intensity at the base of the atmosphere is a Planck function 
