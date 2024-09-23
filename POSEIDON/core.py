@@ -1114,7 +1114,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie,
                   'P_cloud_bottom' : P_cloud_bottom, 
                   'kappa_cloud_eddysed' : kappa_cloud_eddysed, 'g_cloud_eddysed' : g_cloud_eddysed, 'w_cloud_eddysed' : w_cloud_eddysed,
-                  'T_surf' : T_surf, 'albedo_surf' : albedo_surf, 'surface_component_percentages' : surface_component_percentages
+                  'T_surf' : T_surf, 'albedo_surf' : albedo_surf, 'surface_component_percentages' : surface_component_percentages,
+                  'R_p_ref' : R_p_ref
                  }
 
     return atmosphere
@@ -1313,6 +1314,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     g_cloud_eddysed = atmosphere['g_cloud_eddysed']
     w_cloud_eddysed = atmosphere['w_cloud_eddysed']
 
+    R_p_ref = atmosphere['R_p_ref']
     T_surf = atmosphere['T_surf']
     albedo_surf = atmosphere['albedo_surf']
     surface_component_percentages = atmosphere['surface_component_percentages']
@@ -1732,25 +1734,24 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         elif (scattering == True):
 
             if surface == True:
+
+                if disable_atmosphere != True:
+                            
+                    # Need to find where P_surf is to cut all the arrays above 
+                    index_below_P_surf = find_nearest_less_than(P_surf,P)
+
+                    # This is to fix an error that occurs when P_Surf is top of atmosphere
+                    if index_below_P_surf + 1 != len(P):
+                        index_below_P_surf -= 1
                 
                 # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
                 if (surface_model == 'gray') or (surface_model == 'constant'):
 
-                    # Compute planet flux including scattering (PICASO implementation), see emission.py for details
-                    # For surfaces, we cut everything below P_surf [which also makes things run faster! :) ]
-
-                    if disable_atmosphere != True:
-                            
-                        # Need to find where P_surf is to cut all the arrays above 
-                        index_below_P_surf = find_nearest_less_than(P_surf,P)
-
-                        # This is to fix an error that occurs when P_Surf is top of atmosphere
-                        if index_below_P_surf + 1 != len(P):
-                            index_below_P_surf -= 1
-
                     # If there is an atmosphere, use Toon scattering
                     if disable_atmosphere != True:
-
+                        
+                        # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                        # For surfaces with atmospheres, we cut everything below P_surf [which also makes things run faster! :) ]
                         F_p, dtau = emission_Toon(P[index_below_P_surf+1:], 
                                                 T[index_below_P_surf+1:], 
                                                 wl, 
@@ -1790,7 +1791,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     else:
                         F_p = emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5)
                 
-                # If we aer using lab data, we need to loop over each component 
+                # If we are using lab data, we need to loop over each component 
                 elif (surface_model == 'lab_data'):
                     
                     F_p_array = []
@@ -2103,7 +2104,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 R_p_eff = cp.asnumpy(R_p_eff)          
         
         else:
-            R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
+            if disable_atmosphere == True:
+                R_p_eff = R_p_ref # If its a surface without atmosphere, R_p_ref is the effective radius
+
+            else:
+                R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
         
         # If distance not specified, use fiducial value
         if (d is None):
