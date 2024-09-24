@@ -14,7 +14,7 @@ setup(
     packages = ['POSEIDON'],
     include_package_data = True,
     python_requires = '<3.12',
-    install_requires = ['numpy',
+    install_requires = ['numpy<2',
                         'scipy',
                         'matplotlib',
                         'astropy',
