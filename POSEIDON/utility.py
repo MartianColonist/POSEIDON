@@ -1821,11 +1821,15 @@ def make_latex_table_from_results(model_names_array, variables, planet_name):
                 if i != len(refs)-1:
                     if m == 'R_p_ref':
                         line += ' ${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
+                    elif ('log' in m):
+                        line += ' ${:.2f}^{{+{:.2f}}}_{{{:.2f}}}$ & '.format(vmr, hisig, losig)
                     else:
                         line += ' ${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
                 else:
                     if m == 'R_p_ref':
                         line += ' ${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\ '.format(vmr, hisig, losig)
+                    elif ('log' in m):
+                        line += ' ${:.2f}^{{+{:.2f}}}_{{{:.2f}}}$ \\\\'.format(vmr, hisig, losig)
                     else:
                         line += ' ${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\'.format(vmr, hisig, losig)
         
