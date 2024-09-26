@@ -1456,7 +1456,7 @@ def emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5):
     
     # Initial intensity at the base of the atmosphere is a Planck function 
     emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
-    I = np.ones(shape=(len(mu),len(wl))) * B[0,:] * emissivity * np.pi
+    I = np.ones(shape=(len(mu),len(wl))) * B[0,:] * emissivity 
     
     # Initialise surface flux array
     F = np.zeros(len(wl))
