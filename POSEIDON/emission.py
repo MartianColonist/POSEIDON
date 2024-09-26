@@ -804,7 +804,8 @@ def emission_Toon(P, T, wl, dtau_tot,
 
             #intensity boundary conditions
             if hard_surface:
-                int_plus[-1,:] = all_b[-1,:] *2*np.pi  # terrestrial flux /pi = intensity
+                emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
+                int_plus[-1,:] = emissivity*all_b[-1,:] *2*np.pi  # terrestrial flux /pi = intensity
             else:
                 int_plus[-1,:] = ( all_b[-1,:] + b1[-1,:] * iubar)*2*np.pi #no hard surface   
 
