@@ -3531,9 +3531,6 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
 
     ax.tick_params(axis='both', which='major', labelsize=8)
 
-    print(low2)
-    print(high2)
-
     return low1, median, high1
 
     
@@ -3543,7 +3540,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                               vertical_lines, vertical_lines_colors, 
                               tick_labelsize = 8, title_fontsize = 12,
                               custom_labels = [], custom_ticks = [],
-                              alpha_hist = 0.4,
+                              alpha_hist = 0.4, show_title = True,
                               ):
 
     N_params = len(plot_parameters)
@@ -3615,24 +3612,8 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 param_min = span[q][0]
                 param_max = span[q][1]
 
-            if (plot_parameters[q] == 'log_SO2'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'SO$_2$ (%)'
-            if (plot_parameters[q] == 'log_H2'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'H$_2$ (%)'
-            if (plot_parameters[q] == 'log_CO2'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'CO$_2$ (%)'
-            if (plot_parameters[q] == 'log_H2S'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'H$_2$S (%)'
-            if (plot_parameters[q] == 'log_N2'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'N$_2$ (%)'
-
             x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
-                                                alpha=0.0, edgecolor='None', density=True, stacked=True)
+                                  alpha=0.0, edgecolor='None', density=True, stacked=True)
             
             x_max_array.append(x.max())
 
@@ -3666,20 +3647,25 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                         fontsize = 10, horizontalalignment='left', 
                         verticalalignment='top', transform=ax.transAxes)
                 
-            # Plot median and +/- 1σ confidence intervals
-            if (m == 0):
-                ax.axvline(median, lw=2, ls="-", alpha=0.7, color='dimgray')
-                ax.axvline(low1, lw=1, ls="dashed", color='black')
-                ax.axvline(high1, lw=1, ls="dashed", color='black')
-
             # Plot retrieved parameter value as title
-            if (m == 0):
-                fmt = "{{0:{0}}}".format(title_fmt).format
-                title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
-                title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
-                title = "{0} = {1}".format(param_label, title)
-                title = "{0}".format(title)
-                ax.set_title(title, fontsize = title_fontsize)
+            if (show_title == True):
+                if (m == 0):
+                    fmt = "{{0:{0}}}".format(title_fmt).format
+                    title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
+                    title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
+                    title = "{0} = {1}".format(param_label, title)
+                    title = "{0}".format(title)
+                    ax.set_title(title, fontsize = title_fontsize)
+
+                    # Plot median and +/- 1σ confidence intervals
+                    ax.axvline(median, lw=2, ls="-", alpha=0.7, color='dimgray')
+                    ax.axvline(low1, lw=1, ls="dashed", color='black')
+                    ax.axvline(high1, lw=1, ls="dashed", color='black')
+
+            else:
+
+                # Add param name to x-axis label instead
+                ax.set_xlabel(param_label, fontsize = title_fontsize)
 
             # Create sub-axis for error bar
       #      newax = plt.gcf().add_axes(ax.get_position(), sharex=ax, frameon=False)
@@ -3756,9 +3742,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 elif (((param_max - param_min) > 2.0) and ((param_max - param_min) <= 4.0)):
                     xmajor_interval = 1.0
                     xminor_interval = 0.2
-                elif ((param_max - param_min) >= 4.0):
+                elif (((param_max - param_min) > 4.0) and ((param_max - param_min) <= 8.0)):
                     xmajor_interval = 2.0
                     xminor_interval = 0.5
+                elif ((param_max - param_min) >= 8.0):
+                    xmajor_interval = 4.0
+                    xminor_interval = 1.0
 
                 xmajorLocator = MultipleLocator(xmajor_interval)
                 xminorLocator = MultipleLocator(xminor_interval)
@@ -3791,9 +3780,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
       #  ax.text(0.06, 0.94, param_label, color=colour, 
       #          fontsize = 10, horizontalalignment='left', 
       #          verticalalignment='top', transform=ax.transAxes)
-
-        # Add x-axis label
-     #   ax.set_xlabel(param_label, fontsize = 16)
        
         # For first column add y label
      #   if (column_idx == 0):
@@ -3867,11 +3853,11 @@ def plot_histograms(planet, models, plot_parameters,
                     N_rows = None, N_columns = None, axes = [], 
                     retrieval_codes = [], external_samples = [],
                     external_param_names = [], plt_label = None, 
-                    save_fig = True,
+                    save_fig = True, show_title = True,
                     vertical_lines = [], vertical_line_colors = [],
                     tick_labelsize = 12, title_fontsize = 12,
                     custom_labels = [], custom_ticks = [],
-                    alpha_hist = 0.4
+                    alpha_hist = 0.4, 
                     ):
 
     '''
@@ -4060,10 +4046,12 @@ def plot_histograms(planet, models, plot_parameters,
                                     parameter_colour_list, retrieval_colour_list, 
                                     retrieval_labels, span, truths, 
                                     N_rows, N_columns, N_bins,
-                                    vertical_lines, vertical_line_colors, tick_labelsize = tick_labelsize, title_fontsize = title_fontsize,
+                                    vertical_lines, vertical_line_colors, 
+                                    tick_labelsize = tick_labelsize, title_fontsize = title_fontsize,
                                     custom_labels = custom_labels,
                                     custom_ticks = custom_ticks,
-                                    alpha_hist = alpha_hist)
+                                    alpha_hist = alpha_hist,
+                                    show_title = show_title)
     
     # Save figure to file
     if (save_fig == True):
