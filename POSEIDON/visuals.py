@@ -425,12 +425,18 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
 
     # Create figure
-    fig, (ax1, ax2) = plt.subplots(2, figsize=(12,6))
-    gs = gridspec.GridSpec(1, 2, width_ratios=[1,1]) 
-    
-    ax1 = plt.subplot(gs[0])
-    ax2 = plt.subplot(gs[1])
-    
+    fig_combined = plt.figure(constrained_layout=True, figsize=(12, 6))  
+
+    # Deploy the magic function
+    axd = fig_combined.subplot_mosaic(
+        """
+        BA
+        """
+    )
+
+    ax1 = axd['A']
+    ax2 = axd['B']
+
     # Plot terminator plane on LHS axis
     p = plot_transit(ax1, R_p, R_s, b_p, r, T, phi, phi_edge, theta, 
                      theta_edge, 'terminator', plot_labels) 
@@ -440,7 +446,7 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
                      theta_edge, 'day-night', plot_labels) 
     
     # Plot temperature colourbar
-    cbaxes = fig.add_axes([1.01, 0.131, 0.015, 0.786]) 
+    cbaxes = fig_combined.add_axes([1.01, 0.131, 0.015, 0.786]) 
     cb = plt.colorbar(p, cax = cbaxes)  
     tick_locator = ticker.MaxNLocator(nbins=8)
     cb.locator = tick_locator
@@ -448,14 +454,14 @@ def plot_geometry(planet, star, model, atmosphere, plot_labels = True):
     cb.formatter.set_useOffset(False)
     cb.ax.set_title(r'$T \, \, \rm{(K)}$', horizontalalignment='left', pad=10)
     
-    plt.tight_layout()
+  #  plt.tight_layout()
 
     # Write figure to file
     file_name = output_dir + planet_name + '_' + model_name + '_Geometry.png'
 
     plt.savefig(file_name, bbox_inches='tight', dpi=800)
 
-    return fig
+    return fig_combined
 
 
 def plot_geometry_spectrum_mixed(planet, star, model, atmosphere, spectra,
@@ -1233,7 +1239,16 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  line_widths = [], xlabels = True, ylabels = True,
                  line_styles = [],
                  alphas = [],
-                 legend_n_columns = 0):
+                 legend_n_columns = 0,
+                 x_tick_fontsize = 12,
+                 x_label_fontsize = 16,
+                 y_tick_fontsize = 12,
+                 y_label_fontsize = 16,
+                 legend_fontsize = 10,
+                 plt_label_fontsize = 14,
+                 planet_name_fontsize = 16,
+                 legend_line_size = []
+                 ):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -1320,7 +1335,21 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         alphas (list of float, optional):
             Alpha values for binned spectra, '0.8' default
         legend_n_columns (integer):
-            Manually set the number of columns for the legend
+            Manually set the number of columns for the legend.
+        x_tick_fontsize (int, optional):
+            Font size for x-axis tick labels.
+        x_label_fontsize (int, optional):
+            Font size for x-axis label.
+        y_tick_fontsize (int, optional):
+            Font size for y-axis tick labels.
+        y_label_fontsize (int, optional):
+            Font size for y-axis label.
+        legend_fontsize (int, optional):
+            Font size for the legend.
+        plt_label_fontsize (int, optional):
+            Font size for the plot label.
+        planet_name_fontsize (int, optional):
+            Font size for the planet name.
 
     Returns:
         fig (matplotlib figure object):
@@ -1697,35 +1726,35 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         
     # Set axis labels
     if xlabels == True:
-        ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+        ax1.set_xlabel(r'Wavelength (μm)', fontsize = x_label_fontsize)
 
     if ylabels == True:
         if (plot_type == 'transmission'):
             if (y_min_plt < 0.10):
-                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = y_label_fontsize)
             else:
-                ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+                ax1.set_ylabel(r'Transit Depth', fontsize =  y_label_fontsize)
         elif (plot_type == 'planet_star_radius_ratio'):
-            ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
+            ax1.set_ylabel(r'$R_p/R_*$', fontsize =  y_label_fontsize)
         elif (plot_type == 'time_average_transmission'):
-            ax1.set_ylabel(r'Average Transit Depth', fontsize = 16)
+            ax1.set_ylabel(r'Average Transit Depth', fontsize =  y_label_fontsize)
         elif (plot_type == 'emission'):
-            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize =  y_label_fontsize)
         elif ((plot_type == 'direct_emission') and (y_unit == 'Fp')):
-            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize =  y_label_fontsize)
         elif ((plot_type == 'direct_emission') and (y_unit in ['Fs', 'F*'])):
-            ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+            ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize =  y_label_fontsize)
         elif (plot_type == 'brightness_temp'):
-            ax1.set_ylabel(r'Brightness Temperature (K)', fontsize = 16)
+            ax1.set_ylabel(r'Brightness Temperature (K)', fontsize =  y_label_fontsize)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
-             verticalalignment = 'top', transform = ax1.transAxes, fontsize = 16)
+             verticalalignment = 'top', transform = ax1.transAxes, fontsize = planet_name_fontsize)
   
     # Add plot label
     if (plt_label != None):
         ax1.text(0.03, 0.90, plt_label, horizontalalignment = 'left', 
-                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = 14)
+                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
 
     # Decide at which wavelengths to place major tick labels
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
@@ -1739,7 +1768,11 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     
     # If ylabels = False, don't show them
     if ylabels == False:
-        ax.tick_params(labelleft=False)  
+        ax1.tick_params(labelleft=False)  
+
+    # Set the x and y tick fontsizes
+    ax1.tick_params(axis='x', labelsize=x_tick_fontsize)
+    ax1.tick_params(axis='y', labelsize=y_tick_fontsize)
     
     # Switch to two columns if many spectra are being plotted
     if legend_n_columns == 0:
@@ -1753,22 +1786,41 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
     # Add box around legend
     if (legend_box == True) and (legend_location != 'outside right'):
-        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
+        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90') 
     elif legend_location == 'outside right':
-        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
     else:
-        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
+        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = n_columns, frameon = False)    # Legend settings
-        
-    for legline in legend.legendHandles:
-        if ((plot_full_res == True) or (show_data == True)):
-            legline.set_linewidth(1.0)
-        else:
-            legline.set_linewidth(2.0)
+    
+    if len(legend_line_size) == 0:
+        try:
+            for legline in legend.legend_handles:
+                if ((plot_full_res == True) or (show_data == True)):
+                    legline.set_linewidth(1.0)
+                else:
+                    legline.set_linewidth(2.0)
+        except AttributeError:
+            for legline in legend.legendHandles:
+                if ((plot_full_res == True) or (show_data == True)):
+                    legline.set_linewidth(1.0)
+                else:
+                    legline.set_linewidth(2.0)
+    
+    # Let user define line width in legend 
+    else:
+        try:
+            for i in range(len(legend.legend_handles)):
+                legline = legend.legend_handles[i]
+                legline.set_linewidth(legend_line_size[i])
+        except AttributeError:
+            for i in range(len(legend.legendHandles)):
+                legline = legend.legendHandles[i]
+                legline.set_linewidth(legend_line_size[i])
     
     plt.tight_layout()
 
@@ -2108,8 +2160,12 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         
     plt.tight_layout()
     
-    for legline in legend.legendHandles:
-        legline.set_linewidth(1.0)
+    try:
+        for legline in legend.legend_handles:
+            legline.set_linewidth(1.0)
+    except AttributeError:
+        for legline in legend.legendHandles:
+            legline.set_linewidth(1.0)
 
     # Write figure to file
     if (save_fig == True):
@@ -2148,7 +2204,14 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            add_retrieved_offsets = False, verbose_offsets = True,
                            xlabels = True, ylabels = True,
                            plot_style = 'standard',
-                           legend_n_columns = 0
+                           legend_n_columns = 0,
+                           x_tick_fontsize = 12,
+                           x_label_fontsize = 16,
+                           y_tick_fontsize = 12,
+                           y_label_fontsize = 16,
+                           legend_fontsize = 10,
+                           plt_label_fontsize = 14,
+                           planet_name_fontsize = 16,
                            ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2259,7 +2322,21 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         y_labels (bool, optional):
             If false, will remove y_ticks and y_label.
         legend_n_columns (integer):
-            Manually set the number of columns for the legend
+            Manually set the number of columns for the legend.
+        x_tick_fontsize (int, optional):
+            Font size for x-axis tick labels.
+        x_label_fontsize (int, optional):
+            Font size for x-axis label.
+        y_tick_fontsize (int, optional):
+            Font size for y-axis tick labels.
+        y_label_fontsize (int, optional):
+            Font size for y-axis label.
+        legend_fontsize (int, optional):
+            Font size for the legend.
+        plt_label_fontsize (int, optional):
+            Font size for the plot label.
+        planet_name_fontsize (int, optional):
+            Font size for the planet name.
      
     Returns:
         fig (matplotlib figure object):
@@ -2798,40 +2875,44 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     # Set axis labels
     if xlabels == True:
-        ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
+        ax1.set_xlabel(r'Wavelength (μm)', fontsize = x_label_fontsize)
 
     if ylabels == True:
         if (plot_type == 'transmission'):
             if (y_unit == 'transit_depth_ppm'):
-                ax1.set_ylabel(r'Transit Depth (ppm)', fontsize = 16)
+                ax1.set_ylabel(r'Transit Depth (ppm)', fontsize = y_label_fontsize)
             else:
                 if (y_min_plt < 0.10):
-                    ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+                    ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = y_label_fontsize)
                 else:
-                    ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+                    ax1.set_ylabel(r'Transit Depth', fontsize = y_label_fontsize)
         elif (plot_type == 'planet_star_radius_ratio'):
-            ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
+            ax1.set_ylabel(r'$R_p/R_*$', fontsize = y_label_fontsize)
         elif (plot_type == 'emission'):
             if (y_unit == 'eclipse_depth_ppm'):
-                ax1.set_ylabel(r'Eclipse Depth $(ppm)$', fontsize = 16)
+                ax1.set_ylabel(r'Eclipse Depth $(ppm)$', fontsize = y_label_fontsize)
             else:
-                ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+                ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
         elif (plot_type == 'direct_emission'):
-            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
+
+    # Set the x and y tick fontsizes
+    ax1.tick_params(axis='x', labelsize=x_tick_fontsize)
+    ax1.tick_params(axis='y', labelsize=y_tick_fontsize)
 
     # Add planet name label
     if (show_planet_name == True):
         ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
-                verticalalignment = 'top', transform = ax1.transAxes, fontsize = 16)
+                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = planet_name_fontsize)
 
     # Add plot label
     if (plt_label != None):
         if (show_planet_name == True):
             ax1.text(0.03, 0.90, plt_label, horizontalalignment = 'left', 
-                    verticalalignment = 'top', transform = ax1.transAxes, fontsize = 14)
+                     verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
         else:
             ax1.text(0.03, 0.96, plt_label, horizontalalignment = 'left', 
-                    verticalalignment = 'top', transform = ax1.transAxes, fontsize = 14)
+                     verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
 
     # Decide at which wavelengths to place major tick labels
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
@@ -2845,7 +2926,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     
     # If ylabels = False, don't show them
     if ylabels == False:
-        ax.tick_params(labelleft=False)  
+        ax1.tick_params(labelleft=False)  
 
     # Switch to two columns if many spectra are being plotted
     if legend_n_columns == 0:
@@ -2856,17 +2937,17 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
     # Add box around legend
     if (legend_box == True):
-        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':10}, 
+        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = n_columns, frameon = True)    # Legend settings
         frame = legend.get_frame()
         frame.set_facecolor('0.90')
 
     elif legend_location == 'outside right':
-        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':10}, 
+        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = n_columns, frameon = False, bbox_to_anchor = (1, 0.5))
         
     else:
-        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':10}, 
+        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
                             ncol = n_columns, frameon = False)    # Legend settings
             
     legend.set_zorder(200)   # Make legend always appear in front of everything
@@ -3456,12 +3537,15 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
                          param_min, param_max, colour, x_max_array, alpha_hist):
     
     # Plot histogram
-    _, _, low1, median, high1, _, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array, alpha_hist)
+    _, low2, low1, median, high1, high2, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array, alpha_hist)
 
     # Adjust x-axis extent
     ax.set_xlim(param_min, param_max)
 
     ax.tick_params(axis='both', which='major', labelsize=8)
+
+    print(low2)
+    print(high2)
 
     return low1, median, high1
 
@@ -3544,8 +3628,24 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 param_min = span[q][0]
                 param_max = span[q][1]
 
+            if (plot_parameters[q] == 'log_SO2'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'SO$_2$ (%)'
+            if (plot_parameters[q] == 'log_H2'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'H$_2$ (%)'
+            if (plot_parameters[q] == 'log_CO2'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'CO$_2$ (%)'
+            if (plot_parameters[q] == 'log_H2S'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'H$_2$S (%)'
+            if (plot_parameters[q] == 'log_N2'):
+                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
+                param_label = r'N$_2$ (%)'
+
             x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
-                                  alpha=0.0, edgecolor='None', density=True, stacked=True)
+                                                alpha=0.0, edgecolor='None', density=True, stacked=True)
             
             x_max_array.append(x.max())
 
@@ -3804,7 +3904,7 @@ def plot_histograms(planet, models, plot_parameters,
         parameter_colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
                                  'saddlebrown', 'grey', 'brown']
     elif (N_models == 1) and (parameter_colour_list != []):
-        if (plot_parameters != []):
+        if (len(plot_parameters) != 0):
             if (len(parameter_colour_list) != len(plot_parameters)):
                 raise Exception("Number of parameter colours does not match the " + 
                                 "requested number of parameters to plot.")
@@ -3849,6 +3949,7 @@ def plot_histograms(planet, models, plot_parameters,
             output_prefix = model_name + '-'
 
             # Change directory into MultiNest result file folder
+            cwd = os.getcwd()
             os.chdir(output_dir + 'MultiNest_raw/')
             
             # Run PyMultiNest analyser to extract posterior samples
@@ -3857,7 +3958,8 @@ def plot_histograms(planet, models, plot_parameters,
             samples = analyzer.get_equal_weighted_posterior()[:,:-1]
 
             # Change directory back to directory where user's python script is located
-            os.chdir('../../../../')
+            os.chdir(cwd)
+            #os.chdir('../../../../')
 
             # Find total number of available posterior samples from MultiNest 
             N_samples = len(samples[:,0])

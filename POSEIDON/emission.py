@@ -1468,7 +1468,7 @@ def emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5):
         # For each ray travelling at mu = cos(theta)
         for j in range(len(mu)):
                 
-            # Add contribution of this ray/angle to the surface flux
+            # Add contribution of this ray/angle to the surface flux 
             F[k] += 2.0 * np.pi * mu[j] * I[j,k] * W[j]
     
     return F
@@ -1521,9 +1521,19 @@ def reflection_bare_surface(wl, surf_reflect, Gauss_quad = 5):
     else: sym_fac = 1
     albedo=np.zeros(N_wl)
 
+    phase_angle = 0
+    cos_theta = 1.0     #cos(phase_angle)
+    longitude = np.arcsin((gangle-(cos_theta-1.0)/(cos_theta+1.0))/(2.0/(cos_theta+1)))
+    colatitude = np.arccos(0.0)              # Colatitude = 90-latitude, 0 at equator 
+    f = np.sin(colatitude)                   # Define to eliminate repetition
+    ubar0 = np.outer(np.cos(longitude-phase_angle) , f) #ng by nt 
+
     for ig in range(ng): 
         for it in range(nt): 
-            albedo = albedo + surf_reflect * gweight[ig] * tweight[it]
+            u0 = ubar0[ig,it]
+            surf_reflect_weighted = surf_reflect*u0*F0PI
+            albedo = albedo + surf_reflect_weighted * gweight[ig] * tweight[it]
+            
     albedo = sym_fac * 0.5 * albedo /F0PI * (cos_theta + 1.0)
     
     return albedo
