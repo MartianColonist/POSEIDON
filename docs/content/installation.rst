@@ -36,12 +36,12 @@ on either Linux (e.g. Ubuntu) or Mac OS.
 Linux conda environment setup
 -----------------------------
 
-POSEIDON currently supports Python versions up to 3.10. You can create a new 
-Python 3.10 anaconda environment via:
+POSEIDON currently supports Python versions up to 3.11. You can create a new 
+Python 3.11 anaconda environment via:
 
 .. code-block:: bash
 
-   conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.10
+   conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.11
 
 Once the basic Python packages are installed in this fresh environment, you
 can activate the environment where POSEIDON will dwell:
@@ -58,7 +58,7 @@ For Mac OS, you need to set the CONDA_SUBDIR environment variable to osx-64
 
 .. code-block:: bash
 
-   CONDA_SUBDIR=osx-64 conda create -n 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.10
+   CONDA_SUBDIR=osx-64 conda create -n 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.11
    conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
    conda env config vars set CONDA_SUBDIR=osx-64
 
