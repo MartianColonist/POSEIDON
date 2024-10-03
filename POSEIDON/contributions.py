@@ -881,7 +881,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 spectrum_contribution_list_names.append('Bulk Species')
                         
             # Then it runs the rest of the molecules that are provided 
-            if (contribution_species_list != []):
+            if (len(contribution_species_list) != 0):
 
                 for i in range(len(contribution_species_list)):
 
@@ -934,7 +934,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                     spectrum_contribution_list_names.append('Total Clouds')
                 
                 # If you have cloud species, run this 
-                if (cloud_species_list != []):
+                if (len(cloud_species_list) != 0):
                     if enable_Mie == False:
                         raise Exception("Cloud species only available for Mie clouds")
                     
@@ -1031,7 +1031,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             # Kappa cloud will encode where clouds are
             # For models that are cloud free, you still need a g and w that's just an array of 0s
             # For Mie models with more than one species, we need to be more careful with the g and w array
-            if len(aerosol_species) == 1 or aerosol_species == []:
+            if len(aerosol_species) == 1 or len(aerosol_species) == 0:
                 w_cloud = np.ones_like(kappa_cloud)*w_cloud
                 g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
@@ -1185,7 +1185,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 # Kappa cloud will encode where clouds are
                 # For models that are cloud free, you still need a g and w that's just an array of 0s
                 # For Mie models with more than one species, we need to be more careful with the g and w array
-                if len(aerosol_species) == 1 or aerosol_species == []:
+                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
                     w_cloud = np.ones_like(kappa_cloud)*w_cloud
                     g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
@@ -1316,7 +1316,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
 def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_names, spectrum_contribution_list,
                                full_spectrum_first = True, y_unit='transit_depth',
-                               brightness_temperature = False, star = [],
+                               brightness_temperature = False, star = None,
                                y_min = None, y_max = None,
                                figure_shape = 'wide',
                                save_fig = False,
@@ -1385,7 +1385,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         Rp = planet['planet_radius']
 
         # Check to see if its directly imaged or not 
-        if star != []:
+        if star != None:
             F_star = star['F_star']
             Rs = star['R_s']
             Fp = spectrum * F_star/((Rp/Rs)**2.) # Planet Flux
@@ -1396,7 +1396,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
         for s in range(len(spectrum_contribution_list)):
 
-            if star != []:
+            if star != None:
                 Fp = spectrum_contribution_list[s] * F_star/((Rp/Rs)**2.) # Planet Flux
             else:
                 Fp = spectrum_contribution_list[s]
@@ -1407,7 +1407,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
     if full_spectrum_first == True:
 
         # If the user didn't provide a color list
-        if colour_list == []:
+        if len(colour_list) == 0:
 
             # Black is the full spectrum 
             colour_list = ['black','dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
@@ -1440,7 +1440,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
     else: 
         
         # If the user didn't provide a color list
-        if colour_list == []:
+        if len(colour_list) == 0:
 
             colour_list = ['dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
 
@@ -2299,7 +2299,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 spectrum_contribution_list_names.append('Bulk Species')
                         
             # Then it runs the rest of the molecules that are provided 
-            if (contribution_species_list != []):
+            if (len(contribution_species_list) != 0):
 
                 for i in range(len(contribution_species_list)):
 
@@ -2354,7 +2354,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                     spectrum_contribution_list_names.append('Total Clouds')
                 
                 # If you have cloud species, run this 
-                if (cloud_species_list != []):
+                if (len(cloud_species_list) != 0):
                     if enable_Mie == False:
                         raise Exception("Cloud species only available for Mie clouds")
                     
@@ -2474,7 +2474,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             # Kappa cloud will encode where clouds are
             # For models that are cloud free, you still need a g and w that's just an array of 0s
             # For Mie models with more than one species, we need to be more careful with the g and w array
-            if len(aerosol_species) == 1 or aerosol_species == []:
+            if len(aerosol_species) == 1 or len(aerosol_species) == 0:
                 w_cloud = np.ones_like(kappa_cloud)*w_cloud
                 g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
@@ -2632,7 +2632,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 # Kappa cloud will encode where clouds are
                 # For models that are cloud free, you still need a g and w that's just an array of 0s
                 # For Mie models with more than one species, we need to be more careful with the g and w array
-                if len(aerosol_species) == 1 or aerosol_species == []:
+                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
                     w_cloud = np.ones_like(kappa_cloud_temp)*w_cloud
                     g_cloud = np.ones_like(kappa_cloud_temp)*g_cloud
 

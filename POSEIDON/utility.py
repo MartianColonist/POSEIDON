@@ -661,7 +661,7 @@ def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
     wl_binned = np.exp(log_wl_binned)
     
     # Call Spectres routine
-    if (err_data != []):
+    if (len(err_data) != 0):
         spectrum_binned, err_binned = spectres(wl_binned, wl_native, spectrum_native,
                                                spec_errs = err_data, verbose = False)
 

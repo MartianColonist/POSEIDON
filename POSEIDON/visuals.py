@@ -634,7 +634,7 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
         if (TwoD_type == 'D-N'):
             
             # If user didn't specify which profiles to plot, plot all of them
-            if (show_profiles == []):
+            if (len(show_profiles) == 0):
                 show_profiles = ['day', 'night', 'terminator']
             
             for profile_to_plot in show_profiles:
@@ -656,7 +656,7 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
         elif (TwoD_type == 'E-M'):
             
             # If user didn't specify which profiles to plot, plot all of them
-            if (show_profiles == []):
+            if (len(show_profiles) == 0):
                 show_profiles = ['evening', 'morning', 'average']
                 
             for profile_to_plot in show_profiles:
@@ -678,7 +678,7 @@ def plot_PT(planet, model, atmosphere, show_profiles = [],
     elif (Atmosphere_dimension == 3):
         
         # If user didn't specify which profiles to plot, plot all of them
-        if (show_profiles == []):
+        if (len(show_profiles) == 0):
             show_profiles = ['evening-day', 'evening-night', 'evening-terminator', 
                              'morning-day', 'morning-night', 'morning-terminator',
                              'terminator-average']
@@ -816,7 +816,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
     if (len(plot_species) > 8):
         raise Exception("Max number of concurrent species on plot is 8.\n"
                         "Please specify species to plot via plot_species = [LIST]")
-    if ((colour_list != []) and (len(plot_species) != len(colour_list))):
+    if ((len(colour_list) != 0) and (len(plot_species) != len(colour_list))):
         raise Exception("Number of colours does not match number of species.")
     for q, species in enumerate(plot_species):
         if (species not in chemical_species):
@@ -854,7 +854,7 @@ def plot_chem(planet, model, atmosphere, plot_species = [],
         log_P_max = np.log10(np.max(P))
     
     # Define colours for mixing ratio profiles (default or user choice)
-    if (colour_list == []):   # If user did not specify a custom colour list
+    if (len(colour_list) == 0):   # If user did not specify a custom colour list
         colours = ['royalblue', 'darkgreen', 'magenta', 'crimson', 'darkgrey', 
                    'black', 'darkorange', 'navy']
     else:
@@ -1384,19 +1384,19 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     # Quick validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 8) and colour_list == []:
+    if ((N_spectra > 8) and len(colour_list) == 0):
         raise Exception("Max number of concurrent spectra to plot is 8 with default colour list")
-    if ((colour_list != []) and (N_spectra != len(colour_list))):
+    if ((len(colour_list) != 0) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
-    if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
+    if ((len(spectra_labels) != 0) and (N_spectra != len(spectra_labels))):
         raise Exception("Number of model labels does not match number of spectra.")
-    if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
+    if ((len(text_annotations) != 0) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
-    if ((line_widths != []) and (N_spectra != len(line_widths))):
+    if ((len(line_widths) != 0) and (N_spectra != len(line_widths))):
         raise Exception("Number of line widths does not match number of spectra.")
         
     # Define colours for plotted spectra (default or user choice)
-    if (colour_list == []):   # If user did not specify a custom colour list
+    if (len(colour_list) == 0):   # If user did not specify a custom colour list
         colours = ['green', 'red', 'black', 'darkgrey', 'navy', 
                    'brown', 'goldenrod', 'magenta']
     else:
@@ -1418,31 +1418,31 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Quick validity checks for plotting
         if (N_datasets == 0):
             raise Exception("Must provide at least one dataset to plot!")
-        if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
+        if ((N_datasets > 5) and len(data_colour_list) == 0) or ((N_datasets > 5) and len(data_marker_list) == 0):
             raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
-        if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
+        if ((len(data_colour_list) != 0) and (N_datasets != len(data_colour_list))):
             raise Exception("Number of colours does not match number of datasets.")
-        if ((data_labels != []) and (N_datasets != len(data_labels))):
+        if ((len(data_labels) != 0) and (N_datasets != len(data_labels))):
             raise Exception("Number of dataset labels does not match number of datasets.")
-        if ((data_marker_list != []) and (N_datasets != len(data_marker_list))):
+        if ((len(data_marker_list) != 0) and (N_datasets != len(data_marker_list))):
             raise Exception("Number of dataset markers does not match number of datasets.")
-        if ((data_marker_size_list != []) and (N_datasets != len(data_marker_size_list))):
+        if ((len(data_marker_size_list) != 0) and (N_datasets != len(data_marker_size_list))):
             raise Exception("Number of dataset marker sizes does not match number of datasets.")
             
         # Define colours for plotted spectra (default or user choice)
-        if (data_colour_list == []):   # If user did not specify a custom colour list
+        if (len(data_colour_list) == 0):   # If user did not specify a custom colour list
             data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown']
         else:
             data_colours = data_colour_list
 
         # Define data marker symbols (default or user choice)
-        if (data_marker_list == []):   # If user did not specify a custom colour list
+        if (len(data_marker_list) == 0):   # If user did not specify a custom colour list
             data_markers = ['o', 's', 'D', '*', 'X',]
         else:
             data_markers = data_marker_list
 
         # Define data marker sizes (default or user choice)
-        if (data_marker_size_list == []):   # If user did not specify a custom colour list
+        if (len(data_marker_size_list) == 0):   # If user did not specify a custom colour list
             data_markers_size = [3, 3, 3, 3, 3,]
         else:
             data_markers_size = data_marker_size_list
@@ -1611,7 +1611,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         (spec, wl) = spectra[i]
         
         # If user did not specify a model label, just call them "Model 1, 2" etc.
-        if (spectra_labels == []):
+        if (len(spectra_labels) == 0):
             if (N_spectra == 1):
                 label_i = r'Spectrum'
             else:
@@ -1640,15 +1640,15 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                 colour_binned = colours[i]
                 lw_binned = 2.0
 
-            if line_widths != []:
+            if (len(line_widths) != 0):
                 lw_binned = line_widths[i]
             
-            if alphas != []:
+            if (len(alphas) != 0):
                 alpha_binned = alphas[i]
             else:
                 alpha_binned = 0.8
 
-            if line_styles != []:
+            if (len(line_styles) != 0):
                 linestyle_binned = line_styles[i]
             else:
                 linestyle_binned = '-'
@@ -1668,7 +1668,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         for i in range(N_datasets):
             
             # If user did not specify dataset labels, use the instrument names
-            if (data_labels == []):
+            if (len(data_labels) == 0):
                 label_i = instruments[i]
             else:
                 label_i = data_labels[i]
@@ -1711,7 +1711,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             [markers.set_alpha(1.0)]
 
     # Plot text annotations
-    if (text_annotations != []):
+    if (len(text_annotations) != 0):
 
         for i in range(len(text_annotations)):
 
@@ -1724,10 +1724,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
-    if xlabels == True:
+    if (xlabels == True):
         ax1.set_xlabel(r'Wavelength (μm)', fontsize = x_label_fontsize)
 
-    if ylabels == True:
+    if (ylabels == True):
         if (plot_type == 'transmission'):
             if (y_min_plt < 0.10):
                 ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = y_label_fontsize)
@@ -1759,22 +1759,22 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
     # Plot wl tick labels
-    if xlabels == True:
+    if (xlabels == True):
         ax1.set_xticks(wl_ticks)
     else:
         ax1.set_xticks(wl_ticks)
         ax1.tick_params(labelbottom=False)  
     
-    # If ylabels = False, don't show them
-    if ylabels == False:
+    # If ylabels is False, don't show them
+    if (ylabels == False):
         ax1.tick_params(labelleft=False)  
 
-    # Set the x and y tick fontsizes
+    # Set the x and y tick font sizes
     ax1.tick_params(axis='x', labelsize=x_tick_fontsize)
     ax1.tick_params(axis='y', labelsize=y_tick_fontsize)
     
     # Switch to two columns if many spectra are being plotted
-    if legend_n_columns == 0:
+    if (legend_n_columns == 0):
         if (N_spectra >= 6):
             n_columns = 2
         else:
@@ -1919,32 +1919,32 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Quick validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if ((N_datasets > 5) and data_colour_list == []) or ((N_datasets > 5) and data_marker_list == []):
-        raise Exception("Max number of concurrent datasets to plot is 5 with default data colours and markers.")
-    if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
+    if ((N_datasets > 7) and len(data_colour_list) == 0) or ((N_datasets > 7) and len(data_marker_list) == 0):
+        raise Exception("Max number of concurrent datasets to plot is 7 with default data colours and markers.")
+    if ((len(data_colour_list) != 0) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
-    if ((data_labels != []) and (N_datasets != len(data_labels))):
+    if ((len(data_labels) != 0) and (N_datasets != len(data_labels))):
         raise Exception("Number of dataset labels does not match number of datasets.")
-    if ((data_marker_list != []) and (N_datasets != len(data_marker_list))):
+    if ((len(data_marker_list) != 0) and (N_datasets != len(data_marker_list))):
         raise Exception("Number of dataset markers does not match number of datasets.")
-    if ((data_marker_size_list != []) and (N_datasets != len(data_marker_size_list))):
+    if ((len(data_marker_size_list) != 0) and (N_datasets != len(data_marker_size_list))):
         raise Exception("Number of dataset marker sizes does not match number of datasets.")
         
     # Define colours for plotted spectra (default or user choice)
-    if (data_colour_list == []):   # If user did not specify a custom colour list
-        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown']
+    if (len(data_colour_list) == 0):   # If user did not specify a custom colour list
+        colours = ['orange', 'lime', 'cyan', 'magenta', 'brown', 'grey', 'purple']
     else:
         colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
-    if (data_marker_list == []):   # If user did not specify a custom colour list
-        data_markers = ['o', 's', 'D', '*', 'X']
+    if (len(data_marker_list) == 0):   # If user did not specify a custom colour list
+        data_markers = ['o', 's', 'D', '*', 'X', 'o', 'o']
     else:
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
-    if (data_marker_size_list == []):   # If user did not specify a custom colour list
-        data_markers_size = [3, 3, 3, 3, 3]
+    if (len(data_marker_size_list) == 0):   # If user did not specify a custom colour list
+        data_markers_size = [3, 3, 3, 3, 3, 3, 3]
     else:
         data_markers_size = data_marker_size_list
        
@@ -2015,7 +2015,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     y_range = [y_min_plt, y_max_plt]
 
     # Create y formatting objects
-    ymajorLocator   = MultipleLocator(ymajor_spacing)
+    ymajorLocator = MultipleLocator(ymajor_spacing)
 
     if ((plot_type == 'planet_star_radius_ratio') or (y_min_plt > 0.10)):
         ymajorFormatter = ScalarFormatter(useMathText=False)
@@ -2057,7 +2057,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     for i in range(N_datasets):
         
         # If user did not specify dataset labels, use the instrument names
-        if (data_labels == []):
+        if (len(data_labels) == 0):
             label_i = instruments[i]
         else:
             label_i = data_labels[i]
@@ -2190,7 +2190,6 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            sigma_to_plot = 2,
                            add_retrieved_offsets = False, verbose_offsets = True,
                            xlabels = True, ylabels = True,
-                           plot_style = 'standard',
                            legend_n_columns = 0,
                            x_tick_fontsize = 12,
                            x_label_fontsize = 16,
@@ -2199,6 +2198,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            legend_fontsize = 10,
                            plt_label_fontsize = 14,
                            planet_name_fontsize = 16,
+                           plot_style = 'standard',
                            ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2324,6 +2324,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             Font size for the plot label.
         planet_name_fontsize (int, optional):
             Font size for the planet name.
+        plot_style (str, optional):
+            (Experimental!) plot style ('standard' or 'fancy').
      
     Returns:
         fig (matplotlib figure object):
@@ -2367,31 +2369,31 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick spectra validity checks for plotting
     if (N_spectra == 0):
         raise Exception("Must provide at least one spectrum to plot!")
-    if (N_spectra > 5) and (colour_list == []):
+    if (N_spectra > 5) and (len(colour_list) == 0):
         raise Exception("Max number of concurrent retrieved spectra to plot is 5 with default colour list.")
-    if ((colour_list != []) and (N_spectra != len(colour_list))):
+    if ((len(colour_list) != 0) and (N_spectra != len(colour_list))):
         raise Exception("Number of colours does not match number of spectra.")
-    if ((binned_colour_list != []) and (N_spectra != len(binned_colour_list))):
+    if ((len(binned_colour_list) != 0) and (N_spectra != len(binned_colour_list))):
         raise Exception("Number of binned model colours does not match number of spectra.")
-    if ((spectra_labels != []) and (N_spectra != len(spectra_labels))):
+    if ((len(spectra_labels) != 0) and (N_spectra != len(spectra_labels))):
         raise Exception("Number of model labels does not match number of spectra.")
-    if ((line_width_list != []) and (N_spectra != len(line_width_list))):
+    if ((len(line_width_list) != 0) and (N_spectra != len(line_width_list))):
         raise Exception("Number of line widths does not match number of spectra.")
 
     # Define colours for plotted spectra (default or user choice)
-    if (colour_list == []):   # If user did not specify a custom colour list
+    if (len(colour_list) == 0):   # If user did not specify a custom colour list
         colours = ['purple', 'darkorange', 'green', 'royalblue', 'grey']
     else:
         colours = colour_list
 
     # Define colours for binned model points (default or user choice)
-    if (binned_colour_list == []):
+    if (len(binned_colour_list) == 0):
         binned_colours = ['gold', 'pink', 'cyan', 'lime', 'white']
     else:
         binned_colours = binned_colour_list
 
     # Load default spectrum line width if not specified by the user
-    if (line_width_list == []):
+    if (len(line_width_list) == 0):
         line_widths = np.full(N_spectra, 1.0)    # Default spectrum line width
     else:
         line_widths = line_width_list
@@ -2410,36 +2412,36 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     # Quick data validity checks for plotting
     if (N_datasets == 0):
         raise Exception("Must provide at least one dataset to plot!")
-    if ((N_datasets > 10) and data_colour_list == []) or ((N_datasets > 10) and data_marker_list == []):
+    if ((N_datasets > 10) and len(data_colour_list) == 0) or ((N_datasets > 10) and len(data_marker_list) == 0):
         raise Exception("Max number of concurrent datasets to plot is 10 with default data colours and markers.")
-    if ((data_colour_list != []) and (N_datasets != len(data_colour_list))):
+    if ((len(data_colour_list) != 0) and (N_datasets != len(data_colour_list))):
         raise Exception("Number of colours does not match number of datasets.")
-    if ((data_labels != []) and (N_datasets != len(data_labels))):
+    if ((len(data_labels) != 0) and (N_datasets != len(data_labels))):
         raise Exception("Number of dataset labels does not match number of datasets.")
-    if ((data_marker_list != []) and (N_datasets != len(data_marker_list))):
+    if ((len(data_marker_list) != 0) and (N_datasets != len(data_marker_list))):
         raise Exception("Number of dataset markers does not match number of datasets.")
-    if ((data_marker_size_list != []) and (N_datasets != len(data_marker_size_list))):
+    if ((len(data_marker_size_list) != 0) and (N_datasets != len(data_marker_size_list))):
         raise Exception("Number of dataset marker sizes does not match number of datasets.")
-    if ((data_alpha_list != []) and (N_datasets != len(data_alpha_list))):
+    if ((len(data_alpha_list) != 0) and (N_datasets != len(data_alpha_list))):
         raise Exception("Number of dataset alpha values does not match number of datasets.")
-    if ((data_eline_alpha_list != []) and (N_datasets != len(data_eline_alpha_list))):
+    if ((len(data_eline_alpha_list) != 0) and (N_datasets != len(data_eline_alpha_list))):
         raise Exception("Number of dataset alpha values does not match number of datasets.")
-    if ((data_edge_width_list != []) and (N_datasets != len(data_edge_width_list))):
+    if ((len(data_edge_width_list) != 0) and (N_datasets != len(data_edge_width_list))):
         raise Exception("Number of dataset marker sizes does not match number of datasets.")
-    if ((data_eline_width_list != []) and (N_datasets != len(data_eline_width_list))):
+    if ((len(data_eline_width_list) != 0) and (N_datasets != len(data_eline_width_list))):
         raise Exception("Number of error bar line widths does not match number of spectra.")
-    if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
+    if ((len(text_annotations) != 0) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
 
     # Define colours for plotted spectra (default or user choice)
-    if (data_colour_list == []):   # If user did not specify a custom colour list
+    if (len(data_colour_list) == 0):   # If user did not specify a custom colour list
         data_colours = ['lime', 'cyan', 'magenta', 'orange', 'brown', 'crimson',
                         'forestgreen', 'deepskyblue', 'grey', 'whitesmoke']
     else:
         data_colours = data_colour_list
 
     # Define data marker symbols (default or user choice)
-    if (data_marker_list == []):   # If user did not specify a custom colour list
+    if (len(data_marker_list) == 0):   # If user did not specify a custom colour list
         if (N_datasets <= 5):
             data_markers = ['o', 's', 'D', '*', 'X']
         else:
@@ -2448,41 +2450,41 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         data_markers = data_marker_list
 
     # Define data marker sizes (default or user choice)
-    if (data_marker_size_list == []):
+    if (len(data_marker_size_list) == 0):
         data_markers_size = np.full(N_datasets, 3.0)   # Default data marker size
     else:
         data_markers_size = data_marker_size_list
 
     # Define data marker alpha (default or user choice)
-    if (data_alpha_list == []):
+    if (len(data_alpha_list) == 0):
         data_alphas = np.full(N_datasets, 1.0)   # Default data alpha
     else:
         data_alphas = data_alpha_list
 
     # Define data marker alpha (default or user choice)
-    if (data_eline_alpha_list == []):
+    if (len(data_eline_alpha_list) == 0):
         data_eline_alphas = np.full(N_datasets, 0.8)   # Default error bar alpha
     else:
         data_eline_alphas = data_eline_alpha_list
 
     # Define data edge widths (default or user choice)
-    if (data_edge_width_list == []):
+    if (len(data_edge_width_list) == 0):
         data_edge_widths = np.full(N_datasets, 0.8)   # Default data marker edge width
     else:
         data_edge_widths = data_edge_width_list
 
     # Define error bar line width (default or user choice)
-    if (data_eline_width_list == []):
+    if (len(data_eline_width_list) == 0):
         data_eline_widths = np.full(N_datasets, 1.0)   # Default error line width
     else:
         data_eline_widths = data_eline_width_list
 
     #***** Apply any retrieved offsets to the data *****#
 
-    if add_retrieved_offsets:
+    if (add_retrieved_offsets == True):
 
         # Check model has been defined
-        if model == None:
+        if (model == None):
             raise Exception('Please provide model to plot offsets')
         
         offset_datasets = model['offsets_applied']
@@ -2754,7 +2756,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         (spec_high2, wl) = spectra_high2[i]
         
         # If user did not specify a model label, just call them "Model 1, 2" etc.
-        if (spectra_labels == []):
+        if (len(spectra_labels) == 0):
             if (N_spectra == 1):
                 label_i = r'Retrieved Spectrum'
             else:
@@ -2808,7 +2810,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     for i in range(N_datasets):
         
         # If user did not specify dataset labels, use the instrument names
-        if (data_labels == []):
+        if (len(data_labels) == 0):
             label_i = instruments[i]
         else:
             label_i = data_labels[i]
@@ -2848,7 +2850,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         [markers.set_alpha(data_alphas[i])]
 
     # Plot text annotations
-    if (text_annotations != []):
+    if (len(text_annotations) != 0):
 
         for i in range(len(text_annotations)):
 
@@ -2861,10 +2863,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
-    if xlabels == True:
+    if (xlabels == True):
         ax1.set_xlabel(r'Wavelength (μm)', fontsize = x_label_fontsize)
 
-    if ylabels == True:
+    if (ylabels == True):
         if (plot_type == 'transmission'):
             if (y_unit == 'transit_depth_ppm'):
                 ax1.set_ylabel(r'Transit Depth (ppm)', fontsize = y_label_fontsize)
@@ -2883,7 +2885,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         elif (plot_type == 'direct_emission'):
             ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
 
-    # Set the x and y tick fontsizes
+    # Set the x and y tick font sizes
     ax1.tick_params(axis='x', labelsize=x_tick_fontsize)
     ax1.tick_params(axis='y', labelsize=y_tick_fontsize)
 
@@ -2905,18 +2907,18 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
     # Plot wl tick labels
-    if xlabels == True:
+    if (xlabels == True):
         ax1.set_xticks(wl_ticks)
     else:
         ax1.set_xticks(wl_ticks)
         ax1.tick_params(labelbottom=False)  
     
-    # If ylabels = False, don't show them
-    if ylabels == False:
+    # If ylabels is False, don't show them
+    if (ylabels == False):
         ax1.tick_params(labelleft=False)  
 
     # Switch to two columns if many spectra are being plotted
-    if legend_n_columns == 0:
+    if (legend_n_columns == 0):
         n_columns = 1
     
     else:
@@ -3025,13 +3027,13 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
         raise Exception("Must provide at least one P-T profile to plot!")
     if (N_PT > 4):
         raise Exception("Max number of concurrent retrieved P-T profiles to plot is 4.")
-    if ((colour_list != []) and (N_PT != len(colour_list))):
+    if ((len(colour_list) != 0) and (N_PT != len(colour_list))):
         raise Exception("Number of colours does not match number of P-T profiles.")
-    if ((PT_labels != []) and (N_PT != len(PT_labels))):
+    if ((len(PT_labels) != 0) and (N_PT != len(PT_labels))):
         raise Exception("Number of model labels does not match number of P-T profiles.")
 
     # Define colours for plotted spectra (default or user choice)
-    if (colour_list == []):   # If user did not specify a custom colour list
+    if (len(colour_list) == 0):   # If user did not specify a custom colour list
         colours = ['purple', 'darkorange', 'green']
     else:
         colours = colour_list
@@ -3116,7 +3118,7 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
             (T_high2, P) = PT_high2[i]
             
             # If user did not specify a model label, just call them "Model 1, 2" etc.
-            if (PT_labels == []):
+            if (len(PT_labels) == 0):
                 if (N_PT == 1):
                     label_i = r'Retrieved P-T Profile'
                 else:
@@ -3270,16 +3272,16 @@ def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median,
     if (len(plot_species) > 8):
         raise Exception("Max number of concurrent species on plot is 8.\n"
                         "Please specify species to plot via plot_species = [LIST]")
-    if ((colour_list != []) and (len(plot_species) != len(colour_list))):
+    if ((len(colour_list) != 0) and (len(plot_species) != len(colour_list))):
         raise Exception("Number of colours does not match number of species.")
-    if ((model_labels != []) and (N_chem != len(model_labels))):
+    if ((len(model_labels) != 0) and (N_chem != len(model_labels))):
         raise Exception("Number of model labels does not match number of mixing ratio profiles.")
     for q, species in enumerate(plot_species):
         if (species not in chemical_species):
             raise Exception(species + " not included in this model.")
 
     # Define colours for mixing ratio profiles (default or user choice)
-    if (colour_list == []):   # If user did not specify a custom colour list
+    if (len(colour_list) == 0):   # If user did not specify a custom colour list
         colours = ['royalblue', 'darkgreen', 'magenta', 'crimson', 'darkgrey', 
                    'black', 'darkorange', 'navy']
     else:
@@ -3368,7 +3370,7 @@ def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median,
             for q, species in enumerate(plot_species):
  
                 # If user did not specify a model label, just call them "Model 1, 2" etc.
-                if (model_labels == []):
+                if (len(model_labels) == 0):
                     if (N_chem == 1):
                         label_i = r'Retrieved ' + latex_species[q]
                     else:
@@ -3560,13 +3562,13 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     
     # Latex code for parameter labels
 
-    if custom_labels == []:
+    if (len(custom_labels) == 0):
         param_labels = generate_latex_param_names(plot_parameters)
     else:
         param_labels = custom_labels
 
     # Determine histogram bounds (defaults to +/- 5σ)
-    if (span == []):
+    if (len(span) == 0):
         span = [0.999999426697 for q in range(N_params)]
     span = list(span)
     
@@ -3581,7 +3583,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         row_idx = q // N_columns
         column_idx = q - (row_idx * N_columns)
 
-        if (axes_in == []):
+        if (len(axes_in) == 0):
             ax = plt.subplot(gs[row_idx, column_idx:column_idx+1])
         else:
             ax = axes_in[q]
@@ -3642,7 +3644,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                                                     alpha_hist = alpha_hist)
 
             # Add retrieval model labels to top left panel
-            if ((row_idx == 0) and (column_idx == 0) and (retrieval_labels != [])):
+            if ((row_idx == 0) and (column_idx == 0) and (len(retrieval_labels) != 0)):
                 ax.text(0.10, (0.94 - m*0.10), retrieval_labels[m], color=colour, 
                         fontsize = 10, horizontalalignment='left', 
                         verticalalignment='top', transform=ax.transAxes)
@@ -3760,7 +3762,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 ax.xaxis.set_major_locator(xmajorLocator)
                 ax.xaxis.set_minor_locator(xminorLocator)
 
-            if custom_ticks != []:
+            if (len(custom_ticks) != 0):
                 xmajorLocator = MultipleLocator(custom_ticks[q][0])
                 xminorLocator = MultipleLocator(custom_ticks[q][1])
                 ax.xaxis.set_major_locator(xmajorLocator)
@@ -3768,10 +3770,10 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
 
         # Overplot true value
-        if (truths != []):
+        if (len(truths) != 0):
             ax.axvline(x=truths[q], linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
 
-        if (vertical_lines != []):
+        if (len(vertical_lines) != 0):
             for n in range(len(vertical_lines)):
                 ax.axvline(x=vertical_lines[n][q], linewidth=1.5, linestyle='-', color=vertical_lines_colors[n], alpha=0.8)
 
@@ -3873,17 +3875,17 @@ def plot_histograms(planet, models, plot_parameters,
     if (N_models > 10):
         raise Exception("Max supported number of retrieval models is 10.")
 
-    if (N_models == 1) and (parameter_colour_list == []):
+    if (N_models == 1) and (len(parameter_colour_list) == 0):
         parameter_colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
                                  'saddlebrown', 'grey', 'brown']
-    elif (N_models == 1) and (parameter_colour_list != []):
+    elif (N_models == 1) and (len(parameter_colour_list) != 0):
         if (len(plot_parameters) != 0):
             if (len(parameter_colour_list) != len(plot_parameters)):
                 raise Exception("Number of parameter colours does not match the " + 
                                 "requested number of parameters to plot.")
-    elif (N_models >= 2) and (retrieval_colour_list == []):
+    elif (N_models >= 2) and (len(retrieval_colour_list) == 0):
         retrieval_colour_list = ['purple', 'dodgerblue', 'forestgreen']
-    elif (N_models >= 2) and (retrieval_colour_list != []):
+    elif (N_models >= 2) and (len(retrieval_colour_list) != 0):
         if (len(retrieval_colour_list) != N_models):
             raise Exception("Number of retrieval colours does not match the " +
                             "number of retrieval models.")
@@ -3895,7 +3897,7 @@ def plot_histograms(planet, models, plot_parameters,
 
         model = models[m]
 
-        if ((retrieval_codes == []) or (retrieval_codes[m] == 'POSEIDON')):
+        if ((len(retrieval_codes) == 0) or (retrieval_codes[m] == 'POSEIDON')):
 
             # Unpack model and atmospheric properties
             planet_name = planet['planet_name']

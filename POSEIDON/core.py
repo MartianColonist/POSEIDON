@@ -174,7 +174,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
                             "will generally not be the same as the model wavelength " +
                             "array ('wl'), since it will be from your custom file.")
 
-        if (wl == []):
+        if (len(wl) == 0):
             raise Exception("Error: you must provide the model wavelength array 'wl' " +
                             "so that your custom stellar spectrum can be interpolated " +
                             "onto the model wavelength grid.")
@@ -1493,7 +1493,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # For models that are cloud free, you still need a g and w that's just an array of 0s
             # For Mie models with more than one species, we need to be more careful with the g and w array
             elif scattering == True or reflection == True:
-                if len(aerosol_species) == 1 or aerosol_species == []:
+                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
                     w_cloud = np.ones_like(kappa_cloud)*w_cloud
                     g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
