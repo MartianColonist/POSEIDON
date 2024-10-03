@@ -9,7 +9,7 @@ from numba.core.decorators import jit
 from .utility import prior_index
                    
 
-@jit(nopython=True)
+@jit(nopython = True)
 def zone_boundaries(N_b, N_sectors, N_zones, b, r_up, k_zone_back,
                     theta_edge_min, theta_edge_max):
     ''' 
@@ -83,7 +83,7 @@ def zone_boundaries(N_b, N_sectors, N_zones, b, r_up, k_zone_back,
     return r_min, r_max
 
 
-@jit(nopython=True)
+@jit(nopython = True)
 def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back, 
                                 N_layers, N_sectors_back, N_zones_back, 
                                 N_zones, N_phi, k_zone_back, theta_edge_all):
@@ -285,7 +285,7 @@ def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back,
     return Path
 
 
-@jit(nopython=True)
+@jit(nopython = True)
 def extend_rad_transfer_grids(phi_edge, theta_edge, R_s, d, R_max, f_cloud, 
                               phi_0, theta_0, N_sectors_back, N_zones_back, 
                               enable_deck, N_phi_max = 36):
@@ -529,7 +529,7 @@ def extend_rad_transfer_grids(phi_edge, theta_edge, R_s, d, R_max, f_cloud,
            N_phi, j_sector, j_sector_back, k_zone_back, cloudy_sectors, cloudy_zones
         
 
-@jit(nopython=True)
+@jit(nopython = True)
 def compute_tau_vert(N_phi, N_layers, N_zones, N_wl, j_sector, j_sector_back,
                      k_zone_back, cloudy_zones, cloudy_sectors, kappa_clear, 
                      kappa_cloud, dr):

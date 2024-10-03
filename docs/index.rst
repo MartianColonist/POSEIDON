@@ -2,8 +2,6 @@
 POSEIDON's documentation
 ====================================
 
-**Beta website for POSEIDON v1.2**
-
 POSEIDON is a Python package designed to rapidly retrieve atmospheric properties 
 from exoplanet spectra. POSEIDON includes modelling capabilities to 
 generate 1D, 2D, or 3D exoplanet transmission spectra (`TRIDENT 

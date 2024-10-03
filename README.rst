@@ -69,4 +69,5 @@ Interesting in contributing to POSEIDON? Please see the `contribution guide
 Questions and Support
 ---------------------
 
-Feel free to reach out to ryanjmac@umich.edu
+Feel free to reach out to Ryan MacDonald (ryanjmac@umich.edu) or Elijah Mullens 
+(eem85@cornell.edu). 

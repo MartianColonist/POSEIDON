@@ -3,7 +3,7 @@ import os
 
 setup(
     name = 'POSEIDON',
-    version = '1.2.0',
+    version = '1.2.1',
     description = 'Exoplanet atmospheric retrieval package',
     long_description = open(os.path.join(
                             os.path.dirname(__file__), 'README.rst')).read(),
@@ -13,10 +13,10 @@ setup(
     license = 'BSD 3-Clause License',
     packages = ['POSEIDON'],
     include_package_data = True,
-    python_requires = '<3.11',
-    install_requires = ['numpy',
+    python_requires = '<3.12',
+    install_requires = ['numpy<2',
                         'scipy',
-                        'matplotlib<=3.5.1',
+                        'matplotlib',
                         'astropy',
                         'h5py',
                         'numba',
@@ -27,6 +27,7 @@ setup(
                         'pymultinest',
                         'spectres',
                         'jupyter',
-                        'pytest'],
+                        'pytest',
+                        'cmasher'],
     zip_safe = False,
 )

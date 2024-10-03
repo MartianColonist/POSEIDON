@@ -29,22 +29,41 @@ the dependencies for POSEIDON: PyMultiNest and mpi4py.
    We recommend using WSL because PyMultiNest does not natively support Windows.
    However, it will work fine if you use WSL to install and run POSEIDON.
 
-.. attention::
-   We recommend installing POSEIDON in a fresh `Anaconda <https://www.anaconda.com/>`_ 
-   environment. You can create a new Python 3.9 environment via:
+We recommend installing POSEIDON in a fresh `Anaconda <https://www.anaconda.com/>`_ 
+environment. The following instructions show you how to create the conda environment
+on either Linux (e.g. Ubuntu) or Mac OS.
 
-   .. code-block:: bash
+Linux conda environment setup
+-----------------------------
 
-    conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.9
+POSEIDON currently supports Python versions up to 3.11. You can create a new 
+Python 3.11 anaconda environment via:
 
-   Once the basic Python packages are installed in this fresh environment, you
-   can activate the environment where POSEIDON will dwell:
+.. code-block:: bash
 
-   .. code-block:: bash
+   conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.11
 
-    conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+Once the basic Python packages are installed in this fresh environment, you
+can activate the environment where POSEIDON will dwell:
 
-   Note that POSEIDON currently supports Python up to 3.10.
+.. code-block:: bash
+
+   conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+
+Mac OS conda environment setup
+------------------------------
+
+For Mac OS, you need to set the CONDA_SUBDIR environment variable to osx-64 
+(because PyMultiNest does not currently support ARM chips). You can do this via:
+
+.. code-block:: bash
+
+   CONDA_SUBDIR=osx-64 conda create -n 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.11
+   conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+   conda env config vars set CONDA_SUBDIR=osx-64
+
+Installing PyMultiNest
+----------------------
 
 `MultiNest <https://academic.oup.com/mnras/article/398/4/1601/981502>`_ is the 
 main sampling algorithm used for parameter space exploration in POSEIDON retrievals. 

@@ -580,7 +580,7 @@ def plot_clouds(planet,model,atmosphere, colour_list = []):
     fig.set_size_inches(10, 6)
 
     # Define colours for mixing ratio profiles (default or user choice)
-    if (colour_list == []):   # If user did not specify a custom colour list
+    if (len(colour_list) == 0):   # If user did not specify a custom colour list
         colours = ['orange','royalblue', 'darkgreen', 'magenta', 'crimson', 'darkgrey', 
                    'black', 'darkorange', 'navy']
     else:

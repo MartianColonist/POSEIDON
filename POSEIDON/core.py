@@ -33,7 +33,7 @@ from .supported_chemicals import supported_species, supported_cia, inactive_spec
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
-                        extinction_LBL, extinction_GPU, extinction_spectrum_contribution, extinction_spectrum_pressure_contribution
+                        extinction_LBL, extinction_GPU
 from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
 from .instrument import init_instrument
@@ -144,7 +144,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
     '''
 
     # If the user did not specify a wavelength grid for the stellar spectrum 
-    if (wl == []):
+    if (len(wl) == 0):
 
         # Create fiducial wavelength grid
         wl_min = 0.2  # μm
@@ -168,13 +168,13 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
     elif (stellar_grid == 'custom'):
 
-        if ((user_wl == []) or (user_spectrum == [])):
+        if ((len(user_wl) == 0) or (len(user_spectrum) == 0)):
             raise Exception("Error: for a custom stellar spectrum you need to provide " +
                             "both 'user_wl' and 'user_spectrum'. Note that 'user_wl' " +
                             "will generally not be the same as the model wavelength " +
                             "array ('wl'), since it will be from your custom file.")
 
-        if (wl == []):
+        if (len(wl) == 0):
             raise Exception("Error: you must provide the model wavelength array 'wl' " +
                             "so that your custom stellar spectrum can be interpolated " +
                             "onto the model wavelength grid.")
@@ -280,7 +280,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
         # Evaluate total stellar flux as a weighted sum of each region 
         F_star = np.pi * ((f_spot * I_spot) + (f_fac * I_fac) + 
-                            (1.0 - (f_spot + f_fac)) * I_phot)
+                          (1.0 - (f_spot + f_fac)) * I_phot)
         
     else:
         raise Exception("Error: unsupported heterogeneity type. Supported " +
@@ -950,17 +950,17 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     bf_species = model['bf_species']
 
     # Checks for validity of user inputs
-    if (((T_input != []) or (X_input != [])) and Atmosphere_dimension > 1):
+    if (((len(T_input) != 0) or (len(X_input) != 0)) and Atmosphere_dimension > 1):
         raise Exception("Only 1D P-T and mixing ratio profiles are currently " +
                         "supported as user inputs. Multidimensional inputs " +
                         "will be added soon!")
-    if ((PT_profile == 'file_read') and (T_input == [])):
+    if ((PT_profile == 'file_read') and (len(T_input) == 0)):
         raise Exception("No user-provided P-T profile. Did you read in a file?")
-    if ((X_profile == 'file_read') and (X_input == [])):
+    if ((X_profile == 'file_read') and (len(X_input) == 0)):
         raise Exception("No user-provided composition profile. Did you read in a file?")
-    if ((cloud_params == []) and (cloud_model != 'cloud-free')):
+    if ((len(cloud_params) == 0) and (cloud_model != 'cloud-free')):
         raise Exception("Cloud parameters must be provided for cloudy models.")
-    if ((geometry_params == []) and (Atmosphere_dimension > 1) and
+    if ((len(geometry_params) == 0) and (Atmosphere_dimension > 1) and
         (sharp_DN_transition == False)):
             raise Exception("Geometry parameters must be provided for 2D or 3D models.")
     
@@ -1493,7 +1493,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # For models that are cloud free, you still need a g and w that's just an array of 0s
             # For Mie models with more than one species, we need to be more careful with the g and w array
             elif scattering == True or reflection == True:
-                if len(aerosol_species) == 1 or aerosol_species == []:
+                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
                     w_cloud = np.ones_like(kappa_cloud)*w_cloud
                     g_cloud = np.ones_like(kappa_cloud)*g_cloud
 
