@@ -5,10 +5,12 @@ on:
     branches:    
       - 'main'
       - 'dev'
+      - 'python_3.11_support'
   pull_request:
     branches:
       - 'main'
       - 'dev'
+      - 'python_3.11_support'
 
 jobs:
   test:
@@ -20,7 +22,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.9', '3.10'] 
+        python-version: ['3.9', '3.10', '3.11'] 
     steps:
     - uses: actions/checkout@v4
 
@@ -41,21 +43,36 @@ jobs:
         auto-update-conda: true
         auto-activate-base: true
 
-    - name: Create conda environment
+    - name: Create conda environment on Ubuntu
+      if: runner.os == 'Linux'
       run: |
         echo "begin: PATH=$PATH;" 
         conda create --name test_install python=${{ matrix.python-version }} -y
 
-    - name: Install mpi4py and pymultinest
+    - name: Create conda environment on MacOS
+      if: runner.os == 'macOS'
+      run: |
+        echo "begin: PATH=$PATH;" 
+        CONDA_SUBDIR=osx-64 conda create --name test_install python=${{ matrix.python-version }} -y
+
+    - name: Install mpi4py and pymultinest on Ubuntu
+      if: runner.os == 'Linux'
       run: |
         conda activate test_install || true
+        conda install -c conda-forge mpi4py -y
+        conda install -c conda-forge pymultinest -y
+
+    - name: Install mpi4py and pymultinest on MacOS
+      if: runner.os == 'macOS'
+      run: |
+        conda activate test_install || true
+        conda env config vars set CONDA_SUBDIR=osx-64
         conda install -c conda-forge mpi4py -y
         conda install -c conda-forge pymultinest -y
 
     - name: Install POSEIDON
       run: |
         conda activate test_install || true
-        python -m pip install --upgrade pip
         pip install -e .
 
     - name: Download input files (only CIA opacity for CI tests)

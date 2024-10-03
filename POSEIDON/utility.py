@@ -661,7 +661,7 @@ def bin_spectrum(wl_native, spectrum_native, R_bin, err_data = []):
     wl_binned = np.exp(log_wl_binned)
     
     # Call Spectres routine
-    if (err_data != []):
+    if (len(err_data) != 0):
         spectrum_binned, err_binned = spectres(wl_binned, wl_native, spectrum_native,
                                                spec_errs = err_data, verbose = False)
 
@@ -1820,14 +1820,30 @@ def make_latex_table_from_results(model_names_array, variables, planet_name):
             else:
                 if i != len(refs)-1:
                     if m == 'R_p_ref':
-                        line += ' ${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
+                        line += '${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
+                    elif (m == 'f_het'):
+                        line += '${:.2f}^{{+{:.2f}}}_{{{:.2f}}}$ & '.format(vmr, hisig, losig)
+                    elif (m in ['T_het', 'T_spot', 'T_fac', 'T_phot', 'T', 'T_ref']):
+                        line += '${:.0f}^{{+{:.0f}}}_{{{:.0f}}}$ & '.format(vmr, hisig, losig)
+                    elif ('log' in m):
+                        line += '${:.2f}^{{+{:.2f}}}_{{{:.2f}}}$ & '.format(vmr, hisig, losig)
+                    elif ('delta_rel' in m):
+                        line += '${:.0f}^{{+{:.0f}}}_{{{:.0f}}}$ & '.format(vmr, hisig, losig)
                     else:
-                        line += ' ${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
+                        line += '${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ & '.format(vmr, hisig, losig)
                 else:
                     if m == 'R_p_ref':
-                        line += ' ${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\ '.format(vmr, hisig, losig)
+                        line += '${:.3f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\ '.format(vmr, hisig, losig)
+                    elif (m == 'f_het'):
+                        line += '${:.2f}^{{+{:.2f}}}_{{{:.2f}}}$ \\\\ '.format(vmr, hisig, losig)
+                    elif (m in ['T_het', 'T_spot', 'T_fac', 'T_phot', 'T']):
+                        line += '${:.0f}^{{+{:.0f}}}_{{{:.0f}}}$ \\\\ '.format(vmr, hisig, losig)
+                    elif ('delta_rel' in m):
+                        line += '${:.0f}^{{+{:.0f}}}_{{{:.0f}}}$ \\\\ '.format(vmr, hisig, losig)
+                    elif ('log' in m):
+                        line += '${:.2f}^{{+{:.2f}}}_{{{:.2f}}}$ \\\\'.format(vmr, hisig, losig)
                     else:
-                        line += ' ${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\'.format(vmr, hisig, losig)
+                        line += '${:.1f}^{{+{:.1f}}}_{{{:.1f}}}$ \\\\'.format(vmr, hisig, losig)
         
         print(line)
 

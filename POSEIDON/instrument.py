@@ -7,7 +7,10 @@ import os.path
 import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d as gauss_conv
-from scipy.integrate import trapz
+try:
+    from scipy.integrate import trapezoid as trapz
+except ImportError:
+    from scipy.integrate import trapz
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 from spectres import spectres
 
@@ -629,12 +632,12 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
                     
         print(instruments[i])
 
-        if (N_trans == []):
+        if (len(N_trans) == 0):
             N_trans_i = 1     # Use one transit if not specified by user
         else:
             N_trans_i = N_trans[i]
 
-        if (R_to_bin == []):
+        if (len(R_to_bin) == 0):
             R_to_bin_i = None    # No binning if not specified by user
         else:
             R_to_bin_i = R_to_bin[i]
