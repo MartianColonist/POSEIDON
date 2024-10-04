@@ -13,7 +13,7 @@ setup(
     license = 'BSD 3-Clause License',
     packages = ['POSEIDON'],
     include_package_data = True,
-    python_requires = '<3.12',
+    python_requires = '<3.11.10',
     install_requires = ['numpy<2',
                         'scipy',
                         'matplotlib',
