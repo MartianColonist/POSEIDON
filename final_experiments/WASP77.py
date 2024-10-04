@@ -34,8 +34,6 @@ model_name = "H2O, CO"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 param_species = ["H2O", "CO"]
-
-method = "sysrem"
 high_res_params = ["K_p", "V_sys", "log_alpha", "W_conv"]
 
 model = define_model(
@@ -263,7 +261,7 @@ fig_corner = generate_cornerplot(
         # "log_NH3",
         "K_p",
         "V_sys",
-        "alpha",
+        "log_alpha",
         "W_conv",
     ],
     colour_scheme=color,

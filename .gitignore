@@ -22,3 +22,5 @@ high_res_experiments/CC_output/
 POSEIDON/reference_data/observations/
 hdf5_experiments/data/
 final_experiments/data/
+final_experiments/
+for_paper/

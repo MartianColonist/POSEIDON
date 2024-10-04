@@ -45,7 +45,7 @@ def read_high_res_data(data_dir, names=None):
     return data_all
 
 
-def fit_uncertainties(flux, n_components=5, initial_guess=[0.5, 200], Print=True):
+def fit_uncertainties(flux, n_components=5, initial_guess=[0.1, 200], Print=True):
     if Print:
         print("Fitting Poisson uncertainties with {} components".format(n_components))
     uncertainties = np.zeros(flux.shape)
@@ -1030,6 +1030,7 @@ def make_injection_data(
         spectrum_type = "emission"
         if W_conv is not None:
             star_spectrum = gaussian_filter1d(star_spectrum, W_conv)
+        transit_weight = None
     else:
         spectrum_type = "transmission"
         transit_weight = data["transit_weight"]
