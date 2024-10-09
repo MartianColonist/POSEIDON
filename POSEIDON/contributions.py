@@ -1314,16 +1314,14 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     return spectrum, spectrum_contribution_list_names, spectrum_contribution_list
 
 
-def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_names, spectrum_contribution_list,
-                               full_spectrum_first = True, y_unit='transit_depth',
-                               brightness_temperature = False, star = None,
-                               y_min = None, y_max = None,
-                               figure_shape = 'wide',
-                               save_fig = False,
-                               line_widths = [],
-                               colour_list = [],
-                               return_fig = False,
-                               ax = None):
+def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_names, 
+                               spectrum_contribution_list, full_spectrum_first = True,
+                               y_unit = 'transit_depth', brightness_temperature = False, 
+                               star = None, y_min = None, y_max = None,
+                               figure_shape = 'wide', save_fig = False,
+                               line_widths = [], colour_list = [],
+                               return_fig = False, ax = None, file_label = None,
+                               ):
     
     '''
     Plot the spectral contributions directly from the spectral_contribution() outputs
@@ -1366,10 +1364,18 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
             Returns the fig object, in case you want it in the notebook to manipulate
         ax (matplotlib axis object, optional):
             Matplotlib axis provided externally.
+        file_label (str, optional):
+            Optional label to append to end of the output file name.
     '''
 
     from POSEIDON.utility import plot_collection
     from POSEIDON.visuals import plot_spectra
+
+    # Unpack model and atmospheric properties
+    planet_name = planet['planet_name']
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/plots/'
 
     spectra = []
 
@@ -1410,7 +1416,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         if len(colour_list) == 0:
 
             # Black is the full spectrum 
-            colour_list = ['black','dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
+            colour_list = ['black', 'dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
 
         spectra = plot_collection(spectrum, wl, collection = spectra)
         labels = spectrum_contribution_list_names.copy()
@@ -1422,26 +1428,11 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 
         # Cut the list to the number of spectra you have 
         colour_list = colour_list[:len(spectrum_contribution_list)+1]
-        
-        fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                    plt_label = 'Spectral Contribution Plot',
-                    spectra_labels = labels,
-                    plot_full_res = False, 
-                    save_fig = save_fig,
-                    colour_list = colour_list,
-                    y_unit = y_unit,
-                    y_min = y_min,
-                    y_max = y_max,
-                    figure_shape = figure_shape,
-                    line_widths = line_widths,
-                    ax = ax
-                    )
-        
+                
     else: 
         
         # If the user didn't provide a color list
         if len(colour_list) == 0:
-
             colour_list = ['dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
 
         spectra = []
@@ -1459,20 +1450,29 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         labels = spectrum_contribution_list_names.copy()
         labels.append('Full Spectrum')
 
+    # Generate plot   
+    fig = plot_spectra(spectra, planet, R_to_bin = 100,
+                       plt_label = 'Spectral Contribution Plot',
+                       spectra_labels = labels,
+                       plot_full_res = False, 
+                       save_fig = False,
+                       colour_list = colour_list,
+                       y_unit = y_unit,
+                       y_min = y_min,
+                       y_max = y_max,
+                       figure_shape = figure_shape,
+                       line_widths = line_widths,
+                       ax = ax,
+                       )
         
-        fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                    plt_label = 'Spectral Contribution Plot',
-                    spectra_labels = labels,
-                    plot_full_res = False, 
-                    save_fig = save_fig,
-                    colour_list = colour_list,
-                    y_unit = y_unit,
-                    y_min = y_min,
-                    y_max = y_max,
-                    figure_shape = figure_shape,
-                    line_widths = line_widths,
-                    ax = ax)
-        
+    if save_fig == True:
+        if (file_label == None):
+            file_name = output_dir + planet['planet_name'] + '_spectral_decomposition.pdf'
+        else:
+            file_name = output_dir + planet['planet_name'] + '_spectral_decomposition_' + file_label + '.pdf'
+
+        fig.savefig(file_name, bbox_inches = 'tight', dpi = 300)
+
     if return_fig == True:
         return fig
         
@@ -2913,11 +2913,11 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     return Contribution, norm, spectrum_contribution_list_names
 
 
-def plot_pressure_contribution(wl,P,
-                               Contribution,
-                               spectrum_contribution_list_names, 
-                               R = 100,
-                               return_fig = False):
+def plot_pressure_contribution(wl, P, planet, Contribution,
+                               spectrum_contribution_list_names, R = 100,
+                               return_fig = False, save_fig = False,
+                               show_log_plot = False, file_label = None,
+                               ):
 
     '''
     Plot the pressure contributions directly from the pressure_contribution() outputs
@@ -2935,48 +2935,63 @@ def plot_pressure_contribution(wl,P,
             Spectral resolution (R = wl/dwl) to bin the model spectra to. 
         return_fig (bool, optional):
             Returns the fig object, in case you want it in the notebook to manipulate
+        save_fig (bool, optional):
+            If True, saves a PDF in the POSEIDON output folder.
+        show_log_plot (bool, optional):
+            If True, will also show the log plot of the contribution function.
+        file_label (str, optional):
+            Optional label to append to end of the output file name.
+
     '''
+
+    # Unpack model and atmospheric properties
+    planet_name = planet['planet_name']
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/plots/'
     
     for i in range(len(spectrum_contribution_list_names)):
 
-            title = 'Contribution Function : ' + str(spectrum_contribution_list_names[i])
+        title = 'Contribution Function : ' + str(spectrum_contribution_list_names[i])
 
-            # Trying Ryan's Binning 
-            fig = plt.figure()  
-            fig.set_size_inches(14, 7)
-            ax = plt.gca()
-            ax.set_yscale("log")
+        # Trying Ryan's Binning 
+        fig = plt.figure()  
+        fig.set_size_inches(14, 7)
+        ax = plt.gca()
+        ax.set_yscale("log")
 
-            # Bin the wavelengths using the first pressure layer of the spectrum 
-            # This is because bin_spectrum returns both a wl binned and spectrum grid and we want the wl binned for now 
-            wl_binned, _ , _ = bin_spectrum(wl, Contribution[i,0,:], R)
+        # Bin the wavelengths using the first pressure layer of the spectrum 
+        # This is because bin_spectrum returns both a wl binned and spectrum grid and we want the wl binned for now 
+        wl_binned, _ , _ = bin_spectrum(wl, Contribution[i,0,:], R)
 
-            # Now to create the contribution function but binned 
-            Contribution_binned = np.zeros(shape=(len(P), len(wl_binned)))
+        # Now to create the contribution function but binned 
+        Contribution_binned = np.zeros(shape=(len(P), len(wl_binned)))
 
-            # Now loop over all pressure layers 
-            for j in range(len(P)):
-                    _, Contribution_binned[j,:], _ = bin_spectrum(wl, Contribution[i,j,:], R)
+        # Now loop over all pressure layers 
+        for j in range(len(P)):
+            _, Contribution_binned[j,:], _ = bin_spectrum(wl, Contribution[i,j,:], R)
 
-            X_bin, Y_bin = np.meshgrid(wl_binned, P)
-            
-            # Plot binned contribution function
-            contour_plot = plt.contourf(X_bin, Y_bin, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
-            #contour_plot = plt.contourf(wl_binned, P, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
+        X_bin, Y_bin = np.meshgrid(wl_binned, P)
+        
+        # Plot binned contribution function
+        contour_plot = plt.contourf(X_bin, Y_bin, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
+        #contour_plot = plt.contourf(wl_binned, P, Contribution_binned[:,:], 100, cmap=cmr.swamp_r)
 
-            ax.invert_yaxis()    
+        ax.invert_yaxis()    
 
-            ax.set_xlim([wl[0], wl[-1]])
-            ax.set_ylim([P[0], P[-1]])        
-            
-            ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5)
-            ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
-            ax.set_title(title)
+        ax.set_xlim([wl[0], wl[-1]])
+        ax.set_ylim([P[0], P[-1]])        
+        
+        ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5)
+        ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
+        ax.set_title(title)
 
-            fig1 = fig
+        fig1 = fig
 
-            #plt.colorbar()
-            plt.show()
+        #plt.colorbar()
+        plt.show()
+
+        if (show_log_plot == True):
 
             fig = plt.figure()  
             fig.set_size_inches(14, 7)
@@ -2999,11 +3014,33 @@ def plot_pressure_contribution(wl,P,
 
             fig2 = fig
 
-            #plt.colorbar()
-            plt.show()
-    
+        else:
+            fig2 = None
+
+        #plt.colorbar()
+        plt.show()
+
+    if save_fig == True:
+
+        # Save regular pressure contribution function
+        if (file_label == None):
+            file_name = output_dir + planet['planet_name'] + '_pressure_contribution.png'
+        else:
+            file_name = output_dir + planet['planet_name'] + '_pressure_contribution_' + file_label + '.png'
+
+        fig1.savefig(file_name, bbox_inches = 'tight', dpi = 300)
+
+        # Save log pressure contribution function
+        if (show_log_plot == True):
+            if (file_label == None):
+                file_name = output_dir + planet['planet_name'] + '_pressure_contribution_log.png'
+            else:
+                file_name = output_dir + planet['planet_name'] + '_pressure_contribution_log_' + file_label + '.png'
+            fig2.savefig(file_name, bbox_inches = 'tight', dpi = 300)
+                         
     if return_fig == True:
         return fig1, fig2
+
 
 #################################
 # Pressure Contribution Functions
@@ -3013,7 +3050,7 @@ def plot_pressure_contribution(wl,P,
 def photometric_contribution_function(wl, P, Contribution, 
                                       spectrum_contribution_list_names,
                                       binsize = 1,
-                                      treat_wlmin_as_zero = False
+                                      treat_wlmin_as_zero = False,
                                       ):
     
     '''
@@ -3113,11 +3150,13 @@ def photometric_contribution_function(wl, P, Contribution,
     return photometric_contribution, photometric_all_wavelengths, bins
 
 
-def plot_photometric_contribution(wl,P,
+def plot_photometric_contribution(P, planet,
                                   photometric_contribution, photometric_all_wavelengths,
                                   spectrum_contribution_list_names,
                                   bins = [],
-                                  return_fig = False):
+                                  return_fig = False, save_fig = False,
+                                  file_label = None,
+                                  ):
     
     '''
     Plots the photometric contributions directly from outputs of photometric_contribution_function()
@@ -3136,15 +3175,24 @@ def plot_photometric_contribution(wl,P,
         bins (np.array of floats):
             Wavelength bins (wl_min and wl_max for each bin) (for plotting and the legend)
         return_fig (bool, optional):
-            Returns the fig object, in case you want it in the notebook to manipulate
+            Returns the fig object, in case you want it in the notebook to manipulate.
+        save_fig (bool, optional):
+            If True, saves a PDF in the POSEIDON output folder.
+        file_label (str, optional):
+            Optional label to append to end of the output file name.
         
     '''
+
+    # Unpack model and atmospheric properties
+    planet_name = planet['planet_name']
+
+    # Identify output directory location where the plot will be saved
+    output_dir = './POSEIDON_output/' + planet_name + '/plots/'
 
     # Loop over each molecule
     labels = []
     for i in spectrum_contribution_list_names:
         labels.append(i)
-
 
     for i in range(len(spectrum_contribution_list_names)):
 
@@ -3186,6 +3234,16 @@ def plot_photometric_contribution(wl,P,
         ax.set_title(title)
         ax.plot(photometric_all_wavelengths[i],np.log10(P))
         plt.show()
+
+    if save_fig == True:
+            
+        # Save photometric contribution function
+        if (file_label == None):
+            file_name = output_dir + planet_name + '_photometric_contribution.pdf'
+        else:
+            file_name = file_name = output_dir + planet_name + '_photometric_contribution_' + file_label + '.pdf'
+
+        fig1.savefig(file_name, bbox_inches = 'tight', dpi = 300)
 
     if return_fig == True:
         return fig1
