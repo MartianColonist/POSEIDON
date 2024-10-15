@@ -4,6 +4,7 @@ Functions for calculating atmospheric temperature, mixing ratio, and other profi
 '''
 
 import numpy as np
+import scipy
 import scipy.constants as sc
 from scipy.ndimage import gaussian_filter1d as gauss_conv
 from scipy.interpolate import pchip_interpolate
@@ -75,8 +76,8 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_set, P_set):
     elif (log_P_set_i >= log_P1):   # Temperature parameter in layer 2
         
         # Use the temperature parameter to compute the boundary temperatures
-        T2 = T_set - ((1.0/a2)*(log_P_set_i - log_P2))**2  
-        T1 = T2 + ((1.0/a2)*(log_P1 - log_P2))**2   
+        T2 = T_set - ((1.0/a2)*(log_P_set_i - log_P2))**2
+        T1 = T2 + ((1.0/a2)*(log_P1 - log_P2))**2
         T3 = T2 + ((1.0/a2)*(log_P3 - log_P2))**2
         T0 = T1 - ((1.0/a1)*(log_P1 - log_P_min))**2   
         
@@ -168,6 +169,239 @@ def compute_T_slope(P, T_phot, Delta_T_arr, log_P_phot = 0.5,
 
     # Apply monotonic cubic interpolation to compute P-T profile from T points
     T[:,0,0] = pchip_interpolate(log_P_points, T_points, np.log10(P))
+
+    return T
+
+
+def compute_T_Pelletier(P, T_points):
+    '''
+    Computes the temperature profile for an atmosphere using the 'spline' P-T 
+    profile parametrisation defined in Pelletier (2021).
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T_points (np.array of float):
+            Array of temperatures specified at the knots 
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K).
+            Only the first axis is used for this 1D profile.
+    
+    '''
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Store the minimum and maximum P in logspace
+    P_min = np.min(np.log10(P))
+    P_max = np.max(np.log10(P))
+
+    # Length of the temperature point array (which equals the number of knots)
+    number_P_knots = len(T_points)
+    
+    # Define the log_P_points where the temperatures are 
+    # These are defined as equal in pressure space with number of spline points 
+    # This includes the top and bottom of the pressure array 
+    log_P_points = np.linspace(P_min,P_max,num=number_P_knots)
+
+    # Initialise interpolated temperature array
+    T = np.zeros(shape=(N_layers, 1, 1)) # 1D profile => N_sectors = N_zones = 1
+
+    # Apply monotonic cubic interpolation to compute P-T profile from T points
+    T[:,0,0] = pchip_interpolate(log_P_points, T_points, np.log10(P))
+
+    return T
+
+
+def compute_T_Guillot(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
+
+    '''
+    Computes the temperature profile for an atmosphere using the P-T 
+    profile parametrisation defined in Guillot (2010).
+    Specifically, the pRT implementation ('guillot_global') :
+    https://petitradtrans.readthedocs.io/en/latest/content/notebooks/nat_cst_utility.html#Guillot-temperature-model
+    https://gitlab.com/mauricemolli/petitRADTRANS/-/blob/master/petitRADTRANS/physics.py?ref_type=heads
+
+    Sets f = 0.25, which is the value for the terminator and directly imaged brown dwarfs
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        g (np.array of float):
+            gravity at each pressure point in m/s
+        log_kappa_IR (float):
+            The infrared opacity in units of m^2/kg
+        log_gamma (float):
+            The ratio between the visual and infrared opacity.
+        T_int (float):
+            The planetary internal temperature (in units of K).
+        T_equ (float):
+            The planetary equilibrium temperature (in units of K). (is a free parameter)
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K).
+            Only the first axis is used for this 1D profile.
+    '''
+
+    # Unpack logs
+    kappa_IR = np.power(10,log_kappa_IR)
+    gamma = np.power(10,log_gamma)
+
+    # Compute tau (P in bars)
+    tau = ((P*1e6)*kappa_IR)/g
+    # sqrt(2) is a geometric factory (Teq = Tirr/sqrt(2))
+    # Teq assumes isotropic irradiation from the whole planet, 
+    # while Tirr is based on irradiation of one hemisphere.
+    T_irr = T_equ*np.sqrt(2.)
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Initialise temperature arrays
+    T = np.zeros(shape=(N_layers, 1, 1)) # 1D profile => N_sectors = N_zones = 1
+    
+    # Equation 20 from 
+    # https://www.aanda.org/articles/aa/pdf/2010/12/aa13396-09.pdf
+    # with f = 0.25 for an average over the planetary surface
+    # appropriate for transit terminators or directly imaged brown dwarfs
+
+    T[:,0,0] = (0.75 * T_int**4. * (2. / 3. + tau) + \
+      0.75 * T_irr**4. / 4. * (2. / 3. + 1. / gamma / 3.**0.5 + \
+      (gamma / 3.**0.5 - 1. / 3.**0.5 / gamma)* \
+      np.exp(-gamma * tau *3.**0.5)))**0.25
+    
+    return T
+
+
+def compute_T_Guillot_dayside(P,g,log_kappa_IR,log_gamma,T_int,T_equ):
+
+    '''
+    Computes the temperature profile for an atmosphere using the P-T 
+    profile parametrisation defined in Guillot (2010).
+    Specifically, the pRT implementation ('guillot_global') :
+    https://petitradtrans.readthedocs.io/en/latest/content/notebooks/nat_cst_utility.html#Guillot-temperature-model
+    https://gitlab.com/mauricemolli/petitRADTRANS/-/blob/master/petitRADTRANS/physics.py?ref_type=heads
+
+    Sets f = 0.5, which is the value for the dayside
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        g (np.array of float):
+            gravity at each pressure point in m/s
+        log_kappa_IR (float):
+            The infrared opacity in units of m^2/kg
+        log_gamma (float):
+            The ratio between the visual and infrared opacity.
+        T_int (float):
+            The planetary internal temperature (in units of K).
+        T_equ (float):
+            The planetary equilibrium temperature (in units of K). (is a free parameter)
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K).
+            Only the first axis is used for this 1D profile.
+    '''
+
+    # Unpack logs
+    kappa_IR = np.power(10,log_kappa_IR)
+    gamma = np.power(10,log_gamma)
+
+    # Compute tau (P in bars, so convert to cgs)
+    tau = ((P*1e6)*kappa_IR)/g
+    # sqrt(2) is a geometric factory (Teq = Tirr/sqrt(2))
+    # Teq assumes isotropic irradiation from the whole planet, 
+    # while Tirr is based on irradiation of one hemisphere.
+    T_irr = T_equ*np.sqrt(2.)
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Initialise temperature arrays
+    T = np.zeros(shape=(N_layers, 1, 1)) # 1D profile => N_sectors = N_zones = 1
+    
+    # Equation 20 from 
+    # https://www.aanda.org/articles/aa/pdf/2010/12/aa13396-09.pdf
+    # with f = 0.5 for the dayside
+
+    T[:,0,0] = (0.75 * T_int**4. * (2. / 3. + tau) + \
+      0.75 * T_irr**4. / 2. * (2. / 3. + 1. / gamma / 3.**0.5 + \
+      (gamma / 3.**0.5 - 1. / 3.**0.5 / gamma)* \
+      np.exp(-gamma * tau *3.**0.5)))**0.25
+    
+    return T
+
+
+def compute_T_Line(P, g, T_eq, log_kappa_IR, log_gamma, log_gamma_2, alpha, beta, T_int):
+
+    '''From Line et al. 2013: http://adsabs.harvard.edu/abs/2013ApJ...775..137L, Equation 13 - 16'
+
+    Computes the temperature profile for an atmosphere using the P-T 
+    profile parametrisation defined in Line et al (2013).
+    http://adsabs.harvard.edu/abs/2013ApJ...775..137L, Equation 13 - 16'
+    Specifically, the PLATON implementation ('set_from_radiative_solution') :
+    https://platon.readthedocs.io/en/latest/source/platon.html?highlight=line#platon.TP_profile.Profile.set_from_radiative_solution
+
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        g (np.array of float):
+            gravity at each pressure point in m/s
+        T_eq (float):
+            The planetary equilibrium temperature (in units of K). (is NOT a free parameter, like in Guillot)
+        log_kappa_IR (float):
+            The infrared opacity in units of m^2/kg
+        log_gamma (float):
+            The ratio between the visual and infrared opacity (channel 1) (kappa_vis_1 is baked into this)
+        log_gamma_2 (float):
+            The ratio between the visual and infrared opacity (channel 2) (kappa_vis_2 is baked into this)
+        alpha (float):
+            Ranges 0-1. Partitions flux between two visible streams
+        beta (float) :
+            Catch all term that accounts for 
+        T_int (float):
+            The planetary internal temperature (in units of K).
+    
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure (K).
+            Only the first axis is used for this 1D profile.
+    '''
+
+    # Unpack logs
+    kappa_IR = np.power(10,log_kappa_IR)
+    gamma = np.power(10, log_gamma)
+    gamma2 = np.power(10, log_gamma_2)
+    
+    # T_irr is the irradiation temperature 
+    # In guillot : T_irr = f * sqrt(2) * T_eq where T_eq is the 'free' parameter,
+    #              f = 1/2 for dayside and 1/4 for transmission/directly imaged, sqrt(2) = geometric argument
+    # Here, beta is a catch all and is what you retrieve on (T_eq is input to planet object)
+    # It accounts for heat redistribution (f), geometric argument (sqrt2), emissivity, albedo, and errors in T_eq
+    T_irr = beta * T_eq
+
+    # Compute tau (P in bars)
+    tau = ((P*1e6)*kappa_IR)/g
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Initialise temperature arrays
+    T = np.zeros(shape=(N_layers, 1, 1)) # 1D profile => N_sectors = N_zones = 1
+
+    # Equation that computers second and third term of equation 13
+    def incoming_stream_contribution(gamma):
+        return 3.0/4 * T_irr**4 * (2.0/3 + 2.0/3/gamma * (1 + (gamma*tau/2 - 1)*np.exp(-gamma * tau)) + 2.0*gamma/3 * (1 - tau**2/2) * scipy.special.expn(2, gamma*tau))
+
+    e1 = incoming_stream_contribution(gamma)
+    e2 = incoming_stream_contribution(gamma2)
+
+    T[:,0,0] = (3.0/4 * T_int**4 * (2.0/3 + tau) + (1 - alpha) * e1 + (alpha*e2))**0.25
 
     return T
 
@@ -653,6 +887,57 @@ def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_spec
     return X_profiles
 
 
+def compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones):
+    '''
+    The function takes in four parameters and returns an array of values called log_X  that represent the
+    output of the function, which is an array of numbers that would be used to plot the profile of the chemical species.
+    This is done by taking the difference in the logarithm of the pressures and the original array, log_xi
+    and multiplying it by the slope of the isochemical line (angle between the isochemical line and the
+    array log_xi). The volume mixing ratio log_xi is the number density / the total volume.
+
+    The function takes in five parameters:
+
+        log_xi: Logarithm of the mixing ratio at element i.
+        log_pi: Logarithm of the pressure at element i.
+        upsilon_i: The angle between the local vertical and the slope for element i.
+        log_p: An array of logarithm of the pressures.
+
+    Returns:
+        log_x: the the mixing ratio  of the ith element as a function of pressure.
+    '''
+
+    log_p = np.log10(P)
+    N_param_species = np.shape(log_X_state)[0]
+    log_X = np.zeros(shape = (N_param_species, len(P), N_sectors, N_zones))
+    
+    # Loop over gases
+    for q in range(N_param_species):
+
+        # Unpack the abundance
+        log_X_q, log_P_q, upsilon_q = log_X_state[q, :]
+
+        upsilon_q = upsilon_q * (np.pi/180.0)
+
+        # For angles between 0 and pi/2
+        if np.abs(upsilon_q) <= np.pi/2:
+
+            # Loop over layers
+            for j in range (len(log_p)) :
+                if log_p[j] <= log_P_q :
+                    log_X[q,j,0,0] = log_X_q + np.tan(upsilon_q) * (log_p[j] - log_P_q)
+                elif log_p[j] > log_P_q :
+                    log_X[q,j,0,0] = log_X_q
+
+        # For angles between pi/2  and pi
+        elif (np.abs(upsilon_q) > np.pi/2) and (np.abs(upsilon_q) <= np.pi):
+          for j in range (len(log_p)) :
+              if log_p[j] > log_P_q :
+                log_X[q,j,0,0] = log_X_q + np.tan(upsilon_q) * (log_p[j] - log_P_q)
+              elif log_p[j] <= log_P_q :
+                log_X[q,j,0,0] = log_X_q
+        
+    return np.power(10, log_X)
+
 def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
                        He_fraction):
     ''' 
@@ -721,6 +1006,167 @@ def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
     X[N_bulk_species:,:,:,:] = X_param
     
     return X
+
+
+@jit(nopython = True)
+def radial_profiles_test(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
+    ''' 
+    Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
+    to compute the radius in each atmospheric layer.
+        
+    Note: g is taken as an inverse square law with radius by assuming the
+          enclosed planet mass at a given radius is M_p. This assumes
+          most mass is in the interior (negligible atmosphere mass).
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T (3D np.array of float):
+            Temperature profile (K).
+        g_0 (float):
+            Gravitational field strength at white light radius (m/s^2).
+        R_p (float):
+            Observed white light planet radius (m).
+        P_ref (float):
+            Reference pressure (bar).
+        R_p_ref (float):
+            Planet radius corresponding to reference pressure (m).
+        mu (3D np.array of float):
+            Mean molecular mass (kg).
+        N_sectors (int):
+            Number of azimuthal sectors comprising the background atmosphere.
+        N_zones (int):
+            Number of zenith zones comprising the background atmosphere.
+
+    Returns:
+        n (3D np.array of float):
+            Number density profile (m^-3).
+        r (3D np.array of float):
+            Radial distance profile (m).
+        r_up (3D np.array of float):
+            Upper layer boundaries (m).
+        r_low (3D np.array of float):
+            Lower layer boundaries (m).    
+        dr (3D np.array of float):
+            Layer thicknesses (m).
+    
+    '''
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+
+    # Initialise 3D radial profile arrays    
+    r = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    r_up = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    r_low = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    dr = np.zeros(shape=(N_layers, N_sectors, N_zones))
+    n = np.zeros(shape=(N_layers, N_sectors, N_zones))
+
+    log_P = np.log(P)
+
+    # Compute radial extent in each sector and zone from the corresponding T(P)
+    for j in range(N_sectors):
+        
+        for k in range(N_zones):
+    
+            # Compute number density in each atmospheric layer (ideal gas law)
+            n[:,j,k] = (P*1.0e5)/((sc.k)*T[:,j,k])   # 1.0e5 to convert bar to Pa
+        
+            # Set reference pressure and reference radius (r(P_ref) = R_p_ref)
+            P_0 = P_ref      # 10 bar default value
+            r_0 = R_p_ref    # Radius at reference pressure
+        
+            # Find index of pressure closest to reference pressure (10 bar)
+            i_ref = np.argmin(np.abs(P - P_0))
+        
+            # Set reference radius
+            r[i_ref,j,k] = r_0
+
+            # Iterative scheme
+            tolerance = 0.1 #1e-6
+
+            max_iterations = 100
+
+            for i in range((i_ref+1), N_layers):
+
+                r_prev = r[i-1,j,k]
+                g_prev = g_0 * (R_p / r_prev)**2
+                integrand_prev = (sc.k * T[i,j,k]) / (g_prev * mu[i,j,k])
+                delta_log_P = (log_P[i] - log_P[i-1])
+                converged = False
+
+                count = 0
+
+                r_proposed = r_prev
+                integrand_proposed = integrand_prev
+                
+                while not converged and count < max_iterations:
+
+                    count += 1
+
+                    r_new = r_prev - 0.5*(integrand_prev + integrand_proposed) * delta_log_P
+                    g_proposed = g_0 * (R_p / r_new)**2
+                    integrand_proposed = (sc.k * T[i,j,k]) / (g_proposed * mu[i,j,k])
+                #    r_new = r_prev - 0.5 * (integrand_prev + integrand_proposed) * delta_log_P
+
+                    if np.abs(r_new - r_proposed) < tolerance:
+                        converged = True
+                    else:
+                        r_proposed = r_new
+
+                print(count)
+                
+                r[i] = r_new
+
+            for i in range((i_ref-1), -1, -1):
+
+                r_next = r[i+1,j,k]
+                g_next = g_0 * (R_p / r_next)**2
+                integrand_next = (sc.k * T[i,j,k]) / (g_next * mu[i,j,k])
+                delta_log_P = log_P[i] - log_P[i+1]
+                converged = False
+
+                count = 0
+
+                r_proposed = r_next
+                integrand_proposed = integrand_next
+                
+                while not converged and count < max_iterations:
+
+                    count +=1
+
+                    r_new = r_next - 0.5 * (integrand_next + integrand_proposed) * delta_log_P
+                    g_proposed = g_0 * (R_p / r_new)**2
+                    integrand_proposed = (sc.k * T[i,j,k]) / (g_proposed * mu[i,j,k])
+               #     r_new = r_next - 0.5 * (integrand_next + integrand_proposed) * delta_log_P
+
+                    if np.abs(r_new - r_proposed) < tolerance:
+                        converged = True
+                    else:
+                        r_proposed = r_new
+                
+                print(count)
+
+                r[i] = r_new
+
+            # Use radial profile to compute thickness and boundaries of each layer
+            for i in range(1, N_layers-1): 
+            
+                r_up[i,j,k] = 0.5*(r[(i+1),j,k] + r[i,j,k])
+                r_low[i,j,k] = 0.5*(r[i,j,k] + r[(i-1),j,k])
+                dr[i,j,k] = 0.5 * (r[(i+1),j,k] - r[(i-1),j,k])
+            
+            # Edge cases for bottom layer and top layer    
+            r_up[0,j,k] = 0.5*(r[1,j,k] + r[0,j,k])
+            r_up[(N_layers-1),j,k] = r[(N_layers-1),j,k] + 0.5*(r[(N_layers-1),j,k] - r[(N_layers-2),j,k])
+        
+            r_low[0,j,k] = r[0,j,k] - 0.5*(r[1,j,k] - r[0,j,k])
+            r_low[(N_layers-1),j,k] = 0.5*(r[(N_layers-1),j,k] + r[(N_layers-2),j,k])
+        
+            dr[0,j,k] = (r[1,j,k] - r[0,j,k])
+            dr[(N_layers-1),j,k] = (r[(N_layers-1),j,k] - r[(N_layers-2),j,k])
+            
+    return n, r, r_up, r_low, dr
 
 
 @jit(nopython = True)
@@ -799,18 +1245,18 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
         
             # Compute integrand for hydrostatic calculation
             integrand = (sc.k * T[:,j,k])/(R_p**2 * g_0 * mu[:,j,k])
-        
+
             # Initialise stored values of integral for outwards and inwards sums
             integral_out = 0.0
             integral_in = 0.0
-    
+
             # Working outwards from reference pressure
             for i in range(i_ref+1, N_layers, 1):
-            
+
                 integral_out += 0.5 * (integrand[i] + integrand[i-1]) * (log_P[i] - log_P[i-1])  # Trapezium rule integration
-            
+
                 r[i,j,k] = 1.0/((1.0/r_0) + integral_out)
-            
+
             # Working inwards from reference pressure
             for i in range((i_ref-1), -1, -1):   
             
@@ -1249,7 +1695,9 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              active_species, CIA_pairs, ff_pairs, bf_species, N_sectors, 
              N_zones, alpha, beta, phi, theta, species_vert_gradient, 
              He_fraction, T_input, X_input, P_param_set, 
-             constant_gravity = False, chemistry_grid = None):
+             log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio,
+             constant_gravity = False, chemistry_grid = None,
+             PT_penalty = False, T_eq = None):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1321,11 +1769,23 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             Only used for the Madhusudhan & Seager (2009) P-T profile.
             Sets the pressure where the reference temperature parameter is 
             defined (P_param_set = 1.0e-6 corresponds to that paper's choice).
+        log_P_phot_slope (float):
+            Photosphere log pressure for the Piette & Madhusudhan (2020) P-T profile.
+        log_P_slope_array (np.array of float):
+            Log pressures where the Piette & Madhusudhan (2020) temperature difference 
+            parameters are defined (log bar).
+        Na_K_fixed_ratio (bool):
+            If True, sets log_K = 0.1 * log_Na.
         constant_gravity (bool):
             If True, disable inverse square law gravity (only for testing).
         chemistry_grid (dict):
             For models with a pre-computed chemistry grid only, this dictionary
             is produced in chemistry.py.
+        PT_penalty (bool):
+            For Pelletier profile. Only here so that PT input works.
+        T_eq (float):
+            Equilibrium temperature of planet. For the Line PT profile.
+            Note: not the same as T_equ, the free parameter in Guillot profile.
     
     Returns:
         T (3D np.array of float):
@@ -1450,13 +1910,66 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         Delta_T_arr = np.array(PT_state[1:])
             
         # Compute unsmoothed temperature profile
-        T_rough = compute_T_slope(P, T_phot, Delta_T_arr)
+        T_rough = compute_T_slope(P, T_phot, Delta_T_arr, log_P_slope_phot,
+                                  log_P_slope_arr)
 
         # Find how many layers corresponds to 0.3 dex smoothing width
         smooth_width = round(0.3/(((np.log10(P[0]) - np.log10(P[-1]))/len(P))))
 
         # Gaussian smooth P-T profile
         T = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
+        
+    # For the Pelletier (2021) profile (1D only)
+    elif (PT_profile == 'Pelletier'):
+        
+        # Unpack P-T profile parameters
+        if PT_penalty == False:
+            T_points = PT_state
+        
+        # If PT_penalty = True, then the last parameter is sigma_s
+        else:
+            T_points = PT_state[:-1]
+            
+        # Compute unsmoothed temperature profile
+        T_rough = compute_T_Pelletier(P, T_points)
+        T = T_rough
+
+        # Find how many layers corresponds to 0.3 dex smoothing width
+        #smooth_width = round(0.3/(((np.log10(P[0]) - np.log10(P[-1]))/len(P))))
+
+        # Gaussian smooth P-T profile
+        #T = gauss_conv(T_rough, sigma=smooth_width, axis=0, mode='nearest')
+
+    # For the Guillot (2010) profile (1D only)
+    elif PT_profile == 'Guillot':
+
+        log_kappa_IR,log_gamma,T_int,T_equ = PT_state
+
+        # T_equ is NOT T_eq
+
+        T_rough = compute_T_Guillot(P,g_0,log_kappa_IR,log_gamma,T_int,T_equ)
+
+        T = T_rough
+
+    # For the Guillot dayside (2010) profile (1D only)
+    elif PT_profile == 'Guillot_dayside':
+
+        log_kappa_IR, log_gamma, T_int, T_equ = PT_state
+
+        # T_equ is NOT T_eq
+
+        T_rough = compute_T_Guillot_dayside(P,g_0,log_kappa_IR,log_gamma,T_int,T_equ)
+
+        T = T_rough
+
+    # For the Line (2013) profile (1D only)
+    elif PT_profile == 'Line':
+
+        log_kappa_IR, log_gamma, log_gamma_2, alpha, beta, T_int = PT_state
+
+        T_rough = compute_T_Line(P, g_0, T_eq, log_kappa_IR, log_gamma, log_gamma_2, alpha, beta, T_int)
+
+        T = T_rough
 
     # Read user provided P-T profile
     elif (PT_profile == 'file_read'):
@@ -1466,10 +1979,13 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         
         # Gaussian smooth P-T profile
         T = T_rough   # No need to Gaussian smooth a user profile
-    
 
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
+
+    # If Na_K_fixed_ratio = True then there is an additional K
+    if Na_K_fixed_ratio == True:
+        N_species = len(included_species)
     
     # Find which parametrised chemical species have a gradient profile
     species_has_profile = np.zeros(len(param_species)).astype(np.int64)
@@ -1493,7 +2009,10 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         elif (X_profile == 'two-gradients'):
             X_param = compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, 
                                                     param_species, species_has_profile, 
-                                                    alpha, beta, phi, theta) 
+                                                    alpha, beta, phi, theta)
+            
+        elif (X_profile == 'lever'):
+            X_param = compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones)
 
         # Read in equilibrium mixing ratio profiles 
         elif (X_profile == 'chem_eq'):
@@ -1505,6 +2024,12 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             C_to_O = log_X_state[0]
             log_Met = log_X_state[1]
 
+            log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
+                                                     param_species, return_dict = False)
+            X_input = 10**log_X_input
+            X_param = X_input
+
+            '''
             if PT_profile == 'isotherm':
 
                 log_X_input = interpolate_log_X_grid(chemistry_grid, np.log10(P), T, C_to_O, log_Met, 
@@ -1521,12 +2046,23 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
                 
             else:
                 raise Exception('Chemical Equilibrium only supports 1D Isothermal PT or Gradient PT (for now)')
+            '''
 
         # Gaussian smooth any profiles with a vertical profile
         for q, species in enumerate(param_species):
             if (species_has_profile[q] == 1):
                 X_param[q,:,:,:] = gauss_conv(X_param[q,:,:,:], sigma=3, axis=0, 
                                             mode='nearest')
+                
+        # Add in the K mixing ratio if Na_K_fixed_ratio is True
+        if Na_K_fixed_ratio == True:
+            # Make an array with the same dimensions as the Na column of X_param times 0.1
+            # Ratio = 0.1
+            # We add an additional bracket so that np.append works 
+            
+            K_X_state = [X_param[param_species.index("Na")]*0.1]
+            X_param = np.append(X_param, K_X_state, axis = 0)
+            
         
         # Add bulk mixing ratios to form full mixing ratio array
         X = add_bulk_component(P, X_param, N_species, N_sectors, N_zones, 
@@ -1558,13 +2094,22 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         
     # Calculate number density and radial profiles
     if (constant_gravity == True):
+
         n, r, r_up, r_low, dr = radial_profiles_constant_g(P, T, g_0, P_ref, 
                                                            R_p_ref, mu, 
                                                            N_sectors, N_zones)
     else:
+
         n, r, r_up, r_low, dr = radial_profiles(P, T, g_0, R_p, P_ref, 
                                                 R_p_ref, mu, N_sectors, N_zones)
+
+     # Check if any of the values in r are negative
+    if (np.any(r < 0.0)): 
         
-    
-    return T, n, r, r_up, r_low, dr, mu, X, X_active, X_CIA, \
-           X_ff, X_bf, True
+        # Quit computations if model rejected
+        return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+
+    else:    
+
+        return T, n, r, r_up, r_low, dr, mu, X, X_active, X_CIA, \
+            X_ff, X_bf, True

@@ -17,6 +17,7 @@ def assign_free_params(
     cloud_model,
     cloud_type,
     gravity_setting,
+    mass_setting,
     stellar_contam,
     offsets_applied,
     error_inflation,
@@ -35,6 +36,10 @@ def assign_free_params(
     sharp_DN_transition,
     reference_parameter,
     disable_atmosphere,
+    aerosol_species,
+    log_P_slope_arr,
+    number_P_knots,
+    PT_penalty,
 ):
     """
     From the user's chosen model settings, determine which free parameters
@@ -53,15 +58,18 @@ def assign_free_params(
              file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / file_read).
+            (Options: isochem / gradient / two-gradients / lever / file_read).
         cloud_model (str):
             Chosen cloud parametrisation
-            (Options: cloud-free / MacMad17 / Iceberg).
+            (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
             Cloud extinction type to consider
             (Options: deck / haze / deck_haze).
         gravity_setting (str):
             Whether log_g is fixed or a free parameter.
+            (Options: fixed / free).
+        mass_setting (str):
+            Whether the planetary mass is fixed or a free parameter.
             (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
@@ -69,7 +77,7 @@ def assign_free_params(
              two_spots_free_log_g).
         offsets_applied (str):
             Whether a relative offset should be applied to a dataset
-            (Options: single_dataset).
+            (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
             (Options: Line15).
@@ -108,7 +116,7 @@ def assign_free_params(
             If using the Iceberg cloud model, True disables the kappa parameter.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
-        high_res_params (list of str):
+        high_res_params (list of string):
             If not empty, define a model for high resolutional retrieval.
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
@@ -117,6 +125,17 @@ def assign_free_params(
             (Options: R_p_ref / P_ref).
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
+        aerosol_species (list of string):
+            Either 'free' or specific aerosol(s).
+        log_P_slope_array (np.array of float):
+            Log pressures where the temperature difference parameters are
+            defined (Piette & Madhusudhan 2020 profile only).
+        number_P_knots (float):
+            Number of uniform knots in pressure space
+            (only for the Pelletier 2021 P-T profile).
+        PT_penalty (bool):
+            If True, introduces the sigma_smooth parameter for retrievals
+            (only for the Pelletier 2021 P-T profile).
 
     Returns:
         params (np.array of str):
@@ -151,9 +170,6 @@ def assign_free_params(
 
     # ***** Physical property parameters *****#
 
-    # if R_p_ref_enabled:
-    #     physical_params += ['R_p_ref']   # Reference radius parameter (R_J or R_E)
-
     # Models with no atmosphere only have Rp as a free parameter
     if disable_atmosphere == True:
         physical_params += ["R_p_ref"]  # Reference radius parameter (in R_J or R_E)
@@ -174,20 +190,31 @@ def assign_free_params(
             physical_params += ["R_p_ref"]  # Reference radius parameter (in R_J or R_E)
         elif reference_parameter == "P_ref":
             physical_params += ["log_P_ref"]  # Reference pressure
-        elif reference_parameter == "None":
-            pass
+        elif reference_parameter == "R_p_ref+P_ref":
+            physical_params += ["R_p_ref", "log_P_ref"]  # Reference radius and pressure
         else:
             raise Exception(
                 "Error: Only R_p_ref or P_ref are supported reference parameters."
             )
 
-        if (reference_parameter == "log_P_ref") and (Atmosphere_dimension > 1):
+        if ("log_P_ref" in reference_parameter) and (Atmosphere_dimension > 1):
             raise Exception(
                 "Error: P_ref is not a valid parameter for multidimensional models."
             )
 
+        if (gravity_setting == "free") and (mass_setting == "free"):
+            raise Exception(
+                "Error: only one of mass or gravity can be a free parameter."
+            )
+
         if gravity_setting == "free":
             physical_params += ["log_g"]  # log_10 surface gravity (cm / s^2)
+
+        if mass_setting == "free":
+            physical_params += ["M_p"]  # Planetary mass
+
+        if object_type == "directly_imaged":
+            physical_params += ["d"]  # Distance to system (pc)
 
         if object_type == "directly_imaged":
             physical_params += ["d"]  # Distance to system (pc)
@@ -198,14 +225,16 @@ def assign_free_params(
         N_physical_params = len(physical_params)  # Store number of physical parameters
         params += physical_params  # Add physical parameter names to combined list
 
-        # ***** PT profile parameters *****#
-
         if PT_profile not in [
             "isotherm",
             "gradient",
             "two-gradients",
             "Madhu",
             "slope",
+            "Pelletier",
+            "Guillot",
+            "Guillot_dayside",
+            "Line",
             "file_read",
         ]:
             raise Exception("Error: unsupported P-T profile.")
@@ -221,11 +250,35 @@ def assign_free_params(
                 "Madhusudhan & Seager (2009) profile only supported for 1D models"
             )
 
+        if (PT_profile == "Pelletier") and (PT_dim > 1):
+            raise Exception("Pelletier (2021) profile only supported for 1D models")
+
+        if (PT_profile == "Guillot") and (PT_dim > 1):
+            raise Exception(
+                "Guillot (2010) (pRT implementation) profile only supported for 1D models"
+            )
+
+        if (PT_profile == "Guillot_dayside") and (PT_dim > 1):
+            raise Exception(
+                "Guillot (dayside) (2010) (pRT implementation) profile only supported for 1D models"
+            )
+
+        if (PT_profile == "Line") and (PT_dim > 1):
+            raise Exception(
+                "Line (2013) (platon implementation) profile only supported for 1D models"
+            )
+
+        if (PT_profile == "Madhu") and (PT_dim > 1):
+            raise Exception(
+                "Madhusudhan & Seager (2009) profile only supported for 1D models"
+            )
+
         if (PT_profile == "slope") and (PT_dim > 1):
             raise Exception("Slope profile only supported for 1D models")
 
         # 1D model (global average)
         if PT_dim == 1:
+
             if PT_profile == "isotherm":
                 PT_params += ["T"]
             elif PT_profile == "gradient":
@@ -235,15 +288,30 @@ def assign_free_params(
             elif PT_profile == "Madhu":
                 PT_params += ["a1", "a2", "log_P1", "log_P2", "log_P3", "T_ref"]
             elif PT_profile == "slope":
+                PT_params += ["T_phot_PT"]
+                for i in range(len(log_P_slope_arr)):
+                    PT_params += ["Delta_T_" + str(i + 1)]
+            elif PT_profile == "Pelletier":
+                if number_P_knots < 3:
+                    raise Exception(
+                        "number_P_knots must be at least 3. (Captures top, bottom, middle pressures in log space)"
+                    )
+                for i in range(number_P_knots):
+                    PT_params += ["T_" + str(i + 1)]
+                if PT_penalty == True:
+                    PT_params += ["sigma_s"]
+            elif PT_profile == "Guillot":
+                PT_params += ["log_kappa_IR", "log_gamma", "T_int", "T_equ"]
+            elif PT_profile == "Guillot_dayside":
+                PT_params += ["log_kappa_IR", "log_gamma", "T_int", "T_equ"]
+            elif PT_profile == "Line":
                 PT_params += [
-                    "T_phot",
-                    "Delta_T_10-1mb",
-                    "Delta_T_100-10mb",
-                    "Delta_T_1-0.1b",
-                    "Delta_T_3.2-1b",
-                    "Delta_T_10-3.2b",
-                    "Delta_T_32-10b",
-                    "Delta_T_100-32b",
+                    "log_kappa_IR",
+                    "log_gamma",
+                    "log_gamma_2",
+                    "alpha_Line",
+                    "beta_Line",
+                    "T_int",
                 ]
 
         # 2D model (asymmetric terminator or day-night transition)
@@ -347,24 +415,29 @@ def assign_free_params(
         N_PT_params = len(PT_params)  # Store number of P-T profile parameters
         params += PT_params  # Add P-T parameter names to combined list
 
-        # ***** Mixing ratio parameters *****#
-
         if X_profile not in [
             "isochem",
             "gradient",
             "two-gradients",
             "file_read",
+            "lever",
             "chem_eq",
         ]:
             raise Exception("Error: unsupported mixing ratio profile.")
 
+        if (X_profile == "lever") and (X_dim != 1):
+            raise Exception(
+                "Error: Level profile currently only implemented for 1D atmospheres."
+            )
+
         if X_profile != "chem_eq":
+
             # Create list of mixing ratio free parameters
             for species in param_species:
                 # If all species have uniform abundances (1D X_i)
                 if X_dim == 1:
                     # Check if given species has an altitude profile or not
-                    if (species_vert_gradient != []) and (
+                    if (len(species_vert_gradient) != 0) and (
                         species in species_vert_gradient
                     ):
                         if X_profile == "gradient":
@@ -379,6 +452,12 @@ def assign_free_params(
                                 "log_P_" + species + "_mid",
                                 "log_" + species + "_deep",
                             ]
+                        elif X_profile == "lever":
+                            X_params += [
+                                "log_" + species + "_iso",
+                                "log_P_" + species,
+                                "Upsilon_" + species,
+                            ]
                     else:
                         X_params += ["log_" + species]
 
@@ -388,10 +467,10 @@ def assign_free_params(
                     if TwoD_param_scheme == "absolute":
                         # Species with variation only around the terminator (2D Evening-Morning X_i)
                         if TwoD_type == "E-M":
-                            if (species_EM_gradient != []) and (
+                            if (len(species_EM_gradient) != 0) and (
                                 species in species_EM_gradient
                             ):
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -416,7 +495,7 @@ def assign_free_params(
                                     ]
 
                             else:  # No Evening-Morning variation for this species
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -436,10 +515,10 @@ def assign_free_params(
 
                         # Species with variation only across the terminator (2D Day-Night X_i)
                         if TwoD_type == "D-N":
-                            if (species_DN_gradient != []) and (
+                            if (len(species_DN_gradient) != 0) and (
                                 species in species_DN_gradient
                             ):
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -464,7 +543,7 @@ def assign_free_params(
                                     ]
 
                             else:  # No Day-Night variation for this species
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -486,10 +565,10 @@ def assign_free_params(
                     if TwoD_param_scheme == "difference":
                         # Species with variation only around the terminator (2D Evening-Morning X_i)
                         if TwoD_type == "E-M":
-                            if (species_EM_gradient != []) and (
+                            if (len(species_EM_gradient) != 0) and (
                                 species in species_EM_gradient
                             ):
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -514,7 +593,7 @@ def assign_free_params(
                                     ]
 
                             else:  # No Evening-Morning variation for this species
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -534,10 +613,10 @@ def assign_free_params(
 
                         # Species with variation only across the terminator (2D Day-Night X_i)
                         if TwoD_type == "D-N":
-                            if (species_DN_gradient != []) and (
+                            if (len(species_DN_gradient) != 0) and (
                                 species in species_DN_gradient
                             ):
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -562,7 +641,7 @@ def assign_free_params(
                                     ]
 
                             else:  # No Day-Night variation for this species
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -584,10 +663,10 @@ def assign_free_params(
                     if TwoD_param_scheme == "gradient":
                         # Species with variation only across the terminator (2D Day-Night X_i)
                         if TwoD_type == "D-N":
-                            if (species_DN_gradient != []) and (
+                            if (len(species_DN_gradient) != 0) and (
                                 species in species_DN_gradient
                             ):
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -612,7 +691,7 @@ def assign_free_params(
                                     ]
 
                             else:  # No Day-Night variation for this species
-                                if (species_vert_gradient != []) and (
+                                if (len(species_vert_gradient) != 0) and (
                                     species in species_vert_gradient
                                 ):
                                     if X_profile == "gradient":
@@ -634,12 +713,12 @@ def assign_free_params(
                 elif X_dim == 3:
                     # Species with 3D mixing ratio field
                     if (
-                        (species_EM_gradient != [])
+                        (len(species_EM_gradient) != 0)
                         and (species in species_EM_gradient)
-                        and (species_DN_gradient != [])
+                        and (len(species_DN_gradient) != 0)
                         and (species in species_DN_gradient)
                     ):
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             if X_profile == "gradient":
@@ -668,10 +747,10 @@ def assign_free_params(
                             ]
 
                     # Species with only Evening-Morning variation
-                    elif (species_EM_gradient != []) and (
+                    elif (len(species_EM_gradient) != 0) and (
                         species in species_EM_gradient
                     ):
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             if X_profile == "gradient":
@@ -696,10 +775,10 @@ def assign_free_params(
                             ]
 
                     # Species with only Day-Night variation
-                    elif (species_DN_gradient != []) and (
+                    elif (len(species_DN_gradient) != 0) and (
                         species in species_DN_gradient
                     ):
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             if X_profile == "gradient":
@@ -725,7 +804,7 @@ def assign_free_params(
 
                     # Species with 1D profile
                     else:
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             if X_profile == "gradient":
@@ -804,6 +883,142 @@ def assign_free_params(
             if ("haze" not in cloud_type) and ("deck" not in cloud_type):
                 raise Exception("Error: unsupported cloud model.")
 
+        # Mie scattering
+        elif cloud_model == "Mie":
+
+            # If working with a 2D patchy cloud model
+            if cloud_dim == 2:
+                cloud_params += ["f_cloud"]
+
+            if cloud_type == "fuzzy_deck":
+
+                if aerosol_species == ["free"] or aerosol_species == ["file_read"]:
+                    cloud_params += ["log_P_top_deck"]
+                    cloud_params += ["log_r_m", "log_n_max", "f"]
+                    cloud_params += ["r_i_real", "r_i_complex"]
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ["log_P_top_deck_" + aerosol]
+                        cloud_params += ["log_r_m_" + aerosol]
+                        cloud_params += ["log_n_max_" + aerosol]
+                        cloud_params += ["f_" + aerosol]
+
+            elif cloud_type == "slab":
+
+                if aerosol_species == ["free"] or aerosol_species == ["file_read"]:
+                    print("Only one slab can be defined with free or file_read")
+                    cloud_params += ["log_P_top_slab"]
+                    cloud_params += ["Delta_log_P"]
+                    cloud_params += ["log_r_m"]
+                    cloud_params += ["log_X_Mie", "r_i_real", "r_i_complex"]
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ["log_P_top_slab_" + aerosol]
+                        cloud_params += ["Delta_log_P_" + aerosol]
+                        cloud_params += ["log_r_m_" + aerosol]
+                        cloud_params += ["log_X_" + aerosol]
+
+            elif cloud_type == "fuzzy_deck_plus_slab":
+                if aerosol_species == ["free"] or aerosol_species == ["file_read"]:
+                    raise Exception(
+                        "Error : Cannot use more than one aerosol species for file_read or free. Add aerosol to database first"
+                    )
+                else:
+                    print(
+                        "This mode assumes that the first aerosol in the list is the deck species, rest are slab species"
+                    )
+                    for index in range(len(aerosol_species)):
+                        aerosol = aerosol_species[index]
+                        if index == 0:
+                            cloud_params += ["log_P_top_deck_" + aerosol]
+                            cloud_params += ["log_r_m_" + aerosol]
+                            cloud_params += ["log_n_max_" + aerosol]
+                            cloud_params += ["f_" + aerosol]
+                        else:
+                            cloud_params += ["log_P_top_slab_" + aerosol]
+                            cloud_params += ["Delta_log_P_" + aerosol]
+                            cloud_params += ["log_r_m_" + aerosol]
+                            cloud_params += ["log_X_" + aerosol]
+
+            elif cloud_type == "opaque_deck_plus_slab":
+
+                cloud_params += ["log_P_top_deck"]
+
+                if aerosol_species == ["free"] or aerosol_species == ["file_read"]:
+                    print("Only one slab can be defined with free or file_read")
+                    cloud_params += ["log_P_top_slab"]
+                    cloud_params += ["Delta_log_P"]
+                    cloud_params += ["log_r_m"]
+                    cloud_params += ["log_X_Mie", "r_i_real", "r_i_complex"]
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ["log_P_top_slab_" + aerosol]
+                        cloud_params += ["Delta_log_P_" + aerosol]
+                        cloud_params += ["log_r_m_" + aerosol]
+                        cloud_params += ["log_X_" + aerosol]
+
+            elif cloud_type == "uniform_X":
+
+                if aerosol_species == ["free"] or aerosol_species == ["file_read"]:
+                    cloud_params += ["log_r_m"]
+                    cloud_params += ["log_X_Mie", "r_i_real", "r_i_complex"]
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ["log_r_m_" + aerosol]
+                        cloud_params += ["log_X_" + aerosol]
+
+            elif cloud_type == "opaque_deck_plus_uniform_X":
+
+                cloud_params += ["log_P_top_deck"]
+
+                if aerosol_species == ["free"] or aerosol_species == ["file_read"]:
+                    cloud_params += ["log_r_m"]
+                    cloud_params += ["log_X_Mie", "r_i_real", "r_i_complex"]
+                else:
+                    for aerosol in aerosol_species:
+                        cloud_params += ["log_r_m_" + aerosol]
+                        cloud_params += ["log_X_" + aerosol]
+
+            # One slab defined with multiple species included
+            elif cloud_type == "one_slab":
+
+                if aerosol_species == ["free"] or aerosol_species == ["file_read"]:
+                    raise Exception(
+                        "Only one cloud species can be defined when using free or file_read. Use slab instead"
+                    )
+
+                else:
+                    # define slab top pressure and extent
+                    cloud_params += ["log_P_top_slab"]
+                    cloud_params += ["Delta_log_P"]
+
+                    # add aerosol specific parameters
+                    for aerosol in aerosol_species:
+                        cloud_params += ["log_r_m_" + aerosol]
+                        cloud_params += ["log_X_" + aerosol]
+
+            elif cloud_type not in [
+                "fuzzy_deck",
+                "uniform_X",
+                "slab",
+                "fuzzy_deck_plus_slab",
+                "opaque_deck_plus_slab",
+                "opaque_deck_plus_uniform_X",
+                "one_slab",
+            ]:
+                raise Exception(
+                    "Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, one_slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X."
+                )
+
+        elif cloud_model == "eddysed":
+            # If working with a 2D patchy cloud model
+            if cloud_dim == 2:
+                cloud_params += ["f_cloud"]
+
+            cloud_params += ["kappa_cloud_eddysed"]
+            cloud_params += ["g_cloud_eddysed"]
+            cloud_params += ["w_cloud_eddysed"]
+
         else:
             raise Exception("Error: unsupported cloud model.")
 
@@ -858,15 +1073,19 @@ def assign_free_params(
     if offsets_applied == "single_dataset":
         params += ["delta_rel"]
         N_offset_params = 1
+    elif offsets_applied == "two_datasets":
+        params += ["delta_rel_1", "delta_rel_2"]
+        N_offset_params = 2
+    elif offsets_applied == "three_datasets":
+        params += ["delta_rel_1", "delta_rel_2", "delta_rel_3"]
+        N_offset_params = 3
     elif offsets_applied == None:
         N_offset_params = 0
     else:
         raise Exception("Error: unsupported offset prescription.")
 
-    # ***** Error adjustment parameters *****#
-
     if error_inflation == "Line15":
-        params += ["log_b"]  # TBD: CHECK definition
+        params += ["b"]
         N_error_params = 1
     elif error_inflation == None:
         N_error_params = 0
@@ -975,6 +1194,7 @@ def split_params(params_drawn, N_params_cumulative):
     # Extract error adjustment parameters
     err_inflation_drawn = params_drawn[N_params_cumulative[6] : N_params_cumulative[7]]
 
+    # Extract high res parameters
     high_res_drawn = params_drawn[N_params_cumulative[7] : N_params_cumulative[8]]
 
     return (
@@ -1066,6 +1286,18 @@ def generate_state(
         len_PT = 8
     elif PT_profile == "Madhu":  # Madhusudhan & Seager (2009) profile
         len_PT = 6
+    elif PT_profile == "Pelletier":  # Pelletier (2021)
+        len_PT = len(PT_in)
+    elif PT_profile == "Guillot":  # Guillot (2010)
+        len_PT = 4
+    elif PT_profile == "Guillot_dayside":  # Guillot with f = 0.5 (2010)
+        len_PT = 4
+    elif PT_profile == "Line":  # Line (2013)
+        len_PT = 6
+    elif PT_profile == "slope":  # Piette & Madhusudhan (2020) profile
+        len_PT = 8
+    elif PT_profile == "Madhu":  # Madhusudhan & Seager (2009) profile
+        len_PT = 6
     elif PT_profile == "slope":  # Piette & Madhusudhan (2020) profile
         len_PT = 8
     elif PT_profile == "file_read":  # User provided file
@@ -1076,6 +1308,8 @@ def generate_state(
         len_X = 4  # (log_X_bar_term_high, Delta_log_X_term_high, Delta_log_X_DN_high, log_X_deep)
     elif X_profile == "two-gradients":
         len_X = 8
+    elif X_profile == "lever":
+        len_X = 3  # (log_X_iso, log_P_X, Upsilon_X)
     elif X_profile == "isochem":
         len_X = (
             4  # To cover multi-D cases, we use same log_X format as gradient profile
@@ -1116,6 +1350,14 @@ def generate_state(
             PT_state = PT_in  # Assign 6 parameters defining this profile
         elif PT_profile == "slope":
             PT_state = PT_in  # Assign 8 parameters defining this profile
+        elif PT_profile == "Pelletier":
+            PT_state = PT_in
+        elif PT_profile == "Guillot":
+            PT_state = PT_in
+        elif PT_profile == "Guillot_dayside":
+            PT_state = PT_in
+        elif PT_profile == "Line":
+            PT_state = PT_in
 
     # 2D atmosphere
     elif PT_dim == 2:
@@ -1228,7 +1470,7 @@ def generate_state(
 
                 # Loop over parametrised chemical species
                 for q, species in enumerate(param_species):
-                    if (species_vert_gradient != []) and (
+                    if (len(species_vert_gradient) != 0) and (
                         species in species_vert_gradient
                     ):
                         log_X_state[q, 0] = log_X_in[count]  # log_X_bar_term_high
@@ -1248,7 +1490,7 @@ def generate_state(
 
                 # Loop over parametrised chemical species
                 for q, species in enumerate(param_species):
-                    if (species_vert_gradient != []) and (
+                    if (len(species_vert_gradient) != 0) and (
                         species in species_vert_gradient
                     ):
                         log_X_state[q, 0] = log_X_in[count]  # log_X_bar_term_high
@@ -1271,6 +1513,25 @@ def generate_state(
                         log_X_state[q, 7] = log_X_in[count]  # log_X_deep
                         count += 1
 
+            elif X_profile == "lever":
+
+                count = 0  # Counter to make tracking location in log_X_in easier
+
+                # Loop over parametrised chemical species
+                for q, species in enumerate(param_species):
+                    if (len(species_vert_gradient) != 0) and (
+                        species in species_vert_gradient
+                    ):
+                        log_X_state[q, 0] = log_X_in[count]  # log_X_iso
+                        log_X_state[q, 1] = log_X_in[count + 1]  # log_P_X
+                        log_X_state[q, 2] = log_X_in[count + 2]  # Upsilon_X
+                        count += 3
+                    else:  # No altitude variation for this species
+                        log_X_state[q, 0] = log_X_in[count]  # log_X_iso
+                        log_X_state[q, 1] = -2.0  # Fix P_X to 10 mbar for isochem
+                        log_X_state[q, 2] = 0.0  # Upsilon_X = 0 for isochem
+                        count += 1
+
         # 2D atmosphere
         elif X_dim == 2:
             count = 0  # Counter to make tracking location in log_X_in easier
@@ -1280,9 +1541,11 @@ def generate_state(
                 # Convert input parameters into average terminator mixing ratio and difference
                 if X_profile == "isochem":
                     if (
-                        (species_EM_gradient != []) and (species in species_EM_gradient)
+                        (len(species_EM_gradient) != 0)
+                        and (species in species_EM_gradient)
                     ) or (
-                        (species_DN_gradient != []) and (species in species_DN_gradient)
+                        (len(species_DN_gradient) != 0)
+                        and (species in species_DN_gradient)
                     ):
                         if TwoD_param_scheme == "absolute":
                             log_X_bar = 0.5 * (log_X_in[count] + log_X_in[count + 1])
@@ -1308,9 +1571,11 @@ def generate_state(
                 # Convert input parameters into average terminator mixing ratio and difference
                 elif X_profile == "gradient":
                     if (
-                        (species_EM_gradient != []) and (species in species_EM_gradient)
+                        (len(species_EM_gradient) != 0)
+                        and (species in species_EM_gradient)
                     ) or (
-                        (species_DN_gradient != []) and (species in species_DN_gradient)
+                        (len(species_DN_gradient) != 0)
+                        and (species in species_DN_gradient)
                     ):
                         if TwoD_param_scheme == "absolute":
                             log_X_bar = 0.5 * (log_X_in[count] + log_X_in[count + 1])
@@ -1324,7 +1589,7 @@ def generate_state(
                                 Delta_log_X = -1.0 * (log_X_in[count + 1] * beta)
                             elif TwoD_type == "E-M":
                                 Delta_log_X = -1.0 * (log_X_in[count + 1] * alpha)
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_deep = log_X_in[count + 2]
@@ -1337,7 +1602,7 @@ def generate_state(
                     else:
                         log_X_bar = log_X_in[count]
                         Delta_log_X = 0.0
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_deep = log_X_in[count + 1]
@@ -1351,11 +1616,13 @@ def generate_state(
                 # Convert input parameters into average terminator mixing ratios and differences (high and mid atmosphere)
                 elif X_profile == "two-gradients":
                     if (
-                        (species_EM_gradient != []) and (species in species_EM_gradient)
+                        (len(species_EM_gradient) != 0)
+                        and (species in species_EM_gradient)
                     ) or (
-                        (species_DN_gradient != []) and (species in species_DN_gradient)
+                        (len(species_DN_gradient) != 0)
+                        and (species in species_DN_gradient)
                     ):
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             if TwoD_param_scheme == "absolute":
@@ -1427,7 +1694,7 @@ def generate_state(
                         log_X_bar_high = log_X_in[count]
                         Delta_log_X_high = 0.0
                         Delta_log_X_mid = 0.0
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_bar_mid = log_X_in[count + 1]
@@ -1482,24 +1749,27 @@ def generate_state(
 
             # Loop over parametrised chemical species
             for q, species in enumerate(param_species):
+
                 if X_profile == "isochem":
                     if (
-                        (species_EM_gradient != []) and (species in species_EM_gradient)
+                        (len(species_EM_gradient) != 0)
+                        and (species in species_EM_gradient)
                     ) and (
-                        (species_DN_gradient != []) and (species in species_DN_gradient)
+                        (len(species_DN_gradient) != 0)
+                        and (species in species_DN_gradient)
                     ):
                         log_X_bar_term = log_X_in[count]
                         Delta_log_X_term = log_X_in[count + 1]
                         Delta_log_X_DN = log_X_in[count + 2]
                         count += 3
-                    elif (species_EM_gradient != []) and (
+                    elif (len(species_EM_gradient) != 0) and (
                         species in species_EM_gradient
                     ):
                         log_X_bar_term = log_X_in[count]
                         Delta_log_X_term = log_X_in[count + 1]
                         Delta_log_X_DN = 0.0
                         count += 2
-                    elif (species_DN_gradient != []) and (
+                    elif (len(species_DN_gradient) != 0) and (
                         species in species_DN_gradient
                     ):
                         log_X_bar_term = log_X_in[count]
@@ -1517,14 +1787,16 @@ def generate_state(
 
                 elif X_profile == "gradient":
                     if (
-                        (species_EM_gradient != []) and (species in species_EM_gradient)
+                        (len(species_EM_gradient) != 0)
+                        and (species in species_EM_gradient)
                     ) and (
-                        (species_DN_gradient != []) and (species in species_DN_gradient)
+                        (len(species_DN_gradient) != 0)
+                        and (species in species_DN_gradient)
                     ):
                         log_X_bar_term = log_X_in[count]
                         Delta_log_X_term = log_X_in[count + 1]
                         Delta_log_X_DN = log_X_in[count + 2]
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_deep = log_X_in[count + 3]
@@ -1534,13 +1806,13 @@ def generate_state(
                                 -50.0
                             )  # Dummy value for log_X_deep, since not used in this case
                             count += 3
-                    elif (species_EM_gradient != []) and (
+                    elif (len(species_EM_gradient) != 0) and (
                         species in species_EM_gradient
                     ):
                         log_X_bar_term = log_X_in[count]
                         Delta_log_X_term = log_X_in[count + 1]
                         Delta_log_X_DN = 0.0
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_deep = log_X_in[count + 2]
@@ -1550,13 +1822,13 @@ def generate_state(
                                 -50.0
                             )  # Dummy value for log_X_deep, since not used in this case
                             count += 2
-                    elif (species_DN_gradient != []) and (
+                    elif (len(species_DN_gradient) != 0) and (
                         species in species_DN_gradient
                     ):
                         log_X_bar_term = log_X_in[count]
                         Delta_log_X_term = 0.0
                         Delta_log_X_DN = log_X_in[count + 1]
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_deep = log_X_in[count + 2]
@@ -1570,7 +1842,7 @@ def generate_state(
                         log_X_bar_term = log_X_in[count]
                         Delta_log_X_term = 0.0
                         Delta_log_X_DN = 0.0
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_deep = log_X_in[count + 1]
@@ -1583,11 +1855,13 @@ def generate_state(
 
                 elif X_profile == "two-gradients":
                     if (
-                        (species_EM_gradient != []) and (species in species_EM_gradient)
+                        (len(species_EM_gradient) != 0)
+                        and (species in species_EM_gradient)
                     ) and (
-                        (species_DN_gradient != []) and (species in species_DN_gradient)
+                        (len(species_DN_gradient) != 0)
+                        and (species in species_DN_gradient)
                     ):
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_bar_term_high = log_X_in[count]
@@ -1611,10 +1885,10 @@ def generate_state(
                                 -50.0
                             )  # Dummy value for log_X_deep, since not used in this case
                             count += 3
-                    elif (species_EM_gradient != []) and (
+                    elif (len(species_EM_gradient) != 0) and (
                         species in species_EM_gradient
                     ):
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_bar_term_high = log_X_in[count]
@@ -1638,10 +1912,10 @@ def generate_state(
                                 -50.0
                             )  # Dummy value for log_X_deep, since not used in this case
                             count += 2
-                    elif (species_DN_gradient != []) and (
+                    elif (len(species_DN_gradient) != 0) and (
                         species in species_DN_gradient
                     ):
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_bar_term_high = log_X_in[count]
@@ -1671,7 +1945,7 @@ def generate_state(
                         Delta_log_X_term_mid = 0.0
                         Delta_log_X_DN_high = 0.0
                         Delta_log_X_DN_mid = 0.0
-                        if (species_vert_gradient != []) and (
+                        if (len(species_vert_gradient) != 0) and (
                             species in species_vert_gradient
                         ):
                             log_X_bar_term_mid = log_X_in[count + 1]
@@ -1776,8 +2050,22 @@ def unpack_cloud_params(
         # Set dummy parameter values, not used when cloud-free
         kappa_cloud_0 = 1.0e250
         P_cloud = 100.0
+        P_slab_bottom = 100.0
         a, gamma = 1.0, -4.0
         f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+
+        # Set eddysed values to dummy values
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
 
     # Patchy cloud model from MacDonald & Madhusudhan (2017)
     if cloud_model == "MacMad17":
@@ -1798,6 +2086,8 @@ def unpack_cloud_params(
         else:
             P_cloud = 100.0  # Set to 100 bar for models without a cloud deck
 
+        P_slab_bottom = 100.0  # Not used for this model
+
         # If cloud model has patchy gaps
         if cloud_dim != 1:
             phi_c = clouds_in[np.where(cloud_param_names == "phi_cloud")[0][0]]
@@ -1813,6 +2103,19 @@ def unpack_cloud_params(
                     -90.0,
                     90.0,
                 )  # Dummy values, not used when cloud-free
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+
+        # Set eddysed values to dummy values
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
 
     # 3D patchy cloud model from MacDonald & Lewis (2022)
     elif cloud_model == "Iceberg":
@@ -1859,7 +2162,614 @@ def unpack_cloud_params(
             P_cloud = 100.0
             f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
 
-    return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma
+        P_slab_bottom = 100.0  # Not used for this model
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+
+        # Set eddysed values to dummy values
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
+
+    # Mie clouds
+    elif cloud_model == "Mie":
+
+        # Turn clouds_in into an array
+        try:
+            clouds_in = np.asarray(clouds_in)
+
+        # New in python 3.11, this if for file_read and free
+        except:
+            clouds_in = np.asarray(clouds_in, dtype="object")
+
+        # No haze in this model
+        a, gamma = 1.0, -4.0  # Dummy values, haze extinction disabled here
+
+        # Cloud is opaque up to P_cloud, and then follows an exponential distribution for
+        # number density of aerosols. This is set by n_cloud
+        kappa_cloud_0 = 1.0e250
+
+        # Set eddysed values to dummy values
+        kappa_cloud_eddysed = 0
+        g_cloud_eddysed = 0
+        w_cloud_eddysed = 0
+
+        if cloud_dim == 1:
+            f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0  # 1D uniform cloud
+        elif cloud_dim == 2:
+            try:
+                f_cloud = clouds_in[np.where(cloud_param_names == "f_cloud")[0][0]]
+            except:
+                f_cloud = clouds_in[np.where(cloud_param_names == "f_cloud")[0]]
+
+            phi_0 = -90
+            theta_0 = -90.0
+
+        # Set the Mie parameters
+        # Sorry that below is a bit of a mess if anyone is looking at this in the future
+        # There are a lot of different cloud models, and
+        # numpy gets made depending on if the inputs are an array or a string (file read vs database aerosol)
+        # Details below
+
+        # If the cloud is a fuzzy_deck, slab, fuzzy_deck_plus_slab, or opaque_deck_plus_slab model
+        # it will contain the string 'log_P_top' in its parameter names
+        if any("log_P_top" in s for s in cloud_param_names):
+
+            # If the cloud is a slab model, a fuzzy_deck_plus_slab, or an opaque_deck_plus_slab model
+            # It will contain the string 'Delta_log_P' in it
+            if any("Delta_log_P" in s for s in cloud_param_names):
+
+                # If it is a fuzzy_deck_plus_slab or an opaque_deck_plus_slab
+                # It will contain the string 'log_P_top_deck' in it
+                if any("log_P_top_deck" in s for s in cloud_param_names):
+
+                    # If its a fuzzy_deck_plus_slab
+                    # It will contain the string 'log_n_max' in it
+                    if any("log_n_max" in s for s in cloud_param_names):
+
+                        # The try except is here because file_read option makes everything into a numpy file
+                        # So you have to add an extra [0] to get the indexing to work correctly
+                        # Specifically, the file_read option doesn't like the float power line in r_m
+                        try:
+                            # Note of whats going on here
+                            # np.char.find is finding strings in the cloud param names that have the string
+                            # And that either returns a list of arrays, or something else, which is why we have the try-except
+
+                            # Shared parameters, where the first index needs to be the deck species
+                            # This is why we keep the deck and slab seperate and then join them together
+                            r_m = np.float_power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(cloud_param_names, "log_r_m") != -1
+                                    )[0]
+                                ],
+                            )
+                            P_deck = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_deck"
+                                        )
+                                        != -1
+                                    )[0]
+                                ],
+                            )
+                            P_slab = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_slab"
+                                        )
+                                        != -1
+                                    )[0]
+                                ],
+                            )
+                            P_cloud = np.concatenate((P_deck, P_slab), axis=0)
+
+                            # Deck specific parameters
+                            log_n_max = clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_n_max") != -1
+                                )[0]
+                            ]
+                            fractional_scale_height = clouds_in[
+                                np.where(np.char.find(cloud_param_names, "f") != -1)[0]
+                            ]
+
+                            # Slab specific parameters
+                            log_X_Mie = clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_X") != -1
+                                )[0]
+                            ]
+                            P_slab_bottom = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_slab"
+                                        )
+                                        != -1
+                                    )[0]
+                                ]
+                                + clouds_in[
+                                    np.where(
+                                        np.char.find(cloud_param_names, "Delta_log_P")
+                                        != -1
+                                    )[0]
+                                ],
+                            )
+
+                        except:
+                            r_m = np.float_power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(cloud_param_names, "log_r_m") != -1
+                                    )[0][0]
+                                ],
+                            )
+                            P_deck = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_deck"
+                                        )
+                                        != -1
+                                    )[0][0]
+                                ],
+                            )
+                            P_slab = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_slab"
+                                        )
+                                        != -1
+                                    )[0][0]
+                                ],
+                            )
+                            P_cloud = np.concatenate((P_deck, P_slab), axis=0)
+
+                            log_n_max = clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_n_max") != -1
+                                )[0]
+                            ][0]
+                            fractional_scale_height = clouds_in[
+                                np.where(np.char.find(cloud_param_names, "f") != -1)[0]
+                            ][0]
+
+                            log_X_Mie = clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_X") != -1
+                                )[0][0]
+                            ]
+                            P_slab_bottom = np.power(
+                                10.0,
+                                (
+                                    P_slab
+                                    + clouds_in[
+                                        np.where(
+                                            np.char.find(
+                                                cloud_param_names, "Delta_log_P"
+                                            )
+                                            != -1
+                                        )[0][0]
+                                    ]
+                                ),
+                            )
+
+                    # Otherwise, it is an opaque_deck_plus_slab
+                    else:
+                        try:
+                            # Shared parameters, where the first index needs to be the deck species
+                            # This is why we keep the deck and slab seperate and then join them together
+                            r_m = np.float_power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(cloud_param_names, "log_r_m") != -1
+                                    )[0]
+                                ],
+                            )
+                            P_deck = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_deck"
+                                        )
+                                        != -1
+                                    )[0]
+                                ],
+                            )
+                            P_slab = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_slab"
+                                        )
+                                        != -1
+                                    )[0]
+                                ],
+                            )
+                            P_cloud = np.concatenate((P_deck, P_slab), axis=0)
+
+                            # Opaque decks don't have the 'fuzziness' parameters
+                            log_n_max = 0
+                            fractional_scale_height = 0
+
+                            # Slab specific parameters
+                            log_X_Mie = clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_X") != -1
+                                )[0]
+                            ]
+                            P_slab_bottom = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_slab"
+                                        )
+                                        != -1
+                                    )[0]
+                                ]
+                                + clouds_in[
+                                    np.where(
+                                        np.char.find(cloud_param_names, "Delta_log_P")
+                                        != -1
+                                    )[0]
+                                ],
+                            )
+
+                        except:
+                            r_m = np.float_power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(cloud_param_names, "log_r_m") != -1
+                                    )[0][0]
+                                ],
+                            )
+                            P_deck = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_deck"
+                                        )
+                                        != -1
+                                    )[0][0]
+                                ],
+                            )
+                            P_slab = np.power(
+                                10.0,
+                                clouds_in[
+                                    np.where(
+                                        np.char.find(
+                                            cloud_param_names, "log_P_top_slab"
+                                        )
+                                        != -1
+                                    )[0][0]
+                                ],
+                            )
+                            try:
+                                P_cloud = np.concatenate((P_deck, P_slab), axis=0)
+                            # Put in because the file_read option doesn't like concatenate for some reason
+                            except:
+                                P_cloud = np.array([P_deck, P_slab])
+
+                            log_n_max = 0
+                            fractional_scale_height = 0
+
+                            log_X_Mie = clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_X") != -1
+                                )[0][0]
+                            ]
+                            P_slab_bottom = np.power(
+                                10.0,
+                                (
+                                    P_slab
+                                    + clouds_in[
+                                        np.where(
+                                            np.char.find(
+                                                cloud_param_names, "Delta_log_P"
+                                            )
+                                            != -1
+                                        )[0][0]
+                                    ]
+                                ),
+                            )
+
+                # Otherwise, it is just a slab model
+                else:
+                    try:
+                        r_m = np.float_power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_r_m") != -1
+                                )[0]
+                            ],
+                        )
+                        log_X_Mie = clouds_in[
+                            np.where(np.char.find(cloud_param_names, "log_X") != -1)[0]
+                        ]
+                        P_cloud = np.power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_P_top") != -1
+                                )[0]
+                            ],
+                        )
+                        P_slab_bottom = np.power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_P_top") != -1
+                                )[0]
+                            ]
+                            + clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "Delta_log_P") != -1
+                                )[0]
+                            ],
+                        )
+                    except:
+                        r_m = np.float_power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_r_m") != -1
+                                )[0][0]
+                            ],
+                        )
+                        log_X_Mie = clouds_in[
+                            np.where(np.char.find(cloud_param_names, "log_X") != -1)[0]
+                        ][0]
+                        P_cloud = np.power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_P_top") != -1
+                                )[0][0]
+                            ],
+                        )
+                        P_slab_bottom = np.power(
+                            10.0,
+                            (
+                                P_cloud
+                                + clouds_in[
+                                    np.where(
+                                        np.char.find(cloud_param_names, "Delta_log_P")
+                                        != -1
+                                    )[0][0]
+                                ]
+                            ),
+                        )
+
+                    # Need to set the deck parameters to dummy values to pass into the cloud object
+                    log_n_max = 0
+                    fractional_scale_height = 0
+
+            # Otherwise, its just a fuzzy deck with no slabs or opaque_deck_plus_uniform_X
+            else:
+
+                # Fuzzy deck
+                if any("log_n_max" in s for s in cloud_param_names):
+
+                    try:
+                        r_m = np.float_power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_r_m") != -1
+                                )[0]
+                            ],
+                        )
+                        P_cloud = np.power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_P_top") != -1
+                                )[0]
+                            ],
+                        )
+                        log_n_max = clouds_in[
+                            np.where(
+                                np.char.find(cloud_param_names, "log_n_max") != -1
+                            )[0]
+                        ]
+                        fractional_scale_height = clouds_in[
+                            np.where(np.char.find(cloud_param_names, "f") != -1)[0]
+                        ]
+                    except:
+                        r_m = np.float_power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_r_m") != -1
+                                )[0][0]
+                            ],
+                        )
+                        P_cloud = np.power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_P_top") != -1
+                                )[0][0]
+                            ],
+                        )
+                        log_n_max = clouds_in[
+                            np.where(
+                                np.char.find(cloud_param_names, "log_n_max") != -1
+                            )[0]
+                        ][0]
+                        fractional_scale_height = clouds_in[
+                            np.where(np.char.find(cloud_param_names, "f") != -1)[0]
+                        ][0]
+
+                    # Need to set the slab parameters to dummy values to pass into the cloud object
+                    log_X_Mie = 100
+                    P_slab_bottom = 100.0
+
+                # opaque_deck_plus_uniform_x
+                else:
+
+                    try:
+                        r_m = np.float_power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_r_m") != -1
+                                )[0]
+                            ],
+                        )
+                        P_cloud = np.power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_P_top") != -1
+                                )[0]
+                            ],
+                        )
+                        log_X_Mie = clouds_in[
+                            np.where(np.char.find(cloud_param_names, "log_X") != -1)[0]
+                        ]
+
+                    except:
+                        r_m = np.float_power(
+                            10.0,
+                            clouds_in[
+                                np.where(
+                                    np.char.find(cloud_param_names, "log_r_m") != -1
+                                )[0][0]
+                            ],
+                        )
+                        P_cloud = np.power(
+                            10.0,
+                            clouds_in[np.where(cloud_param_names == "log_P_top")[0][0]],
+                        )
+                        log_X_Mie = clouds_in[
+                            np.where(np.char.find(cloud_param_names, "log_X") != -1)[0]
+                        ][0]
+
+                    # If uniform_X, you set the slab and deck parameters to dummy values to pass into the cloud object
+                    log_n_max = 0
+                    fractional_scale_height = 0
+                    P_slab_bottom = 100.0
+
+        # If the aerosol is a uniform_X
+        else:
+
+            try:
+                r_m = np.float_power(
+                    10.0,
+                    clouds_in[
+                        np.where(np.char.find(cloud_param_names, "log_r_m") != -1)[0]
+                    ],
+                )
+                log_X_Mie = clouds_in[
+                    np.where(np.char.find(cloud_param_names, "log_X") != -1)[0]
+                ]
+            except:
+                r_m = np.float_power(
+                    10.0,
+                    clouds_in[
+                        np.where(np.char.find(cloud_param_names, "log_r_m") != -1)[0][0]
+                    ],
+                )
+                log_X_Mie = clouds_in[
+                    np.where(np.char.find(cloud_param_names, "log_X") != -1)[0]
+                ][0]
+
+            # If uniform_X, you set the slab and deck parameters to dummy values to pass into the cloud object
+            log_n_max = 0
+            fractional_scale_height = 0
+            P_cloud = 100.0
+            P_slab_bottom = 100.0
+
+        # See if its a free or file_read aerosol retrieval or not
+        if "r_i_real" in cloud_param_names:
+            r_i_real = clouds_in[np.where(cloud_param_names == "r_i_real")[0][0]]
+            r_i_complex = clouds_in[np.where(cloud_param_names == "r_i_complex")[0][0]]
+        else:
+            r_i_real = 0
+            r_i_complex = 0
+
+    # This cloud model is to specifically take in kappa_cloud, g_cloud, and w_cloud from eddysed calculations
+    # i.e from PICASO, VIRGA
+    elif cloud_model == "eddysed":
+
+        kappa_cloud_eddysed = clouds_in[
+            np.where(cloud_param_names == "kappa_cloud_eddysed")[0][0]
+        ]
+        g_cloud_eddysed = clouds_in[
+            np.where(cloud_param_names == "g_cloud_eddysed")[0][0]
+        ]
+        w_cloud_eddysed = clouds_in[
+            np.where(cloud_param_names == "w_cloud_eddysed")[0][0]
+        ]
+
+        # Set dummy parameter values, not used when cloud-free
+        kappa_cloud_0 = 1.0e250
+        P_cloud = 100.0
+        P_slab_bottom = 100.0
+        a, gamma = 1.0, -4.0
+
+        if cloud_dim == 1:
+            f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0  # 1D uniform cloud
+        elif cloud_dim == 2:
+            try:
+                f_cloud = clouds_in[np.where(cloud_param_names == "f_cloud")[0][0]]
+            except:
+                f_cloud = clouds_in[np.where(cloud_param_names == "f_cloud")[0]]
+            phi_0 = -90
+            theta_0 = -90.0
+
+        # Mie scattering parameters not needed
+        r_m = []
+        log_n_max = 0
+        fractional_scale_height = 0
+        r_i_real = 0
+        r_i_complex = 0
+        log_X_Mie = []
+
+    return (
+        kappa_cloud_0,
+        P_cloud,
+        f_cloud,
+        phi_0,
+        theta_0,
+        a,
+        gamma,
+        r_m,
+        log_n_max,
+        fractional_scale_height,
+        r_i_real,
+        r_i_complex,
+        log_X_Mie,
+        P_slab_bottom,
+        kappa_cloud_eddysed,
+        g_cloud_eddysed,
+        w_cloud_eddysed,
+    )
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

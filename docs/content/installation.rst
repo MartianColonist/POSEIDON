@@ -7,9 +7,9 @@ ____________________________
 POSEIDON requires various input files (opacity data, stellar models, etc.) that
 are stored separately from the GitHub repository (due to file size limitations).
 Before installing POSEIDON, you will need to download these input files, which
-have been packaged for convenience as a single .zip file (37 GB):
+have been packaged for convenience as a single .zip file (67 GB):
 
-* `inputs.zip <https://drive.google.com/file/d/18ZpFugRG0mwiNmya7XdVokDTa8zzTBH8/view?usp=share_link>`_
+* `inputs.zip <https://drive.google.com/file/d/1q6EdElKflzdsMaLkgkR5UtgwK0Lq4Yob/view?usp=sharing>`_
 
 You can also find all the required input files on `Zenodo 
 <https://zenodo.org/record/7927435#.ZF22itLMJhE>`_.
@@ -29,22 +29,41 @@ the dependencies for POSEIDON: PyMultiNest and mpi4py.
    We recommend using WSL because PyMultiNest does not natively support Windows.
    However, it will work fine if you use WSL to install and run POSEIDON.
 
-.. attention::
-   We recommend installing POSEIDON in a fresh `Anaconda <https://www.anaconda.com/>`_ 
-   environment. You can create a new Python 3.9 environment via:
+We recommend installing POSEIDON in a fresh `Anaconda <https://www.anaconda.com/>`_ 
+environment. The following instructions show you how to create the conda environment
+on either Linux (e.g. Ubuntu) or Mac OS.
 
-   .. code-block:: bash
+Linux conda environment setup
+-----------------------------
 
-    conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.9
+POSEIDON currently supports Python versions up to 3.11.9. You can create a new 
+anaconda environment with, say, the latest version of Python 3.10 via:
 
-   Once the basic Python packages are installed in this fresh environment, you
-   can activate the environment where POSEIDON will dwell:
+.. code-block:: bash
 
-   .. code-block:: bash
+   conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.10
 
-    conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+Once the basic Python packages are installed in this fresh environment, you
+can activate the environment where POSEIDON will dwell:
 
-   Note that POSEIDON currently supports Python up to 3.10.
+.. code-block:: bash
+
+   conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+
+Mac OS conda environment setup
+------------------------------
+
+For Mac OS, you need to set the CONDA_SUBDIR environment variable to osx-64 
+(because PyMultiNest does not currently support ARM chips). You can do this via:
+
+.. code-block:: bash
+
+   CONDA_SUBDIR=osx-64 conda create -n 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.10
+   conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+   conda env config vars set CONDA_SUBDIR=osx-64
+
+Installing PyMultiNest
+----------------------
 
 `MultiNest <https://academic.oup.com/mnras/article/398/4/1601/981502>`_ is the 
 main sampling algorithm used for parameter space exploration in POSEIDON retrievals. 

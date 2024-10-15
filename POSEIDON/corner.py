@@ -24,8 +24,8 @@ from matplotlib.colors import LinearSegmentedColormap, colorConverter
 from matplotlib.ticker import ScalarFormatter
 from scipy.ndimage import gaussian_filter as norm_kde
 
-from .utility import generate_latex_param_names, round_sig_figs
-from .constants import R_J
+from POSEIDON.utility import generate_latex_param_names, round_sig_figs
+from POSEIDON.constants import R_J
 
 try:
     str_type = types.StringTypes
@@ -124,7 +124,7 @@ def resample_equal(samples, weights, rstate=None):
     positions = (rstate.random() + np.arange(nsamples)) / nsamples
 
     # Resample the data.
-    idx = np.zeros(nsamples, dtype=np.int)
+    idx = np.zeros(nsamples, dtype=np.int64)
     cumulative_sum = np.cumsum(weights)
     i, j = 0, 0
     while i < nsamples:
@@ -404,7 +404,7 @@ def cornerplot(
     fig=None,
     model_i=None,
 ):
-    """
+    """ "
     Generate a corner plot of the 1D and 2D marginalised posteriors.
 
     Args:
@@ -666,6 +666,7 @@ def cornerplot(
                 [ax.axvline(t, color=truth_colour, **truth_kwargs) for t in truths[i]]
             except:
                 ax.axvline(truths[i], color=truth_colour, **truth_kwargs)
+
         # Set titles.
         if show_titles:
             title = None
@@ -907,7 +908,7 @@ def generate_cornerplot(
             smooth_hist=30,
             smooth_corr=0.02,
             colour_plt=colour_scheme,
-            colour_quantile=colour_scheme,
+            colour_quantile="royalblue",
             show_titles=True,
             labels=params_latex,
             param_names=params_to_plot,
@@ -924,7 +925,7 @@ def generate_cornerplot(
             },
         )
 
-        # Save corner plot in results directory
+        # Save corner plot in results directories
         plt.savefig(results_prefix + "_corner.pdf", bbox_inches="tight")
 
         return (fig, axes)
@@ -941,8 +942,8 @@ def generate_overplot(
     span=None,
 ):
     """
-    Generate giant triangle plot of doom to visualise the results of a
-    POSEIDON retrieval.
+    Generate overplotted giant triangle plot of doom to visualise the results
+    of multiple POSEIDON retrievals.
 
     Args:
         planet (dict):
@@ -991,7 +992,7 @@ def generate_overplot(
             )
             s = a.get_stats()
 
-            print(f"Generating corner plot {model_i}...")
+            print(f"Generating corner plot {model_i+1}...")
 
             # Extract quantities needed to use the Dynesty corner plotting script
             data = a.get_data()
@@ -1002,6 +1003,7 @@ def generate_overplot(
                 ]
                 samples = data[i][:, [2 + index for index in indices_to_plot]]
             else:
+                params_to_plot = param_names
                 samples = data[i, 2:]
             weights = data[i, 0]
             loglike = data[i, 1]
@@ -1058,8 +1060,9 @@ def generate_overplot(
         # Save corner plot in results directory
         overplot_name = ""
         for model_display_name in model_display_names:
-            overplot_name += model_display_name + "_"
+            overplot_name += model_display_name
         results_prefix = output_dir + "results/" + overplot_name
-        plt.savefig(results_prefix + "corner_overplot.pdf", bbox_inches="tight")
+
+        plt.savefig(results_prefix + "_corner_overplot.pdf", bbox_inches="tight")
 
         return existing_fig

@@ -44,7 +44,7 @@ wl = wl_grid_constant_R(wl_min, wl_max, R)
 
 #***** Define model *****#
 
-model_name = 'CH4_Search_With_JWST_multi-core'
+model_name = 'CH4_Search_With_JWST'
 
 bulk_species = ['H2', 'He']
 param_species = ['H2O', 'CH4']   # Only H2O and CH4 in this model

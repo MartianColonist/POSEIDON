@@ -7,7 +7,10 @@ import os.path
 import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter1d as gauss_conv
-from scipy.integrate import trapz
+try:
+    from scipy.integrate import trapezoid as trapz
+except ImportError:
+    from scipy.integrate import trapz
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 from spectres import spectres
 
@@ -192,6 +195,8 @@ def init_instrument(wl, wl_data, half_width, instrument):
         sens_file = inst_dir + '/STIS/G430L_sensitivity.dat'
     elif (instrument == 'STIS_G750'):
         sens_file = inst_dir + '/STIS/G750L_sensitivity.dat'
+    elif (instrument == 'STIS_G750M'):
+        sens_file = inst_dir + '/STIS/G750M_sensitivity.dat'
     elif (instrument == 'WFC3_G280'):
         sens_file = inst_dir + '/WFC3/G280_sensitivity.dat'
     elif (instrument == 'WFC3_G102'):
@@ -202,6 +207,14 @@ def init_instrument(wl, wl_data, half_width, instrument):
         sens_file = inst_dir + '/Spitzer/IRAC1_sensitivity.dat'
     elif (instrument == 'IRAC2'): 
         sens_file = inst_dir + '/Spitzer/IRAC2_sensitivity.dat'
+    elif (instrument == 'IRAC3'): 
+        sens_file = inst_dir + '/Spitzer/IRAC3_sensitivity.dat'
+    elif (instrument == 'IRAC4'): 
+        sens_file = inst_dir + '/Spitzer/IRAC4_sensitivity.dat'
+    elif (instrument == 'IRS'): 
+        sens_file = inst_dir + '/Spitzer/IRS_sensitivity.dat'
+    elif (instrument == 'MIPS'): 
+        sens_file = inst_dir + '/Spitzer/MIPS_sensitivity.dat'
     elif (instrument.startswith('JWST')): 
         if (instrument == 'JWST_NIRSpec_Prism'): # Catch common misspelling of PRISM
             instrument = 'JWST_NIRSpec_PRISM'
@@ -619,12 +632,12 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
                     
         print(instruments[i])
 
-        if (N_trans == []):
+        if (len(N_trans) == 0):
             N_trans_i = 1     # Use one transit if not specified by user
         else:
             N_trans_i = N_trans[i]
 
-        if (R_to_bin == []):
+        if (len(R_to_bin) == 0):
             R_to_bin_i = None    # No binning if not specified by user
         else:
             R_to_bin_i = R_to_bin[i]

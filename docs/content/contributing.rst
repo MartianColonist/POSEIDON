@@ -11,7 +11,7 @@ To become more actively involved, feel free to browse the issues page and decide
 whether you would like to work on a bug or new feature (or even better, add
 a new automated test). If you're planning to work on a major new feature, we'd 
 encourage you to reach our to the lead developer to give a heads-up: 
-ryanjamc@umich.edu
+ryanjmac@umich.edu
 
 .. note::
    We generally recommend using `VS Code <https://code.visualstudio.com/>`_ if
