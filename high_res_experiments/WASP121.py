@@ -44,7 +44,7 @@ from POSEIDON.utility import read_high_res_data_deprecate
 model_name = "Fe-3 injection retrieval"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["Fe"]
+param_species = []
 # param_species = ["Fe", "Mg"]
 
 high_res = "sysrem"

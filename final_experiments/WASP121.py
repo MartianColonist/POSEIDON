@@ -38,11 +38,16 @@ from POSEIDON.core import define_model, wl_grid_constant_R, make_atmosphere
 
 # ***** Define model *****#
 
-model_name = "Fe Cr V Mg deck_haze 2D"  # Model name used for plots, output files etc.
+model_name = "Test"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["Fe", "Cr", "V", "Mg"]
-DN_vary = ["Fe", "Cr", "V", "Mg"]
+param_species = []
+
+# model_name = "Fe Cr V Mg deck_haze 2D"  # Model name used for plots, output files etc.
+
+# bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
+# param_species = ["Fe", "Cr", "V", "Mg"]
+# DN_vary = ["Fe", "Cr", "V", "Mg"]
 
 high_res = "sysrem"
 high_res_params = ["K_p", "V_sys", "W_conv", "log_alpha"]
@@ -51,19 +56,19 @@ model = define_model(
     model_name,
     bulk_species,
     param_species,
-    PT_profile="gradient",
+    PT_profile="isotherm",
     high_res_params=high_res_params,
     reference_parameter="R_p_ref",
-    cloud_model="MacMad17",
-    cloud_type="deck_haze",
-    TwoD_type="D-N",
-    PT_dim=2,
-    X_dim=2,
-    species_DN_gradient=DN_vary,
-    sharp_DN_transition=True,
+    high_res_method="sysrem",
+    # cloud_model="MacMad17",
+    # cloud_type="deck_haze",
+    # TwoD_type="D-N",
+    # PT_dim=2,
+    # X_dim=2,
+    # species_DN_gradient=DN_vary,
+    # sharp_DN_transition=True,
 )
 
-model["method"] = "sysrem"
 model["spectrum_type"] = "transmission"
 # Check the free parameters defining this model
 print("Free parameters: " + str(model["param_names"]))

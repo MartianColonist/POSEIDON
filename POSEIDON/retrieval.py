@@ -45,16 +45,37 @@ rank = comm.Get_rank()
 allowed_simplex = 1
 
 
-
-def run_retrieval(planet, star, model, opac, data, priors, wl, P, 
-                  P_ref = None, R_p_ref = None, P_param_set = 1.0e-2, 
-                  R = None, retrieval_name = None, He_fraction = 0.17, 
-                  N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
-                  spectrum_type = 'transmission', y_p = np.array([0.0]),
-                  stellar_T_step = 20, stellar_log_g_step = 0.1, 
-                  N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest', 
-                  resume = False, verbose = True, sampling_target = 'parameter',
-                  chem_grid = 'fastchem', N_output_samples = 1000,):
+def run_retrieval(
+    planet,
+    star,
+    model,
+    opac,
+    data,
+    priors,
+    wl,
+    P,
+    P_ref=None,
+    R_p_ref=None,
+    P_param_set=1.0e-2,
+    R=None,
+    retrieval_name=None,
+    He_fraction=0.17,
+    N_slice_EM=2,
+    N_slice_DN=4,
+    constant_gravity=False,
+    spectrum_type="transmission",
+    y_p=np.array([0.0]),
+    stellar_T_step=20,
+    stellar_log_g_step=0.1,
+    N_live=400,
+    ev_tol=0.5,
+    sampling_algorithm="MultiNest",
+    resume=False,
+    verbose=True,
+    sampling_target="parameter",
+    chem_grid="fastchem",
+    N_output_samples=1000,
+):
     """
     ADD DOCSTRING
     """
@@ -77,9 +98,9 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     X_profile = model["X_profile"]
     high_res = model.get("high_res_method")
     # Unpack stellar properties
-    if (star is not None):
-        R_s = star['R_s']
-        stellar_interp_backend = star['stellar_interp_backend']
+    if star is not None:
+        R_s = star["R_s"]
+        stellar_interp_backend = star["stellar_interp_backend"]
 
     # Check that one of the two reference parameters has been provided by the user
     if (reference_parameter == "R_p_ref") and (P_ref is None):
@@ -114,12 +135,24 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             print("Pre-computing stellar spectra before starting retrieval...")
 
         # Interpolate and store stellar photosphere and heterogeneity spectra
-        T_phot_grid, T_het_grid, \
-        log_g_phot_grid, log_g_het_grid, \
-        I_phot_grid, I_het_grid = precompute_stellar_spectra(comm, wl, star, prior_types, 
-                                                             prior_ranges, stellar_contam,
-                                                             stellar_T_step, stellar_log_g_step,
-                                                             stellar_interp_backend)
+        (
+            T_phot_grid,
+            T_het_grid,
+            log_g_phot_grid,
+            log_g_het_grid,
+            I_phot_grid,
+            I_het_grid,
+        ) = precompute_stellar_spectra(
+            comm,
+            wl,
+            star,
+            prior_types,
+            prior_ranges,
+            stellar_contam,
+            stellar_T_step,
+            stellar_log_g_step,
+            stellar_interp_backend,
+        )
 
     # No stellar grid precomputation needed for models with uniform star
     else:
@@ -130,19 +163,19 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     # Interpolate stellar spectrum onto planet wavelength grid (one-time operation)
     if ("transmission" not in spectrum_type) and (star != None):
         # Load stellar spectrum
-        F_s = star['F_star']
-        d = planet['system_distance']
-      #  wl_s = star['wl_star']
+        F_s = star["F_star"]
+        d = planet["system_distance"]
+        #  wl_s = star['wl_star']
 
-      #  if (wl_s != wl):
-      #      raise Exception("Error: wavelength grid for stellar spectrum does " +
-      #                      "not match wavelength grid of planet spectrum. " +
-      #                      "Did you forget to provide 'wl' to create_star?")
+        #  if (wl_s != wl):
+        #      raise Exception("Error: wavelength grid for stellar spectrum does " +
+        #                      "not match wavelength grid of planet spectrum. " +
+        #                      "Did you forget to provide 'wl' to create_star?")
 
         # Distance only used for flux ratios, so set it to 1 since it cancels
-        if (d is None):
-            planet['system_distance'] = 1
-            d = planet['system_distance']
+        if d is None:
+            planet["system_distance"] = 1
+            d = planet["system_distance"]
 
         # Convert stellar surface flux to observed flux at Earth
         F_s_obs = (R_s / d) ** 2 * F_s
@@ -352,22 +385,22 @@ def forward_model(
     physical_param_names = model["physical_param_names"]
 
     # Unpack model properties
-    radius_unit = model['radius_unit']
-    mass_unit = model['mass_unit']
-    distance_unit = model['distance_unit']
-    N_params_cum = model['N_params_cum']
-    surface = model['surface']
-    stellar_contam = model['stellar_contam']
-    nightside_contam = model['nightside_contam']
-    disable_atmosphere = model['disable_atmosphere']
-    PT_penalty = model['PT_penalty']
+    radius_unit = model["radius_unit"]
+    mass_unit = model["mass_unit"]
+    distance_unit = model["distance_unit"]
+    N_params_cum = model["N_params_cum"]
+    surface = model["surface"]
+    stellar_contam = model["stellar_contam"]
+    nightside_contam = model["nightside_contam"]
+    disable_atmosphere = model["disable_atmosphere"]
+    PT_penalty = model["PT_penalty"]
     high_res = model.get("high_res_method")
 
     # Unpack planet and star properties
-    R_p = planet['planet_radius']
+    R_p = planet["planet_radius"]
 
-    if (star is not None):
-        R_s = star['R_s']
+    if star is not None:
+        R_s = star["R_s"]
 
     # For a retrieval we do not have user provided P-T or chemical profiles
     T_input = []
@@ -403,7 +436,7 @@ def forward_model(
         # No atmosphere dictionary needed if atmosphere disabled
         atmosphere = None
 
-        lnprior_TP = 0   # Not needed for flat lines, so set to zero
+        lnprior_TP = 0  # Not needed for flat lines, so set to zero
 
     else:
         # Unpack reference pressure if set as a free parameter
@@ -429,13 +462,13 @@ def forward_model(
             R_p_ref = R_p_ref_set
 
         # Unpack planet mass if set as a free parameter
-        if ('M_p' in physical_param_names):
-            M_p = physical_params[np.where(physical_param_names == 'M_p')[0][0]]
+        if "M_p" in physical_param_names:
+            M_p = physical_params[np.where(physical_param_names == "M_p")[0][0]]
 
             # Convert normalised mass drawn by MultiNest back into SI
-            if (mass_unit == 'M_J'):
+            if mass_unit == "M_J":
                 M_p *= M_J
-            elif (mass_unit == 'M_E'):
+            elif mass_unit == "M_E":
                 M_p *= M_E
 
         else:
@@ -472,17 +505,34 @@ def forward_model(
 
         # ***** Step 2: generate atmosphere corresponding to parameter draw *****#
 
-        atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
-                                     log_X_params, cloud_params, geometry_params, 
-                                     log_g, M_p, T_input, X_input, P_surf, P_param_set,
-                                     He_fraction, N_slice_EM, N_slice_DN, 
-                                     constant_gravity, chemistry_grid)
-        
+        atmosphere = make_atmosphere(
+            planet,
+            model,
+            P,
+            P_ref,
+            R_p_ref,
+            PT_params,
+            log_X_params,
+            cloud_params,
+            geometry_params,
+            log_g,
+            M_p,
+            T_input,
+            X_input,
+            P_surf,
+            P_param_set,
+            He_fraction,
+            N_slice_EM,
+            N_slice_DN,
+            constant_gravity,
+            chemistry_grid,
+        )
+
         # If PT_penalty is true, then you compute the PT penalty
         # Only for Pelletier 2021 profiles
         if PT_penalty == True:
 
-            # Unpack Ptop and Pbottom 
+            # Unpack Ptop and Pbottom
             log_P_min = np.min(np.log10(P))
             log_P_max = np.max(np.log10(P))
 
@@ -492,18 +542,24 @@ def forward_model(
             sigma_s = PT_params[-1]
 
             # Delta log p goes in denominator of the sum
-            # restep here just returns the spacing 
-            deltalogp = np.linspace(log_P_min,log_P_max,num=num_of_knots,retstep=True)[1]
+            # restep here just returns the spacing
+            deltalogp = np.linspace(
+                log_P_min, log_P_max, num=num_of_knots, retstep=True
+            )[1]
 
             # Sum in Equation 11, with the addition of a 1/2 ln (2 pi sigma_smooth**2) from Line et al 2011
-            sum = np.sum(((T_points[2:] - 2*T_points[1:-1] + T_points[:-2])**2)/(deltalogp**3) ) - 0.5 * np.log(2*np.pi*sigma_s**2)
-            
+            sum = np.sum(
+                ((T_points[2:] - 2 * T_points[1:-1] + T_points[:-2]) ** 2)
+                / (deltalogp**3)
+            ) - 0.5 * np.log(2 * np.pi * sigma_s**2)
+
             # Prefix remains the same from Equation 11
-            lnprior_TP = (-1.0/(2.0*sigma_s**2)) * (1/(log_P_max-log_P_min)) * sum
+            lnprior_TP = (
+                (-1.0 / (2.0 * sigma_s**2)) * (1 / (log_P_max - log_P_min)) * sum
+            )
 
         else:
             lnprior_TP = 0
-        
 
         # ***** Step 3: generate spectrum of atmosphere ****#
 
@@ -532,7 +588,7 @@ def forward_model(
             return 0, spectrum, atmosphere, lnprior_TP
 
     if high_res:  # For high res
-        return 0, spectrum, atmosphere
+        return 0, spectrum, atmosphere, lnprior_TP
 
     # ***** Step 4: stellar contamination *****#
 
@@ -653,24 +709,31 @@ def forward_model(
             # Apply multiplicative stellar contamination to spectrum
             spectrum = epsilon * spectrum
 
-    #***** Step 5: nightside contamination (credit to John Kappelmeier) *****#
-    
-    # Nightside contamination is only relevant for transmission spectra
-    if ('transmission' in spectrum_type):
+    # ***** Step 5: nightside contamination (credit to John Kappelmeier) *****#
 
-        if (nightside_contam == True):
+    # Nightside contamination is only relevant for transmission spectra
+    if "transmission" in spectrum_type:
+
+        if nightside_contam == True:
 
             # Calculate nightside thermal emission spectrum
-            Fp_Fs_night = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                           spectrum_type = 'nightside_emission')
-            
+            Fp_Fs_night = compute_spectrum(
+                planet,
+                star,
+                model,
+                atmosphere,
+                opac,
+                wl,
+                spectrum_type="nightside_emission",
+            )
+
             # Compute wavelength-dependent nightside contamination factor
-            psi = (1.0 / (1.0 + Fp_Fs_night))
+            psi = 1.0 / (1.0 + Fp_Fs_night)
 
             # Apply multiplicative nightside contamination to spectrum
             spectrum = psi * spectrum
-            
-    #***** Step 6: convolve spectrum with instrument PSF and bin to data resolution ****#
+
+    # ***** Step 6: convolve spectrum with instrument PSF and bin to data resolution ****#
 
     if "transmission" in spectrum_type:
         ymodel = bin_spectrum_to_data(spectrum, wl, data)
@@ -785,17 +848,17 @@ def PyMultiNest_retrieval(
     """
 
     # Unpack model properties
-    param_names = model['param_names']
-    param_species = model['param_species']
-    X_params = model['X_param_names']
-    N_params_cum = model['N_params_cum']
-    Atmosphere_dimension = model['Atmosphere_dimension']
-    species_EM_gradient = model['species_EM_gradient']
-    species_DN_gradient = model['species_DN_gradient']
-    error_inflation = model['error_inflation']
-    offsets_applied = model['offsets_applied']
-    stellar_contam = model['stellar_contam']
-    PT_penalty = model['PT_penalty']
+    param_names = model["param_names"]
+    param_species = model["param_species"]
+    X_params = model["X_param_names"]
+    N_params_cum = model["N_params_cum"]
+    Atmosphere_dimension = model["Atmosphere_dimension"]
+    species_EM_gradient = model["species_EM_gradient"]
+    species_DN_gradient = model["species_DN_gradient"]
+    error_inflation = model["error_inflation"]
+    offsets_applied = model["offsets_applied"]
+    stellar_contam = model["stellar_contam"]
+    PT_penalty = model["PT_penalty"]
     high_res_param_names = model["high_res_param_names"]
     high_res = model.get("high_res_method")
     R_p = planet["planet_radius"]
@@ -1115,14 +1178,34 @@ def PyMultiNest_retrieval(
                 return loglikelihood
 
         # ***** For valid parameter combinations, run forward model *****#
-        ymodel, spectrum, _, lnprior_TP = forward_model(cube, planet, star, model, opac, data, 
-                                                        wl, P, P_ref_set, R_p_ref_set, P_param_set, 
-                                                        He_fraction, N_slice_EM, N_slice_DN, 
-                                                        spectrum_type, T_phot_grid, T_het_grid, 
-                                                        log_g_phot_grid, log_g_het_grid,
-                                                        I_phot_grid, I_het_grid, y_p, F_s_obs,
-                                                        constant_gravity, chemistry_grid)
-        
+        ymodel, spectrum, _, lnprior_TP = forward_model(
+            cube,
+            planet,
+            star,
+            model,
+            opac,
+            data,
+            wl,
+            P,
+            P_ref_set,
+            R_p_ref_set,
+            P_param_set,
+            He_fraction,
+            N_slice_EM,
+            N_slice_DN,
+            spectrum_type,
+            T_phot_grid,
+            T_het_grid,
+            log_g_phot_grid,
+            log_g_het_grid,
+            I_phot_grid,
+            I_het_grid,
+            y_p,
+            F_s_obs,
+            constant_gravity,
+            chemistry_grid,
+        )
+
         # Reject unphysical spectra (forced to be NaN by function above)
         if np.any(np.isnan(spectrum)):
             # Assign penalty to likelihood => point ignored in retrieval
@@ -1134,7 +1217,7 @@ def PyMultiNest_retrieval(
         if high_res:
             return loglikelihood_high_res(
                 wl,
-                spectrum, # planet spectrum
+                spectrum,  # planet spectrum
                 F_s_obs,  # star spectrum
                 data,
                 spectrum_type,
@@ -1180,104 +1263,127 @@ def PyMultiNest_retrieval(
         )
 
         # Compute effective error, if unknown systematics included
-        if (error_inflation == 'Line15'):
-            err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
-            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
-        else: 
-            err_eff_sq = err_data*err_data
+        if error_inflation == "Line15":
+            err_eff_sq = err_data * err_data + np.power(10.0, err_inflation_params[0])
+            norm_log = (-0.5 * np.log(2.0 * np.pi * err_eff_sq)).sum()
+        else:
+            err_eff_sq = err_data * err_data
             norm_log = norm_log_default
 
         # Load transit depth data points and indices of any offset ranges
-      #  ydata = data['ydata']
-      #  offset_start = data['offset_start']
-      #  offset_end = data['offset_end']
+        #  ydata = data['ydata']
+        #  offset_start = data['offset_start']
+        #  offset_end = data['offset_end']
 
         # Apply relative offset between datasets
-      #  if (offsets_applied == 'single_dataset'):
-      #      ydata_adjusted = ydata.copy()
-      #      ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
-      #  else: 
-      #      ydata_adjusted = ydata
+        #  if (offsets_applied == 'single_dataset'):
+        #      ydata_adjusted = ydata.copy()
+        #      ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
+        #  else:
+        #      ydata_adjusted = ydata
 
         # Load transit depth data points and indices of any offset ranges
-        ydata = data['ydata']
-        offset_start = data['offset_start']
-        offset_end = data['offset_end']
+        ydata = data["ydata"]
+        offset_start = data["offset_start"]
+        offset_end = data["offset_end"]
 
-        offset_1_start = data['offset_1_start']
-        offset_1_end = data['offset_1_end']
-        offset_2_start = data['offset_2_start']
-        offset_2_end = data['offset_2_end']
-        offset_3_start = data['offset_3_start']
-        offset_3_end = data['offset_3_end']
+        offset_1_start = data["offset_1_start"]
+        offset_1_end = data["offset_1_end"]
+        offset_2_start = data["offset_2_start"]
+        offset_2_end = data["offset_2_end"]
+        offset_3_start = data["offset_3_start"]
+        offset_3_end = data["offset_3_end"]
 
         # Apply relative offset between datasets
-        if (offsets_applied == 'single_dataset'):
+        if offsets_applied == "single_dataset":
 
             ydata_adjusted = ydata.copy()
 
             # One offset for one dataset
             if offset_1_start == 0:
-                ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
-            
+                ydata_adjusted[offset_start:offset_end] -= (
+                    offset_params[0] * 1e-6
+                )  # Convert from ppm to transit depth
+
             # Else, you have multiple datasets lumped together with a single offset
             else:
                 for n in range(len(offset_1_start)):
-                    ydata_adjusted[offset_1_start[n]:offset_1_end[n]] -= offset_params[0]*1e-6 
+                    ydata_adjusted[offset_1_start[n] : offset_1_end[n]] -= (
+                        offset_params[0] * 1e-6
+                    )
 
-        elif (offsets_applied == 'two_datasets'):
+        elif offsets_applied == "two_datasets":
 
             ydata_adjusted = ydata.copy()
 
             # Two offsets for two datasets
             if offset_1_start == 0:
-                ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
-                ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
-            
+                ydata_adjusted[offset_start[0] : offset_end[0]] -= (
+                    offset_params[0] * 1e-6
+                )
+                ydata_adjusted[offset_start[1] : offset_end[1]] -= (
+                    offset_params[1] * 1e-6
+                )
+
             # Else, you have multiple datasets lumped together in both or either offset
             else:
                 for n in range(len(offset_1_start)):
-                    ydata_adjusted[offset_1_start[n]:offset_1_end[n]] -= offset_params[0]*1e-6 
+                    ydata_adjusted[offset_1_start[n] : offset_1_end[n]] -= (
+                        offset_params[0] * 1e-6
+                    )
                 for m in range(len(offset_2_start)):
-                    ydata_adjusted[offset_2_start[m]:offset_2_end[m]] -= offset_params[1]*1e-6 
+                    ydata_adjusted[offset_2_start[m] : offset_2_end[m]] -= (
+                        offset_params[1] * 1e-6
+                    )
 
-        elif (offsets_applied == 'three_datasets'):
+        elif offsets_applied == "three_datasets":
 
             ydata_adjusted = ydata.copy()
 
             # Three offsets for three dataseets
             if offset_1_start == 0:
-                ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
-                ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
-                ydata_adjusted[offset_start[2]:offset_end[2]] -= offset_params[2]*1e-6
+                ydata_adjusted[offset_start[0] : offset_end[0]] -= (
+                    offset_params[0] * 1e-6
+                )
+                ydata_adjusted[offset_start[1] : offset_end[1]] -= (
+                    offset_params[1] * 1e-6
+                )
+                ydata_adjusted[offset_start[2] : offset_end[2]] -= (
+                    offset_params[2] * 1e-6
+                )
 
             # Else, you have multiple datasets lumped together in both or either offset
             else:
                 for n in range(len(offset_1_start)):
-                    ydata_adjusted[offset_1_start[n]:offset_1_end[n]] -= offset_params[0]*1e-6 
+                    ydata_adjusted[offset_1_start[n] : offset_1_end[n]] -= (
+                        offset_params[0] * 1e-6
+                    )
                 for m in range(len(offset_2_start)):
-                    ydata_adjusted[offset_2_start[m]:offset_2_end[m]] -= offset_params[1]*1e-6 
+                    ydata_adjusted[offset_2_start[m] : offset_2_end[m]] -= (
+                        offset_params[1] * 1e-6
+                    )
                 for s in range(len(offset_3_start)):
-                    ydata_adjusted[offset_3_start[s]:offset_3_end[s]] -= offset_params[2]*1e-6 
-            
-        else: 
+                    ydata_adjusted[offset_3_start[s] : offset_3_end[s]] -= (
+                        offset_params[2] * 1e-6
+                    )
+
+        else:
             ydata_adjusted = ydata
-        
-        
-        #***** Calculate ln(likelihood) ****#
-    
-        loglikelihood = (-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq).sum()
+
+        # ***** Calculate ln(likelihood) ****#
+
+        loglikelihood = (-0.5 * ((ymodel - ydata_adjusted) ** 2) / err_eff_sq).sum()
         loglikelihood += norm_log
 
-        # Add the PT penalty 
+        # Add the PT penalty
         loglikelihood += lnprior_TP
-                    
+
         return loglikelihood
-    
+
     # Run PyMultiNest
     pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
-	
-    
+
+
 def retrieved_samples(
     planet,
     star,
@@ -1348,14 +1454,33 @@ def retrieved_samples(
 
         param_vector = samples[sample[i], :]
 
-        ymodel, spectrum, \
-        atmosphere, _ = forward_model(param_vector, planet, star, model, opac, data, 
-                                   wl, P, P_ref_set, R_p_ref_set, P_param_set, 
-                                   He_fraction, N_slice_EM, N_slice_DN, 
-                                   spectrum_type, T_phot_grid, T_het_grid, 
-                                   log_g_phot_grid, log_g_het_grid,
-                                   I_phot_grid, I_het_grid, y_p, F_s_obs,
-                                   constant_gravity, chemistry_grid)
+        ymodel, spectrum, atmosphere, _ = forward_model(
+            param_vector,
+            planet,
+            star,
+            model,
+            opac,
+            data,
+            wl,
+            P,
+            P_ref_set,
+            R_p_ref_set,
+            P_param_set,
+            He_fraction,
+            N_slice_EM,
+            N_slice_DN,
+            spectrum_type,
+            T_phot_grid,
+            T_het_grid,
+            log_g_phot_grid,
+            log_g_het_grid,
+            I_phot_grid,
+            I_het_grid,
+            y_p,
+            F_s_obs,
+            constant_gravity,
+            chemistry_grid,
+        )
 
         # Based on first model, create arrays to store retrieved temperature, spectrum, and mixing ratios
         if i == 0:
@@ -1456,14 +1581,24 @@ def retrieved_samples(
     )
 
 
-def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = None, 
-                             median = False, best_fit = True,
-                             P_param_set = 1.0e-2, He_fraction = 0.17,
-                             N_slice_EM = 2, N_slice_DN = 4, 
-                             constant_gravity = False, chemistry_grid = None,
-                             specific_param_values = [],
-                             verbose = False):
-    '''
+def get_retrieved_atmosphere(
+    planet,
+    model,
+    P,
+    P_ref_set=10,
+    R_p_ref_set=None,
+    median=False,
+    best_fit=True,
+    P_param_set=1.0e-2,
+    He_fraction=0.17,
+    N_slice_EM=2,
+    N_slice_DN=4,
+    constant_gravity=False,
+    chemistry_grid=None,
+    specific_param_values=[],
+    verbose=False,
+):
+    """
     Creates the atmosphere dictionary for the median or best fit spectrum of a retrieval.
 
     Args:
@@ -1500,144 +1635,168 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
         atmosphere (dict):
                 Collection of atmospheric properties required to compute the
                 resultant spectrum of the planet.
-    '''
+    """
 
     # unpack planet
-    planet_name = planet['planet_name']
+    planet_name = planet["planet_name"]
 
     # unpack model
-    param_names = model['param_names']
-    N_params_cum = model['N_params_cum']
-    physical_param_names = model['physical_param_names']
+    param_names = model["param_names"]
+    N_params_cum = model["N_params_cum"]
+    physical_param_names = model["physical_param_names"]
 
-    radius_unit = model['radius_unit']
-    mass_unit = model['mass_unit']
-    surface = model['surface']
+    radius_unit = model["radius_unit"]
+    mass_unit = model["mass_unit"]
+    surface = model["surface"]
 
     # no user defined T_input and X_input in retrievals
     T_input = []
     X_input = []
 
     # Use specific parameter combination if provided
-    if (len(specific_param_values) != 0):
+    if len(specific_param_values) != 0:
         param_values = specific_param_values
 
     # Or load the median or best-fitting parameters from the MultiNest output
     else:
 
         # Identify output directory location
-        output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
+        output_dir = "./POSEIDON_output/" + planet_name + "/retrievals/"
 
         # Load relevant output directory
-        output_prefix = model['model_name'] + '-'
+        output_prefix = model["model_name"] + "-"
 
         # Change directory into MultiNest result file folder
-        os.chdir(output_dir + 'MultiNest_raw/')
+        os.chdir(output_dir + "MultiNest_raw/")
 
         # Run PyMultiNest analyser to extract posterior samples
-        analyzer = pymultinest.Analyzer(len(param_names), outputfiles_basename = output_prefix,
-                                        verbose = False)
-        
+        analyzer = pymultinest.Analyzer(
+            len(param_names), outputfiles_basename=output_prefix, verbose=False
+        )
+
         # get parameter values for either the median or best fit model
         if median == True and best_fit == False:
 
-            # get stats 
+            # get stats
             stats = analyzer.get_stats()
 
             # create empty list to store parameter values
             param_values = []
-            
+
             # loop over all parameters in model
             for i in range(len(param_names)):
-                param_values.append(stats['marginals'][i]['median'])
+                param_values.append(stats["marginals"][i]["median"])
 
-        
         elif median == False and best_fit == True:
 
             # get best fit parameter values
             best_fit = analyzer.get_best_fit()
-            param_values = best_fit['parameters']
-
+            param_values = best_fit["parameters"]
 
         # catch cases where median and best fit are both true or both false
-        elif (median == False and best_fit == False) or (median == True and best_fit == True):
+        elif (median == False and best_fit == False) or (
+            median == True and best_fit == True
+        ):
             # Change directory back to directory where user's python script is located
-            os.chdir('../../../../')
+            os.chdir("../../../../")
             raise Exception("Please specify either median or best fit model as True")
-        
 
         # Change directory back to directory where user's python script is located
-        os.chdir('../../../../')
-
+        os.chdir("../../../../")
 
     # split parameters into each atmosphere category
-    physical_params, PT_params, log_X_params, \
-    cloud_params, geometry_params, _, _, _ = split_params(param_values, N_params_cum)
-    
+    physical_params, PT_params, log_X_params, cloud_params, geometry_params, _, _, _ = (
+        split_params(param_values, N_params_cum)
+    )
+
     # Unpack reference pressure if set as a free parameter
-    if ('log_P_ref' in physical_param_names):
-        P_ref = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_ref')[0][0]])
+    if "log_P_ref" in physical_param_names:
+        P_ref = np.power(
+            10.0, physical_params[np.where(physical_param_names == "log_P_ref")[0][0]]
+        )
     else:
         P_ref = P_ref_set
 
     # Unpack reference radius if set as a free parameter
-    if ('R_p_ref' in physical_param_names):
-        R_p_ref = physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]]
+    if "R_p_ref" in physical_param_names:
+        R_p_ref = physical_params[np.where(physical_param_names == "R_p_ref")[0][0]]
 
         # Convert normalised radius drawn by MultiNest back into SI
-        if (radius_unit == 'R_J'):
+        if radius_unit == "R_J":
             R_p_ref *= R_J
-        elif (radius_unit == 'R_E'):
+        elif radius_unit == "R_E":
             R_p_ref *= R_E
         else:
             R_p_ref = R_p_ref_set
 
     # Unpack planet mass if set as a free parameter
-    if ('M_p' in physical_param_names):
-        M_p = physical_params[np.where(physical_param_names == 'M_p')[0][0]]
+    if "M_p" in physical_param_names:
+        M_p = physical_params[np.where(physical_param_names == "M_p")[0][0]]
 
         # Convert normalised mass drawn by MultiNest back into SI
-        if (mass_unit == 'M_J'):
+        if mass_unit == "M_J":
             M_p *= M_J
-        elif (mass_unit == 'M_E'):
+        elif mass_unit == "M_E":
             M_p *= M_E
 
     else:
         M_p = None
 
     # Unpack log(gravity) if set as a free parameter
-    if ('log_g' in physical_param_names):
-        log_g = physical_params[np.where(physical_param_names == 'log_g')[0][0]]
+    if "log_g" in physical_param_names:
+        log_g = physical_params[np.where(physical_param_names == "log_g")[0][0]]
     else:
         log_g = None
 
     # Unpack surface pressure if set as a free parameter
-    if ((surface == True) and ('log_P_surf' in physical_param_names)):
-        P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+    if (surface == True) and ("log_P_surf" in physical_param_names):
+        P_surf = np.power(
+            10.0, physical_params[np.where(physical_param_names == "log_P_surf")[0][0]]
+        )
     else:
         P_surf = None
 
     if verbose == True:
-        print('R_p_ref = ', physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]], '* ', radius_unit)
-        print('PT_params = np.array(', PT_params,')')
-        print('log_X_params = np.array(', log_X_params,')')
-        print('cloud_params = np.array(', cloud_params,')')
-        print('geometry_params = np.array(', geometry_params,')')
-    
-    # make atmosphere 
-    atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
-                                 log_X_params, cloud_params, geometry_params,
-                                 log_g = log_g, M_p = M_p, T_input = T_input,
-                                 X_input = X_input, P_surf = P_surf,
-                                 P_param_set = P_param_set, He_fraction = He_fraction, 
-                                 N_slice_EM = N_slice_EM, N_slice_DN = N_slice_DN, 
-                                 constant_gravity = constant_gravity,
-                                 chemistry_grid = chemistry_grid)
-    
+        print(
+            "R_p_ref = ",
+            physical_params[np.where(physical_param_names == "R_p_ref")[0][0]],
+            "* ",
+            radius_unit,
+        )
+        print("PT_params = np.array(", PT_params, ")")
+        print("log_X_params = np.array(", log_X_params, ")")
+        print("cloud_params = np.array(", cloud_params, ")")
+        print("geometry_params = np.array(", geometry_params, ")")
+
+    # make atmosphere
+    atmosphere = make_atmosphere(
+        planet,
+        model,
+        P,
+        P_ref,
+        R_p_ref,
+        PT_params,
+        log_X_params,
+        cloud_params,
+        geometry_params,
+        log_g=log_g,
+        M_p=M_p,
+        T_input=T_input,
+        X_input=X_input,
+        P_surf=P_surf,
+        P_param_set=P_param_set,
+        He_fraction=He_fraction,
+        N_slice_EM=N_slice_EM,
+        N_slice_DN=N_slice_DN,
+        constant_gravity=constant_gravity,
+        chemistry_grid=chemistry_grid,
+    )
+
     return atmosphere
 
 
-#***** Compute Bayes factors, sigma significance etc *****#
+# ***** Compute Bayes factors, sigma significance etc *****#
+
 
 def Z_to_sigma(ln_Z1, ln_Z2):
     """

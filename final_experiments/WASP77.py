@@ -33,7 +33,8 @@ from POSEIDON.utility import read_high_res_data_deprecate
 model_name = "H2O, CO"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
-param_species = ["H2O", "CO"]
+# param_species = ["H2O", "CO"]
+param_species = []
 high_res_params = ["K_p", "V_sys", "log_alpha", "W_conv"]
 
 model = define_model(
@@ -43,7 +44,7 @@ model = define_model(
     PT_profile="Madhu",
     high_res_method="sysrem",
     high_res_params=high_res_params,
-    reference_parameter="None",  # not retrieve for R_p_ref of P_ref
+    reference_parameter="R_p_ref",  # not retrieve for R_p_ref of P_ref
 )
 
 # Check the free parameters defining this model

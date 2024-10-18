@@ -9,7 +9,6 @@ import matplotlib.pyplot as plt
 import h5py, time, batman, matplotlib
 from scipy.ndimage import gaussian_filter1d, median_filter
 from scipy.optimize import minimize
-import POSEIDON.visuals
 
 
 def airtovac(wlA):
