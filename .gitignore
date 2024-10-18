@@ -14,17 +14,5 @@ POSEIDON.egg-info/
 inputs/
 run/
 .vscode
-POSEIDON_output/
-CC_output/
-high_res_experiments/data/
-high_res_experiments/POSEIDON_output/
-high_res_experiments/CC_output/
-POSEIDON/reference_data/observations/
-hdf5_experiments/data/
-final_experiments/data/
-final_experiments/
-for_paper/
 /planets
-/final_experiments
 /Aerosol-Database-Make
-final_experiments
