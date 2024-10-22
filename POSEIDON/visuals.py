@@ -1227,7 +1227,7 @@ def set_spectrum_wl_ticks(wl_min, wl_max, wl_axis = 'log'):
 def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  plot_full_res = True, bin_spectra = True, R_to_bin = 100, 
                  wl_min = None, wl_max = None, y_min = None, y_max = None,
-                 y_unit = 'transit_depth', plt_label = None, 
+                 y_unit = 'transit_depth', plt_label = None, show_planet_name = True,
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
                  data_marker_size_list = [], text_annotations = [],
@@ -1284,6 +1284,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp', 'Fs', 'F*').
         plt_label (str, optional):
             The label for the plot.
+        show_planet_name (bool, optional):
+            Flag indicating whether to include the planet name in the top left.
         colour_list (list, optional):
             A list of colours for the model spectra.
         spectra_labels (list, optional):
@@ -1355,22 +1357,23 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             The spectra plot.
     
     '''
-
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth']):
+    
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth',
+                   'transit_depth_ppm']):
         plot_type = 'transmission'
     elif (y_unit in ['Rp/Rs', 'Rp/R*', '(Rp/Rs)', '(Rp/R*)']):
         plot_type = 'planet_star_radius_ratio'
     elif (y_unit in ['time_average_transit_depth']):
         plot_type = 'time_average_transmission'
-    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
+    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth', 'eclipse_depth_ppm']):
         plot_type = 'emission'
-    elif (y_unit in ['Fp', 'Fs', 'F*']):
+    elif (y_unit in ['Fp',  'Fs', 'F*']):
         plot_type = 'direct_emission'
     elif (y_unit in ['T_bright']):
         plot_type = 'brightness_temp'
     else:
         raise Exception("Unexpected y unit. Did you mean 'transit_depth' " +
-                        "or 'eclipse_depth'?")
+                       "or 'eclipse_depth'?")
     
     # Find number of spectra to plot
     N_spectra = len(spectra)
@@ -1729,31 +1732,41 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
     if (ylabels == True):
         if (plot_type == 'transmission'):
-            if (y_min_plt < 0.10):
-                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = y_label_fontsize)
+            if (y_unit == 'transit_depth_ppm'):
+                ax1.set_ylabel(r'Transit Depth (ppm)', fontsize = y_label_fontsize)
             else:
-                ax1.set_ylabel(r'Transit Depth', fontsize =  y_label_fontsize)
+                if (y_min_plt < 0.10):
+                    ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = y_label_fontsize)
+                else:
+                    ax1.set_ylabel(r'Transit Depth', fontsize = y_label_fontsize)
         elif (plot_type == 'planet_star_radius_ratio'):
-            ax1.set_ylabel(r'$R_p/R_*$', fontsize =  y_label_fontsize)
+            ax1.set_ylabel(r'$R_p/R_*$', fontsize = y_label_fontsize)
         elif (plot_type == 'time_average_transmission'):
             ax1.set_ylabel(r'Average Transit Depth', fontsize =  y_label_fontsize)
         elif (plot_type == 'emission'):
-            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize =  y_label_fontsize)
-        elif ((plot_type == 'direct_emission') and (y_unit == 'Fp')):
-            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize =  y_label_fontsize)
-        elif ((plot_type == 'direct_emission') and (y_unit in ['Fs', 'F*'])):
-            ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize =  y_label_fontsize)
+            if (y_unit == 'eclipse_depth_ppm'):
+                ax1.set_ylabel(r'Eclipse Depth $(ppm)$', fontsize = y_label_fontsize)
+            else:
+                ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
+        elif (plot_type == 'direct_emission'):
+            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
         elif (plot_type == 'brightness_temp'):
             ax1.set_ylabel(r'Brightness Temperature (K)', fontsize =  y_label_fontsize)
 
     # Add planet name label
-    ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
-             verticalalignment = 'top', transform = ax1.transAxes, fontsize = planet_name_fontsize)
-  
+    if (show_planet_name == True):
+        ax1.text(0.02, 0.96, planet_name, horizontalalignment = 'left', 
+                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = planet_name_fontsize)
+
     # Add plot label
     if (plt_label != None):
-        ax1.text(0.03, 0.90, plt_label, horizontalalignment = 'left', 
-                 verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
+        if (show_planet_name == True):
+            ax1.text(0.03, 0.90, plt_label, horizontalalignment = 'left', 
+                     verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
+        else:
+            ax1.text(0.03, 0.96, plt_label, horizontalalignment = 'left', 
+                     verticalalignment = 'top', transform = ax1.transAxes, fontsize = plt_label_fontsize)
+
 
     # Decide at which wavelengths to place major tick labels
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
@@ -1809,6 +1822,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             else:
                 legline.set_linewidth(2.0)
     
+    legend.set_zorder(200)   # Make legend always appear in front of everything
+
     plt.tight_layout()
 
     # Write figure to file
@@ -1890,11 +1905,12 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     # Create output directories (if not already present)
     create_directories(base_dir, planet_name)
 
-    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth']):
+    if (y_unit in ['(Rp/Rs)^2', '(Rp/R*)^2', '(Rp/R*)', 'transit_depth',
+                   'transit_depth_ppm']):
         plot_type = 'transmission'
     elif (y_unit in ['Rp/Rs', 'Rp/R*', '(Rp/Rs)', '(Rp/R*)']):
         plot_type = 'planet_star_radius_ratio'
-    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth']):
+    elif (y_unit in ['Fp/Fs', 'Fp/F*', 'eclipse_depth', 'eclipse_depth_ppm']):
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
         plot_type = 'direct_emission'
@@ -2106,14 +2122,20 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     ax1.set_xlabel(r'Wavelength (μm)', fontsize = 16)
 
     if (plot_type == 'transmission'):
-        if (y_min_plt < 0.10):
-            ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+        if (y_unit == 'transit_depth_ppm'):
+            ax1.set_ylabel(r'Transit Depth (ppm)', fontsize = 16)
         else:
-            ax1.set_ylabel(r'Transit Depth', fontsize = 16)
+            if (y_min_plt < 0.10):
+                ax1.set_ylabel(r'Transit Depth $(R_p/R_*)^2$', fontsize = 16)
+            else:
+                ax1.set_ylabel(r'Transit Depth', fontsize = 16)
     elif (plot_type == 'planet_star_radius_ratio'):
         ax1.set_ylabel(r'$R_p/R_*$', fontsize = 16)
     elif (plot_type == 'emission'):
-        ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
+        if (y_unit == 'eclipse_depth_ppm'):
+            ax1.set_ylabel(r'Eclipse Depth $(ppm)$', fontsize = 16)
+        else:
+            ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
     elif (plot_type == 'direct_emission'):
         ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
@@ -2334,7 +2356,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     '''
 
     if (plot_style == 'fancy'):
-        plt.style.use('seaborn-paper')
+        plt.style.use('seaborn-v0_8-paper')
         plt.rcParams['lines.markersize'] = 3
         plt.rcParams['lines.markeredgewidth'] = 0
         plt.rcParams['font.family'] = 'sans-serif'
