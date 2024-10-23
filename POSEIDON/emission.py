@@ -726,7 +726,9 @@ def emission_Toon(P, T, wl, dtau_tot,
     if hard_surface:
         emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
         #b_surface =  emissivity*planck_lambda_arr([T_surf], wl)[-1,:]*np.pi #for terrestrial, hard surface
-        b_surface =  emissivity*all_b[-1,:]*np.pi #for terrestrial, hard surface  
+        #b_surface =  emissivity*all_b[-1,:]*np.pi #for terrestrial, hard surface 
+        # Fixing so it includes mu1?
+        b_surface =  emissivity*all_b[-1,:]*np.pi*mu1 #for terrestrial, hard surface 
     else: 
         b_surface= (all_b[-1,:] + b1[-1,:]*mu1)*np.pi #(for non terrestrial)
 
@@ -805,9 +807,12 @@ def emission_Toon(P, T, wl, dtau_tot,
             #intensity boundary conditions
             if hard_surface:
                 emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
-                int_plus[-1,:] = emissivity*all_b[-1,:] *2*np.pi  # terrestrial flux /pi = intensity
+                # int_plus[-1,:] = emissivity*all_b[-1,:] *2*np.pi  # terrestrial flux /pi = intensity
+
+                # Fixing to add mu?
+                int_plus[-1,:] = emissivity*all_b[-1,:] *2*np.pi*iubar  # terrestrial flux /pi = intensity
             else:
-                int_plus[-1,:] = ( all_b[-1,:] + b1[-1,:] * iubar)*2*np.pi #no hard surface   
+                int_plus[-1,:] = ( all_b[-1,:] + b1[-1,:] * iubar)*2*np.pi #no hard surface 
 
             int_minus[0,:] =  (1 - np.exp(-tau_top / iubar)) * all_b[0,:] *2*np.pi
             
@@ -1470,6 +1475,11 @@ def emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5):
                 
             # Add contribution of this ray/angle to the surface flux 
             F[k] += 2.0 * np.pi * mu[j] * I[j,k] * W[j]
+
+            # THIS IS THE SAME AS PI TIMES BLACKBODY
+            # Flux = pi * intenesity
+            # 2 pi * weights just turns back into pi * blackbody. We ignore mu for this since mu 
+            # is related to tau in emission_Toon.
     
     return F
 
@@ -1535,5 +1545,10 @@ def reflection_bare_surface(wl, surf_reflect, Gauss_quad = 5):
             albedo = albedo + surf_reflect_weighted * gweight[ig] * tweight[it]
             
     albedo = sym_fac * 0.5 * albedo /F0PI * (cos_theta + 1.0)
+
+    # Since this is geometric albedo, we should divide it by pi (?)
+    # (Equation 3.19 in Exoplanet Atmospheres, Sara Seager has A_g = (1/pi) * a complicated integral)
+    # Maybe this 1/pi is baked into toon reflection
+    albedo = albedo/np.pi
     
     return albedo
