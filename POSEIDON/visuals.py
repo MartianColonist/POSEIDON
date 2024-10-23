@@ -1479,29 +1479,29 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         else:
             data_markers_size = data_marker_size_list
 
-    # Define data marker alpha (default or user choice)
-    if (data_alpha_list == []):
-        data_alphas = np.full(N_datasets, 1.0)   # Default data alpha
-    else:
-        data_alphas = data_alpha_list
+        # Define data marker alpha (default or user choice)
+        if (data_alpha_list == []):
+            data_alphas = np.full(N_datasets, 1.0)   # Default data alpha
+        else:
+            data_alphas = data_alpha_list
 
-    # Define data marker alpha (default or user choice)
-    if (data_eline_alpha_list == []):
-        data_eline_alphas = np.full(N_datasets, 0.8)   # Default error bar alpha
-    else:
-        data_eline_alphas = data_eline_alpha_list
+        # Define data marker alpha (default or user choice)
+        if (data_eline_alpha_list == []):
+            data_eline_alphas = np.full(N_datasets, 0.8)   # Default error bar alpha
+        else:
+            data_eline_alphas = data_eline_alpha_list
 
-    # Define data edge widths (default or user choice)
-    if (data_edge_width_list == []):
-        data_edge_widths = np.full(N_datasets, 0.8)   # Default data marker edge width
-    else:
-        data_edge_widths = data_edge_width_list
+        # Define data edge widths (default or user choice)
+        if (data_edge_width_list == []):
+            data_edge_widths = np.full(N_datasets, 0.8)   # Default data marker edge width
+        else:
+            data_edge_widths = data_edge_width_list
 
-    # Define error bar line width (default or user choice)
-    if (data_eline_width_list == []):
-        data_eline_widths = np.full(N_datasets, 1.0)   # Default error line width
-    else:
-        data_eline_widths = data_eline_width_list
+        # Define error bar line width (default or user choice)
+        if (data_eline_width_list == []):
+            data_eline_widths = np.full(N_datasets, 1.0)   # Default error line width
+        else:
+            data_eline_widths = data_eline_width_list
         
     # If the user did not specify a wavelength range, find min and max from input models
     if (wl_min == None):
