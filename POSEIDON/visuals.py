@@ -1230,12 +1230,14 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  y_unit = 'transit_depth', plt_label = None, 
                  colour_list = [], spectra_labels = [], data_colour_list = [],
                  data_labels = [], data_marker_list = [], 
-                 data_marker_size_list = [], text_annotations = [],
+                 data_marker_size_list = [], 
+                 data_alpha_list = [], data_eline_alpha_list = [],
+                 data_edge_width_list = [], data_eline_width_list = [], 
+                 text_annotations = [],
                  annotation_pos = [], err_colour = 'black', wl_axis = 'log', 
                  figure_shape = 'default', legend_location = 'upper right',
                  legend_box = True, ax = None, save_fig = True,
                  show_data_bin_width = True, show_data_cap = True,
-                 data_alpha = 0.8, data_edge_width = 0.8,
                  line_widths = [], xlabels = True, ylabels = True,
                  line_styles = [],
                  alphas = [],
@@ -1247,7 +1249,12 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  legend_fontsize = 10,
                  plt_label_fontsize = 14,
                  planet_name_fontsize = 16,
-                 legend_line_size = []
+                 legend_line_size = [],
+                 err_colour_array = [],
+                 fill_between = [],
+                 fill_between_alpha = 0.5,
+                 fill_to_spectrum = [],
+                 show_legend = True
                  ):
 
     ''' 
@@ -1297,6 +1304,17 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             A list of marker styles for the observational data.
         data_marker_size_list (list, optional):
             A list of marker sizes for the observational data.
+        data_alpha_list (list of float, optional):
+            Alpha values for the central circle colours on each data point
+            (defaults to 1.0 if not specified).
+        data_eline_alpha_list (list of float, optional):
+            Alpha values for the error bar colours on each data point
+            (defaults to 0.8 if not specified).
+        data_edge_width_list (list of float, optional):
+            Border line width for the central circle on each data point
+            (defaults to 0.8 if not specified).
+        data_eline_width_list (list of float, optional):
+            Line widths for error bars (defaults to 1.0 if not specified).
         text_annotations (list of str, optional):
             A list of text annotations for Figure decoration (e.g. molecule names)
         annotation_pos (list of tuples of str, optional):
@@ -1320,10 +1338,6 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Flag indicating whether to plot x bin widths for data points.
         show_data_cap (bool, optional):
             Flag indicating whether to plot the error bar caps on the data points.
-        data_alpha (float, optional):
-            Alpha for the central circle colours on each data point. 
-        data_edge_width (float, optional):
-            Border line width for the central circle on each data point.
         line_widths (list of float, optional):
             Line widths for binned spectra (defaults to 2.0 if not specified).
         x_labels (bool):
@@ -1350,7 +1364,20 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Font size for the plot label.
         planet_name_fontsize (int, optional):
             Font size for the planet name.
-
+        legend_line_size (list of float, optional):
+            Size of lines in the legend. Put 1 for data points
+        err_colour_array (list of string, optional):
+            Color of data error bars
+        fill_between (list of bools, optional):
+            If True, spectrum will have a fill color from its 
+            line to 0 or fill_to_spectrum
+        fill_between_alpha (int, optional):
+            Alpha of the fill 
+        fill_to_spectrum (list of ints, optional):
+            If non-empty, will fill spectra to this spectrum (instead of 0)
+        show_legend (bool, optional):
+            If False, will not plot legend
+        
     Returns:
         fig (matplotlib figure object):
             The spectra plot.
@@ -1395,6 +1422,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         raise Exception("Number of annotation labels does not match provided positions.")
     if ((line_widths != []) and (N_spectra != len(line_widths))):
         raise Exception("Number of line widths does not match number of spectra.")
+    if ((fill_between != []) and (N_spectra != len(fill_between))):
+        raise Exception("Bools in fill_between array must equal number of spectra.")
         
     # Define colours for plotted spectra (default or user choice)
     if (colour_list == []):   # If user did not specify a custom colour list
@@ -1429,7 +1458,9 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             raise Exception("Number of dataset markers does not match number of datasets.")
         if ((data_marker_size_list != []) and (N_datasets != len(data_marker_size_list))):
             raise Exception("Number of dataset marker sizes does not match number of datasets.")
-            
+        if ((len(err_colour_array) != 0) and (len(err_colour_array) != N_datasets)):
+            raise Exception("Number of error bar colours must match number of datasets.")
+        
         # Define colours for plotted spectra (default or user choice)
         if (data_colour_list == []):   # If user did not specify a custom colour list
             data_colours = ['orange', 'lime', 'cyan', 'magenta', 'brown']
@@ -1447,6 +1478,30 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             data_markers_size = [3, 3, 3, 3, 3,]
         else:
             data_markers_size = data_marker_size_list
+
+    # Define data marker alpha (default or user choice)
+    if (data_alpha_list == []):
+        data_alphas = np.full(N_datasets, 1.0)   # Default data alpha
+    else:
+        data_alphas = data_alpha_list
+
+    # Define data marker alpha (default or user choice)
+    if (data_eline_alpha_list == []):
+        data_eline_alphas = np.full(N_datasets, 0.8)   # Default error bar alpha
+    else:
+        data_eline_alphas = data_eline_alpha_list
+
+    # Define data edge widths (default or user choice)
+    if (data_edge_width_list == []):
+        data_edge_widths = np.full(N_datasets, 0.8)   # Default data marker edge width
+    else:
+        data_edge_widths = data_edge_width_list
+
+    # Define error bar line width (default or user choice)
+    if (data_eline_width_list == []):
+        data_eline_widths = np.full(N_datasets, 1.0)   # Default error line width
+    else:
+        data_eline_widths = data_eline_width_list
         
     # If the user did not specify a wavelength range, find min and max from input models
     if (wl_min == None):
@@ -1629,6 +1684,9 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         if (bin_spectra == True):
             
             N_plotted_binned = 0  # Counter for number of plotted binned spectra
+
+            if len(fill_to_spectrum) != 0:
+                wl_binned, fill_to_spectrum_binned, _ = bin_spectrum(wl, fill_to_spectrum, R_to_bin)
             
             # Calculate binned wavelength and spectrum grid
             wl_binned, spec_binned, _ = bin_spectrum(wl, spec, R_to_bin)
@@ -1661,6 +1719,15 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                      label = label_i,
                      linestyle = linestyle_binned)
             
+            if len(fill_between) != 0:
+                if fill_between[i] == True:
+                    if len(fill_to_spectrum) == 0:
+                        ax1.fill_between(wl_binned, spec_binned, y2 = 0, alpha=fill_between_alpha,
+                                        color = colour_binned)
+                    else:
+                        ax1.fill_between(wl_binned, spec_binned, y2 = fill_to_spectrum, alpha=fill_between_alpha,
+                                        color = colour_binned)  
+            
             N_plotted_binned += 1
 
     # Overplot datapoints
@@ -1691,25 +1758,34 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
 
             # Plot dataset
             if (show_data_bin_width == True):
+                x_bin_size = bin_size_i
+            else:
+                x_bin_size = None
+
+            if len(err_colour_array) == 0:
                 markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
-                                                   xerr = bin_size_i, marker = data_markers[i], 
-                                                   markersize = data_markers_size[i], 
-                                                   capsize = capsize, ls = 'none', elinewidth = 0.8, 
-                                                   color = data_colours[i], alpha = data_alpha,
-                                                   ecolor = err_colour, label = label_i,
-                                                   markeredgewidth = data_edge_width,
-                                                   zorder = 100)
+                                                xerr = x_bin_size, marker = data_markers[i], 
+                                                markersize = data_markers_size[i], 
+                                                capsize = capsize, ls='none',
+                                                elinewidth = data_eline_widths[i], 
+                                                color = data_colours[i], 
+                                                alpha = data_eline_alphas[i],
+                                                ecolor = err_colour, label=label_i,
+                                                markeredgewidth = data_edge_widths[i],
+                                                zorder = 100)
             else:
                 markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
-                                                   marker = data_markers[i], 
-                                                   markersize = data_markers_size[i], 
-                                                   capsize = capsize, ls='none', elinewidth=0.8, 
-                                                   color = data_colours[i], alpha = data_alpha,
-                                                   ecolor = err_colour, label = label_i,
-                                                   markeredgewidth = data_edge_width,
-                                                   zorder = 100)
+                                                xerr = x_bin_size, marker = data_markers[i], 
+                                                markersize = data_markers_size[i], 
+                                                capsize = capsize, ls='none', 
+                                                elinewidth = data_eline_widths[i], 
+                                                color = data_colours[i], 
+                                                alpha = data_eline_alphas[i],
+                                                ecolor = err_colour_array[i], label=label_i,
+                                                markeredgewidth = data_edge_widths[i],
+                                                zorder = 100)
 
-            [markers.set_alpha(1.0)]
+            [markers.set_alpha(data_alphas[i])]
 
     # Plot text annotations
     if (text_annotations != []):
@@ -1780,47 +1856,50 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             n_columns = 2
         else:
             n_columns = 1
-    
     else:
         n_columns = legend_n_columns
 
     # Add box around legend
-    if (legend_box == True) and (legend_location != 'outside right'):
-        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = n_columns, frameon = True)    # Legend settings
-        frame = legend.get_frame()
-        frame.set_facecolor('0.90') 
-    elif legend_location == 'outside right':
-        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
-    else:
-        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = n_columns, frameon = False)    # Legend settings
-    
-    if len(legend_line_size) == 0:
-        try:
-            for legline in legend.legend_handles:
-                if ((plot_full_res == True) or (show_data == True)):
-                    legline.set_linewidth(1.0)
-                else:
-                    legline.set_linewidth(2.0)
-        except AttributeError:
-            for legline in legend.legendHandles:
-                if ((plot_full_res == True) or (show_data == True)):
-                    legline.set_linewidth(1.0)
-                else:
-                    legline.set_linewidth(2.0)
-    
-    # Let user define line width in legend 
-    else:
-        try:
-            for i in range(len(legend.legend_handles)):
-                legline = legend.legend_handles[i]
-                legline.set_linewidth(legend_line_size[i])
-        except AttributeError:
-            for i in range(len(legend.legendHandles)):
-                legline = legend.legendHandles[i]
-                legline.set_linewidth(legend_line_size[i])
+    if show_legend == True:
+        if (legend_box == True) and (legend_location != 'outside right'):
+            legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':legend_fontsize}, 
+                                ncol = n_columns, frameon = True)    # Legend settings
+            frame = legend.get_frame()
+            frame.set_facecolor('0.90') 
+        elif legend_location == 'outside right':
+            legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
+                                ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
+        else:
+            legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
+                                ncol = n_columns, frameon = False)    # Legend settings
+        
+        if len(legend_line_size) == 0:
+            try:
+                for legline in legend.legend_handles:
+                    if ((plot_full_res == True) or (show_data == True)):
+                        legline.set_linewidth(1.0)
+                    else:
+                        legline.set_linewidth(2.0)
+            except AttributeError:
+                for legline in legend.legendHandles:
+                    if ((plot_full_res == True) or (show_data == True)):
+                        legline.set_linewidth(1.0)
+                    else:
+                        legline.set_linewidth(2.0)
+        
+        # Let user define line width in legend 
+        else:
+            # Check legend line size length
+            if (len(legend_line_size) != len(legend.legend_handles)):
+                raise Exception("Make sure legend_line_size length is equal to number of handles.")
+            try:
+                for i in range(len(legend.legend_handles)):
+                    legline = legend.legend_handles[i]
+                    legline.set_linewidth(legend_line_size[i])
+            except AttributeError:
+                for i in range(len(legend.legendHandles)):
+                    legline = legend.legendHandles[i]
+                    legline.set_linewidth(legend_line_size[i])
     
     plt.tight_layout()
 
@@ -2212,6 +2291,9 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            legend_fontsize = 10,
                            plt_label_fontsize = 14,
                            planet_name_fontsize = 16,
+                           legend_line_size = [],
+                           err_colour_array = [],
+                           show_legend = True
                            ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2337,6 +2419,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             Font size for the plot label.
         planet_name_fontsize (int, optional):
             Font size for the planet name.
+        legend_line_size (list of float, optional):
+            Size of lines in the legend. Put 1 for data points
+        err_colour_array (list of string, optional):
+            Color of data error bars
+        show_legend (bool, optional):
+            If False, will not plot legend
      
     Returns:
         fig (matplotlib figure object):
@@ -2443,6 +2531,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         raise Exception("Number of error bar line widths does not match number of spectra.")
     if ((text_annotations != []) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
+    if ((len(err_colour_array) != 0) and (len(err_colour_array) != N_datasets)):
+        raise Exception("Number of error bar colours must match number of datasets.")
 
     # Define colours for plotted spectra (default or user choice)
     if (data_colour_list == []):   # If user did not specify a custom colour list
@@ -2847,16 +2937,28 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         else:
             x_bin_size = None
 
-        markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
-                                           xerr = x_bin_size, marker = data_markers[i], 
-                                           markersize = data_markers_size[i], 
-                                           capsize = capsize, ls='none',
-                                           elinewidth = data_eline_widths[i], 
-                                           color = data_colours[i], 
-                                           alpha = data_eline_alphas[i],
-                                           ecolor = err_colour, label=label_i,
-                                           markeredgewidth = data_edge_widths[i],
-                                           zorder = 100)
+        if len(err_colour_array) == 0:
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                            xerr = x_bin_size, marker = data_markers[i], 
+                                            markersize = data_markers_size[i], 
+                                            capsize = capsize, ls='none',
+                                            elinewidth = data_eline_widths[i], 
+                                            color = data_colours[i], 
+                                            alpha = data_eline_alphas[i],
+                                            ecolor = err_colour, label=label_i,
+                                            markeredgewidth = data_edge_widths[i],
+                                            zorder = 100)
+        else:
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                            xerr = x_bin_size, marker = data_markers[i], 
+                                            markersize = data_markers_size[i], 
+                                            capsize = capsize, ls='none', 
+                                            elinewidth = data_eline_widths[i], 
+                                            color = data_colours[i], 
+                                            alpha = data_eline_alphas[i],
+                                            ecolor = err_colour_array[i], label=label_i,
+                                            markeredgewidth = data_edge_widths[i],
+                                            zorder = 100)
 
         [markers.set_alpha(data_alphas[i])]
 
@@ -2936,21 +3038,46 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         n_columns = legend_n_columns
 
     # Add box around legend
-    if (legend_box == True):
-        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = n_columns, frameon = True)    # Legend settings
-        frame = legend.get_frame()
-        frame.set_facecolor('0.90')
+    if show_legend == True:
+        if (legend_box == True):
+            legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':legend_fontsize}, 
+                                ncol = n_columns, frameon = True)    # Legend settings
+            frame = legend.get_frame()
+            frame.set_facecolor('0.90')
 
-    elif legend_location == 'outside right':
-        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = n_columns, frameon = False, bbox_to_anchor = (1, 0.5))
-        
-    else:
-        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = n_columns, frameon = False)    # Legend settings
+        elif legend_location == 'outside right':
+            legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
+                                ncol = n_columns, frameon = False, bbox_to_anchor = (1, 0.5))
             
-    legend.set_zorder(200)   # Make legend always appear in front of everything
+        else:
+            legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
+                                ncol = n_columns, frameon = False)    # Legend settings
+                
+        legend.set_zorder(200)   # Make legend always appear in front of everything
+
+        if len(legend_line_size) != 0:
+            try:
+                for i in range(len(legend.legend_handles)):
+                    legline = legend.legend_handles[i]
+                    legline.set_linewidth(legend_line_size[i])
+            except AttributeError:
+                for i in range(len(legend.legendHandles)):
+                    legline = legend.legendHandles[i]
+                    legline.set_linewidth(legend_line_size[i])
+
+        # Let user define line width in legend 
+        else:
+            # Check legend line size length
+            if (len(legend_line_size) != len(legend.legend_handles)):
+                raise Exception("Make sure legend_line_size length is equal to number of handles.")
+            try:
+                for i in range(len(legend.legend_handles)):
+                    legline = legend.legend_handles[i]
+                    legline.set_linewidth(legend_line_size[i])
+            except AttributeError:
+                for i in range(len(legend.legendHandles)):
+                    legline = legend.legendHandles[i]
+                    legline.set_linewidth(legend_line_size[i])
 
     plt.tight_layout()
 
@@ -3198,7 +3325,7 @@ def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median,
                         Atmosphere_dimension = 1, TwoD_type = None, plt_label = None, 
                         show_profiles = [], model_labels = [], colour_list = [],
                         log_P_min = None, log_P_max = None, log_X_min = None, 
-                        log_X_max = None):
+                        log_X_max = None, ax = None):
     '''
     Plot retrieved mixing ratio profiles.
     
@@ -3349,7 +3476,11 @@ def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median,
     
     # create figure
     fig = plt.figure()  
-    ax = plt.gca()
+    
+    if (ax == None):
+        ax1 = plt.gca()
+    else:
+        ax1 = ax
     
     # Assign axis spacing
     xmajorLocator_X = MultipleLocator(major_spacing)
@@ -3395,19 +3526,19 @@ def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median,
                 label_two_sig = ''
 
                 # Plot median retrieved mixing ratio profile
-                ax.semilogy(log_X_med[chemical_species == species,:][0], P, 
+                ax1.semilogy(log_X_med[chemical_species == species,:][0], P, 
                             lw = 1.5, color = colours[q],
                             label = label_med)
 
                 # Plot +/- 1σ confidence region
-                ax.fill_betweenx(P, log_X_low1[chemical_species == species,:][0], 
+                ax1.fill_betweenx(P, log_X_low1[chemical_species == species,:][0], 
                                  log_X_high1[chemical_species == species,:][0],
                                  lw = 0.0, alpha = 0.4, facecolor = colours[q],
                                  label = label_one_sig)
 
                 # Plot +/- 2σ confidence region
                 if (plot_two_sigma == True):
-                    ax.fill_betweenx(P, log_X_low2[chemical_species == species,:][0], 
+                    ax1.fill_betweenx(P, log_X_low2[chemical_species == species,:][0], 
                                     log_X_high2[chemical_species == species,:][0],
                                     lw = 0.0, alpha = 0.2, facecolor = colours[q],
                                     label = label_two_sig)
@@ -3415,21 +3546,21 @@ def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median,
                 # Plot actual (true) mixing ratio profile
                 if (log_X_true != None):
 
-                    ax.semilogy(log_X_true[chemical_species == species,:][0], P, 
+                    ax1.semilogy(log_X_true[chemical_species == species,:][0], P, 
                                 lw = 1.5, color = colours[q], ls = linestyles['dashed'],
                                 label = r'True ' + latex_species[q])
 
     # Common plot settings for all profiles
-    ax.invert_yaxis()            
-    ax.set_xlabel(r'Mixing Ratios (log $X_{\rm{i}}$)', fontsize = 20)
-    ax.set_xlim(log_X_min, log_X_max)  
-    ax.set_ylabel(r'Pressure (bar)', fontsize = 20)
-    ax.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))
+    ax1.invert_yaxis()            
+    ax1.set_xlabel(r'Mixing Ratios (log $X_{\rm{i}}$)', fontsize = 20)
+    ax1.set_xlim(log_X_min, log_X_max)  
+    ax1.set_ylabel(r'Pressure (bar)', fontsize = 20)
+    ax1.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))
 
-    ax.tick_params(labelsize=12)
+    ax1.tick_params(labelsize=12)
         
     # Add legend
-    legend = ax.legend(loc='upper right', shadow=True, prop={'size':14}, ncol=1,
+    legend = ax1.legend(loc='upper right', shadow=True, prop={'size':14}, ncol=1,
                        frameon=True, columnspacing=1.0)
     frame = legend.get_frame()
     frame.set_facecolor('0.90') 
@@ -3544,9 +3675,6 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
 
     ax.tick_params(axis='both', which='major', labelsize=8)
 
-    print(low2)
-    print(high2)
-
     return low1, median, high1
 
     
@@ -3627,22 +3755,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 span[q] = _quantile(param_vals_m[:,q], quant)
                 param_min = span[q][0]
                 param_max = span[q][1]
-
-            if (plot_parameters[q] == 'log_SO2'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'SO$_2$ (%)'
-            if (plot_parameters[q] == 'log_H2'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'H$_2$ (%)'
-            if (plot_parameters[q] == 'log_CO2'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'CO$_2$ (%)'
-            if (plot_parameters[q] == 'log_H2S'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'H$_2$S (%)'
-            if (plot_parameters[q] == 'log_N2'):
-                param_vals_m[:,q] = np.power(10.0, param_vals_m[:,q])*100.0
-                param_label = r'N$_2$ (%)'
 
             x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
                                                 alpha=0.0, edgecolor='None', density=True, stacked=True)
