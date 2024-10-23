@@ -752,6 +752,11 @@ Exoplanet/Brown Dwarf Papers:
 
 Diamonds account for 99% of premolar meteoritic material, and are expected to potential form first in stellar outflows (diamonds have been found in spectra of Herbig-A3Be pre main sequence stars). Could potentially form in carbon rich atmospheres. 
 
+Recent modeling for sub-Neptune GJ 1214b has shown that diamonds (alongside soot) can form in hot environments with CH3(g) and carbon-rich atmospheres. 
+
+Ohno 2024 (Soot + Diamond microphysical modeling) 
+https://ui.adsabs.harvard.edu/abs/2024arXiv241010197O/abstract
+
 #################################
 Iron
 #################################
