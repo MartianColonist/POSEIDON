@@ -727,8 +727,7 @@ def emission_Toon(P, T, wl, dtau_tot,
         emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
         #b_surface =  emissivity*planck_lambda_arr([T_surf], wl)[-1,:]*np.pi #for terrestrial, hard surface
         #b_surface =  emissivity*all_b[-1,:]*np.pi #for terrestrial, hard surface 
-        # Fixing so it includes mu1?
-        b_surface =  emissivity*all_b[-1,:]*np.pi*mu1 #for terrestrial, hard surface 
+        b_surface =  emissivity*all_b[-1,:]*np.pi #for terrestrial, hard surface 
     else: 
         b_surface= (all_b[-1,:] + b1[-1,:]*mu1)*np.pi #(for non terrestrial)
 
@@ -807,10 +806,7 @@ def emission_Toon(P, T, wl, dtau_tot,
             #intensity boundary conditions
             if hard_surface:
                 emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
-                # int_plus[-1,:] = emissivity*all_b[-1,:] *2*np.pi  # terrestrial flux /pi = intensity
-
-                # Fixing to add mu?
-                int_plus[-1,:] = emissivity*all_b[-1,:] *2*np.pi*iubar  # terrestrial flux /pi = intensity
+                int_plus[-1,:] = emissivity*all_b[-1,:] *2*np.pi  # terrestrial flux /pi = intensity
             else:
                 int_plus[-1,:] = ( all_b[-1,:] + b1[-1,:] * iubar)*2*np.pi #no hard surface 
 
@@ -1424,7 +1420,7 @@ def reflection_Toon(P, wl, dtau_tot,
     return albedo
 
 #@jit(nopython = True)
-def emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5):
+def emission_bare_surface(T_surf, wl, surf_reflect):
     '''
     Compute the emergent top-of-atmosphere flux from a bare rock 
 
@@ -1438,9 +1434,6 @@ def emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5):
             Wavelength grid (μm).
         surf_reflect : numpy.ndarray    
             Surface reflectivity as a function of wavelength. 
-        Gauss_quad (int):
-            Gaussian quadrature order for integration over emitting surface
-            (Options: 2 / 3).
     
     Returns:
         F (np.array of float):
@@ -1448,38 +1441,17 @@ def emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5):
 
     '''
     
-    # Load weights and cos(theta) values for desired Gaussian quadrature scheme
-    # W = gweight
-    # mu = gangle
-    if (Gauss_quad == 5):
-        W = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])
-        mu = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
-    
     # Calculate Planck function in each layer and each wavelength
     T = np.array([T_surf])
-    
     B = planck_lambda_arr(T, wl)
-    
+
     # Initial intensity at the base of the atmosphere is a Planck function 
     emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
-    I = np.ones(shape=(len(mu),len(wl))) * B[0,:] * emissivity 
-    
-    # Initialise surface flux array
-    F = np.zeros(len(wl))
-    
-    # For each wavelength
-    for k in range(len(wl)):
-    
-        # For each ray travelling at mu = cos(theta)
-        for j in range(len(mu)):
-                
-            # Add contribution of this ray/angle to the surface flux 
-            F[k] += 2.0 * np.pi * mu[j] * I[j,k] * W[j]
 
-            # THIS IS THE SAME AS PI TIMES BLACKBODY
-            # Flux = pi * intenesity
-            # 2 pi * weights just turns back into pi * blackbody. We ignore mu for this since mu 
-            # is related to tau in emission_Toon.
+    # For a bare body rock, F = pi * I * emissivity
+    # Instead of 2 pi you need pi so that its just hemisphere 
+    # The weights, gauss weights, just end up being 0.5 which goes down to pi * I
+    F = B[0,:] * emissivity * np.pi
     
     return F
 

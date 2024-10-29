@@ -701,7 +701,7 @@ def define_model(model_name, bulk_species, param_species,
              'surface_components': surface_components,
              'surface_temp': surface_temp,
              'surface_model': surface_model,
-             'surface_component_albedos': surface_component_albedos
+             'surface_component_albedos': surface_component_albedos,
              }
 
     return model
@@ -1079,9 +1079,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     r_m, log_n_max, fractional_scale_height, \
     r_i_real, r_i_complex, log_X_Mie, \
     P_cloud_bottom, kappa_cloud_eddysed, \
-    g_cloud_eddysed, w_cloud_eddysed = unpack_cloud_params(param_names, cloud_params,
-                                                           cloud_model, cloud_dim, 
-                                                           N_params_cum, TwoD_type)
+    g_cloud_eddysed, w_cloud_eddysed, \
+    albedo_deck  = unpack_cloud_params(param_names, cloud_params,
+                                       cloud_model, cloud_dim, 
+                                       N_params_cum, TwoD_type)
     
     #***** Store surface properties *****#
 
@@ -1115,7 +1116,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'P_cloud_bottom' : P_cloud_bottom, 
                   'kappa_cloud_eddysed' : kappa_cloud_eddysed, 'g_cloud_eddysed' : g_cloud_eddysed, 'w_cloud_eddysed' : w_cloud_eddysed,
                   'T_surf' : T_surf, 'albedo_surf' : albedo_surf, 'surface_component_percentages' : surface_component_percentages,
-                  'R_p_ref' : R_p_ref
+                  'R_p_ref' : R_p_ref, 'albedo_deck' : albedo_deck
                  }
 
     return atmosphere
@@ -1313,6 +1314,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     kappa_cloud_eddysed = atmosphere['kappa_cloud_eddysed']
     g_cloud_eddysed = atmosphere['g_cloud_eddysed']
     w_cloud_eddysed = atmosphere['w_cloud_eddysed']
+    albedo_deck = atmosphere['albedo_deck']
 
     R_p_ref = atmosphere['R_p_ref']
     T_surf = atmosphere['T_surf']
@@ -1404,6 +1406,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
                     # Load in the aerosol grid for compositionally specific aerosols
                     aerosol_grid = model['aerosol_grid']
+
+                    # Remove shiny from the cloud type
+                    if ('shiny' in model['cloud_type']):
+                        model['cloud_type'] = model['cloud_type'].split('shiny_')[1]
 
                     # Create a wl_Mie array (which is at R = 1000) for file_read or constant
                     # refractive indices
@@ -1585,16 +1591,21 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         raise Exception('Only 1 aerosol species supported for scattering')
                     
                 # Surfaces : create the surf_reflect object 
-                if surface == True:
-
-                    if surface_model == 'gray':
-                        surf_reflect = np.zeros_like(wl)
+                if surface == True or albedo_deck != -1:
                     
-                    elif surface_model == 'constant':
-                        surf_reflect = np.full_like(wl, albedo_surf)
+                    if surface == True:
+                        if surface_model == 'gray':
+                            surf_reflect = np.zeros_like(wl)
+                        
+                        elif surface_model == 'constant':
+                            surf_reflect = np.full_like(wl, albedo_surf)
 
-                    elif surface_model == 'lab_data':
-                        surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos,)
+                        elif surface_model == 'lab_data':
+                            surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos,)
+                    
+                    else:
+                        surf_reflect = np.full_like(wl, albedo_deck)
+                
                     
                 
             # Running POSEIDON on the GPU
@@ -1733,19 +1744,34 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # With scattering, compute emission using PICASO's Toon implementation
         elif (scattering == True):
 
-            if surface == True:
+            if surface == True or albedo_deck != -1:
 
                 if disable_atmosphere != True:
-                            
-                    # Need to find where P_surf is to cut all the arrays above 
-                    index_below_P_surf = find_nearest_less_than(P_surf,P)
+                    
+                    if surface == True:
+                        # Need to find where P_surf is to cut all the arrays above 
+                        index_below_P_surf = find_nearest_less_than(P_surf,P)
 
-                    # This is to fix an error that occurs when P_Surf is top of atmosphere
-                    if index_below_P_surf + 1 != len(P):
-                        index_below_P_surf -= 1
+                        # This is to fix an error that occurs when P_Surf is top of atmosphere
+                        if index_below_P_surf + 1 != len(P):
+                            index_below_P_surf -= 1
+
+                    # Else, it is a cloud
+                    else:
+                        # Need to find where P_cloud is to cut all the arrays above 
+                        # We still call it index_below_P_surf since its all the same code after this
+                        try:
+                            index_below_P_surf = find_nearest_less_than(P_cloud,P)
+                        # except just in case P-cloud is an array (i.e. deck + slab)
+                        except:
+                            index_below_P_surf = find_nearest_less_than(P_cloud[0],P)
+
+                        # This is to fix an error that occurs when P_Surf is top of atmosphere
+                        if index_below_P_surf + 1 != len(P):
+                            index_below_P_surf -= 1
                 
                 # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
-                if (surface_model == 'gray') or (surface_model == 'constant'):
+                if (surface_model == 'gray') or (surface_model == 'constant') or (albedo_deck != -1):
 
                     # If there is an atmosphere, use Toon scattering
                     if disable_atmosphere != True:
@@ -1789,7 +1815,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                             F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
                     
                     else:
-                        F_p = emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5)
+                        F_p = emission_bare_surface(T_surf, wl, surf_reflect)
                 
                 # If we are using lab data, we need to loop over each component 
                 elif (surface_model == 'lab_data'):
@@ -1821,26 +1847,37 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
                             # For 1 + 1D fractional clouds
                             if cloud_dim == 2:
-
-                                F_p_clear, dtau_clear = emission_Toon(P[index_below_P_surf+1:], 
-                                                                    T[index_below_P_surf+1:], 
-                                                                    wl, 
-                                                                    dtau_tot_clear[index_below_P_surf+1:,:], 
-                                                                    kappa_Ray[index_below_P_surf+1:,:,:,:], 
-                                                                    kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
-                                                                    kappa_tot_clear[index_below_P_surf+1:,:],
-                                                                    w_cloud[index_below_P_surf+1:,:,:,:], 
-                                                                    g_cloud[index_below_P_surf+1:,:,:,:], 
-                                                                    zone_idx,
-                                                                    surf_reflect,
-                                                                    hard_surface = 1, tridiagonal = 0, 
-                                                                    Gauss_quad = 5, numt = 1,
-                                                                    T_surf = T_surf)
+                                
+                                # If its a patchy shiny deck, we need to compute the deep atmosphere below the deck 
+                                if albedo_deck != -1:
+                                    F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                                        kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                                        w_cloud, g_cloud, zone_idx,surf_reflect,
+                                                                        hard_surface = 1, tridiagonal = 0, 
+                                                                        Gauss_quad = 5, numt = 1,
+                                                                        T_surf = T_surf)
+                                
+                                # If its a rocky planet, the surface is not the part that is patchy
+                                else:
+                                    F_p_clear, dtau_clear = emission_Toon(P[index_below_P_surf+1:], 
+                                                                        T[index_below_P_surf+1:], 
+                                                                        wl, 
+                                                                        dtau_tot_clear[index_below_P_surf+1:,:], 
+                                                                        kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                                        kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                                        kappa_tot_clear[index_below_P_surf+1:,:],
+                                                                        w_cloud[index_below_P_surf+1:,:,:,:], 
+                                                                        g_cloud[index_below_P_surf+1:,:,:,:], 
+                                                                        zone_idx,
+                                                                        surf_reflect,
+                                                                        hard_surface = 1, tridiagonal = 0, 
+                                                                        Gauss_quad = 5, numt = 1,
+                                                                        T_surf = T_surf)
                                 
                                 F_p_temp = (f_cloud*F_p_temp) + ((1-f_cloud)*F_p_clear)
                             
                         else:
-                            F_p_temp = emission_bare_surface(T_surf, wl, surf_reflect, Gauss_quad = 5)
+                            F_p_temp = emission_bare_surface(T_surf, wl, surf_reflect)
 
                         F_p_array.append(F_p_temp)
                     
@@ -1885,10 +1922,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         # If reflection is being computed
         if (reflection == True):
 
-            if surface == True:
+            if surface == True or albedo_deck != -1:
 
-                if disable_atmosphere != True:
-                            
+                if surface == True:
                     # Need to find where P_surf is to cut all the arrays above 
                     index_below_P_surf = find_nearest_less_than(P_surf,P)
 
@@ -1896,8 +1932,22 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     if index_below_P_surf + 1 != len(P):
                         index_below_P_surf -= 1
 
+                # Else, it is a cloud
+                else:
+                    # Need to find where P_cloud is to cut all the arrays above 
+                    # We still call it index_below_P_surf since its all the same code after this
+                    try:
+                        index_below_P_surf = find_nearest_less_than(P_cloud,P)
+                    # except just in case P-cloud is an array (i.e. deck + slab)
+                    except:
+                        index_below_P_surf = find_nearest_less_than(P_cloud[0],P)
+
+                    # This is to fix an error that occurs when P_Surf is top of atmosphere
+                    if index_below_P_surf + 1 != len(P):
+                        index_below_P_surf -= 1
+
                 # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
-                if (surface_model == 'gray') or (surface_model == 'constant'):
+                if (surface_model == 'gray') or (surface_model == 'constant') or (albedo_deck != -1):
 
                     if disable_atmosphere != True:
                     
@@ -1917,21 +1967,33 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                 toon_coefficients=0, tridiagonal=0, b_top=0)
                         
                         if cloud_dim == 2:
+                            
+                            # If its a shiny deck, then the clear atmosphere needs to be computed all the way to the bottom
+                            if (albedo_deck != -1):
+                                    albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
+                                                                   kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                                   w_cloud, g_cloud, zone_idx, surf_reflect,
+                                                                   single_phase = 3, multi_phase = 0,
+                                                                   frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                                   Gauss_quad = 5, numt = 1,
+                                                                   toon_coefficients=0, tridiagonal=0, b_top=0)
 
-                            albedo_clear = reflection_Toon(P[index_below_P_surf+1:], 
-                                                        wl, 
-                                                        dtau_tot_clear[index_below_P_surf+1:,:],
-                                                        kappa_Ray[index_below_P_surf+1:,:,:,:], 
-                                                        kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
-                                                        kappa_tot_clear[index_below_P_surf+1:,:],
-                                                        w_cloud[index_below_P_surf+1:,:,:,:], 
-                                                        g_cloud[index_below_P_surf+1:,:,:,:], 
-                                                        zone_idx, 
-                                                        surf_reflect,
-                                                        single_phase = 3, multi_phase = 0,
-                                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                                        Gauss_quad = 5, numt = 1,
-                                                        toon_coefficients=0, tridiagonal=0, b_top=0)
+                            # Otherwise, we are dealing with a rocky surface (which isn't the patchy component)
+                            else:
+                                albedo_clear = reflection_Toon(P[index_below_P_surf+1:], 
+                                                            wl, 
+                                                            dtau_tot_clear[index_below_P_surf+1:,:],
+                                                            kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                            kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                            kappa_tot_clear[index_below_P_surf+1:,:],
+                                                            w_cloud[index_below_P_surf+1:,:,:,:], 
+                                                            g_cloud[index_below_P_surf+1:,:,:,:], 
+                                                            zone_idx, 
+                                                            surf_reflect,
+                                                            single_phase = 3, multi_phase = 0,
+                                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                            Gauss_quad = 5, numt = 1,
+                                                            toon_coefficients=0, tridiagonal=0, b_top=0)
                             
 
                             albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)

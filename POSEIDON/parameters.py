@@ -41,7 +41,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
             Cloud extinction type to consider 
-            (Options: deck / haze / deck_haze).
+            (Options: deck / haze / deck_haze / shiny_deck).
         gravity_setting (str):
             Whether log_g is fixed or a free parameter.
             (Options: fixed / free).
@@ -582,13 +582,16 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 
             if ('deck' in cloud_type):
                 cloud_params += ['log_P_cloud']
+            
+            if ('shiny' in cloud_type):
+                cloud_params += ['albedo_deck']
                 
             # If working with a 2D patchy cloud model
             if (cloud_dim == 2):
                 cloud_params += ['phi_cloud']
                 
-            if (cloud_type not in ['deck', 'haze', 'deck_haze']):
-                raise Exception("Error: unsupported cloud model.")
+            if (cloud_type not in ['deck', 'haze', 'deck_haze', 'shiny_deck']):
+                raise Exception("Error: unsupported cloud model (deck, haze, deck_haze, shiny_deck).")
 
             if (cloud_dim not in [1, 2]):
                 raise Exception("The MacDonald & Madhusudhan (2017) cloud model " +
@@ -621,9 +624,24 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 
             if ('haze' not in cloud_type) and ('deck' not in cloud_type):
                 raise Exception("Error: unsupported cloud model.")
+            
+            if ('shiny' in cloud_type):
+                raise Exception("Shiny deck not supported with Iceberg")
 
         # Mie scattering     
         elif (cloud_model == 'Mie'):
+
+            # Allow opaque decks to be shiny 
+            if ('shiny' in cloud_type):
+                if ('deck' not in cloud_type):
+                    raise Exception('Shiny is only available for Mie models with opaque decks (shiny_fuzzy_deck, shiny_opaque_deck_plus_slab, shiny_opaque_deck_plus_uniform_X).')
+                elif ('shiny_fuzzy_deck_plus_slab' in cloud_type):
+                    raise Exception('Shiny fuzzy deck + slab not available since it requires two cloud species with scattering/reflection (not a current feature).')
+                else:
+                    cloud_params += ['albedo_deck']
+
+                    # Need to remove 'shiny' from the cloud type, just so I don't have to rewrite all this code
+                    cloud_type = cloud_type.split('shiny_')[1]
 
             # If working with a 2D patchy cloud model
             if (cloud_dim == 2):
@@ -1619,6 +1637,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
     else:
         enable_deck = 0
 
+    # Check if the model is a shiny deck
+    if ('albedo_deck' in cloud_param_names):
+        enable_shiny_deck = 1
+    else:
+        enable_shiny_deck = 0
+
     # Clear atmosphere
     if (cloud_model == 'cloud-free'):
         
@@ -1659,6 +1683,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
         else:
             P_cloud = 100.0   # Set to 100 bar for models without a cloud deck
+
+        # If it is a shiny deck
+        if (enable_shiny_deck == 1):
+            albedo_deck = clouds_in[np.where(cloud_param_names == 'albedo_deck')[0][0]]
+        else:
+            albedo_deck = -1
 
         P_slab_bottom = 100.0  # Not used for this model
             
@@ -1740,6 +1770,9 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         kappa_cloud_eddysed = 0
         g_cloud_eddysed = 0
         w_cloud_eddysed = 0
+
+        # Set albedo deck to a dummy value 
+        albedo_deck = -1 
 
     # Mie clouds 
     elif (cloud_model == 'Mie'):
@@ -1943,6 +1976,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         else:
             r_i_real = 0
             r_i_complex = 0
+        
+        # See if there is a shiny deck
+        if (enable_shiny_deck == 1):
+            albedo_deck = clouds_in[np.where(cloud_param_names == 'albedo_deck')[0][0]]
+        else:
+            albedo_deck = -1
 
     # This cloud model is to specifically take in kappa_cloud, g_cloud, and w_cloud from eddysed calculations
     # i.e from PICASO, VIRGA
@@ -1975,10 +2014,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_real = 0
         r_i_complex = 0
         log_X_Mie = []
+        albedo_deck = -1
     
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
            fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom, \
-           kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed
+           kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed, albedo_deck
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):
@@ -2177,6 +2217,6 @@ def unpack_surface_params(param_names, surface_in,
         # Normalize the percentages so they add up to one
         surface_component_percentages = surface_component_percentages/np.sum(surface_component_percentages)
     else:
-        surface_component_percentages = 0
+        surface_component_percentages = [1]
     
     return P_surf, T_surf, albedo_surf, surface_component_percentages
