@@ -2834,6 +2834,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         # Check that centred-log ratio prior is only used for mixing ratios
         if ((prior_types[parameter] == 'CLR') and (parameter not in X_param_names)):
             raise Exception("Unsupported prior for " + parameter)
+        
+        # Check that centred-log ratio prior for surface is only used for mixing ratios
+        if ((prior_types[parameter] == 'CLR_surface') and (parameter not in surface_param_names)):
+            raise Exception("Unsupported prior for " + parameter)
 
         # Check that centred-log ratio is being employed in a 1D model
         if ((prior_types[parameter] == 'CLR') and (Atmosphere_dimension != 1)):

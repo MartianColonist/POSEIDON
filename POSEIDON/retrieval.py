@@ -840,6 +840,29 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 i_prime = N_params_cum[1] + i
                 
                 cube[i_prime] = log_X[(1+i)]   # log_X[0] is not a free parameter
+
+        # If surface percentages have centred-log ratio prior, treat separately 
+        if ('CLR_surface' in prior_types.values()):
+
+            # cube is not an array, and has to be turned into an array for the next line
+            # here we are drawing the drawn parameters that correspond to surface params
+            surface_drawn = np.array(cube[N_params_cum[7]:N_params_cum[8]])
+
+            # then we only pull the ones that are specifically for the percentages (since that is what can be an input to CLR)
+            surface_percentage_drawn = surface_drawn[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+
+            # Make sure they add to one
+            surface_percentage_drawn = surface_percentage_drawn/np.sum(surface_percentage_drawn)
+
+            # percentages are always at the end
+            index_1 = N_params_cum[7]+(len(surface_percentage_drawn)-1)
+            index_2 = N_params_cum[8]
+            
+            # I couldn't get the CLR prior to work, but this just replaces things in the cube... which should work
+            counter = 0
+            for n in range(index_1,index_2):
+                cube[n] = surface_percentage_drawn[counter]
+                counter += 1
       
             
     # Define the log-likelihood function
