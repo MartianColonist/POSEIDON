@@ -242,6 +242,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     # Unpack number of free parameters
     param_names = model['param_names']
     physical_param_names = model['physical_param_names']
+    surface_param_names = model['surface_param_names']
 
     # Unpack model properties
     radius_unit = model['radius_unit']
@@ -347,7 +348,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
 
         # Unpack surface pressure if set as a free parameter
         if (surface == True) and (disable_atmosphere != True):
-            P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+            P_surf = np.power(10.0, surface_params[np.where(surface_param_names == 'log_P_surf')[0][0]])
         else:
             P_surf = None
 
@@ -1187,6 +1188,9 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     param_names = model['param_names']
     N_params_cum = model['N_params_cum']
     physical_param_names = model['physical_param_names']
+    surface_param_names = model['surface_param_names']
+
+    disable_atmosphere = model['disable_atmosphere']
 
     radius_unit = model['radius_unit']
     mass_unit = model['mass_unit']
@@ -1290,8 +1294,8 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
         log_g = None
 
     # Unpack surface pressure if set as a free parameter
-    if ((surface == True) and ('log_P_surf' in physical_param_names)):
-        P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+    if (surface == True) and (disable_atmosphere != True):
+        P_surf = np.power(10.0, surface_params[np.where(surface_param_names == 'log_P_surf')[0][0]])
     else:
         P_surf = None
 
