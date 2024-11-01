@@ -905,6 +905,8 @@ def split_params(params_drawn, N_params_cumulative):
             Drawn values of the data offset parameters.
         err_inflation_drawn (list of float | np.array of float):
             Drawn values of the error inflation parameters.
+        surface_drawn (list of float | np.array of float):
+            Drawn values of the surface parameters
 
     '''
     
@@ -931,9 +933,12 @@ def split_params(params_drawn, N_params_cumulative):
     
     # Extract error adjustment parameters      
     err_inflation_drawn = params_drawn[N_params_cumulative[6]:N_params_cumulative[7]]
+
+    # Extract surface adjustment parameters      
+    surface_drawn = params_drawn[N_params_cumulative[7]:N_params_cumulative[8]]
         
     return physical_drawn, PT_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
-           stellar_drawn, offsets_drawn, err_inflation_drawn
+           stellar_drawn, offsets_drawn, err_inflation_drawn, surface_drawn
  
     
 def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
@@ -1660,6 +1665,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_real = 0
         r_i_complex = 0
         log_X_Mie = []
+        albedo_deck = -1
 
         # Set eddysed values to dummy values 
         kappa_cloud_eddysed = 0
@@ -2213,7 +2219,13 @@ def unpack_surface_params(param_names, surface_in,
         albedo_surf = 0
     
     if any("percentage" in s for s in surface_param_names):
-        surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+        try:
+            surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+        except:
+            # In retrievals, surface_in is not an array so the above statement doesn't work
+            surface_in = np.array(surface_in)
+            surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+            
         # Normalize the percentages so they add up to one
         surface_component_percentages = surface_component_percentages/np.sum(surface_component_percentages)
     else:

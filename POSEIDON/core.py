@@ -1605,6 +1605,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     
                     else:
                         surf_reflect = np.full_like(wl, albedo_deck)
+
+                # Make a dummy surf_reflect array so that the numba gods are happy in the toon functions 
+                else:
+                    surf_reflect = np.full_like(wl, -1)  
                 
                     
                 
@@ -1900,6 +1904,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                             kappa_Ray, kappa_cloud, kappa_tot,
                                             w_cloud, g_cloud, zone_idx,
+                                            surf_reflect,
                                             hard_surface = 0, tridiagonal = 0, 
                                             Gauss_quad = 5, numt = 1)
                 
@@ -1911,6 +1916,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
                                                             kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
                                                             w_cloud, g_cloud, zone_idx,
+                                                            surf_reflect,
                                                             hard_surface = 0, tridiagonal = 0, 
                                                             Gauss_quad = 5, numt = 1)
                     
@@ -1924,27 +1930,29 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
             if surface == True or albedo_deck != -1:
 
-                if surface == True:
-                    # Need to find where P_surf is to cut all the arrays above 
-                    index_below_P_surf = find_nearest_less_than(P_surf,P)
+                if disable_atmosphere != True:
 
-                    # This is to fix an error that occurs when P_Surf is top of atmosphere
-                    if index_below_P_surf + 1 != len(P):
-                        index_below_P_surf -= 1
+                    if surface == True:
+                            # Need to find where P_surf is to cut all the arrays above 
+                            index_below_P_surf = find_nearest_less_than(P_surf,P)
 
-                # Else, it is a cloud
-                else:
-                    # Need to find where P_cloud is to cut all the arrays above 
-                    # We still call it index_below_P_surf since its all the same code after this
-                    try:
-                        index_below_P_surf = find_nearest_less_than(P_cloud,P)
-                    # except just in case P-cloud is an array (i.e. deck + slab)
-                    except:
-                        index_below_P_surf = find_nearest_less_than(P_cloud[0],P)
+                            # This is to fix an error that occurs when P_Surf is top of atmosphere
+                            if index_below_P_surf + 1 != len(P):
+                                index_below_P_surf -= 1
 
-                    # This is to fix an error that occurs when P_Surf is top of atmosphere
-                    if index_below_P_surf + 1 != len(P):
-                        index_below_P_surf -= 1
+                    # Else, it is a cloud
+                    else:
+                        # Need to find where P_cloud is to cut all the arrays above 
+                        # We still call it index_below_P_surf since its all the same code after this
+                        try:
+                            index_below_P_surf = find_nearest_less_than(P_cloud,P)
+                        # except just in case P-cloud is an array (i.e. deck + slab)
+                        except:
+                            index_below_P_surf = find_nearest_less_than(P_cloud[0],P)
+
+                        # This is to fix an error that occurs when P_Surf is top of atmosphere
+                        if index_below_P_surf + 1 != len(P):
+                            index_below_P_surf -= 1
 
                 # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
                 if (surface_model == 'gray') or (surface_model == 'constant') or (albedo_deck != -1):
@@ -2082,6 +2090,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
                                                 kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
                                                 w_cloud_cut, g_cloud_cut, zone_idx,
+                                                surf_reflect,
                                                 single_phase = 3, multi_phase = 0,
                                                 frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                                 Gauss_quad = 5, numt = 1,
@@ -2103,6 +2112,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
                                                         kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
                                                         w_cloud_cut, g_cloud_cut, zone_idx,
+                                                        surf_reflect,
                                                         single_phase = 3, multi_phase = 0,
                                                         frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                                         Gauss_quad = 5, numt = 1,
@@ -2120,6 +2130,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     albedo = reflection_Toon(P, wl, dtau_tot,
                                 kappa_Ray, kappa_cloud, kappa_tot,
                                 w_cloud, g_cloud, zone_idx,
+                                surf_reflect,
                                 single_phase = 3, multi_phase = 0,
                                 frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                 Gauss_quad = 5, numt = 1,
@@ -2130,6 +2141,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
                                                 kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
                                                 w_cloud, g_cloud, zone_idx,
+                                                surf_reflect,
                                                 single_phase = 3, multi_phase = 0,
                                                 frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                                 Gauss_quad = 5, numt = 1,

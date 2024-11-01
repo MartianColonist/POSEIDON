@@ -1890,8 +1890,13 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         # Let user define line width in legend 
         else:
             # Check legend line size length
-            if (len(legend_line_size) != len(legend.legend_handles)):
-                raise Exception("Make sure legend_line_size length is equal to number of handles.")
+            try:
+                if (len(legend_line_size) != len(legend.legend_handles)):
+                    raise Exception("Make sure legend_line_size length is equal to number of handles.")
+            except:
+                # weird attribute error
+                if (len(legend_line_size) != len(legend.legendHandles)):
+                    raise Exception("Make sure legend_line_size length is equal to number of handles.")
             try:
                 for i in range(len(legend.legend_handles)):
                     legline = legend.legend_handles[i]
@@ -3056,20 +3061,14 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         legend.set_zorder(200)   # Make legend always appear in front of everything
 
         if len(legend_line_size) != 0:
-            try:
-                for i in range(len(legend.legend_handles)):
-                    legline = legend.legend_handles[i]
-                    legline.set_linewidth(legend_line_size[i])
-            except AttributeError:
-                for i in range(len(legend.legendHandles)):
-                    legline = legend.legendHandles[i]
-                    legline.set_linewidth(legend_line_size[i])
-
-        # Let user define line width in legend 
-        else:
             # Check legend line size length
-            if (len(legend_line_size) != len(legend.legend_handles)):
-                raise Exception("Make sure legend_line_size length is equal to number of handles.")
+            try:
+                if (len(legend_line_size) != len(legend.legend_handles)):
+                    raise Exception("Make sure legend_line_size length is equal to number of handles.")
+            except:
+                # weird attribute error
+                if (len(legend_line_size) != len(legend.legendHandles)):
+                    raise Exception("Make sure legend_line_size length is equal to number of handles.")
             try:
                 for i in range(len(legend.legend_handles)):
                     legline = legend.legend_handles[i]

@@ -76,8 +76,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     if ((reference_parameter == 'P_ref') and (R_p_ref is None)):
         raise Exception("Error: Must provide R_p_ref when P_ref is a free parameter.")
     
-    if ((disable_atmosphere == True) and ('transmission' not in spectrum_type)):
-        raise Exception("Error: An atmosphere can only be disabled for transmission spectra ")
+    #if ((disable_atmosphere == True) and ('transmission' not in spectrum_type)):
+    #    raise Exception("Error: An atmosphere can only be disabled for transmission spectra ")
 
     N_params = len(param_names)
 
@@ -269,7 +269,8 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     physical_params, PT_params, \
     log_X_params, cloud_params, \
     geometry_params, stellar_params, \
-    offset_params, err_inflation_params = split_params(param_vector, N_params_cum)
+    offset_params, err_inflation_params, \
+    surface_params = split_params(param_vector, N_params_cum)
             
     # If the atmosphere is disabled
     if ((disable_atmosphere == True) and ('transmission' in spectrum_type)):
@@ -345,7 +346,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             d_sampled = planet['system_distance']
 
         # Unpack surface pressure if set as a free parameter
-        if (surface == True):
+        if (surface == True) and (disable_atmosphere != True):
             P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
         else:
             P_surf = None
@@ -354,6 +355,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
 
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
+                                     surface_params,
                                      log_g, M_p, T_input, X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN, 
                                      constant_gravity, chemistry_grid)
@@ -865,7 +867,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         # Unpack stellar parameters
         _, _, _, _, \
         _, stellar_params, \
-        _, _ = split_params(cube, N_params_cum)
+        _, _, _ = split_params(cube, N_params_cum)
 
         # Reject models with spots hotter than faculae (by definition)
         if ((stellar_contam != None) and ('two_spots' in stellar_contam)):
@@ -904,7 +906,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         #***** Handle error bar inflation and offsets (if optionally enabled) *****#
 
         _, _, _, _, _, _, \
-        offset_params, err_inflation_params = split_params(cube, N_params_cum)
+        offset_params, err_inflation_params, _ = split_params(cube, N_params_cum)
         
         # Load error bars specified in data files
         err_data = data['err_data']
@@ -1248,7 +1250,7 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
 
     # split parameters into each atmosphere category
     physical_params, PT_params, log_X_params, \
-    cloud_params, geometry_params, _, _, _ = split_params(param_values, N_params_cum)
+    cloud_params, geometry_params, _, _, _, _ = split_params(param_values, N_params_cum)
     
     # Unpack reference pressure if set as a free parameter
     if ('log_P_ref' in physical_param_names):
