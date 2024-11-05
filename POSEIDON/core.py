@@ -2079,6 +2079,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     
                     # Make new, temporary arrays of inputs only up to 5 um
                     wl_cut = wl[:index_5um]
+                    surf_reflect = surf_reflect[:index_5um]
                     dtau_tot_cut = dtau_tot[:,:index_5um]
                     kappa_Ray_cut = kappa_Ray[:,:,:,:index_5um]
                     kappa_cloud_cut = kappa_cloud[:,:,:,:index_5um]
