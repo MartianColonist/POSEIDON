@@ -1665,7 +1665,7 @@ def extinction_pressure_contribution(chemical_species, active_species, cia_pairs
 
                     # We are looking at H- only
                     elif (bound_free == True) and (i == layer_to_ignore):
-                        n_q
+                        n_q = 0
                     
                     else:
                         n_q = n_level*X_bf[q,i,j,k]   # Number density of dissociating species
