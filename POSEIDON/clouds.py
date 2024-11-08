@@ -1705,6 +1705,26 @@ def Mie_cloud(P,wl,r, H, n,
             n_aerosol = (n)*np.float_power(10,log_X_Mie[q])
             n_aerosol_array.append(n_aerosol)
 
+        elif (cloud_type == 'one_slab'):
+            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+            n_aerosol = np.zeros_like(r)
+            P_cloud_index_top = find_nearest(P,P_cloud)
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+
+            n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
+            n_aerosol_array.append(n_aerosol)
+
+        # Uniaxial or Biaxial Slabs
+        elif (cloud_type == 'unaxial_slab' or 'uniaxial_random_slab' or 'biaxial_slab' or 'biaxial_random_slab'):
+            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+            n_aerosol = np.zeros_like(r)
+
+            P_cloud_index_top = find_nearest(P,P_cloud)
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+
+            n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
+            n_aerosol_array.append(n_aerosol)
+
         # Uniform X Model 
         else:
             n_aerosol = np.zeros_like(r)

@@ -1352,7 +1352,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      fractional_scale_height = fractional_scale_height)
 
                 # If its a slab
-                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
+                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab' or
+                      model['cloud_type'] == 'uniaxial_slab' or model['cloud_type'] == 'uniaxial_random_slab' or
+                      model['cloud_type'] == 'biaxial_slab' or model['cloud_type'] == 'biaxial_random_slab'):
 
                     if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
                         n_aerosol, sigma_ext_cloud, \
@@ -1370,7 +1372,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                     aerosol_grid = aerosol_grid,
                                                     log_X_Mie = log_X_Mie,
                                                     P_cloud = P_cloud,
-                                                    P_cloud_bottom = P_cloud_bottom)
+                                                    P_cloud_bottom = P_cloud_bottom) 
                             
                           
                 # If its a uniform X run
