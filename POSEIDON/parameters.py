@@ -1787,9 +1787,9 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         # Note that this does not need a try/except clause since 'file_read' is not an option here. 
         # Also, I had to put this if statement first because I couldn't figure out how to get the 
         # if/else statement to work otherwise :(
-        if ('axial' in s for s in cloud_param_names):
+        if any('axial' in s for s in cloud_param_names):
             # If it is uniaxial_random_slab or uniaxial_slab
-            if any ('uniaxial' in s for s in cloud_param_names):
+            if any('uniaxial' in s for s in cloud_param_names):
 
                 # Shared parameters between the two models
                 # Note that we pull the [0] out so that its not an array, so we can build the array in the next step
