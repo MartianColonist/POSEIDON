@@ -888,7 +888,7 @@ def loglikelihood_high_res(
     else:
         b = None  # Nulling b
 
-    if spectrum_type is "emission":
+    if spectrum_type == "emission":
         if W_conv is not None:
             F_p = gaussian_filter1d(planet_spectrum, W_conv)
             F_s = gaussian_filter1d(star_spectrum, W_conv)
@@ -911,7 +911,7 @@ def loglikelihood_high_res(
                 )
         return loglikelihood
 
-    elif spectrum_type is "transmission":
+    elif spectrum_type == "transmission":
         if method != "sysrem":
             raise Exception(
                 "Transmission spectroscopy only supports fast filtering with sysrem (Gibson et al. 2022)."
