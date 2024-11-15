@@ -16,3 +16,4 @@ run/
 .vscode
 /planets
 /Aerosol-Database-Make
+*data_processed.hdf5
