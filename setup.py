@@ -3,7 +3,7 @@ import os
 
 setup(
     name="POSEIDON",
-    version="1.2.1",
+    version="1.3.0",
     description="Exoplanet atmospheric retrieval package",
     long_description=open(os.path.join(os.path.dirname(__file__), "README.rst")).read(),
     long_description_content_type="text/x-rst",
@@ -30,6 +30,7 @@ setup(
         "scikit-learn",
         "pytest",
         "cmasher",
+        "batman-package",
     ],
     zip_safe=False,
 )
