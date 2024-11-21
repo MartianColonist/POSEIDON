@@ -412,8 +412,10 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
 
         # If the dataset does have stellar contamination parameters, but shares them with another dataset, do not update
         # T_het_min and T_het_max
-        elif ('f_het_set{}'.format(i_dataset) not in prior_ranges and
-              'f_spot_set{}'.format(i_dataset) not in prior_ranges):
+        # elif ('f_het_set{}'.format(i_dataset) not in prior_ranges and
+        #       'f_spot_set{}'.format(i_dataset) not in prior_ranges):
+        elif (('one_spot' in stellar_contam_i and 'f_het_set{}'.format(i_dataset) not in prior_ranges) or
+              ('two_spots' in stellar_contam_i and 'f_spot_set{}'.format(i_dataset) not in prior_ranges)):
             T_het_min_i, T_het_max_i = np.inf, -np.inf  # T_het_min and T_het_max will not be updated
 
         elif ('one_spot' in stellar_contam_i):
@@ -898,8 +900,12 @@ def stellar_contamination(star, wl_out):
     # Interpolate stellar photosphere intensity to model wavelength grid
     I_phot_interp = spectres(wl_out, wl_s, I_phot)
 
+    # No stellar contamination
+    if stellar_contam is None:
+        epsilon = 1.
+
     # For a single heterogeneity
-    if ('one_spot' in stellar_contam):
+    elif ('one_spot' in stellar_contam):
 
         # Unpack relevant stellar properties
         f_het = star['f_het']

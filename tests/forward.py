@@ -42,9 +42,15 @@ T_eq = 214.5  # Equilibrium temperature (K) (Delrez+18)
 
 # ***** Define model *****#
 model_name = 'Simple_model'  # Model name used for plots, output files etc.
-bulk_species = ['N2']  # N2 comprises the bulk atmosphere
-# param_species = ['H2O', 'CH4']  # The trace gases are H2O and CH4
-param_species = ['CO2', 'H2']  # Trace gas(es)
+# bulk_species = ['H2']  # Bulk of the atmosphere
+bulk_species = ['H2', 'He']  # Bulk of the atmosphere
+# param_species = ['He', 'CH4', 'H2O']  # Trace gas(es)
+param_species = [
+    # 'CH4',
+    # 'H2O',
+    'CO2'
+]  # Trace gas(es)
+# param_species = []  # Trace gas(es)
 
 # Specify the pressure grid of the atmosphere
 P_min = 1.0e-7  # 0.1 ubar
@@ -52,13 +58,19 @@ P_max = 100  # 100 bar
 N_layers = 100  # 100 layers
 
 # Specify the reference pressure and radius
-P_ref = 1.0  # Reference pressure (bar)
-R_p_ref = R_p  # Radius at reference pressure
+P_ref = 0.01  # Reference pressure (bar) originally: 1
+R_p_ref = 0.92 * R_E  # Radius at reference pressure originally: R_p
+P_surf = 10 ** (-2.5)  # Surface pressure (bar)
 
 # Provide a specific set of model parameters for the atmosphere
 PT_params = np.array([T_eq])  # T (K)
 # log_X_params = np.array([-3.3, -5.0])  # log(H2O), log(CH4)
-log_X_params = np.array([-3.3, -5.0])
+# log_X_params = np.array([-0.7958800173440752, -3.1426675035687315, -2.769551078621726])
+log_X_params = np.array([
+    # -8.01,
+    # -7.14,
+    -6.97
+])
 
 # ***** Wavelength grid *****#
 wl_min = 0.6  # Minimum wavelength (um)
@@ -74,7 +86,7 @@ opacity_treatment = 'opacity_sampling'
 
 # Define fine temperature grid (K)
 T_fine_min = 100  # 400 K lower limit suffices for a typical hot Jupiter
-T_fine_max = 500  # 2000 K upper limit suffices for a typical hot Jupiter
+T_fine_max = 300  # 2000 K upper limit suffices for a typical hot Jupiter
 T_fine_step = 10  # 10 K steps are a good tradeoff between accuracy and RAM
 
 # Define fine pressure grid (log10(P/bar))
@@ -89,9 +101,18 @@ f_het = .05
 T_het = T_s + 150.
 log_g_het = 5.0
 
+stellar_contam = [None]
+shared_stellar_contam = {0: None}
+f_het = 0.
+T_het = np.copy(T_s)
+log_g_het = 5.0
+
 # Gaussian scatter to add to the synthetic data (something small to simulate nearly noiseless data)
 gauss_scatter = 10.0  # [ppm]
 respow_data = 30  # resolving power of the synthetic data
+
+gauss_scatter = 0.  # [ppm]
+respow_data = 100  # resolving power of the synthetic data
 
 use_pymsg = True
 
@@ -108,6 +129,7 @@ label = label + '_fhet-{:.3f}_Thet-{:.1f}_logghet-{:.5f}'.format(f_het, T_het, l
 label = label + '_gaussscat-{:.1f}ppm'.format(gauss_scatter)
 label = label + '_respow-{}'.format(respow_data)
 label = label + '_pymsg{}'.format(int(use_pymsg))
+label = label + "_Pref-{}_Rpref-{}_Psurf-{}".format(P_ref, R_p_ref, P_surf)
 outfname = planet_name + '_SYNTHETIC_' + instruments[0] + '_' + label + '.dat'
 
 # =====================================================================================================================
@@ -136,6 +158,7 @@ if __name__ == '__main__':
     model = define_model(model_name, bulk_species, param_species,
                          PT_profile='isotherm', cloud_model='cloud-free',
                          stellar_contam=stellar_contam, shared_stellar_contam=shared_stellar_contam,
+                         surface=True,
                          radius_unit='R_E')
     print("Defined model.")
 
@@ -147,7 +170,7 @@ if __name__ == '__main__':
 
     # Generate the atmosphere
     atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref,
-                                 PT_params, log_X_params)
+                                 PT_params, log_X_params, P_surf=P_surf)
     print("Made atmosphere.")
 
     # Create wavelength grid
@@ -178,6 +201,8 @@ if __name__ == '__main__':
 
     # Compute stellar contamination multiplicative factor and apply it to the spectrum
     epsilon = stellar_contamination(star, wl)
+    if np.isscalar(epsilon) and epsilon == 1.0:
+        epsilon = np.ones_like(wl)
     spectrum *= epsilon
     print("Computed stellar contamination factor and contaminated spectrum.")
 
@@ -191,7 +216,7 @@ if __name__ == '__main__':
     # Generate synthetic data (binned down to instrument resolution) using forward model
     generate_syn_data_from_user(planet, wl, spectrum, data_dir=outdir, instrument=instruments[0],
                                 R_data=respow_data, err_data=gauss_scatter, wl_start=0.85, wl_end=2.8, label=label,
-                                Gauss_scatter=True)
+                                Gauss_scatter=False)
     print("Generated synthetic data based on instrument {}.".format(instruments[0]))
 
     data_syn = load_data(data_dir=outdir, datasets=[outfname], instruments=instruments, wl_model=wl,

@@ -1691,3 +1691,32 @@ def mock_missing(name):
             f'this is likely due to it not being installed.')
     return type(name, (), {'__init__': init})
 
+
+def get_samples_weights(n_params, output_prefix):
+    '''
+    Get samples and weights of a POSEIDON retrieval.
+
+    Args:
+        n_params (int):
+            Number of parameters in the model.
+        output_prefix (str):
+            Prefix of the output files from the nested sampling run. Should include the absolute path and end with '-'.
+            Will be used as the 'outputfiles_basename' argument in pymultinest.Analyzer.
+
+    Returns:
+        samples, weights (np.ndarray, np.ndarray):
+            Samples and weights from the nested sampling run.
+
+    '''
+
+    a = pymultinest.Analyzer(n_params, outputfiles_basename=output_prefix,
+                             verbose=False)
+
+    # Extract quantities needed to use the Dynesty corner plotting script
+    data = a.get_data()
+    i = data[:, 1].argsort()[::-1]
+    samples = data[i, 2:]
+    weights = data[i, 0]
+
+    return samples, weights
+

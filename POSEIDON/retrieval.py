@@ -113,8 +113,10 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             #  contamination parameters. Check that they are not the same.
             if model["shared_stellar_contam"][i_dataset] == j_dataset or model["shared_stellar_contam"][j_dataset] == i_dataset:
                 # If we get here, then the two datasets share their stellar contamination parameters
-                raise Exception("Error: Different visits with the same instrument cannot share their "
-                                "stellar contamination parameters.")
+                # raise Exception("Error: Different visits with the same instrument cannot share their "
+                #                 "stellar contamination parameters.")
+                print("Warning: Different visits with the same instrument share their stellar contamination "
+                      "parameters. This is possible, but not recommended.")
 
     # Unpack stellar properties
     if (star is not None):
