@@ -2844,15 +2844,15 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # not. If a dataset does not have stellar contamination or shares its stellar contamination parameters with another
     # dataset, the default priors added here will be ignored.
     for i_dataset in range(len(data['datasets'])):
-        prior_ranges_defaults['f_het_vis{}'.format(i_dataset)] = [0.0, 0.5]
-        prior_ranges_defaults['T_het_vis{}'.format(i_dataset)] = [0.6*T_phot, 1.2*T_phot]
-        prior_ranges_defaults['f_spot_vis{}'.format(i_dataset)] = [0.0, 0.5]
-        prior_ranges_defaults['T_spot_vis{}'.format(i_dataset)] = [0.6 * T_phot, T_phot]
-        prior_ranges_defaults['f_fac_vis{}'.format(i_dataset)] = [0.0, 0.5]
-        prior_ranges_defaults['T_fac_vis{}'.format(i_dataset)] = [T_phot, 1.2 * T_phot]
-        prior_ranges_defaults['log_g_het_vis{}'.format(i_dataset)] = [log_g_phot-0.5, log_g_phot+0.5]
-        prior_ranges_defaults['log_g_spot_vis{}'.format(i_dataset)] = [log_g_phot - 0.5, log_g_phot + 0.5]
-        prior_ranges_defaults['log_g_fac_vis{}'.format(i_dataset)] = [log_g_phot - 0.5, log_g_phot + 0.5]
+        prior_ranges_defaults['f_het_set{}'.format(i_dataset)] = [0.0, 0.5]
+        prior_ranges_defaults['T_het_set{}'.format(i_dataset)] = [0.6*T_phot, 1.2*T_phot]
+        prior_ranges_defaults['f_spot_set{}'.format(i_dataset)] = [0.0, 0.5]
+        prior_ranges_defaults['T_spot_set{}'.format(i_dataset)] = [0.6 * T_phot, T_phot]
+        prior_ranges_defaults['f_fac_set{}'.format(i_dataset)] = [0.0, 0.5]
+        prior_ranges_defaults['T_fac_set{}'.format(i_dataset)] = [T_phot, 1.2 * T_phot]
+        prior_ranges_defaults['log_g_het_set{}'.format(i_dataset)] = [log_g_phot-0.5, log_g_phot+0.5]
+        prior_ranges_defaults['log_g_spot_set{}'.format(i_dataset)] = [log_g_phot - 0.5, log_g_phot + 0.5]
+        prior_ranges_defaults['log_g_fac_set{}'.format(i_dataset)] = [log_g_phot - 0.5, log_g_phot + 0.5]
 
     # Iterate through parameters, ensuring we have a full set of priors
     for parameter in param_names:
