@@ -964,10 +964,10 @@ def generate_overplot(planet, models, params_to_plot=None,
         # Save corner plot in results directory
         overplot_name = ""
         for model_display_name in model_display_names:
-            overplot_name += model_display_name
+            overplot_name += model_display_name + '_'
         results_prefix = output_dir + "results/" + overplot_name
 
-        plt.savefig(results_prefix + "_corner_overplot.pdf", bbox_inches="tight")
+        plt.savefig(results_prefix + "corner_overplot.pdf", bbox_inches="tight")
 
         return existing_fig
 
