@@ -13,7 +13,7 @@ supported_species = np.array(['H2O', 'CO2', 'CH4', 'CO', 'Na', 'K', 'NH3', 'HCN'
                               'AlH', 'SiH', 'BeH', 'CaH', 'MgH', 'LiH', 'NaH',
                               'OH', 'OH+', 'CH', 'NH', 'SH', 'PN', 'PS', 'CS',
                               'C2', 'CH3', 'H3+', 'N2O', 'NO2', 'C2H4', 'C2H6', 
-                              'CH3CN', 'CH3OH', 'GeH4', 'CS2', 'O2', 'O3', 'Al', 
+                              'CH3CN', 'CH3OH', 'CH3Cl', 'GeH4', 'CS2', 'O2', 'O3', 'Al', 
                               'Ba', 'Ba+', 'Ca', 'Ca+', 'Cr', 'Cs', 'Fe', 'Fe+', 
                               'Li', 'Mg', 'Mg+', 'Mn', 'Ni', 'O', 'Rb', 'Sc', 
                               'Ti', 'Ti+', 'V', 'V+'])

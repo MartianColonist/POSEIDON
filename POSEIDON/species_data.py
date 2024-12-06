@@ -22,7 +22,7 @@ masses = {'H2O':   18.010565, 'CO2':   43.989830, 'CH4':   16.031300,
           'PS':    62.945833, 'CS':    43.972071, 'C2':    24.000000, 
           'CH3':   15.023475, 'H3+':   3.0234750, 'N2O':   44.001062,
           'NO2':   45.992904, 'C2H4':  28.031300, 'C2H6':  30.046950, 
-          'CH3CN': 41.026549, 'CH3OH': 32.026215, 'CH3Cl': 49.992328,
+          'CH3CN': 41.026549, 'CH3OH': 32.026215, '   ': 49.992328,
           'GeH4':  77.952478, 'CS2':   75.944142, 'O2':    31.989830,
           'O3':    47.984745, 'Al':    26.981539, 'Ba':    137.32770,
           'Ba+':   137.32770, 'Ca':    40.078400, 'Ca+':   40.078400, 
@@ -37,34 +37,35 @@ masses = {'H2O':   18.010565, 'CO2':   43.989830, 'CH4':   16.031300,
           }
 
 # Polarisabilities (cgs units, cm^3) used for computing refractive index and Rayleigh scattering - Mostly from CRC handbook
-polarisabilities = {'H2O':   1.45e-24, 'CO2':   2.91e-24, 'CH4':  2.59e-24, 
-                    'CO':    1.95e-24, 'Na':    24.1e-24, 'K':    42.9e-24, 
-                    'NH3':   2.26e-24, 'HCN':   2.59e-24, 'SO2':  3.72e-24, 
-                    'H2S':   3.78e-24, 'PH3':   4.84e-24, 'C2H2': 3.33e-24,
-                    'OCS':   5.71e-24, 'TiO':   16.9e-24, 'VO':   14.4e-24, 
-                    'AlO':   8.22e-24, 'SiO':   5.53e-24, 'CaO':  23.8e-24,      # Without tabulated values for metal oxides and
-                    'MgO':   10.6e-24, 'NaO':   24.1e-24, 'LaO':  31.1e-24,      # hydrides, take as ~ metal atom polarisabilities
-                    'ZrO':   17.9e-24, 'SO':    3.72e-24, 'NO':   1.70e-24,      # Estimate SO as ~ SO2
-                    'PO':    3.69e-24, 'TiH':   16.9e-24, 'CrH':  11.6e-24, 
-                    'FeH':   9.47e-24, 'ScH':   21.2e-24, 'AlH':  8.22e-24, 
-                    'SiH':   5.53e-24, 'BeH':   5.60e-24, 'CaH':  23.8e-24, 
-                    'MgH':   10.5e-24, 'LiH':   24.3e-24, 'NaH':  24.1e-24, 
-                    'OH':    6.97e-24, 'OH+':   6.97e-24, 'CH':   2.59e-24, 
-                    'NH':    2.59e-24, 'SH':    2.59e-24, 'PN':   3.69e-24,      # No literature for CH, NH, SH, so ~ to CH4
-                    'PS':    3.69e-24, 'CS':    8.74e-24, 'C2':   1.67e-24,      # PN, PS ~ P | CS ~ CS2
-                    'CH3':   2.59e-24, 'H3+':   0.39e-24, 'N2O':  3.03e-24,      # C2 ~ C | CH3 ~ CH4 | H3+ from Kawaoka & Borkman (1971)
-                    'NO2':   3.02e-24, 'C2H4':  4.25e-24, 'C2H6': 4.47e-24, 
-                    'CH3CN': 4.40e-24, 'CH3OH': 3.29e-24, 'GeH4': 5.84e-24,      # GeH4 ~ Ge
-                    'CS2':   8.74e-24, 'O2':    1.58e-24, 'O3':   3.21e-24, 
-                    'Al':    6.80e-24, 'Ba':    39.7e-24, 'Ba+':  39.7e-24,
-                    'Ca':    22.8e-24, 'Ca+':   22.8e-24, 'Cr':   11.6e-24, 
-                    'Cs':    59.4e-24, 'Fe':    9.47e-24, 'Fe+':  9.47e-24, 
-                    'Li':    24.3e-24, 'Mg':    10.6e-24, 'Mg+':  10.6e-24, 
-                    'Mn':    9.40e-24, 'Ni':    6.80e-24, 'O':    0.80e-24,
-                    'Rb':    47.4e-24, 'Sc':    17.8e-24, 'Ti':   14.8e-24, 
-                    'Ti+':   14.8e-24, 'V':     12.4e-24, 'V+':   12.4e-24,
-                    'H2':    0.80e-24, 'He':    0.21e-24, 'H':    0.67e-24, 
-                    'N2':    1.74e-24, 'H-':    30.5e-24, 'e-':   0.00e-24,
+polarisabilities = {'H2O':   1.45e-24, 'CO2':   2.91e-24, 'CH4':   2.59e-24, 
+                    'CO':    1.95e-24, 'Na':    24.1e-24, 'K':     42.9e-24, 
+                    'NH3':   2.26e-24, 'HCN':   2.59e-24, 'SO2':   3.72e-24, 
+                    'H2S':   3.78e-24, 'PH3':   4.84e-24, 'C2H2':  3.33e-24,
+                    'OCS':   5.71e-24, 'TiO':   16.9e-24, 'VO':    14.4e-24, 
+                    'AlO':   8.22e-24, 'SiO':   5.53e-24, 'CaO':   23.8e-24,      # Without tabulated values for metal oxides and
+                    'MgO':   10.6e-24, 'NaO':   24.1e-24, 'LaO':   31.1e-24,      # hydrides, take as ~ metal atom polarisabilities
+                    'ZrO':   17.9e-24, 'SO':    3.72e-24, 'NO':    1.70e-24,      # Estimate SO as ~ SO2
+                    'PO':    3.69e-24, 'TiH':   16.9e-24, 'CrH':   11.6e-24, 
+                    'FeH':   9.47e-24, 'ScH':   21.2e-24, 'AlH':   8.22e-24, 
+                    'SiH':   5.53e-24, 'BeH':   5.60e-24, 'CaH':   23.8e-24, 
+                    'MgH':   10.5e-24, 'LiH':   24.3e-24, 'NaH':   24.1e-24, 
+                    'OH':    6.97e-24, 'OH+':   6.97e-24, 'CH':    2.59e-24, 
+                    'NH':    2.59e-24, 'SH':    2.59e-24, 'PN':    3.69e-24,      # No literature for CH, NH, SH, so ~ to CH4
+                    'PS':    3.69e-24, 'CS':    8.74e-24, 'C2':    1.67e-24,      # PN, PS ~ P | CS ~ CS2
+                    'CH3':   2.59e-24, 'H3+':   0.39e-24, 'N2O':   3.03e-24,      # C2 ~ C | CH3 ~ CH4 | H3+ from Kawaoka & Borkman (1971)
+                    'NO2':   3.02e-24, 'C2H4':  4.25e-24, 'C2H6':  4.47e-24, 
+                    'CH3CN': 4.40e-24, 'CH3OH': 3.29e-24, 'CH3Cl': 5.35e-24,
+                    'GeH4':  5.84e-24, 'CS2':   8.74e-24, 'O2':    1.58e-24,      # GeH4 ~ Ge
+                    'O3':   3.21e-24, 
+                    'Al':    6.80e-24, 'Ba':    39.7e-24, 'Ba+':   39.7e-24,
+                    'Ca':    22.8e-24, 'Ca+':   22.8e-24, 'Cr':    11.6e-24, 
+                    'Cs':    59.4e-24, 'Fe':    9.47e-24, 'Fe+':   9.47e-24, 
+                    'Li':    24.3e-24, 'Mg':    10.6e-24, 'Mg+':   10.6e-24, 
+                    'Mn':    9.40e-24, 'Ni':    6.80e-24, 'O':     0.80e-24,
+                    'Rb':    47.4e-24, 'Sc':    17.8e-24, 'Ti':    14.8e-24, 
+                    'Ti+':   14.8e-24, 'V':     12.4e-24, 'V+':    12.4e-24,
+                    'H2':    0.80e-24, 'He':    0.21e-24, 'H':     0.67e-24, 
+                    'N2':    1.74e-24, 'H-':    30.5e-24, 'e-':    0.00e-24,
                     } 
 
 # Solar elemental reference values (Asplund et al. 2021)
