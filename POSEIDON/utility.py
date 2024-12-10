@@ -7,6 +7,7 @@ import os
 import numpy as np
 import pandas as pd
 import pymultinest
+import re
 from mpi4py import MPI
 from numba import jit, cuda
 from spectres import spectres
@@ -1113,6 +1114,13 @@ def generate_latex_param_names(param_names):
                       'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 'Delta_T_32-10b',
                       'Delta_T_100-32b']):
             latex_names += ['$\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
+            continue
+
+        # General handling for isotopologue parameters (e.g. 'log_12C-17O')
+        match = re.match(r'log_(\d+)([A-Z])-?(\d+)([A-Z])', param)
+        if match:
+            num1, elem1, num2, elem2 = match.groups()
+            latex_names.append(f'$\\log \\, \\mathrm{{^{{{num1}}}{elem1}^{{{num2}}}{elem2}}}$')
             continue
 
         # Temporary fix for aerosol parameter names 

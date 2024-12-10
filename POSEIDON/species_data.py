@@ -34,6 +34,8 @@ masses = {'H2O':   18.010565, 'CO2':   43.989830, 'CH4':   16.031300,
           'V':     50.941510, 'V+':    50.941510, 'H2':    2.0156500,
           'He':    4.0026030, 'H':     1.0078250, 'N2':    28.006148,
           'H-':    1.0083740, 'e-':    5.4858e-4, 
+          '12C-16O': 27.994915, '13C-16O': 28.998270, '12C-18O': 29.999161,
+          '12C-17O': 28.999130, '13C-18O': 31.002516, '13C-17O': 30.002485,
           }
 
 # Polarisabilities (cgs units, cm^3) used for computing refractive index and Rayleigh scattering - Mostly from CRC handbook
@@ -66,6 +68,8 @@ polarisabilities = {'H2O':   1.45e-24, 'CO2':   2.91e-24, 'CH4':   2.59e-24,
                     'V':     12.4e-24, 'V+':    12.4e-24, 'H2':    0.80e-24, 
                     'He':    0.21e-24, 'H':     0.67e-24, 'N2':    1.74e-24, 
                     'H-':    30.5e-24, 'e-':    0.00e-24,
+                    '12C-16O': 1.95e-24, '13C-16O': 1.95e-24, '12C-18O': 1.95e-24,
+                    '12C-17O': 1.95e-24, '13C-18O': 1.95e-24, '13C-17O': 1.95e-24,
                     } 
 
 # Solar elemental reference values (Asplund et al. 2021)
