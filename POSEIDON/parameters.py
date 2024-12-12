@@ -734,7 +734,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             elif ('biaxial' in cloud_type):
 
                 if len(aerosol_species) > 3:
-                    raise Exception('Only can include three aerosols for biaxial models in this order: E||c (B1U,Ex), E||b (B2U,Ey), E||a (B3U, Ez)')
+                    raise Exception('Only can include three aerosols for biaxial models in this order: E||c, E||b, E||a')
                 
                 if (cloud_type == 'biaxial_random_slab'):
                     # define slab top pressure and extent
@@ -745,7 +745,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                     cloud_params += ['log_r_m_biaxial']
                     cloud_params += ['log_X_biaxial']
 
-                    print('This model assumes the aerosols are in this order:  E||c (B1U,Ex), E||b (B2U,Ey), E||a (B3U, Ez)')
+                    print('This model assumes the aerosols are in this order: E||c, E||b, E||a')
 
                 elif(cloud_type == 'biaxial_slab'):
                     # define slab top pressure and extent
@@ -760,7 +760,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                     cloud_params += ['log_X_Eb']
                     cloud_params += ['log_X_Ea']
 
-                    print('This model assumes the aerosols are in this order:  E||c (B1U,Ex), E||b (B2U,Ey), E||a (B3U, Ez)')
+                    print('This model assumes the aerosols are in this order:  E||c, E||b, E||a')
 
             elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab', 
                                      'opaque_deck_plus_uniform_X', 'one_slab',
