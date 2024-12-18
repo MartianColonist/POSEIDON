@@ -1265,8 +1265,8 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
             R_p_ref *= R_J
         elif (radius_unit == 'R_E'):
             R_p_ref *= R_E
-        else:
-            R_p_ref = R_p_ref_set
+    else:
+        R_p_ref = R_p_ref_set
 
     # Unpack planet mass if set as a free parameter
     if ('M_p' in physical_param_names):

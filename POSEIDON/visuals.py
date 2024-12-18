@@ -3975,7 +3975,7 @@ def plot_histograms(planet, models, plot_parameters,
                 for i in range(N_samples):
 
                     atmosphere_i = get_retrieved_atmosphere(planet, model, np.logspace(np.log10(100.0), np.log10(1e-6), 100),
-                                                            specific_param_values = samples[i])
+                                                            specific_param_values = samples[i], R_p_ref_set=planet['planet_radius'])
                     
                     X_stored[i,:] = atmosphere_i['X'][:,0,0,0]
                     mu_stored[i] = atmosphere_i['mu'][0,0,0]/sc.u
