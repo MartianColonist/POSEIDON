@@ -32,7 +32,7 @@ rank = comm.Get_rank()
 
 # Create global variable needed for centred log-ratio prior function
 allowed_simplex = 1
-
+allowed_simplex_surfaces = 1
 
 
 def run_retrieval(planet, star, model, opac, data, priors, wl, P, 
@@ -355,8 +355,8 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         #***** Step 2: generate atmosphere corresponding to parameter draw *****#
 
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
-                                     log_X_params, cloud_params, geometry_params, 
-                                     surface_params,
+                                     log_X_params, cloud_params, geometry_params,
+                                     surface_params,  
                                      log_g, M_p, T_input, X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN, 
                                      constant_gravity, chemistry_grid)
@@ -527,12 +527,12 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
 
     CLR = np.zeros(shape=(n+1))   # Vector of CLR variables
     X = np.zeros(shape=(n+1))     # Vector of mixing ratio parameters
-    
+
     # Evaluate centred log-ratio parameters by uniformly sampling between limits
     for i in range(n):
- 
+        
         CLR[1+i] = ((chem_params_drawn[i] * (prior_upper_CLR - prior_lower_CLR)) + prior_lower_CLR) 
-          
+    
     if (np.abs(np.sum(CLR[1:n])) <= prior_upper_CLR):   # Impose same prior on X_0
             
         CLR[0] = -1.0*np.sum(CLR[1:n])   # CLR variables must sum to 0, so that X_i sum to 1
@@ -577,6 +577,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     param_names = model['param_names']
     param_species = model['param_species']
     X_params = model['X_param_names']
+    surface_param_names = model['surface_param_names']
     N_params_cum = model['N_params_cum']
     Atmosphere_dimension = model['Atmosphere_dimension']
     species_EM_gradient = model['species_EM_gradient']
@@ -599,8 +600,10 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     # Create variable governing if a mixing ratio parameter combination lies in 
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
     global allowed_simplex    # Needs to be global, as prior function has no return
+    global allowed_simplex_surfaces 
 
     allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
+    allowed_simplex_surfaces = 1
     
     # Define the prior transformation function
     def Prior(cube, ndim, nparams):
@@ -851,8 +854,43 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             # then we only pull the ones that are specifically for the percentages (since that is what can be an input to CLR)
             surface_percentage_drawn = surface_drawn[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
 
-            # Make sure they add to one
-            surface_percentage_drawn = surface_percentage_drawn/np.sum(surface_percentage_drawn)
+            # This is just a quick fix right now, but the first parameter isn't consider free 
+            # Since the clr prior makes sure it adds to one 
+            surface_percentage_drawn_CLR = surface_percentage_drawn[1:]
+
+            # Load Lower limit on log mixing ratios specified by user
+            # The limit is the lower range of the prior ranges for the surface percentages
+            # This line of code finds the first instance of a parameter name with 'percentage' in it 
+            # Then it pulls the prior range of that variable from the prior ranges dictionary and takes the lower limit
+            limit = prior_ranges[param_names[np.where(np.char.find(param_names,'percentage')!= -1)[0]][0]][0]
+            
+            # Map random numbers to CLR variables, than transform to mixing ratios
+            # CLR_Prior only works when the number of free params > 2 (so 3 surface components)
+            if len(surface_percentage_drawn_CLR) > 1:
+                
+                #print('OG percentages:', surface_percentage_drawn)
+                #print('Sum to 1: ',surface_percentage_drawn/np.sum(surface_percentage_drawn))
+                log_X = CLR_Prior(surface_percentage_drawn_CLR, limit = limit)
+                #print('log_X: ', log_X)
+                #print('10**log_X: ',10**log_X)
+                
+                # Convert back to surface_percentages from log_X
+                surface_percentages_CLR = 10**log_X
+            else:
+                # For n = 2, you just take the average
+                surface_percentages_CLR = surface_percentage_drawn/np.sum(surface_percentage_drawn)
+                
+                # For the global variable, this must be defined
+                log_X = np.log10(surface_percentages_CLR)
+
+
+            # Check if this random parameter draw lies in the allowed simplex space (X_i > 10^-12 and sum to 1)
+            global allowed_simplex_surfaces     # Needs a global, as prior function has no return
+
+            if (log_X[1] == -50.0): 
+                allowed_simplex_surfaces = 0       # Mixing ratios outside allowed simplex space -> model rejected by likelihood
+            elif (log_X[1] != -50.0): 
+                allowed_simplex_surfaces = 1       # Likelihood will be computed for this parameter combination
 
             # percentages are always at the end
             index_1 = N_params_cum[7]+(len(surface_percentage_drawn)-1)
@@ -861,9 +899,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             # I couldn't get the CLR prior to work, but this just replaces things in the cube... which should work
             counter = 0
             for n in range(index_1,index_2):
-                cube[n] = surface_percentage_drawn[counter]
+                cube[n] = surface_percentages_CLR[counter]
                 counter += 1
-      
             
     # Define the log-likelihood function
     def LogLikelihood(cube, ndim, nparams):
@@ -885,6 +922,11 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         # Immediately reject samples falling outside of mixing ratio simplex (CLR prior only)
         global allowed_simplex
         if (allowed_simplex == 0):
+            loglikelihood = -1.0e100   
+            return loglikelihood
+        
+        global allowed_simplex_surfaces
+        if (allowed_simplex_surfaces == 0):
             loglikelihood = -1.0e100   
             return loglikelihood
         
@@ -1211,9 +1253,6 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     param_names = model['param_names']
     N_params_cum = model['N_params_cum']
     physical_param_names = model['physical_param_names']
-    surface_param_names = model['surface_param_names']
-
-    disable_atmosphere = model['disable_atmosphere']
 
     radius_unit = model['radius_unit']
     mass_unit = model['mass_unit']
@@ -1224,7 +1263,7 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     X_input = []
 
     # Use specific parameter combination if provided
-    if (len(specific_param_values) != 0):
+    if (specific_param_values != []):
         param_values = specific_param_values
 
     # Or load the median or best-fitting parameters from the MultiNest output
@@ -1317,8 +1356,8 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
         log_g = None
 
     # Unpack surface pressure if set as a free parameter
-    if (surface == True) and (disable_atmosphere != True):
-        P_surf = np.power(10.0, surface_params[np.where(surface_param_names == 'log_P_surf')[0][0]])
+    if ((surface == True) and ('log_P_surf' in physical_param_names)):
+        P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
     else:
         P_surf = None
 

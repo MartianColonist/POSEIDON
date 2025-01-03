@@ -132,6 +132,8 @@ surface_supported_components = np.array([ # Surfaces from Hammond 2024
                                          'EcoStress_forest_mixture_GG24','USGS_weathered_basalt_GG24','USGS_grass_mixture_GG24','USGS_melting_snow_GG24',
                                          'USGS_ocean_seawater_GG24','USGS_quartz_sand_GG24','Cyanobacteria_intertidal_microbial_mat_GG24','Cyanobacteria_mat_dry_GG24',
                                          'Hypersaline_intertidal_microbial_mat_GG24','Purple_plankton_sulfur_pool_GG24',
+                                         # For CLR Priors
+                                         'Black',
                                          ])
 
 # Super Secret Project :) 
