@@ -1249,6 +1249,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  legend_fontsize = 10,
                  plt_label_fontsize = 14,
                  planet_name_fontsize = 16,
+                 
                  legend_line_size = [],
                  err_colour_array = [],
                  fill_between = [],
@@ -2296,6 +2297,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            legend_fontsize = 10,
                            plt_label_fontsize = 14,
                            planet_name_fontsize = 16,
+
                            legend_line_size = [],
                            err_colour_array = [],
                            show_legend = True

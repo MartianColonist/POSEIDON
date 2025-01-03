@@ -1224,7 +1224,7 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     X_input = []
 
     # Use specific parameter combination if provided
-    if (specific_param_values != []):
+    if (len(specific_param_values) != 0):
         param_values = specific_param_values
 
     # Or load the median or best-fitting parameters from the MultiNest output
