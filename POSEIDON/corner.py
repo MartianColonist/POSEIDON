@@ -992,8 +992,11 @@ def generate_overplot(planet, models, params_to_plot = None,
             raise Exception("Number of colours does not match number of models.")
         if ((len(two_sigma_upper_limits) != 0) and (len(two_sigma_upper_limits) != len(params_to_plot))):
             raise Exception("Number of two sigma upper limits does not match number of parameters.")
-        if (np.any(np.array(two_sigma_upper_limits)*np.array(two_sigma_lower_limits)) == True):
-            raise Exception("Cannot have both a two sigma lower and upper limit.")
+        if ((len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != len(params_to_plot))):
+            raise Exception("Number of two sigma lower limits does not match number of parameters.")
+        if (len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != 0):
+            if (np.any(np.array(two_sigma_upper_limits)*np.array(two_sigma_lower_limits)) == True):
+                raise Exception("Cannot have both a two sigma lower and upper limit.")
 
         # Unpack planet name
         planet_name = planet["planet_name"]
@@ -1078,13 +1081,12 @@ def generate_overplot(planet, models, params_to_plot = None,
                                       two_sigma_lower_limits=two_sigma_lower_limits,
                                      )
 
-            existing_fig[0].text(0.6, (0.75 + 0.05 * model_i),
-                                 (colour_schemes[model_i].capitalize() + ": " + 
-                                  model_display_names[model_i]),
+            existing_fig[0].text(0.7, (0.75 + 0.05 * model_i),
+                                 model_display_names[model_i],
                                  horizontalalignment="left",
                                  fontsize=20,
                                  color=colour_schemes[model_i],
-            )
+                                 )
 
         # Save corner plot in results directory
         if (overplot_name is None):
