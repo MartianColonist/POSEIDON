@@ -3565,6 +3565,8 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                               tick_labelsize = 8, title_fontsize = 12,
                               custom_labels = [], custom_ticks = [],
                               alpha_hist = 0.4, show_title = True,
+                              two_sigma_upper_limits = [], two_sigma_lower_limits = [],
+                              mass_unit = 'M_J',
                               ):
 
     N_params = len(plot_parameters)
@@ -3596,7 +3598,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     
     #***** Generate panels *****#
     
-    # For each species
+    # For each parameter
     for q in range(len(plot_parameters)):
 
         param = plot_parameters[q]
@@ -3610,21 +3612,55 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         else:
             ax = axes_in[q]
 
+        # Set number of significant figures for titles
         if ((('T' in param) or ('T_' in param)) and ('log' not in param)):
             title_fmt = '.0f'
+        elif (param == 'a') or (param == 'b'):
+            title_fmt = ".2f"
+        elif ('delta_rel' in param):
+            title_fmt = ".0f"
+        elif (param == 'R_p_ref'):
+            label_exponent = round_sig_figs(np.floor(np.log10(np.abs(0.5 * (qh - ql)))), 1)
+            if label_exponent == -2.0:
+                title_fmt = ".2f"
+            elif label_exponent == -3.0:
+                title_fmt = ".3f"
+            elif label_exponent == -4.0:
+                title_fmt = ".4f"
+            else:
+                title_fmt = ".2f"
+        elif (param == 'd'):
+            title_fmt = ".3f"
         else:
             title_fmt = '.2f'
 
+        '''
+        # Add mass unit
+        if (param == 'M_p'):
+            if (mass_unit == 'M_J'):
+                param_label == '$M_{\\mathrm{p}} \, (M_{J})$'
+            elif (mass_unit == 'M_E'):
+                param_label == '$M_{\\mathrm{p}} \, (M_{E})$'
+
+        # Add temperature unit
+        if ('T' in param):
+            param_label = param_label[:-1] + ' \, (\\mathrm{K})$'
+
+        '''
+
         # Find the maximum x to set the y off of 
         x_max_array = []
+
         for m in range(N_models):
             
             param_vals_m = param_vals[m]
             
             if (N_models == 1):
                 colour = parameter_colour_list[q]   # Each species has a different colour
+                title_colour = 'black'
             else:
                 colour = retrieval_colour_list[m]   # Each retrieval has a different colour
+                title_colour = colour
 
             # Set minimum and maximum mixing ratio plot limits
             # FIX : This throws up an error when you're only plotting one parameter...
@@ -3662,8 +3698,8 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
-                                                    param_min, param_max, colour, x_max_array = x_max_array,
-                                                    alpha_hist = alpha_hist)
+                                                       param_min, param_max, colour, x_max_array = x_max_array,
+                                                       alpha_hist = alpha_hist)
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (len(retrieval_labels) != 0)):
@@ -3673,18 +3709,100 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 
             # Plot retrieved parameter value as title
             if (show_title == True):
-                if (m == 0):
-                    fmt = "{{0:{0}}}".format(title_fmt).format
+                title = None
+
+                fmt = "{{0:{0}}}".format(title_fmt).format
+
+                # Plot one sigma limits by default
+                if ((len(two_sigma_upper_limits) == 0) and (len(two_sigma_lower_limits) == 0)):
+                    
+                    '''
+                    if (m == 0):
+                        fmt = "{{0:{0}}}".format(title_fmt).format
+                        title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
+                        title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
+                        title = "{0} = {1}".format(param_label, title)
+                        title = "{0}".format(title)
+                        ax.set_title(title, fontsize = title_fontsize)
+
+                        # Plot median and +/- 1σ confidence intervals
+                        ax.axvline(median, lw=2, ls="-", alpha=0.7, color='dimgray')
+                        ax.axvline(low1, lw=1, ls="dashed", color='black')
+                        ax.axvline(high1, lw=1, ls="dashed", color='black')
+                    '''
+                                    
+                    # Add title
                     title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
                     title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
                     title = "{0} = {1}".format(param_label, title)
-                    title = "{0}".format(title)
-                    ax.set_title(title, fontsize = title_fontsize)
+                  #  title = "{0}".format(title)
+
+                  #  ax.set_title(title, fontsize = title_fontsize)
 
                     # Plot median and +/- 1σ confidence intervals
                     ax.axvline(median, lw=2, ls="-", alpha=0.7, color='dimgray')
                     ax.axvline(low1, lw=1, ls="dashed", color='black')
                     ax.axvline(high1, lw=1, ls="dashed", color='black')
+
+                # Title has 2 sigma upper/lower limits where user flags the given parameter
+                else:
+                    if (two_sigma_upper_limits[q] == True):
+
+                        # Find 95th percentile
+                        qh = _quantile(param_vals_m[:,q], [0.95])[0]
+
+                        # Add title
+                        title = r"${{{0}}}$"
+                        title = title.format(fmt(qh))
+                        title = "{0} < {1}".format(param_label, title)
+
+                        # Plot arrow for upper limit
+                        ax.axvline(qh, lw=2, ls="-", color='dimgray', alpha=0.8)
+                        ax.annotate('', xy=(qh, (0.9 - 0.05 * m)),
+                                    xytext=((qh - (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0]))), (0.9 - 0.05 * m)), 
+                                    xycoords=('data', 'axes fraction'), textcoords=('data', 'axes fraction'),
+                                    arrowprops=dict(facecolor='dimgray', color = 'dimgray', 
+                                                    edgecolor='dimgray', arrowstyle='<|-', 
+                                                    lw=2, ls='-', shrinkA=0, shrinkB=0),
+                                    alpha=0.8)
+
+                    elif (two_sigma_lower_limits[q] == True):
+
+                        # Find 5th percentile
+                        ql = _quantile(param_vals_m[:,q], [0.05])[0]
+
+                        # Add title
+                        title = r"${{{0}}}$"
+                        title = title.format(fmt(ql))
+                        title = "{0} > {1}".format(param_label, title)
+
+                        # Plot arrow for lower limit
+                        ax.axvline(ql, lw=2, ls="-", color='dimgray', alpha=0.8)
+                        ax.annotate('', xy=(ql + (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0])), (0.9 - 0.05 * m)), 
+                                    xytext=(ql, (0.9 - 0.05 * m)), 
+                                    xycoords=('data', 'axes fraction'), textcoords=('data', 'axes fraction'),
+                                    arrowprops=dict(facecolor='dimgray', color = 'dimgray', 
+                                                    edgecolor='dimgray', arrowstyle='-|>', 
+                                                    lw=2, ls='-', shrinkA=0, shrinkB=0),
+                                    alpha=0.8)
+
+                    else:
+
+                        # Add title
+                        title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
+                        title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
+                        title = "{0} = {1}".format(param_label, title)
+
+                        # Plot median and +/- 1σ confidence intervals
+                        ax.axvline(median, lw=2, ls="-", alpha=0.7, color='dimgray')
+                        ax.axvline(low1, lw=1, ls="dashed", color='black')
+                        ax.axvline(high1, lw=1, ls="dashed", color='black')
+
+                # Plot title
+                ax.text(0.5, 1.05 + (m * 0.1),
+                        title, horizontalalignment = "center", verticalalignment = "bottom",
+                        color = title_colour, transform = ax.transAxes, fontsize = title_fontsize,
+                       )
 
             else:
 
@@ -3707,7 +3825,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
       #      newax.tick_params(axis='both', which='major', labelsize=8)
 
             ax.set_yticks([])
-            ax.tick_params(axis='both', which='major', labelsize= tick_labelsize)
+            ax.tick_params(axis='both', which='major', labelsize = tick_labelsize)
 
             #if (param == 'T'):
             #    xmajorLocator = MultipleLocator(250)
@@ -3757,9 +3875,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Better axis label spacing for mixing ratios
             if ('log_' in param):
-                if ((param_max - param_min) <= 1.0):
-                    xmajor_interval = 0.4
-                    xminor_interval = 0.1
+                if ((param_max - param_min) <= 0.5):
+                    xmajor_interval = 0.1
+                    xminor_interval = 0.02
+                elif ((param_max - param_min) <= 1.0):
+                    xmajor_interval = 0.2
+                    xminor_interval = 0.05
                 elif (((param_max - param_min) > 1.0) and ((param_max - param_min) <= 2.0)):
                     xmajor_interval = 0.5
                     xminor_interval = 0.1
@@ -3882,6 +4003,8 @@ def plot_histograms(planet, models, plot_parameters,
                     tick_labelsize = 12, title_fontsize = 12,
                     custom_labels = [], custom_ticks = [],
                     alpha_hist = 0.4, 
+                    two_sigma_upper_limits = [], two_sigma_lower_limits = [],
+                    mass_unit = 'M_J',
                     ):
 
     '''
@@ -3911,7 +4034,15 @@ def plot_histograms(planet, models, plot_parameters,
         if (len(retrieval_colour_list) != N_models):
             raise Exception("Number of retrieval colours does not match the " +
                             "number of retrieval models.")
-        
+    if ((len(two_sigma_upper_limits) != 0) and (len(two_sigma_upper_limits) != N_params_to_plot)):
+        raise Exception("Number of two sigma upper limits does not match number of parameters.")
+    if ((len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != N_params_to_plot)):
+        raise Exception("Number of two sigma lower limits does not match number of parameters.")
+    if (len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != 0):
+        if (np.any(np.array(two_sigma_upper_limits)*np.array(two_sigma_lower_limits)) == True):
+            raise Exception("Cannot have both a two sigma lower and upper limit.")
+
+
     param_vals = []    # List to store parameter values for all models, samples, and parameters
 
     # For each retrieval
@@ -3931,6 +4062,7 @@ def plot_histograms(planet, models, plot_parameters,
             Atmosphere_dimension = model['Atmosphere_dimension']
             N_params_cum = model['N_params_cum']
             disable_atmosphere = model['disable_atmosphere']
+            mass_unit = model['mass_unit']
             N_species = len(chemical_species)
             
             # Unpack number of free parameters
@@ -4075,7 +4207,11 @@ def plot_histograms(planet, models, plot_parameters,
                                     custom_labels = custom_labels,
                                     custom_ticks = custom_ticks,
                                     alpha_hist = alpha_hist,
-                                    show_title = show_title)
+                                    show_title = show_title,
+                                    two_sigma_upper_limits = two_sigma_upper_limits,
+                                    two_sigma_lower_limits = two_sigma_lower_limits,
+                                    mass_unit = mass_unit,
+                                    )
     
     # Save figure to file
     if (save_fig == True):
