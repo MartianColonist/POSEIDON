@@ -1249,7 +1249,6 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  legend_fontsize = 10,
                  plt_label_fontsize = 14,
                  planet_name_fontsize = 16,
-                 
                  legend_line_size = [],
                  err_colour_array = [],
                  fill_between = [],
@@ -3101,7 +3100,12 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       log_P_max = None, T_min = None, T_max = None,
                       legend_location = 'lower left',
                       ax = None, save_fig = True,
-                      sigma_to_plot = 2):
+                      sigma_to_plot = 2,
+                      show_legend = True,
+                      custom_ticks = [],
+                      ylabels = True,
+                      retrieved_log_P_surf = [],
+                      log_P_surf_sigma_upper_lower = 'upper'):
     '''
     Plot retrieved Pressure-Temperature (P-T) profiles.
     
@@ -3148,6 +3152,16 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
             Maximum temperature to plot.
 		legend_location (str, optional):
             Location of the legend. Default is 'lower left'.
+		show_legend (bool, optional):
+            If False, will not show legend.
+        custom_ticks (list, optional): 
+            Major and minor ticks
+        ylabels (bool, optional):
+            If False, will not plot y ticks
+        retrieved_log_P_surf (list, optional):
+            Will overplot 1 sigma P_surf (Retrieved log_P_surf, one_sigma_positive, one_sigma_negative)
+        log_P_surf_sigma_upper_lower (str, optional):
+            Will set things depending on if its an upper or lower limit
 	
     Returns:
 		fig (matplotlib figure object):
@@ -3207,12 +3221,16 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
     T_range = T_max - T_min
     
     # Calculate appropriate axis spacing
-    if (T_range >= 500.0):
-        major_spacing = max(np.around((T_range/10), -2), 100.0)
-    elif (T_range < 500.0):
-        major_spacing = max(np.around((T_range/10), -1), 10.0)
-        
-    minor_spacing = major_spacing/10
+    if (len(custom_ticks) == 0):
+        if (T_range >= 500.0):
+            major_spacing = max(np.around((T_range/10), -2), 100.0)
+        elif (T_range < 500.0):
+            major_spacing = max(np.around((T_range/10), -1), 10.0)
+            
+        minor_spacing = major_spacing/10
+    else:
+        major_spacing = custom_ticks[0]
+        minor_spacing = custom_ticks[1]
 
     # Load pressure grid
     P = PT_median[0][1]
@@ -3293,18 +3311,74 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
         if (T_true != None):
             ax1.semilogy(T_true, P, lw = 1.5, color = 'crimson', label = 'True')
 
+    # Plot the retrieved surface pressure
+    # This assumes the distribution is a tailed distribution (rn)
+    if (len(retrieved_log_P_surf) != 0):
+
+        median_P_surf = 10**retrieved_log_P_surf[0]
+
+        # Note this is before things are flipped, so in order to keep it less confusing its top and bottom in traditional sense
+        # So this is actually the higher pressure, and will be bottom once axis if flipped
+
+        P_surf_high = 10**(retrieved_log_P_surf[0] + retrieved_log_P_surf[1])
+        P_surf_low = 10**(retrieved_log_P_surf[0] + retrieved_log_P_surf[2])
+
+        # If the arrow is up, it will point from the highest pressure to the lowest
+        # If the arrow is down, it will point from the lowest pressure to the highest 
+
+        if log_P_surf_sigma_upper_lower == 'upper':
+            #ax1.axhspan(P_surf_low,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray')
+            ax1.axhline(P_surf_low, lw = 3.0, color = scale_lightness(colours[i], 1.0), label = 'Surface Pressure ($1 \sigma$ upper)')
+            ax1.axhspan(P_surf_low,median_P_surf, lw = 0.0, alpha = 0.5, color = colours[i],  hatch = 'xx')
+            ax1.axhspan(median_P_surf,P_surf_high, lw = 0.0, alpha = 0.25, color = colours[i],  hatch = 'x')
+            #ax1.axhspan(P_surf_low,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray')
+            ax1.axhspan(P_surf_high,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray', hatch = '+++')
+
+        elif log_P_surf_sigma_upper_lower == 'lower':
+            ax1.axhspan(median_P_surf,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray')
+            ax1.axhline(P_surf_high, lw = 3.0, color = scale_lightness(colours[i], 1.0), label = 'Surface Pressure ($1 \sigma$ lower)')
+            ax1.axhspan(P_surf_high,median_P_surf, lw = 0.0, alpha = 0.5, color = colours[i],  hatch = 'xx')
+            ax1.axhspan(median_P_surf,P_surf_low, lw = 0.0, alpha = 0.25, color = colours[i],  hatch = 'x')
+            ax1.axhspan(P_surf_high,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray', hatch = '+++')
+
+        ax1.axhline(median_P_surf, lw = 1.0, color = scale_lightness(colours[i], 1.0), label = 'Surface Pressure (Median)')
+
+        # Draw arrow (either up or down to P_surf_low)
+        #if arrow_P_surf == 'up':
+        #    x = arrow_x
+        #    y = median_P_surf
+        #    dx = 0
+        #    dy = -(median_P_surf - P_surf_low)
+        #    ax1.arrow(x,y,dx,dy, color = colours[i],length_includes_head = True,
+        #  head_width=50, head_length=0.1*np.abs(dy))
+        #elif arrow_P_surf == 'down':
+        #    x = arrow_x
+        #    dy = median_P_surf - P_surf_low
+        #    dx = 0
+        #    y = P_surf_low
+        #    ax1.arrow(x,y,dx,dy, color = colours[i],length_includes_head = True,
+        #  head_width=50, head_length=0.1*np.abs(dy))
+
+
     # Common plot settings for all profiles
     ax1.invert_yaxis()            
     ax1.set_xlabel(r'Temperature (K)', fontsize = 16)
     ax1.set_xlim(T_min, T_max)
-    ax1.set_ylabel(r'Pressure (bar)', fontsize = 16)
     ax1.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))
+
+    # If ylabels = False, don't show the ticks
+    if ylabels == False:
+        ax1.tick_params(labelleft=False) 
+    # Else, set the ylabel 
+    else:
+        ax1.set_ylabel(r'Pressure (bar)', fontsize = 16)
 
     ax1.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, ncol=1, 
-                       frameon=False, columnspacing=1.0)
+    if show_legend == True:
+        legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, ncol=1, 
+                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
 
@@ -3997,7 +4071,8 @@ def plot_histograms(planet, models, plot_parameters,
                     vertical_lines = [], vertical_line_colors = [],
                     tick_labelsize = 12, title_fontsize = 12,
                     custom_labels = [], custom_ticks = [],
-                    alpha_hist = 0.4
+                    alpha_hist = 0.4,
+                    skip_retrieving_atmospheres = False
                     ):
 
     '''
@@ -4085,7 +4160,7 @@ def plot_histograms(planet, models, plot_parameters,
             X_stored = np.zeros(shape=(N_samples, N_species))
             mu_stored = np.zeros(shape=(N_samples))
             
-            if (disable_atmosphere == False):
+            if (disable_atmosphere == False) and (skip_retrieving_atmospheres == False):
 
                 # Load mixing ratios and mean molecular weight samples
                 for i in range(N_samples):

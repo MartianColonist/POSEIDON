@@ -1315,8 +1315,11 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
 
 
     # split parameters into each atmosphere category
-    physical_params, PT_params, log_X_params, \
-    cloud_params, geometry_params, _, _, _, _ = split_params(param_values, N_params_cum)
+    physical_params, PT_params, \
+    log_X_params, cloud_params, \
+    geometry_params, stellar_params, \
+    offset_params, err_inflation_params, \
+    surface_params = split_params(param_values, N_params_cum)
     
     # Unpack reference pressure if set as a free parameter
     if ('log_P_ref' in physical_param_names):
@@ -1367,10 +1370,12 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
         print('log_X_params = np.array(', log_X_params,')')
         print('cloud_params = np.array(', cloud_params,')')
         print('geometry_params = np.array(', geometry_params,')')
+        print('surface_params = np.array(', surface_params,')')
     
     # make atmosphere 
     atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                  log_X_params, cloud_params, geometry_params,
+                                 surface_params,
                                  log_g = log_g, M_p = M_p, T_input = T_input,
                                  X_input = X_input, P_surf = P_surf,
                                  P_param_set = P_param_set, He_fraction = He_fraction, 
