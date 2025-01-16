@@ -765,33 +765,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             raise Exception("Error: unsupported cloud model.")
             
         N_cloud_params = len(cloud_params)   # Store number of cloud parameters
-        params += cloud_params               # Add cloud parameter names to combined list
-
-        #***** Surface parameters *****#
-    
-        if (surface == True):
-            surface_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
-
-        if surface_temp == True:
-            surface_params += ['T_surf']
-
-        # Surface Models 
-        if (surface_model == 'constant'):
-            surface_params += ['albedo_surf']
-
-        elif (surface_model == 'lab_data'):
-
-            if len(surface_components) > 1:
-                for n in range(len(surface_components)):
-                        surface_params += [surface_components[n] + '_percentage']
-        elif (surface_model == 'gray'):
-            pass
-        else:
-            raise Exception('Only suface models are gray, constant, and lab_data.')
-        
-
-        N_surface_params = len(surface_params)   # Store number of physical parameters
-        params += surface_params                  # Add physical parameter names to combined list    
+        params += cloud_params               # Add cloud parameter names to combined list 
             
         #***** Geometry parameters *****#
         
@@ -853,6 +827,31 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         N_error_params = 0
     else:
         raise Exception("Error: unsupported error adjustment prescription.")
+    
+    #***** Surface parameters *****#
+
+    if (surface == True):
+        surface_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
+
+    if surface_temp == True:
+        surface_params += ['T_surf']
+
+    # Surface Models 
+    if (surface_model == 'constant'):
+        surface_params += ['albedo_surf']
+
+    elif (surface_model == 'lab_data'):
+
+        if len(surface_components) > 1:
+            for n in range(len(surface_components)):
+                    surface_params += [surface_components[n] + '_percentage']
+    elif (surface_model == 'gray'):
+        pass
+    else:
+        raise Exception('Only suface models are gray, constant, and lab_data.')
+
+    N_surface_params = len(surface_params)   # Store number of physical parameters
+    params += surface_params                  # Add physical parameter names to combined list   
     
     #***** Final recasting of parameter arrays *****#
 
