@@ -185,7 +185,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         
 
             N_surface_params = len(surface_params)   # Store number of physical parameters
-            params += surface_params                  # Add physical parameter names to combined list  
+
+            # The params are added at the end, after the offset parameters, so that order is mantained
+            #params += surface_params  
         
         else:
             N_surface_params = 0
@@ -830,28 +832,41 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     
     #***** Surface parameters *****#
 
-    if (surface == True):
-        surface_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
+    # In assign_free_params the order parameters are added to 'params'
+    # must equal the order of split_params()
+    # therefore surface parameters are added after offset, since they are the newest 'group' 
 
-    if surface_temp == True:
-        surface_params += ['T_surf']
+    # Only do the following this if disable atmosphere is false
+    # Otherwise, the surface parameters are defined earlier (see above, large if/else statement if disable_atmosphere == True)
+    if disable_atmosphere == False:
 
-    # Surface Models 
-    if (surface_model == 'constant'):
-        surface_params += ['albedo_surf']
+        if (surface == True):
+            surface_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
 
-    elif (surface_model == 'lab_data'):
+        if surface_temp == True:
+            surface_params += ['T_surf']
 
-        if len(surface_components) > 1:
-            for n in range(len(surface_components)):
-                    surface_params += [surface_components[n] + '_percentage']
-    elif (surface_model == 'gray'):
-        pass
+        # Surface Models 
+        if (surface_model == 'constant'):
+            surface_params += ['albedo_surf']
+
+        elif (surface_model == 'lab_data'):
+            if len(surface_components) > 1:
+                for n in range(len(surface_components)):
+                        surface_params += [surface_components[n] + '_percentage']
+        elif (surface_model == 'gray'):
+            pass
+        else:
+            raise Exception('Only suface models are gray, constant, and lab_data.')
+        
+        N_surface_params = len(surface_params)   # Store number of physical parameters
+        params += surface_params                  # Add physical parameter names to combined list  
+
+    # Due to the ordering of params, need to add the surface params
+    # after offsets are added. 
+    # This is when disable atmopshere is True (scroll up)
     else:
-        raise Exception('Only suface models are gray, constant, and lab_data.')
-
-    N_surface_params = len(surface_params)   # Store number of physical parameters
-    params += surface_params                  # Add physical parameter names to combined list   
+        params += surface_params 
     
     #***** Final recasting of parameter arrays *****#
 
