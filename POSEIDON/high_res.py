@@ -11,15 +11,24 @@ from scipy.ndimage import gaussian_filter1d, median_filter
 from scipy.optimize import minimize
 
 
-def airtovac(wlA):
-    # Convert wavelengths (nm) in air to wavelengths in vaccuum (empirical).
-    s = 1e4 / wlA
+def airtovac(wlum):
+    # Convert wavelengths (microns) in air to wavelengths in vaccuum (empirical).
+    wl = wlum * 1e4
+    s = 1e4 / wl
     n = 1 + (
         0.00008336624212083
         + 0.02408926869968 / (130.1065924522 - s**2)
         + 0.0001599740894897 / (38.92568793293 - s**2)
     )
-    return wlA * n
+    return wl * n * 1e-4
+
+
+def vactoair(wlum):
+    # Convert wavelengths (microns) in vacuum to wavelengths in air (empirical).
+    wl = wlum * 1e4
+    s = 1e4 / wl
+    n = 1 + 0.0000834254 + 0.02406147 / (130 - s**2) + 0.00015998 / (38.9 - s**2)
+    return wl / n * 1e-4
 
 
 def read_hdf5(file_path):

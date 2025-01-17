@@ -16,8 +16,9 @@ planet_name = 'WASP-121b'
 
 data_dir = '../../../POSEIDON/reference_data/observations/' + planet_name # the directory where you've put the data
 
-# data = read_high_res_data(data_dir, names=["blue", "redl", "redu"])
+
 data = read_high_res_data(data_dir, names=["blue"])  # only use blue arm for faster retrieval
+data = read_high_res_data(data_dir, names=["blue", "redl", "redu"])
 
 # %% [markdown]
 # ## Setting up retrieval model
@@ -33,7 +34,7 @@ from POSEIDON.constants import R_Sun, R_J, M_J
 
 wl_min = 0.37  # Minimum wavelength (um)
 wl_max = 0.51  # Maximum wavelength (um) for blue arm
-# wl_max = 0.87  # change to include red arm
+wl_max = 0.87  # change to include red arm
 R = 250000  # Spectral resolution of grid
 wl = wl_grid_constant_R(wl_min, wl_max, R)
 
@@ -77,7 +78,7 @@ from POSEIDON.core import define_model, wl_grid_constant_R
 
 # ***** Define model *****#
 
-model_name = "High-res retrieval"  # Model name used for plots, output files etc.
+model_name = "High-res retrieval 2"  # Model name used for plots, output files etc.
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 # param_species = ["Fe", "Cr", "Mg", "V", "Ti"] # Add more chemical species to the model here
@@ -131,7 +132,7 @@ prior_types = {}
 
 # Specify whether priors are linear, Gaussian, etc.
 prior_types["T"] = "uniform"
-prior_types["R_p_ref"] = "uniform"
+prior_types["R_p_ref"] = "gaussian"
 prior_types["log_X"] = "uniform"
 prior_types["K_p"] = "uniform"
 prior_types["V_sys"] = "uniform"
@@ -144,7 +145,7 @@ prior_ranges = {}
 
 # Specify prior ranges for each free parameter
 prior_ranges["T"] = [1000, 4000]
-prior_ranges["R_p_ref"] = [0.5 * R_p, 2 * R_p]
+prior_ranges["R_p_ref"] = [R_p, 0.05 * R_J]
 prior_ranges["log_X"] = [-15, 0]
 prior_ranges["K_p"] = [170, 230]
 prior_ranges["V_sys"] = [-10, 10]
@@ -301,13 +302,5 @@ plot_PT_retrieved(
     T_max=4000,
     legend_location="lower left",
 )
-
-# %% [markdown]
-# Below is the corner plot and retrieved PT profile from a retrieval on this dataset assuming an isothermal model with a gray cloud and Fe, Cr, V, Ti, Mg in the atmopshere.
-# 
-# ![title](../../_static/notebook_images/high_res_trans_corner.png)
-
-# %%
-
 
 
