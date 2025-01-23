@@ -1862,7 +1862,19 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
                             # Deck specific parameters 
                             log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
-                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+
+                            # This is because I messed up and named two parameters with f_ 
+                            # When there are 1+1D patchy clouds, there is fractional cloud coverage, f_cloud
+                            # And there is f_Aerosol that is the fractional scale height
+                            # Therefore when you had patchy fuzzy decks, this messed up
+                            if cloud_dim ==2:
+                                index_f_cloud = np.where(np.char.find(cloud_param_names, 'f_cloud') != -1)[0]
+                                index_f = np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]
+                                index_fractional_scale_height = np.where(index_f != index_f_cloud)[0]
+                                fractional_scale_height = clouds_in[index_f[index_fractional_scale_height]]
+
+                            else:
+                                fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
 
                             # Slab specific parameters 
                             log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
@@ -1875,7 +1887,19 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                             P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
 
                             log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
-                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+
+                            # This is because I messed up and named two parameters with f_ 
+                            # When there are 1+1D patchy clouds, there is fractional cloud coverage, f_cloud
+                            # And there is f_Aerosol that is the fractional scale height
+                            # Therefore when you had patchy fuzzy decks, this messed up
+                            if cloud_dim ==2:
+                                index_f_cloud = np.where(np.char.find(cloud_param_names, 'f_cloud') != -1)[0]
+                                index_f = np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]
+                                index_fractional_scale_height = np.where(index_f != index_f_cloud)[0]
+                                fractional_scale_height = clouds_in[index_f[index_fractional_scale_height]]
+
+                            else:
+                                fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
 
                             log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
                             P_slab_bottom = np.power(10.0, (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
@@ -1943,12 +1967,37 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                         r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                         P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
                         log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
-                        fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+
+                        # This is because I messed up and named two parameters with f_ 
+                        # When there are 1+1D patchy clouds, there is fractional cloud coverage, f_cloud
+                        # And there is f_Aerosol that is the fractional scale height
+                        # Therefore when you had patchy fuzzy decks, this messed up
+                        if cloud_dim ==2:
+                            index_f_cloud = np.where(np.char.find(cloud_param_names, 'f_cloud') != -1)[0]
+                            index_f = np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]
+                            index_fractional_scale_height = np.where(index_f != index_f_cloud)[0]
+                            fractional_scale_height = clouds_in[index_f[index_fractional_scale_height]]
+
+                        else:
+                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+
                     except:
                         r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
                         P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
                         log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
-                        fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+
+                        # This is because I messed up and named two parameters with f_ 
+                        # When there are 1+1D patchy clouds, there is fractional cloud coverage, f_cloud
+                        # And there is f_Aerosol that is the fractional scale height
+                        # Therefore when you had patchy fuzzy decks, this messed up
+                        if cloud_dim ==2:
+                            index_f_cloud = np.where(np.char.find(cloud_param_names, 'f_cloud') != -1)[0]
+                            index_f = np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]
+                            index_fractional_scale_height = np.where(index_f != index_f_cloud)[0]
+                            fractional_scale_height = clouds_in[index_f[index_fractional_scale_height]]
+
+                        else:
+                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
 
                     # Need to set the slab parameters to dummy values to pass into the cloud object 
                     log_X_Mie = 100

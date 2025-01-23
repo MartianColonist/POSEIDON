@@ -1190,7 +1190,8 @@ def vary_one_parameter(model, planet, star, param_name, vary_list, wl, opac,
                                 PT_profile = model['PT_profile'], X_profile = model['X_profile'],
                                 cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
                                 cloud_dim = model['cloud_dim'],
-                                scattering = model['scattering'],
+                                thermal = model['thermal'],
+                                thermal_scattering = model['thermal_scattering'],
                                 reflection = model['reflection'])
 
     else:
@@ -1201,7 +1202,8 @@ def vary_one_parameter(model, planet, star, param_name, vary_list, wl, opac,
                         cloud_model = model['cloud_model'], cloud_type = model['cloud_type'],
                         cloud_dim = model['cloud_dim'],
                         aerosol_species = aerosol_species, 
-                        scattering = model['scattering'],
+                        thermal = model['thermal'],
+                        thermal_scattering = model['thermal_scattering'],
                         reflection = model['reflection'])
 
 
