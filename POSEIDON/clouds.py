@@ -1195,6 +1195,19 @@ def vary_one_parameter(model, planet, star, param_name, vary_list, wl, opac,
                                 reflection = model['reflection'])
 
     else:
+
+        # Quick fix for shiny deck cloud models
+        # as it stands right now, shiny is taken away from cloud_type so I didn't have to 
+        # recode all the Mie parameter stuff in paramters.py and core.py 
+        # this just puts it back 
+        if 'albedo_deck' in model['cloud_param_names']:
+
+            # There is a bug where if this function is run twice, it adds shiny twice
+            # Hate local variables!
+
+            if 'shiny_' not in model['cloud_type']:
+                model['cloud_type'] = 'shiny_' + model['cloud_type']
+
         aerosol_species = model['aerosol_species']
 
         model = define_model(model_name,bulk_species,param_species,
@@ -1205,7 +1218,6 @@ def vary_one_parameter(model, planet, star, param_name, vary_list, wl, opac,
                         thermal = model['thermal'],
                         thermal_scattering = model['thermal_scattering'],
                         reflection = model['reflection'])
-
 
     # Try to find the variable they want to vary 
     # And then loop over it, making a new atmosphere object and saving the resultant spectrum
