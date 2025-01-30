@@ -756,8 +756,12 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             # Open HDF5 files containing molecular + atomic opacities
             if (opacity_database == 'High-T'):        # High T database
 
+                # Experimental POSEIDON v1.3 database
+                if (database_version == '1.3'):
+                    opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.3.hdf5', 'r')
+
                 # By default, use the new POSEIDON v1.2 opacity database
-                if (database_version == '1.2'):
+                elif (database_version == '1.2'):
                     opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.2.hdf5', 'r')
 
                 # Or for backwards compatibility, you can use the old v1.0 database
@@ -767,7 +771,7 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             
                 else:
                     raise Exception("Invalid opacity database version.\n"
-                                    "The options are: '1.0' or '1.2'.")
+                                    "The options are: '1.0', '1.2', or '1.3")
                 
             elif (opacity_database == 'Temperate'):   # Low T database
                 opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1_Temperate.hdf5', 'r')

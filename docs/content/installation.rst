@@ -9,7 +9,7 @@ are stored separately from the GitHub repository (due to file size limitations).
 Before installing POSEIDON, you will need to download these input files, which
 have been packaged for convenience as a single .zip file (67 GB):
 
-* `inputs.zip <https://drive.google.com/file/d/1q6EdElKflzdsMaLkgkR5UtgwK0Lq4Yob/view?usp=sharing>`_
+* `inputs.zip <https://drive.google.com/file/d/1D4w1GdM2cYpwzLhVg_k26iC3xHilibfY/view?usp=sharing>`_
 
 You can also find all the required input files on `Zenodo 
 <https://zenodo.org/record/7927435#.ZF22itLMJhE>`_.
