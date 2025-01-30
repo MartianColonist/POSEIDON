@@ -2946,20 +2946,32 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     else:
         n_columns = legend_n_columns
 
-    # Add box around legend
+    # Assign legend box settings
     if (legend_box == True):
-        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = n_columns, frameon = True)    # Legend settings
-        frame = legend.get_frame()
-        frame.set_facecolor('0.90')
+        frameon = True
+        framefacecolour = '0.9'
+    else:
+        frameon = False
+        framefacecolour = None
 
+    # Add legend
+    if isinstance(legend_location, tuple):
+        legend = ax1.legend(loc = 'center', shadow = True, prop = {'size': legend_fontsize},
+                            ncol = n_columns, frameon = frameon, bbox_to_anchor = legend_location)
     elif legend_location == 'outside right':
         legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = n_columns, frameon = False, bbox_to_anchor = (1, 0.5))
-        
+                            ncol = n_columns, frameon = frameon, bbox_to_anchor = (1, 0.5))
     else:
-        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = n_columns, frameon = False)    # Legend settings
+        legend = ax1.legend(loc = legend_location, shadow = True, prop={'size': legend_fontsize},
+                            ncol = n_columns, frameon = frameon)  # Legend settings
+
+    frame = legend.get_frame()
+    frame.set_facecolor(framefacecolour)
+
+
+   # else:
+   #     legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
+   #                         ncol = n_columns, frameon = False)    # Legend settings
             
     legend.set_zorder(200)   # Make legend always appear in front of everything
 
@@ -3657,10 +3669,8 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             
             if (N_models == 1):
                 colour = parameter_colour_list[q]   # Each species has a different colour
-                title_colour = 'black'
             else:
                 colour = retrieval_colour_list[m]   # Each retrieval has a different colour
-                title_colour = colour
 
             # Set minimum and maximum mixing ratio plot limits
             # FIX : This throws up an error when you're only plotting one parameter...
@@ -3679,6 +3689,13 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
         # For each retrieval
         for m in range(N_models):
+
+            if (N_models == 1):
+                title_colour = 'black'
+                constraint_colour = 'dimgray'
+            else:
+                title_colour = retrieval_colour_list[m]
+                constraint_colour = retrieval_colour_list[m]
 
             param_vals_m = param_vals[m]
             
@@ -3740,9 +3757,9 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                   #  ax.set_title(title, fontsize = title_fontsize)
 
                     # Plot median and +/- 1σ confidence intervals
-                    ax.axvline(median, lw=2, ls="-", alpha=0.7, color='dimgray')
-                    ax.axvline(low1, lw=1, ls="dashed", color='black')
-                    ax.axvline(high1, lw=1, ls="dashed", color='black')
+                    ax.axvline(median, lw=2, ls="-", alpha=0.7, color=constraint_colour)
+                    ax.axvline(low1, lw=1, ls="dashed", color=constraint_colour)
+                    ax.axvline(high1, lw=1, ls="dashed", color=constraint_colour)
 
                 # Title has 2 sigma upper/lower limits where user flags the given parameter
                 else:
@@ -3757,12 +3774,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                         title = "{0} < {1}".format(param_label, title)
 
                         # Plot arrow for upper limit
-                        ax.axvline(qh, lw=2, ls="-", color='dimgray', alpha=0.8)
-                        ax.annotate('', xy=(qh, (0.9 - 0.05 * m)),
-                                    xytext=((qh - (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0]))), (0.9 - 0.05 * m)), 
+                        ax.axvline(qh, lw=2, ls="-", color=constraint_colour, alpha=0.8)
+                        ax.annotate('', xy=(qh, (0.9 - 0.1 * m)),
+                                    xytext=((qh - (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0]))), (0.9 - 0.1 * m)), 
                                     xycoords=('data', 'axes fraction'), textcoords=('data', 'axes fraction'),
-                                    arrowprops=dict(facecolor='dimgray', color = 'dimgray', 
-                                                    edgecolor='dimgray', arrowstyle='<|-', 
+                                    arrowprops=dict(facecolor=constraint_colour, color=constraint_colour, 
+                                                    edgecolor=constraint_colour, arrowstyle='<|-', 
                                                     lw=2, ls='-', shrinkA=0, shrinkB=0),
                                     alpha=0.8)
 
@@ -3777,12 +3794,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                         title = "{0} > {1}".format(param_label, title)
 
                         # Plot arrow for lower limit
-                        ax.axvline(ql, lw=2, ls="-", color='dimgray', alpha=0.8)
-                        ax.annotate('', xy=(ql + (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0])), (0.9 - 0.05 * m)), 
-                                    xytext=(ql, (0.9 - 0.05 * m)), 
+                        ax.axvline(ql, lw=2, ls="-", color=constraint_colour, alpha=0.8)
+                        ax.annotate('', xy=(ql + (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0])), (0.9 - 0.1 * m)), 
+                                    xytext=(ql, (0.9 - 0.1 * m)), 
                                     xycoords=('data', 'axes fraction'), textcoords=('data', 'axes fraction'),
-                                    arrowprops=dict(facecolor='dimgray', color = 'dimgray', 
-                                                    edgecolor='dimgray', arrowstyle='-|>', 
+                                    arrowprops=dict(facecolor=constraint_colour, color=constraint_colour, 
+                                                    edgecolor=constraint_colour, arrowstyle='-|>', 
                                                     lw=2, ls='-', shrinkA=0, shrinkB=0),
                                     alpha=0.8)
 
@@ -3794,12 +3811,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                         title = "{0} = {1}".format(param_label, title)
 
                         # Plot median and +/- 1σ confidence intervals
-                        ax.axvline(median, lw=2, ls="-", alpha=0.7, color='dimgray')
-                        ax.axvline(low1, lw=1, ls="dashed", color='black')
-                        ax.axvline(high1, lw=1, ls="dashed", color='black')
+                        ax.axvline(median, lw=2, ls="-", alpha=0.7, color=constraint_colour)
+                        ax.axvline(low1, lw=1, ls="dashed", color=constraint_colour)
+                        ax.axvline(high1, lw=1, ls="dashed", color=constraint_colour)
 
                 # Plot title
-                ax.text(0.5, 1.05 + (m * 0.1),
+                ax.text(0.5, 1.05 + (m * 0.2),
                         title, horizontalalignment = "center", verticalalignment = "bottom",
                         color = title_colour, transform = ax.transAxes, fontsize = title_fontsize,
                        )

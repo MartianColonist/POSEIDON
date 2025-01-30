@@ -550,10 +550,11 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             n = norm_kde(n, 10.)
         
         # Update the global maximum histogram value for this parameter
-        if param_name not in global_max_hist_values:
-            global_max_hist_values[param_name] = max(n)
-        else:
-            global_max_hist_values[param_name] = max(global_max_hist_values[param_name], max(n))
+        if model_i is not None:
+            if param_name not in global_max_hist_values:
+                global_max_hist_values[param_name] = max(n)
+            else:
+                global_max_hist_values[param_name] = max(global_max_hist_values[param_name], max(n))
 
     # Determine the maximum value of all histograms for each parameter
     max_hist_values = np.zeros(ndim)
@@ -624,7 +625,10 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                               **hist_kwargs)
             
         # Set the y-axis limit based on the global maximum value
-        ax.set_ylim([0., global_max_hist_values[param_name] * 1.05])
+        if model_i is not None:
+            ax.set_ylim([0., global_max_hist_values[param_name] * 1.05])
+        else:
+            ax.set_ylim([0., max_hist_values[i] * 1.05])
 
         # Plot quantiles
         if quantiles is not None and len(quantiles) > 0:
@@ -641,13 +645,17 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                     print("Quantiles:")
                     print(labels[i], [blob for blob in zip(quantiles, qs)])
             else:
-                if (two_sigma_upper_limits[i] == True):
+                if (param_name in two_sigma_upper_limits):
                     qh = _quantile(x, [0.95], weights=weights)[0]
                     
                     # Plot arrow for upper limit
+                    if model_i is not None:
+                        arrow_y_pos = 0.9 - 0.05 * model_i
+                    else:
+                        arrow_y_pos = 0.9
                     ax.axvline(qh, lw=2, ls="-", color=colour_quantile)
-                    ax.annotate('', xy=(qh, (0.9 - 0.05 * model_i)), 
-                                xytext=((qh - (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0]))), (0.9 - 0.05 * model_i)), 
+                    ax.annotate('', xy=(qh, arrow_y_pos), 
+                                xytext=((qh - (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0]))), arrow_y_pos), 
                                 xycoords=('data', 'axes fraction'), textcoords=('data', 'axes fraction'),
                                 arrowprops=dict(facecolor=colour_quantile, color = colour_quantile, 
                                                 edgecolor=colour_quantile, arrowstyle='<|-', lw=2, ls='-',
@@ -655,13 +663,17 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                     if verbose:
                         print("Quantiles:")
                         print(labels[i] + ": 2 sigma upper = " + str(qh))
-                elif (two_sigma_lower_limits[i] == True):
+                elif (param_name in two_sigma_lower_limits):
                     ql = _quantile(x, [0.05], weights=weights)[0]
 
                     # Plot arrow for lower limit
+                    if model_i is not None:
+                        arrow_y_pos = 0.9 - 0.05 * model_i
+                    else:
+                        arrow_y_pos = 0.9
                     ax.axvline(ql, lw=2, ls="-", color=colour_quantile)
-                    ax.annotate('', xy=(ql + (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0])), (0.9 - 0.05 * model_i)), 
-                                xytext=(ql, (0.9 - 0.05 * model_i)), 
+                    ax.annotate('', xy=(ql + (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0])), arrow_y_pos), 
+                                xytext=(ql, arrow_y_pos), 
                                 xycoords=('data', 'axes fraction'), textcoords=('data', 'axes fraction'),
                                 arrowprops=dict(facecolor=colour_quantile, color = colour_quantile, 
                                                 edgecolor=colour_quantile, arrowstyle='-|>', lw=2, ls='-',
@@ -698,9 +710,9 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
 
             # Plot 2 sigma upper/lower limits where user flags the given parameter
             else:
-                if (two_sigma_upper_limits[i] == True):
+                if (param_name in two_sigma_upper_limits):
                     qh = _quantile(x, [0.95], weights=weights)[0]
-                elif (two_sigma_lower_limits[i] == True):
+                elif (param_name in two_sigma_lower_limits):
                     ql = _quantile(x, [0.05], weights=weights)[0]
                 else:
                     ql, qm, qh = _quantile(x, quantiles, weights=weights)
@@ -737,11 +749,11 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
 
             # Title has 2 sigma upper/lower limits where user flags the given parameter
             else:
-                if (two_sigma_upper_limits[i] == True):
+                if (param_name in two_sigma_upper_limits):
                     title = r"${{{0}}}$"
                     title = title.format(fmt(qh))
                     title = "{0} < {1}".format(labels[i], title)
-                elif (two_sigma_lower_limits[i] == True):
+                elif (param_name in two_sigma_lower_limits):
                     title = r"${{{0}}}$"
                     title = title.format(fmt(ql))
                     title = "{0} > {1}".format(labels[i], title)
@@ -846,8 +858,9 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
 
 def generate_cornerplot(planet, model, params_to_plot = None, 
                         retrieval_name = None, true_vals = None,
-                        colour_scheme = '#984ea3', span = None,
-                        two_sigma_upper_limits = []):
+                        colour_scheme = '#984ea3', span = None, corner_name = None,
+                        two_sigma_upper_limits = [], two_sigma_lower_limits = [],
+                        ):
     '''
     Generate giant triangle plot of doom to visualise the results of a 
     POSEIDON retrieval.
@@ -865,8 +878,12 @@ def generate_cornerplot(planet, model, params_to_plot = None,
             Desired colour for the histograms and probability contours.
         span (list of tuples of float):
             Range to plot for each parameter (overrules default +/- 5σ range).
-        two_sigma_upper_limits (list of bool):
-            If True, the 2σ upper limit will be plotted instead of the 1σ range.
+        corner_name (str):
+            Optional file name prefix for the corner plot.
+        two_sigma_upper_limits (list of str):
+            List of parameters for which the 2σ upper limit will be plotted instead of the 1σ range.
+        two_sigma_lower_limits (list of str):
+            List of parameters for which the 2σ lower limit will be plotted instead of the 1σ range.
     
     Returns:
         fig (matplotlib figure object):
@@ -874,8 +891,15 @@ def generate_cornerplot(planet, model, params_to_plot = None,
 
     '''
 
+
     # Only generate a cornerplot using the first core
     if (rank == 0):
+
+        # Confirm valid inputs
+        if (len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != 0):
+            for param in two_sigma_upper_limits:
+                if (param in two_sigma_lower_limits):
+                    raise Exception("Cannot have both a two sigma lower and upper limit for a given parameter.")
     
         # Unpack planet name
         planet_name = planet['planet_name']
@@ -896,9 +920,6 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         # Load relevant output directory
         
         output_prefix = (output_dir + 'MultiNest_raw/' + retrieval_name + '-')
-
-        # Load relevant results directory
-        results_prefix = output_dir + 'results/' + retrieval_name
 
         # Run PyMultiNest analyser to extract posterior samples and model evidence
         a = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
@@ -934,22 +955,41 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         params_latex = generate_latex_param_names(params_to_plot)
         
         # Generate corner plot
-        fig, axes = cornerplot(results, quantiles=[0.1587, 0.5, 0.8413],  
-                               smooth_hist=30, smooth_corr=0.02, colour_plt=colour_scheme,
-                               colour_quantile='royalblue', show_titles=True, labels=params_latex, 
-                               param_names=params_to_plot, truths=true_vals, span=span,
-                               truth_colour='green', label_kwargs={'fontsize':18}, 
-                               hist_kwargs={'histtype':'stepfilled','edgecolor':None},
-                               hist2d_kwargs={'plot_contours':True,'fill_contours':True,
-                                                'levels':levels,'plot_datapoints':False})
-            
+        fig, axes = cornerplot(results, 
+                               quantiles=[0.1587, 0.5, 0.8413],  
+                               smooth_hist=30, 
+                               smooth_corr=0.02, 
+                               colour_plt=colour_scheme,
+                               colour_quantile='royalblue',
+                               show_titles=True,\
+                               labels=params_latex, 
+                               param_names=params_to_plot,
+                               truths=true_vals, 
+                               span=span,
+                               truth_colour='green',
+                               label_kwargs={'fontsize': 18}, 
+                               hist_kwargs={'histtype':'stepfilled','edgecolor': None},
+                               hist2d_kwargs={'plot_contours': True,
+                                              'fill_contours': True,
+                                              'levels': levels,
+                                              'plot_datapoints': False},
+                               two_sigma_upper_limits=two_sigma_upper_limits,
+                               two_sigma_lower_limits=two_sigma_lower_limits
+                              )
+
+        # Set plot file name
+        if (corner_name is None):
+            results_prefix = output_dir + 'results/' + retrieval_name
+        else:
+            results_prefix = output_dir + 'results/' + corner_name
+
         # Save corner plot in results directories
         plt.savefig(results_prefix + '_corner.pdf', bbox_inches='tight')
 
         return (fig, axes)
 
 
-def generate_overplot(planet, models, params_to_plot = None, 
+def generate_overplot(planet, models, params_to_plot = [], 
                       model_display_names = None, true_vals = None,
                       truth_colour = 'green', colour_schemes = ['purple', 'green'], 
                       span = None, overplot_name = None,
@@ -973,10 +1013,10 @@ def generate_overplot(planet, models, params_to_plot = None,
             Range to plot for each parameter (overrules default +/- 5σ range).
         overplot_name (str):
             Optional file name prefix for the overplot.
-        two_sigma_upper_limits (list of bool):
-            If True for any parameter, the 2σ upper limit will be plotted instead of the 1σ range.
-        two_sigma_lower_limits (list of bool):
-            If True for any parameter, the 2σ lower limit will be plotted instead of the 1σ range.
+        two_sigma_upper_limits (list of str):
+            List of parameters for which the 2σ upper limit will be plotted instead of the 1σ range.
+        two_sigma_lower_limits (list of str):
+            List of parameters for which the 2σ lower limit will be plotted instead of the 1σ range.
 
     Returns:
         fig (matplotlib figure object):
@@ -990,13 +1030,10 @@ def generate_overplot(planet, models, params_to_plot = None,
         # Check for correct settings
         if ((len(colour_schemes) != len(models))):
             raise Exception("Number of colours does not match number of models.")
-        if ((len(two_sigma_upper_limits) != 0) and (len(two_sigma_upper_limits) != len(params_to_plot))):
-            raise Exception("Number of two sigma upper limits does not match number of parameters.")
-        if ((len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != len(params_to_plot))):
-            raise Exception("Number of two sigma lower limits does not match number of parameters.")
         if (len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != 0):
-            if (np.any(np.array(two_sigma_upper_limits)*np.array(two_sigma_lower_limits)) == True):
-                raise Exception("Cannot have both a two sigma lower and upper limit.")
+            for param in two_sigma_upper_limits:
+                if (param in two_sigma_lower_limits):
+                    raise Exception("Cannot have both a two sigma lower and upper limit for a given parameter.")
 
         # Unpack planet name
         planet_name = planet["planet_name"]
