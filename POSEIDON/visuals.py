@@ -1,7 +1,7 @@
-'''
+"""
 Plotting routines to visualise POSEIDON output.
 
-'''
+"""
 
 import os
 import numpy as np
@@ -46,10 +46,9 @@ from .instrument import bin_spectrum_to_data
 from .parameters import split_params
 from .retrieval import get_retrieved_atmosphere
 from .species_data import solar_abundances
-              
+
 # Define some more flexible linestyles for convenience
-linestyles = {
-              'loosely dotted':        (0, (1, 10)),
+linestyles = {'loosely dotted':        (0, (1, 10)),
               'dotted':                (0, (1, 1)),
               'densely dotted':        (0, (1, 1)),
               'loosely dashed':        (0, (5, 10)),
@@ -62,6 +61,7 @@ linestyles = {
               'loosely dashdotdotted': (0, (3, 10, 1, 10, 1, 10)),
               'densely dashdotdotted': (0, (3, 1, 1, 1, 1, 1))
               }
+
 
 def scale_lightness(colour_name, scale):
     ''' 
@@ -1223,7 +1223,7 @@ def set_spectrum_wl_ticks(wl_min, wl_max, wl_axis = 'log'):
 
     return wl_ticks
 
-    
+
 def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  plot_full_res = True, bin_spectra = True, R_to_bin = 100, 
                  wl_min = None, wl_max = None, y_min = None, y_max = None,
@@ -1237,24 +1237,19 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  show_data_bin_width = True, show_data_cap = True,
                  data_alpha = 0.8, data_edge_width = 0.8,
                  line_widths = [], xlabels = True, ylabels = True,
-                 line_styles = [],
-                 alphas = [],
-                 legend_n_columns = 0,
-                 x_tick_fontsize = 12,
-                 x_label_fontsize = 16,
-                 y_tick_fontsize = 12,
-                 y_label_fontsize = 16,
-                 legend_fontsize = 10,
-                 plt_label_fontsize = 14,
+                 line_styles = [], alphas = [], legend_n_columns = 0, 
+                 x_tick_fontsize = 12, x_label_fontsize = 16,
+                 y_tick_fontsize = 12, y_label_fontsize = 16,
+                 legend_fontsize = 10, plt_label_fontsize = 14,
                  planet_name_fontsize = 16,
                  ):
 
     ''' 
     Plot a collection of individual model spectra. This function can plot
     transmission or emission spectra, according to the user's choice of 'y_unit'.
-    
+
     Args:
-        spectra (list of tuples): 
+        spectra (list of tuples):
             A list of model spectra to be plotted, each with the format
             (wl, spectrum).
         planet (dict):
@@ -1269,7 +1264,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Flag indicating whether to bin model spectra to the resolution
             specified by 'R_to_bin'.
         R_to_bin (int, optional):
-            Spectral resolution (R = wl/dwl) to bin the model spectra to. 
+            Spectral resolution (R = wl/dwl) to bin the model spectra to.
         wl_min (float, optional):
             The minimum wavelength to plot.
         wl_max (float, optional):
@@ -1280,7 +1275,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             The maximum value for the y-axis.
         y_unit (str, optional):
             The unit of the y-axis
-            (Options: 'transit_depth', 'eclipse_depth', '(Rp/Rs)^2', 
+            (Options: 'transit_depth', 'eclipse_depth', '(Rp/Rs)^2',
             '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp', 'Fs', 'F*').
         plt_label (str, optional):
             The label for the plot.
@@ -1309,7 +1304,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         figure_shape (str, optional):
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         legend_location (str, optional):
-            The location of the legend ('upper left', 'upper right', 
+            The location of the legend ('upper left', 'upper right',
             'lower left', 'lower right','outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
@@ -1322,7 +1317,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         show_data_cap (bool, optional):
             Flag indicating whether to plot the error bar caps on the data points.
         data_alpha (float, optional):
-            Alpha for the central circle colours on each data point. 
+            Alpha for the central circle colours on each data point.
         data_edge_width (float, optional):
             Border line width for the central circle on each data point.
         line_widths (list of float, optional):
@@ -1893,6 +1888,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             Flag indicating whether to plot a box surrounding the figure legend.
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
+        show_data_cap (bool, optional):
+            Flag indicating whether to show the caps on the data error bars.\
 
     Returns:
         fig (matplotlib figure object):
@@ -2194,33 +2191,25 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            spectra_high1, spectra_high2, planet_name,
                            data_properties, R_to_bin = 100, plt_label = None,
                            show_ymodel = True, show_planet_name = True,
-                           wl_min = None, wl_max = None, 
-                           y_min = None, y_max = None, 
-                           y_unit = 'transit_depth', 
-                           colour_list = [], spectra_labels = [],
-                           data_colour_list = [], data_labels = [],
-                           data_marker_list = [], data_marker_size_list = [],
-                           data_alpha_list = [], data_eline_alpha_list = [],
-                           data_edge_width_list = [], data_eline_width_list = [], 
-                           line_width_list = [], binned_colour_list = [], 
-                           text_annotations = [], annotation_pos = [], 
-                           err_colour = 'black',
-                           wl_axis = 'log', figure_shape = 'default',
-                           legend_location = 'upper right', legend_box = False,
-                           ax = None, save_fig = True, model = None, 
-                           show_data_bin_width = True, show_data_cap = True,
-                           sigma_to_plot = 2,
-                           add_retrieved_offsets = False, verbose_offsets = True,
-                           xlabels = True, ylabels = True,
-                           legend_n_columns = 0,
-                           x_tick_fontsize = 12,
-                           x_label_fontsize = 16,
-                           y_tick_fontsize = 12,
-                           y_label_fontsize = 16,
-                           legend_fontsize = 10,
-                           plt_label_fontsize = 14,
-                           planet_name_fontsize = 16,
-                           plot_style = 'standard',
+                           wl_min = None, wl_max = None, y_min = None, y_max = None, 
+                           y_unit = 'transit_depth', colour_list = [], 
+                           spectra_labels = [], data_colour_list = [], 
+                           data_labels = [], data_marker_list = [], 
+                           data_marker_size_list = [], data_alpha_list = [], 
+                           data_eline_alpha_list = [], data_edge_width_list = [], 
+                           data_eline_width_list = [], line_width_list = [], 
+                           binned_colour_list = [], text_annotations = [], 
+                           annotation_pos = [], err_colour = 'black', wl_axis = 'log', 
+                           figure_shape = 'default', legend_location = 'upper right', 
+                           legend_box = False, ax = None, save_fig = True, 
+                           model = None, show_data_bin_width = True, 
+                           show_data_cap = True, sigma_to_plot = 2, 
+                           add_retrieved_offsets = False, verbose_offsets = True, 
+                           xlabels = True, ylabels = True, legend_n_columns = 0, 
+                           x_tick_fontsize = 12, x_label_fontsize = 16, 
+                           y_tick_fontsize = 12, y_label_fontsize = 16,
+                           legend_fontsize = 10, plt_label_fontsize = 14,
+                           planet_name_fontsize = 16, plot_style = 'standard',
                            ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2994,9 +2983,8 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       TwoD_type = None, plt_label = None, show_profiles = [],
                       PT_labels = [], colour_list = [], log_P_min = None,
                       log_P_max = None, T_min = None, T_max = None,
-                      legend_location = 'lower left',
-                      ax = None, save_fig = True,
-                      sigma_to_plot = 2):
+                      legend_location = 'lower left', ax = None, 
+                      save_fig = True, sigma_to_plot = 2):
     '''
     Plot retrieved Pressure-Temperature (P-T) profiles.
     
@@ -3273,19 +3261,19 @@ def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median,
             currently supported).
         colour_list (list, optional): 
             List of colours for each retrieved chemical profile.
-		log_P_min (float, optional):
+		    log_P_min (float, optional):
             Minimum value for the log10 pressure.
-		log_P_max (float, optional):
+		    log_P_max (float, optional):
             Maximum value for the log10 pressure.
-		log_X_min (float, optional):
+		    log_X_min (float, optional):
             Minimum log10 mixing ratio to plot.
-		log_X_max (float, optional):
+		    log_X_max (float, optional):
             Maximum log10 mixing ratio to plot.
-		legend_location (str, optional):
+		    legend_location (str, optional):
             Location of the legend. Default is 'lower left'.
 	
     Returns:
-		fig (matplotlib figure object):
+		    fig (matplotlib figure object):
             The retrieved mixing ratio profile plot.
 
     '''
@@ -3569,7 +3557,6 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
 
     return low1, median, high1
 
-    
 def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_colour_list, 
                               retrieval_colour_list, retrieval_labels, span, truths, 
                               N_rows, N_columns, N_bins,
@@ -3948,8 +3935,8 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
      #       ax.set_ylabel(r'Probability density (normalized)', fontsize = 9, labelpad = 10)
 
     return fig
-    
 
+  
 def elemental_ratio_samples(all_species, X_vals, element_1, element_2):
     '''
     Helper function to calculate the abundance ratio between any two elements 
@@ -4243,10 +4230,9 @@ def plot_histograms(planet, models, plot_parameters,
 
 
 def vary_one_parameter_PT(model, planet, param_name, vary_list,
-                          P, P_ref, R_p_ref,
-                          PT_params_og, log_X_params_og, cloud_params_og,
+                          P, P_ref, R_p_ref, PT_params_og, 
+                          log_X_params_og, cloud_params_og,
                           ax = None,legend_location = 'upper right'):
-    
     '''
     This function is used in the tutorial notebooks to show how turning a knob 
     on a parameter changes the resulting PT profile.
@@ -4277,7 +4263,6 @@ def vary_one_parameter_PT(model, planet, param_name, vary_list,
             'lower left', 'lower right').
         ax (matplotlib axis object, optional):
             Matplotlib axis provided externally.
-
 
     Returns: 
         Outputs a plot of resultant spectra with the param_name at the vary_list values.

@@ -1,7 +1,8 @@
-''' 
+""" 
 Dictionaries with various properties of atoms and molecules used by POSEIDON.
 
-'''
+"""
+
 import numpy as np
 
 # List of masses in atomic mass units (multiply by 1u = 1.66053904e-27 to convert to kg)

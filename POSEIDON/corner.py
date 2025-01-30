@@ -1,13 +1,13 @@
-''' 
-Functions to generate corner plots
+""" 
+Functions to generate corner plots.
 
 Contributions from:
     
 Johannes Buchner [PyMultiNest] (C) 2013-2019
 Josh Speagle [Dynesty] (MIT licensed)
-Ryan MacDonald [POSEIDON modifications] (2021-2022)
+Ryan MacDonald [POSEIDON modifications] (2021-2025)
 
-'''
+"""
 
 from __future__ import absolute_import, unicode_literals, print_function, division
 
@@ -359,13 +359,13 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
 
     Args:
         results (dict):
-            Results dictionary containing the samples and weights from a 
+            Results dictionary containing the samples and weights from a
             nested sampling retrieval.
         span (list of tuples or float):
             A list where each element is either a length-2 tuple containing
             lower and upper bounds or a float from `(0., 1.]` giving the
             fraction of (weighted) samples to include. If a fraction is provided,
-            the bounds are chosen to be equal-tailed. If not specified, defaults 
+            the bounds are chosen to be equal-tailed. If not specified, defaults
             to +/- 5σ range. Example: span = [(0., 10.), 0.95, (5., 6.)].
         quantiles (np.array of float):
             A list of fractional quantiles to overplot on the 1D marginalised
@@ -378,7 +378,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         smooth_hist (float or int):
             The standard deviation for the Gaussian kernel used to smooth the 1D
             histograms, expressed as a fraction of the span, if a float provided.
-            If an integer is provided instead, this will instead default to a 
+            If an integer is provided instead, this will instead default to a
             simple (weighted) histogram with 'bins=smooth'. Default is 30 bins.
         smooth_corr (float):
             The standard deviation for the Gaussian kernel used to smooth the 2D
@@ -389,7 +389,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         hist2d_kwargs (dict):
             Extra keyword arguments to send to the 2D contours.
         labels (np.array of str):
-            A list of names for each parameter. If not provided, the default 
+            A list of names for each parameter. If not provided, the default
             name used when plotting will follow the math module 'x_i' style.
         param_names (np.array of str):
             List of parameter names used by POSEIDON for this retrieval.
@@ -401,10 +401,10 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             showing the median along with the upper/lower bounds associated
             with the 1σ confidence interval. Default is True.
         title_kwargs (dict):
-            Extra keyword arguments that will be sent to the matplotlib axes 
+            Extra keyword arguments that will be sent to the matplotlib axes
             'set_title' command.
         truths (list of float):
-            A list of reference values that will be overplotted on the traces 
+            A list of reference values that will be overplotted on the traces
             and marginalised 1D histograms as solid horizontal/vertical lines.
             Individual values can be exempt using 'None'. Default is 'None'.
         truth_colour (str or list of str):
@@ -425,7 +425,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             each parameter. Default is False.
         fig (matplotlib figure object):
             If provided, overplot the traces and marginalised 1D histograms
-            onto the provided figure. Otherwise, by default an internal figure 
+            onto the provided figure. Otherwise, by default an internal figure
             is generated.
         two_sigma_upper_limits (list of bool):
             If True for any parameter, the 2σ upper limit will be plotted instead of the 1σ range.
@@ -435,7 +435,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
     Returns:
         cornerplot (matplotlib figure, matplotlib axes objects):
             Output corner plot.
-    
+
     '''
 
     # Initialise values
@@ -1137,4 +1137,3 @@ def generate_overplot(planet, models, params_to_plot = [],
         plt.savefig(results_prefix + "corner_overplot.pdf", bbox_inches="tight")
 
         return existing_fig
-
