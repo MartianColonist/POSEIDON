@@ -1,7 +1,7 @@
-"""
+'''
 Functions related to atmospheric retrieval.
 
-"""
+'''
 
 import numpy as np
 import time
@@ -9,7 +9,6 @@ import os
 import pymultinest
 from mpi4py import MPI
 from scipy.special import ndtri
-from spectres import spectres
 from numba.core.decorators import jit
 from scipy.special import erfcinv
 from scipy.special import lambertw as W
@@ -17,26 +16,16 @@ from scipy.constants import parsec
 
 from .constants import R_J, R_E, M_J, M_E
 
-from .parameters import split_params, unpack_stellar_params
+from .parameters import split_params
 from .instrument import bin_spectrum_to_data
-from .utility import (
-    write_MultiNest_results,
-    round_sig_figs,
-    closest_index,
-    write_retrieved_spectrum,
-    write_retrieved_PT,
-    write_retrieved_log_X,
-    confidence_intervals,
-)
+from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
+                     write_retrieved_spectrum, write_retrieved_PT, \
+                     write_retrieved_log_X, confidence_intervals
 from .core import make_atmosphere, compute_spectrum
-from .stellar import (
-    precompute_stellar_spectra,
-    stellar_contamination_single_spot,
-    stellar_contamination_general,
-)
+from .parameters import unpack_stellar_params
+from .stellar import precompute_stellar_spectra, stellar_contamination_general
 from .high_res import loglikelihood_high_res
 from .chemistry import load_chemistry_grid
-import pickle
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -45,83 +34,61 @@ rank = comm.Get_rank()
 allowed_simplex = 1
 
 
-def run_retrieval(
-    planet,
-    star,
-    model,
-    opac,
-    data,
-    priors,
-    wl,
-    P,
-    P_ref=None,
-    R_p_ref=None,
-    P_param_set=1.0e-2,
-    R=None,
-    retrieval_name=None,
-    He_fraction=0.17,
-    N_slice_EM=2,
-    N_slice_DN=4,
-    constant_gravity=False,
-    spectrum_type="transmission",
-    y_p=np.array([0.0]),
-    stellar_T_step=20,
-    stellar_log_g_step=0.1,
-    N_live=400,
-    ev_tol=0.5,
-    sampling_algorithm="MultiNest",
-    resume=False,
-    verbose=True,
-    sampling_target="parameter",
-    chem_grid="fastchem",
-    N_output_samples=1000,
-):
-    """
-    ADD DOCSTRING
-    """
+def run_retrieval(planet, star, model, opac, data, priors, wl, P, 
+                  P_ref = None, R_p_ref = None, P_param_set = 1.0e-2, 
+                  R = None, retrieval_name = None, He_fraction = 0.17, 
+                  N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
+                  spectrum_type = 'transmission', y_p = np.array([0.0]),
+                  stellar_T_step = 20, stellar_log_g_step = 0.1, 
+                  N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest', 
+                  resume = False, verbose = True, sampling_target = 'parameter',
+                  chem_grid = 'fastchem', N_output_samples = 1000,
+                  ):
+    '''
+    ADD DOCSTRING (will hopefully be done before the heat death of the Universe)
+    '''
 
     # Unpack planet name
-    planet_name = planet["planet_name"]
-
+    planet_name = planet['planet_name']
+    
     # Unpack prior types and ranges
-    prior_types = priors["prior_types"]
-    prior_ranges = priors["prior_ranges"]
+    prior_types = priors['prior_types']
+    prior_ranges = priors['prior_ranges']
 
     # Unpack model properties
-    model_name = model["model_name"]
-    chemical_species = model["chemical_species"]
-    param_species = model["param_species"]
-    param_names = model["param_names"]
-    stellar_contam = model["stellar_contam"]
-    reference_parameter = model["reference_parameter"]
-    disable_atmosphere = model["disable_atmosphere"]
-    X_profile = model["X_profile"]
+    model_name = model['model_name']
+    chemical_species = model['chemical_species']
+    param_species = model['param_species']
+    param_names = model['param_names']
+    stellar_contam = model['stellar_contam']
+    reference_parameter = model['reference_parameter']
+    disable_atmosphere = model['disable_atmosphere']
+    X_profile = model['X_profile']
     high_res = model.get("high_res_method")
+
     # Unpack stellar properties
-    if star is not None:
-        R_s = star["R_s"]
-        stellar_interp_backend = star["stellar_interp_backend"]
+    if (star is not None):
+        R_s = star['R_s']
+        stellar_interp_backend = star['stellar_interp_backend']
 
     # Check that one of the two reference parameters has been provided by the user
-    if (reference_parameter == "R_p_ref") and (P_ref is None):
+    if ((reference_parameter == 'R_p_ref') and (P_ref is None)):
         raise Exception("Error: Must provide P_ref when R_p_ref is a free parameter.")
-    if (reference_parameter == "P_ref") and (R_p_ref is None):
+    if ((reference_parameter == 'P_ref') and (R_p_ref is None)):
         raise Exception("Error: Must provide R_p_ref when P_ref is a free parameter.")
-
-    if (disable_atmosphere == True) and ("transmission" not in spectrum_type):
-        raise Exception(
-            "Error: An atmosphere can only be disabled for transmission spectra "
-        )
+    
+    if ((disable_atmosphere == True) and ('transmission' not in spectrum_type)):
+        raise Exception("Error: An atmosphere can only be disabled for transmission spectra.")
 
     N_params = len(param_names)
 
     if retrieval_name is None:
         retrieval_name = model_name
     else:
-        retrieval_name = model_name + "_" + retrieval_name
+        retrieval_name = model_name + '_' + retrieval_name
 
     # Identify output directory location
-    output_dir = "./POSEIDON_output/" + planet_name + "/retrievals/"
+    output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
 
     # Load chemistry grid (e.g. equilibrium chemistry) if option selected
     if X_profile == "chem_eq":
