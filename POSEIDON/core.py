@@ -2534,6 +2534,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Unpack parameter names
     param_names = model['param_names']
     X_param_names = model['X_param_names']
+    surface_param_names = model['surface_param_names']
     PT_profile = model['PT_profile']
     radius_unit = model['radius_unit']
     mass_unit = model['mass_unit']
@@ -2835,7 +2836,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         # Check that centred-log ratio prior is only used for mixing ratios
         if ((prior_types[parameter] == 'CLR') and (parameter not in X_param_names)):
             raise Exception("Unsupported prior for " + parameter)
-        
+
         # Check that centred-log ratio prior for surface is only used for mixing ratios
         if ((prior_types[parameter] == 'CLR_surface') and (parameter not in surface_param_names)):
             raise Exception("Unsupported prior for " + parameter)
@@ -2877,5 +2878,6 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     priors = {'prior_ranges': prior_ranges, 'prior_types': prior_types}
 
     return priors
+
 
 

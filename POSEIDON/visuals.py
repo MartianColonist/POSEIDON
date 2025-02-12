@@ -4242,6 +4242,13 @@ def plot_histograms(planet, models, plot_parameters,
                         else:
                             param_samples_m[:,q] = element_ratio_norm
 
+                # Option to make the surface percentages log 
+                elif ('log' in param) and ('percentage' in param): 
+                    # remove log from param name and just log the samples 
+                    param = param[4:]
+                    param_samples_m[:,q] = np.log10(samples[:,np.where(param_names == param)[0][0]])
+                    
+
                 # Filler gas
                 else:
                     if ('log_' in param):

@@ -883,6 +883,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 # For the global variable, this must be defined
                 log_X = np.log10(surface_percentages_CLR)
 
+                surface_percentages_CLR = 10**log_X
+
 
             # Check if this random parameter draw lies in the allowed simplex space (X_i > 10^-12 and sum to 1)
             global allowed_simplex_surfaces     # Needs a global, as prior function has no return
