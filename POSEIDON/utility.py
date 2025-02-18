@@ -13,6 +13,7 @@ from numba import jit, cuda
 from spectres import spectres
 from scipy.interpolate import interp1d as Interp
 
+from .parameters import split_params
 
 def create_directories(base_dir, planet_name):
     ''' 
@@ -1093,7 +1094,7 @@ def generate_latex_param_names(param_names):
     # Define key parameters used in subscripts of parameter names
     phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 
                'Night', 'cloud', 'rel', '0', 'het', 'phot', 'fac', 'spot', 'surf',
-               'p', 'atm']
+               'p', 'atm', 'tol']
     
     # Initialise output array
     latex_names = []
@@ -1449,7 +1450,8 @@ def generate_latex_param_names(param_names):
     return latex_names
 
 
-def return_quantiles(stats, param, i, radius_unit, quantile = '1 sigma'):
+def return_quantiles(stats, param, i, radius_unit, spectrum_type, 
+                     quantile = '1 sigma'):
     
     ''' Extract the median, +/- N sigma (specified by 'quantile'), string 
         formatter and units for a given free parameter.
@@ -1473,6 +1475,13 @@ def return_quantiles(stats, param, i, radius_unit, quantile = '1 sigma'):
     if ((param == 'T') or ('T_' in param)):
         formatter = '{:.1f}'
         unit = 'K'
+    if ('delta_rel' in param):
+        if (spectrum_type == 'direct_emission'):
+            formatter = '{:.2e}'
+            unit = ''
+        else:
+            formatter = '{:.2f}'
+            unit = ''        
     elif ('R_p' in param):
         decimal_count = 1   # Find minimum number of decimal places for R_p
         while ((round(sig_p, decimal_count) == 0.0) or 
@@ -1497,7 +1506,7 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
                        stats, ln_Z, ln_Z_err, reduced_chi_square, chi_square,
                        dof, best_fit_params, wl, R, instruments, datasets,
-                       radius_unit):
+                       radius_unit, spectrum_type):
     ''' 
     Write a file summarising the main results from a POSEIDON retrieval.
         
@@ -1598,7 +1607,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit,
+                                                  spectrum_type, 
                                                   quantile = '1 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
@@ -1615,7 +1625,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         sig_m, centre, \
-        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+        sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit,
+                                                  spectrum_type,
                                                   quantile = '2 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
@@ -1633,6 +1644,7 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
         
         sig_m, centre, \
         sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  spectrum_type,
                                                   quantile = '3 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
@@ -1650,6 +1662,7 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
         
         sig_m, centre, \
         sig_p, formatter, unit = return_quantiles(stats, param, i, radius_unit, 
+                                                  spectrum_type,
                                                   quantile = '5 sigma')
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
@@ -1667,8 +1680,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     for i, param in enumerate(param_names):
         
         _, _, _, \
-        formatter, unit = return_quantiles(stats, param, i, 
-                                           radius_unit)     # We only need the formatter and unit for the best fit parameters
+        formatter, unit = return_quantiles(stats, param, i, radius_unit,
+                                           spectrum_type)     # We only need the formatter and unit for the best fit parameters
 
         lines += [param + ' '*(max_param_len + 1 - len(param)) + '=   ' +        # Handles number of spaces before equal sign
                   formatter.format(best_fit_params[i]) + ' ' + unit + '\n']
@@ -1678,7 +1691,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
     
     
 def write_MultiNest_results(planet, model, data, retrieval_name,
-                            N_live, ev_tol, sampling_algorithm, wl, R):
+                            N_live, ev_tol, sampling_algorithm, wl, R,
+                            ymodel_best, spectrum_type):
     ''' 
     Process raw retrieval output into human readable output files.
     
@@ -1699,6 +1713,8 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
 
     # Unpack model properties
     radius_unit = model['radius_unit']
+    error_inflation = model['error_inflation']
+    N_params_cum = model['N_params_cum']
     
     # Load relevant output directory
     output_prefix = retrieval_name + '-'
@@ -1717,7 +1733,22 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     # Store best-fitting reduced chi-squared
     max_likelihood = best_fit['log_likelihood']
     best_fit_params = best_fit['parameters']
-    norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+
+    # Load values for error inflation parameters (if included in model)
+    _, _, _, _, _, _, _, \
+    err_inflation_params = split_params(best_fit_params, N_params_cum)
+
+    # Calculate the normalisation term for the log-likelihood
+    if (error_inflation == 'Line15'):
+        err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
+        norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+    elif (error_inflation == 'Piette20'):
+        err_eff_sq = (err_data*err_data + (err_inflation_params[0]*ymodel_best)**2)
+        norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+    else:
+        norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+
+    # Calculate the best-fitting model chi-squared    
     best_chi_square = -2.0 * (max_likelihood - norm_log)
 
     # Check for N_params >= N_data, for which chi^2_r is undefined
@@ -1740,7 +1771,7 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
                        stats, ln_Z, ln_Z_err, reduced_chi_square, best_chi_square,
                        dof, best_fit_params, wl, R, instruments, datasets,
-                       radius_unit)
+                       radius_unit, spectrum_type)
 
 
 def get_vmr(name, mol, planet_name):

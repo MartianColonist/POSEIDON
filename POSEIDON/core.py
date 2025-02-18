@@ -2191,6 +2191,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'delta_rel_3': [-1.0e-3, 1.0e-3],
                              'b': [np.log10(0.001*np.min(err_data**2)),
                                    np.log10(100.0*np.max(err_data**2))],
+                             'x_tol': [0.05, 1.0],
                              'C_to_O': [0.3, 1.9], 'log_Met' : [-0.9, 3.9],
                              'log_r_m': [-3, 1], 'log_n_max': [5.0, 20.0],  
                              'fractional_scale_height': [0.1, 1], 

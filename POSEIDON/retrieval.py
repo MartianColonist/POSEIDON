@@ -184,10 +184,6 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             
             print('POSEIDON retrieval finished in ' + str(total) + ' hours')
       
-            # Write POSEIDON retrieval output files 
-            write_MultiNest_results(planet, model, data, retrieval_name,
-                                    N_live, ev_tol, sampling_algorithm, wl, R)
-
             # Compute samples of retrieved P-T, mixing ratio profiles, and spectrum
             T_low2, T_low1, T_median, \
             T_high1, T_high2, \
@@ -196,19 +192,30 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             log_X_high2, \
             spec_low2, spec_low1, \
             spec_median, spec_high1, \
-            spec_high2 = retrieved_samples(planet, star, model, opac, data,
-                                           retrieval_name, wl, P, P_ref, R_p_ref,
-                                           P_param_set, He_fraction, N_slice_EM, 
-                                           N_slice_DN, spectrum_type, T_phot_grid, 
-                                           T_het_grid, log_g_phot_grid,
-                                           log_g_het_grid, I_phot_grid, 
-                                           I_het_grid, y_p, F_s_obs,
-                                           constant_gravity, chemistry_grid,
-                                           N_output_samples)
+            spec_high2, T_best, \
+            spectrum_best, ymodel_best, \
+            ymodel_samples = retrieved_samples(planet, star, model, opac, data,
+                                               retrieval_name, wl, P, P_ref, R_p_ref,
+                                               P_param_set, He_fraction, N_slice_EM, 
+                                               N_slice_DN, spectrum_type, T_phot_grid, 
+                                               T_het_grid, log_g_phot_grid,
+                                               log_g_het_grid, I_phot_grid, 
+                                               I_het_grid, y_p, F_s_obs,
+                                               constant_gravity, chemistry_grid,
+                                               N_output_samples)
+            
+            # Write POSEIDON retrieval output files 
+            write_MultiNest_results(planet, model, data, retrieval_name,
+                                    N_live, ev_tol, sampling_algorithm, wl, R,
+                                    ymodel_best, spectrum_type)
                         
             # Save sampled spectrum
             write_retrieved_spectrum(retrieval_name, wl, spec_low2, 
                                      spec_low1, spec_median, spec_high1, spec_high2)
+            
+            # Save ymodel samples
+            ymodel_samples_object = np.array(ymodel_samples).T
+            np.savetxt('../samples/' + retrieval_name + '_ymodel_samples.txt', ymodel_samples_object.T)
                
             # Only write retrieved P-T profile and mixing ratio arrays if atmosphere enabled
             if (disable_atmosphere == False):
@@ -913,6 +920,9 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         if (error_inflation == 'Line15'):
             err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
             norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+        elif (error_inflation == 'Piette20'):
+            err_eff_sq = (err_data*err_data + (err_inflation_params[0]*ymodel)**2)
+            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
         else: 
             err_eff_sq = err_data*err_data
             norm_log = norm_log_default
@@ -975,7 +985,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
             ydata_adjusted = ydata.copy()
 
-            # Three offsets for three dataseets
+            # Three offsets for three datasets
             if offset_1_start == 0:
                 ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
                 ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
@@ -1033,6 +1043,10 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                                     verbose = False)
     samples = analyzer.get_equal_weighted_posterior()[:,:-1]
 
+    # Store best-fitting set of parameters
+    best_fit = analyzer.get_best_fit()
+    best_fit_params = best_fit['parameters']
+
     # Find total number of available posterior samples from MultiNest 
     N_samples_total = len(samples[:,0])
     
@@ -1042,8 +1056,24 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
     print("Now generating " + str(N_sample_draws) + " sampled spectra and " + 
           "P-T profiles from the posterior distribution...")
+    
+    # Calculate best-fitting spectrum and PT profile
+    ymodel_best, spectrum_best, \
+    atmosphere_best, _ = forward_model(best_fit_params, planet, star, model, opac, data, 
+                                       wl, P, P_ref_set, R_p_ref_set, P_param_set, 
+                                       He_fraction, N_slice_EM, N_slice_DN, 
+                                       spectrum_type, T_phot_grid, T_het_grid, 
+                                       log_g_phot_grid, log_g_het_grid,
+                                       I_phot_grid, I_het_grid, y_p, F_s_obs,
+                                       constant_gravity, chemistry_grid)
+    
+    # Store temperature field and mixing ratios for the best model
+    if (disable_atmosphere == False):
+
+        T_best = atmosphere_best['T']
+        log_X_best = np.log10(atmosphere_best['X'])
                     
-    # Generate spectrum and PT profiles from selected samples
+    # For all the samples, generate spectra and PT profiles
     for i in range(N_sample_draws):
 
         # Estimate run time for this function based on one model evaluation
@@ -1054,12 +1084,12 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
         ymodel, spectrum, \
         atmosphere, _ = forward_model(param_vector, planet, star, model, opac, data, 
-                                   wl, P, P_ref_set, R_p_ref_set, P_param_set, 
-                                   He_fraction, N_slice_EM, N_slice_DN, 
-                                   spectrum_type, T_phot_grid, T_het_grid, 
-                                   log_g_phot_grid, log_g_het_grid,
-                                   I_phot_grid, I_het_grid, y_p, F_s_obs,
-                                   constant_gravity, chemistry_grid)
+                                      wl, P, P_ref_set, R_p_ref_set, P_param_set, 
+                                      He_fraction, N_slice_EM, N_slice_DN, 
+                                      spectrum_type, T_phot_grid, T_het_grid, 
+                                      log_g_phot_grid, log_g_het_grid,
+                                      I_phot_grid, I_het_grid, y_p, F_s_obs,
+                                      constant_gravity, chemistry_grid)
 
         # Based on first model, create arrays to store retrieved temperature, spectrum, and mixing ratios
         if (i == 0):
@@ -1081,6 +1111,7 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                 log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
 
             spectrum_stored = np.zeros(shape=(N_sample_draws, len(wl)))
+            ymodel_samples = np.zeros(shape=(N_sample_draws, len(data['wl_data'])))
 
         if (disable_atmosphere == False):
 
@@ -1090,6 +1121,7 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
         # Store spectrum in sample array
         spectrum_stored[i,:] = spectrum
+        ymodel_samples[i,:] = ymodel
             
     # Compute 1 and 2 sigma confidence intervals for P-T and mixing ratio profiles and spectrum
         
@@ -1129,7 +1161,8 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
     
     return T_low2, T_low1, T_median, T_high1, T_high2, \
            log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2, \
-           spec_low2, spec_low1, spec_median, spec_high1, spec_high2
+           spec_low2, spec_low1, spec_median, spec_high1, spec_high2, \
+           T_best, spectrum_best, ymodel_best, ymodel_samples
 
 
 def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = None, 

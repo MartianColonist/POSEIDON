@@ -2211,6 +2211,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            show_data_bin_width = True, show_data_cap = True,
                            sigma_to_plot = 2,
                            add_retrieved_offsets = False, verbose_offsets = True,
+                           add_retrieved_error_inflation = False,
                            xlabels = True, ylabels = True,
                            legend_n_columns = 0,
                            x_tick_fontsize = 12,
@@ -2324,6 +2325,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             1 sigma, or 2 for median, 1 sigma, and 2 sigma).
         add_retrieved_offsets (bool, optional):
             Plots data with retrieved offset values.
+        add_retrieved_error_inflation (bool, optional):
+            Plots data error bars including retrieved error inflation value.
         verbose offsets (bool, optional):
             Will print out offsets applied to which datasets.
         x_labels (bool, optional):
@@ -2615,7 +2618,66 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         
     else:
         ydata_to_plot = ydata
-                
+
+    #***** Apply retrieved error inflation parameter data *****#
+
+    if (add_retrieved_error_inflation == True):
+
+        # Check model has been defined
+        if (model == None):
+            raise Exception('Please provide model to plot error inflated data')
+        
+        error_inflation = model['error_inflation']
+        model_name = model['model_name']
+
+        # Add offsets for a single dataset 
+        if (error_inflation == 'Line15'):
+            error_inflation_parameter = 'b'
+        elif (error_inflation == 'Piette20'):
+            error_inflation_parameter = 'x_tol'
+        else:
+            error_inflation_parameter = None
+
+        # Retrieve offset value from results file
+        results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
+        results_file_name = model_name + '_results.txt'
+
+        if (error_inflation in ['Line15', 'Piette20']):
+
+            # Open results file to find retrieved median error inflation value
+            with open(results_dir + results_file_name, 'r') as f:
+                for line in f:
+                    if (error_inflation_parameter in line):
+                        err_inflation_param_value = float(line.split()[2])  # Median error inflation parameter
+
+                    # Stop reading file after 1 sigma constraints
+                    if ('2 σ constraints' in line):
+                        break
+
+            # Apply error inflation to the data (Line+2015 prescription)
+            if (error_inflation == 'Line15'):
+
+                # Calculate effective error bars including the median error inflation parameter
+                err_data_to_plot = np.sqrt(err_data**2 + np.power(10.0, err_inflation_param_value))
+
+            # Apply error inflation to the data (Piette+2020 prescription)
+            elif (error_inflation == 'Piette20'):
+
+                # Extract median spectrum and wavelength grid
+                (spec_med, wl) = spectra_median[0]
+
+                # Bin the median spectrum to the data resolution
+                ymodel_median = bin_spectrum_to_data(spec_med, wl, data_properties)
+
+                # Calculate effective error bars including the median error inflation parameter
+                err_data_to_plot = np.sqrt(err_data**2 + (err_inflation_param_value * ymodel_median)**2)
+
+            else:
+                err_data_to_plot = err_data
+
+    else:
+        err_data_to_plot = err_data
+
     #***** Find desirable y range for plot *****#
 
     # If the user did not specify a wavelength range, find min and max from input models
@@ -2844,7 +2906,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         # Extract the ith dataset
         wl_data_i = wl_data[idx_start:idx_end]
         ydata_i = ydata_to_plot[idx_start:idx_end]
-        err_data_i = err_data[idx_start:idx_end]
+        err_data_i = err_data_to_plot[idx_start:idx_end]
         bin_size_i = bin_size[idx_start:idx_end]
 
         if (show_data_cap == True):
