@@ -16,3 +16,4 @@ These tutorial notebooks can be downloaded and adapted for your specific applica
    notebooks/JWST_proposal
    notebooks/transmission_high_res_retrieval
    notebooks/emission_high_res_retrieval
+
