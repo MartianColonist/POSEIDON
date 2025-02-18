@@ -1,9 +1,10 @@
-""" 
+''' 
 POSEIDON CORE ROUTINE.
 
-Copyright 2023-2024, Ryan J. MacDonald.
+Copyright 2023-2025, Ryan J. MacDonald.
 
-"""
+'''
+
 
 import os
 
@@ -26,44 +27,21 @@ from scipy.constants import parsec
 
 from .constants import R_J, R_E, M_J, M_E
 from .utility import create_directories, write_spectrum, read_data
-from .stellar import (
-    planck_lambda,
-    load_stellar_pysynphot,
-    load_stellar_pymsg,
-    open_pymsg_grid,
-)
-from .supported_chemicals import (
-    supported_species,
-    supported_cia,
-    inactive_species,
-    fastchem_supported_species,
-    aerosol_supported_species,
-)
-from .parameters import (
-    assign_free_params,
-    generate_state,
-    unpack_geometry_params,
-    unpack_cloud_params,
-)
-from .absorption import (
-    opacity_tables,
-    store_Rayleigh_eta_LBL,
-    extinction,
-    extinction_LBL,
-    extinction_GPU,
-)
+from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
+                     open_pymsg_grid
+from .supported_chemicals import supported_species, supported_cia, inactive_species, \
+                                 fastchem_supported_species, aerosol_supported_species
+from .parameters import assign_free_params, generate_state, \
+                        unpack_geometry_params, unpack_cloud_params
+from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
+                        extinction_LBL, extinction_GPU
 from .geometry import atmosphere_regions, angular_grids
 from .atmosphere import profiles
 from .instrument import init_instrument
 from .transmission import TRIDENT
-from .emission import (
-    emission_single_stream,
-    determine_photosphere_radii,
-    emission_single_stream_GPU,
-    determine_photosphere_radii_GPU,
-    emission_Toon,
-    reflection_Toon,
-)
+from .emission import emission_single_stream, determine_photosphere_radii, \
+                      emission_single_stream_GPU, determine_photosphere_radii_GPU, \
+                      emission_Toon, reflection_Toon
 
 from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid
 
@@ -92,39 +70,23 @@ def find_nearest(array, value):
     return idx
 
 
-def create_star(
-    R_s,
-    T_eff,
-    log_g,
-    Met,
-    T_eff_error=100.0,
-    log_g_error=0.1,
-    stellar_grid="blackbody",
-    stellar_contam=None,
-    f_het=None,
-    T_het=None,
-    log_g_het=None,
-    f_spot=None,
-    f_fac=None,
-    T_spot=None,
-    T_fac=None,
-    log_g_spot=None,
-    log_g_fac=None,
-    wl=[],
-    interp_backend="pysynphot",
-    user_spectrum=[],
-    user_wl=[],
-):
-    """
+def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
+                stellar_grid = 'blackbody', stellar_contam = None, 
+                f_het = None, T_het = None, log_g_het = None, 
+                f_spot = None, f_fac = None, T_spot = None,
+                T_fac = None, log_g_spot = None, log_g_fac = None,
+                wl = [], interp_backend = 'pysynphot', 
+                user_spectrum = [], user_wl = []):
+    '''
     Initialise the stellar dictionary object used by POSEIDON.
 
     Stellar spectra are only required to compute transmission spectra if the
-    star has unocculted stellar heterogeneities (spots/faculae) - since the
-    stellar intensity cancels out in the transit depth. Hence a stellar
+    star has unocculted stellar heterogeneities (spots/faculae) - since the 
+    stellar intensity cancels out in the transit depth. Hence a stellar 
     spectrum is only added to the stellar dictionary if the user requests it.
 
     Args:
-        R_s (float):
+        R_s (float): 
             Stellar radius (m).
         T_eff (float):
             Stellar effective temperature (K).
@@ -144,17 +106,17 @@ def create_star(
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots).
         f_het (float):
-            For the 'one_spot' model, the fraction of stellar photosphere
+            For the 'one_spot' model, the fraction of stellar photosphere 
             covered by either spots or faculae.
         T_het (float):
             For the 'one_spot' model, the temperature of the heterogeneity (K).
         log_g_het (float):
             For the 'one_spot' model, the log g of the heterogeneity (log10(cm/s^2)).
         f_spot (float):
-            For the 'two_spots' model, the fraction of stellar photosphere
+            For the 'two_spots' model, the fraction of stellar photosphere 
             covered by spots.
         f_fac (float):
-            For the 'two_spots' model, the fraction of stellar photosphere
+            For the 'two_spots' model, the fraction of stellar photosphere 
             covered by faculae.
         T_spot (float):
             For the 'two_spots' model, the temperature of the spot (K).
@@ -165,7 +127,7 @@ def create_star(
         log_g_fac (float):
             For the 'two_spots' model, the log g of the facula (log10(cm/s^2)).
         wl (np.array of float):
-            Model wavelength grid (μm). If not provided, a fiducial grid from
+            Model wavelength grid (μm). If not provided, a fiducial grid from 
             0.2 to 5.4 μm will be used.
         interp_backend (str):
             Stellar grid interpolation package for POSEIDON to use.
@@ -176,20 +138,20 @@ def create_star(
         user_spectrum (np.array of float):
             For stellar_grid is 'custom', the custom stellar spectrum. CAUTION:
             this is the stellar *surface flux* in SI units (W/m^2/m).
-
+    
     Returns:
         star (dict):
             Collection of stellar properties used by POSEIDON.
 
-    """
+    '''
 
-    # If the user did not specify a wavelength grid for the stellar spectrum
-    if len(wl) == 0:
+    # If the user did not specify a wavelength grid for the stellar spectrum 
+    if (len(wl) == 0):
 
         # Create fiducial wavelength grid
         wl_min = 0.2  # μm
         wl_max = 5.4  # μm
-        R = 20000  # Spectral resolution (wl / dwl)
+        R = 20000     # Spectral resolution (wl / dwl)
 
         wl_star = wl_grid_constant_R(wl_min, wl_max, R)
 
@@ -197,61 +159,52 @@ def create_star(
         wl_star = wl
 
     # Compute stellar spectrum (not used for uncontaminated transmission spectra)
-    if stellar_grid == "blackbody":
+    if (stellar_grid == 'blackbody'):
 
-        if stellar_contam != None:
-            raise Exception(
-                "Error: cannot use black bodies for a model "
-                + "with heterogeneities, please specify a stellar grid."
-            )
+        if (stellar_contam != None):
+            raise Exception("Error: cannot use black bodies for a model " +
+                            "with heterogeneities, please specify a stellar grid.")
 
         # Evaluate Planck function at stellar effective temperature
         I_phot = planck_lambda(T_eff, wl_star)
 
-    elif stellar_grid == "custom":
+    elif (stellar_grid == 'custom'):
 
-        if (len(user_wl) == 0) or (len(user_spectrum) == 0):
-            raise Exception(
-                "Error: for a custom stellar spectrum you need to provide "
-                + "both 'user_wl' and 'user_spectrum'. Note that 'user_wl' "
-                + "will generally not be the same as the model wavelength "
-                + "array ('wl'), since it will be from your custom file."
-            )
+        if ((len(user_wl) == 0) or (len(user_spectrum) == 0)):
+            raise Exception("Error: for a custom stellar spectrum you need to provide " +
+                            "both 'user_wl' and 'user_spectrum'. Note that 'user_wl' " +
+                            "will generally not be the same as the model wavelength " +
+                            "array ('wl'), since it will be from your custom file.")
 
-        if len(wl) == 0:
-            raise Exception(
-                "Error: you must provide the model wavelength array 'wl' "
-                + "so that your custom stellar spectrum can be interpolated "
-                + "onto the model wavelength grid."
-            )
-
+        if (len(wl) == 0):
+            raise Exception("Error: you must provide the model wavelength array 'wl' " +
+                            "so that your custom stellar spectrum can be interpolated " +
+                            "onto the model wavelength grid.")
+        
         # Bin / interpolate user's stellar spectrum onto model wavelength grid
         I_phot = spectres(wl_star, user_wl, user_spectrum) / np.pi
 
     else:
 
-        if interp_backend not in ["pysynphot", "pymsg"]:
-            raise Exception(
-                "Error: supported stellar grid interpolater backends "
-                + "are 'pysynphot' or 'pymsg'."
-            )
+        if (interp_backend not in ['pysynphot', 'pymsg']):
+            raise Exception("Error: supported stellar grid interpolater backends " +
+                            "are 'pysynphot' or 'pymsg'.")
 
         # Obtain photosphere spectrum from pysynphot
-        if interp_backend == "pysynphot":
+        if (interp_backend == 'pysynphot'):
 
             # Load stellar model from Pysynphot
             I_phot = load_stellar_pysynphot(wl_star, T_eff, Met, log_g, stellar_grid)
 
         # Obtain photosphere spectrum from pymsg
-        elif interp_backend == "pymsg":
+        elif (interp_backend == 'pymsg'):
 
             # Open pymsg grid file
             specgrid = open_pymsg_grid(stellar_grid)
 
             # Interpolate stellar grid to compute photosphere intensity
-            I_phot_1 = load_stellar_pymsg(
-                wl_star[wl_star < 5.499], specgrid, T_eff, Met, log_g, stellar_grid
-            )
+            I_phot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_eff,
+                                          Met, log_g, stellar_grid)
 
             # Extrapolate stellar spectrum as a black body beyond pymsg's upper limit of 5.5 um
             I_phot_2 = planck_lambda(T_eff, wl_star[wl_star >= 5.499])
@@ -260,21 +213,21 @@ def create_star(
             I_phot = np.concatenate([I_phot_1, I_phot_2])
 
     # For uniform stellar surfaces
-    if stellar_contam == None:
+    if (stellar_contam == None): 
 
         # Surface flux is pi * intensity
         F_star = np.pi * I_phot
 
-        # No heterogeneity spectra to return
+        # No heterogeneity spectra to return 
         I_het = None
         I_spot = None
-        I_fac = None
+        I_fac = None 
 
     # For non-uniform stellar surfaces
-    elif "one_spot" in stellar_contam:
+    elif ('one_spot' in stellar_contam):
 
         # If log g not specified for the heterogeneities, set to photosphere
-        if log_g_het == None:
+        if (log_g_het == None):
             log_g_het = log_g
 
         # Individual spot and faculae intensities not needed for one spot model
@@ -282,116 +235,78 @@ def create_star(
         I_fac = None
 
         # Obtain heterogeneity spectrum
-        if interp_backend == "pysynphot":
+        if (interp_backend == 'pysynphot'):
             I_het = load_stellar_pysynphot(wl_star, T_het, Met, log_g_het, stellar_grid)
-        elif interp_backend == "pymsg":
-            I_het_1 = load_stellar_pymsg(
-                wl_star[wl_star < 5.499], specgrid, T_het, Met, log_g_het, stellar_grid
-            )
+        elif (interp_backend == 'pymsg'):
+            I_het_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_het, 
+                                         Met, log_g_het, stellar_grid)
             I_het_2 = planck_lambda(T_het, wl_star[wl_star >= 5.499])
             I_het = np.concatenate([I_het_1, I_het_2])
 
-        # Evaluate total stellar flux as a weighted sum of each region
+        # Evaluate total stellar flux as a weighted sum of each region 
         F_star = np.pi * ((f_het * I_het) + (1.0 - f_het) * I_phot)
 
     # For non-uniform stellar surfaces
-    elif "two_spots" in stellar_contam:
+    elif ('two_spots' in stellar_contam):
 
         # If log g not specified for the heterogeneities, set to photosphere
-        if log_g_spot == None:
+        if (log_g_spot == None):
             log_g_spot = log_g
-        if log_g_fac == None:
+        if (log_g_fac == None):
             log_g_fac = log_g
 
         # Check provided temperatures are physical
-        if T_spot > T_fac:
+        if (T_spot > T_fac):
             raise Exception("Error: spots must be cooler than faculae")
-        if T_spot > T_eff:
+        if (T_spot > T_eff):
             raise Exception("Error: spots must be cooler than the photosphere")
-        if T_fac < T_eff:
+        if (T_fac < T_eff):
             raise Exception("Error: faculae must be hotter than the photosphere")
 
         # Single heterogeneity intensity not needed for two spot model
         I_het = None
 
         # Obtain spot and facula spectra
-        if interp_backend == "pysynphot":
-            I_spot = load_stellar_pysynphot(
-                wl_star, T_spot, Met, log_g_spot, stellar_grid
-            )
+        if (interp_backend == 'pysynphot'):
+            I_spot = load_stellar_pysynphot(wl_star, T_spot, Met, log_g_spot, stellar_grid)
             I_fac = load_stellar_pysynphot(wl_star, T_fac, Met, log_g_fac, stellar_grid)
-        elif interp_backend == "pymsg":
-            I_spot_1 = load_stellar_pymsg(
-                wl_star[wl_star < 5.499],
-                specgrid,
-                T_spot,
-                Met,
-                log_g_spot,
-                stellar_grid,
-            )
+        elif (interp_backend == 'pymsg'):
+            I_spot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_spot, 
+                                          Met, log_g_spot, stellar_grid)
             I_spot_2 = planck_lambda(T_spot, wl_star[wl_star >= 5.499])
             I_spot = np.concatenate([I_spot_1, I_spot_2])
-            I_fac_1 = load_stellar_pymsg(
-                wl_star[wl_star < 5.499], specgrid, T_fac, Met, log_g_fac, stellar_grid
-            )
+            I_fac_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_fac,
+                                         Met, log_g_fac, stellar_grid)
             I_fac_2 = planck_lambda(T_fac, wl_star[wl_star >= 5.499])
             I_fac = np.concatenate([I_fac_1, I_fac_2])
 
-        # Evaluate total stellar flux as a weighted sum of each region
-        F_star = np.pi * (
-            (f_spot * I_spot) + (f_fac * I_fac) + (1.0 - (f_spot + f_fac)) * I_phot
-        )
-
+        # Evaluate total stellar flux as a weighted sum of each region 
+        F_star = np.pi * ((f_spot * I_spot) + (f_fac * I_fac) + 
+                          (1.0 - (f_spot + f_fac)) * I_phot)
+        
     else:
-        raise Exception(
-            "Error: unsupported heterogeneity type. Supported "
-            + "types are: None, 'one_spot', 'two_spots'"
-        )
+        raise Exception("Error: unsupported heterogeneity type. Supported " +
+                        "types are: None, 'one_spot', 'two_spots'")
 
     # Package stellar properties
-    star = {
-        "R_s": R_s,
-        "T_eff": T_eff,
-        "T_eff_error": T_eff_error,
-        "log_g_error": log_g_error,
-        "Met": Met,
-        "log_g": log_g,
-        "F_star": F_star,
-        "wl_star": wl_star,
-        "f_het": f_het,
-        "T_het": T_het,
-        "log_g_het": log_g_het,
-        "f_spot": f_spot,
-        "T_spot": T_het,
-        "log_g_spot": log_g_het,
-        "f_fac": f_fac,
-        "T_fac": T_het,
-        "log_g_fac": log_g_het,
-        "I_phot": I_phot,
-        "I_het": I_het,
-        "I_spot": I_spot,
-        "I_fac": I_fac,
-        "stellar_grid": stellar_grid,
-        "stellar_interp_backend": interp_backend,
-        "stellar_contam": stellar_contam,
-    }
+    star = {'R_s': R_s, 'T_eff': T_eff, 'T_eff_error': T_eff_error,
+            'log_g_error': log_g_error, 'Met': Met, 'log_g': log_g, 
+            'F_star': F_star, 'wl_star': wl_star,
+            'f_het': f_het, 'T_het': T_het, 'log_g_het': log_g_het, 
+            'f_spot': f_spot, 'T_spot': T_het, 'log_g_spot': log_g_het,
+            'f_fac': f_fac, 'T_fac': T_het, 'log_g_fac': log_g_het,
+            'I_phot': I_phot, 'I_het': I_het, 'I_spot': I_spot, 'I_fac': I_fac,
+            'stellar_grid': stellar_grid, 'stellar_interp_backend': interp_backend,
+            'stellar_contam': stellar_contam,
+           }
 
     return star
 
 
-def create_planet(
-    planet_name,
-    R_p,
-    mass=None,
-    gravity=None,
-    log_g=None,
-    T_eq=None,
-    d=None,
-    d_err=None,
-    b_p=0.0,
-    a_p=None,
-):
-    """
+def create_planet(planet_name, R_p, mass = None, gravity = None, 
+                  log_g = None, T_eq = None, d = None, d_err = None, 
+                  b_p = 0.0, a_p = None):
+    '''
     Initialise the planet dictionary object used by POSEIDON.
 
     The user only need provide one out of 'mass', 'gravity', or 'log_g'
@@ -401,7 +316,7 @@ def create_planet(
     Args:
         planet_name (str):
             Identifier for planet object (e.g. HD209458b).
-        R_p (float):
+        R_p (float): 
             Planetary radius (m).
         mass (float):
             Planetary mass (kg).
@@ -410,7 +325,7 @@ def create_planet(
         log_g (float):
             Instead of g, the user can provide log_10 (g / cm/s^2).
         T_eq (float):
-            Planetary equilibrium temperature (zero albedo) (K).
+            Planetary equilibrium temperature (zero albedo) (K). 
         d (float):
             Distance to system (m).
         d_err (float):
@@ -419,93 +334,65 @@ def create_planet(
             Impact parameter of planetary orbit (m) -- NOT in stellar radii!
         a_p (float):
             Distance of planet from host star (m) -- NOT in AU
-
+    
     Returns:
         planet (dict):
             Collection of planetary properties used by POSEIDON.
 
-    """
+    '''
 
-    base_dir = "./"
+    base_dir = './'
 
     # Create output directories (the first core handles this)
-    if rank == 0:
+    if (rank == 0):
         create_directories(base_dir, planet_name)
 
     # Calculate g_p or M_p if the user only provided one of the pair
-    if (gravity is None) and (log_g is None) and (mass is None):
+    if ((gravity is None) and (log_g is None) and (mass is None)):
         raise Exception("At least one of Mass or gravity must be specified.")
 
-    if gravity is None:
-        if log_g is not None:
-            gravity = np.power(10.0, log_g) / 100  # Convert log cm/s^2 to m/s^2
-        elif (log_g is None) and (mass is not None):
-            gravity = (sc.G * mass) / (R_p**2)  # Compute gravity from mass
+    if (gravity is None):
+        if (log_g is not None):
+            gravity = np.power(10.0, log_g)/100   # Convert log cm/s^2 to m/s^2
+        elif ((log_g is None) and (mass is not None)):
+            gravity = (sc.G * mass) / (R_p**2)    # Compute gravity from mass
 
-    if (mass is None) and (gravity is not None):
+    if ((mass is None) and (gravity is not None)):
         mass = (gravity * R_p**2) / sc.G
 
     # Package planetary properties
-    planet = {
-        "planet_name": planet_name,
-        "planet_radius": R_p,
-        "planet_mass": mass,
-        "planet_gravity": gravity,
-        "planet_T_eq": T_eq,
-        "planet_impact_parameter": b_p,
-        "system_distance": d,
-        "system_distance_error": d_err,
-        "planet_semi_major_axis": a_p,
-    }
+    planet = {'planet_name': planet_name, 'planet_radius': R_p, 
+              'planet_mass': mass, 'planet_gravity': gravity, 
+              'planet_T_eq': T_eq, 'planet_impact_parameter': b_p,
+              'system_distance': d, 'system_distance_error': d_err,
+              'planet_semi_major_axis': a_p
+             }
 
     return planet
 
 
-def define_model(
-    model_name,
-    bulk_species,
-    param_species,
-    object_type="transiting",
-    PT_profile="isotherm",
-    X_profile="isochem",
-    cloud_model="cloud-free",
-    cloud_type="deck",
-    high_res_method=None,
-    opaque_Iceberg=False,
-    gravity_setting="fixed",
-    mass_setting = 'fixed',
-    stellar_contam=None,
-    nightside_contam=False,
-    offsets_applied=None,
-    error_inflation=None,
-    radius_unit="R_J",
-    mass_unit="M_J",
-    distance_unit="pc",
-    PT_dim=1,
-    X_dim=1,
-    cloud_dim=1,
-    TwoD_type=None,
-    TwoD_param_scheme="difference",
-    species_EM_gradient=[],
-    species_DN_gradient=[],
-    species_vert_gradient=[],
-    surface=False,
-    high_res_params=[],
-    sharp_DN_transition=False,
-    reference_parameter="R_p_ref",
-    disable_atmosphere=False,
-    aerosol_species=[],
-    scattering=False,
-    reflection=False,
-    log_P_slope_phot=0.5,
-    log_P_slope_arr=[-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0],
-    number_P_knots=0,
-    PT_penalty=False,
-    Na_K_fixed_ratio=False,
-    reflection_up_to_5um=False,
-):
-    """
-    Create the model dictionary defining the configuration of the user-specified
+def define_model(model_name, bulk_species, param_species,
+                 object_type = 'transiting', PT_profile = 'isotherm', 
+                 X_profile = 'isochem', cloud_model = 'cloud-free', 
+                 cloud_type = 'deck', opaque_Iceberg = False,
+                 gravity_setting = 'fixed', mass_setting = 'fixed',
+                 stellar_contam = None, nightside_contam = False,
+                 offsets_applied = None, error_inflation = None, 
+                 radius_unit = 'R_J', mass_unit = 'M_J', distance_unit = 'pc',
+                 PT_dim = 1, X_dim = 1, cloud_dim = 1, TwoD_type = None, 
+                 TwoD_param_scheme = 'difference', species_EM_gradient = [], 
+                 species_DN_gradient = [], species_vert_gradient = [],
+                 surface = False, sharp_DN_transition = False,
+                 reference_parameter = 'R_p_ref', disable_atmosphere = False,
+                 aerosol_species = [], scattering = False, reflection = False,
+                 log_P_slope_phot = 0.5,
+                 log_P_slope_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0],
+                 number_P_knots = 0, PT_penalty = False,
+                 Na_K_fixed_ratio = False, reflection_up_to_5um = False,
+                 high_res_method = None, high_res_params = [],
+                 ):
+    '''
+    Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
 
     Args:
@@ -519,17 +406,17 @@ def define_model(
             Type of planet / brown dwarf the user wishes to model
             (Options: transiting / directly_imaged).
         PT_profile (str):
-            Chosen P-T profile parametrisation
+            Chosen P-T profile parametrisation 
             (Options: isotherm / gradient / two-gradients / Madhu / Pelletier / Guillot / Line /
             slope / file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
             (Options: isochem / gradient / two-gradients / lever / file_read / chem_eq).
         cloud_model (str):
-            Chosen cloud parametrisation
+            Chosen cloud parametrisation 
             (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
-            Cloud extinction type to consider
+            Cloud extinction type to consider 
             (Options: deck / haze / deck_haze).
         opaque_Iceberg (bool):
             If using the Iceberg cloud model, True disables the kappa parameter.
@@ -541,13 +428,13 @@ def define_model(
             (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
-            (Options: one_spot / one_spot_free_log_g / two_spots /
+            (Options: one_spot / one_spot_free_log_g / two_spots / 
              two_spots_free_log_g).
         nightside_contam (bool):
-            If True, include the impact of nightside thermal emission on a
-            transmission spectrum (nightside contamination).
+            If True, include the impact of nightside thermal emission on a 
+            transmission spectrum (nightside contamination).   
         offsets_applied (str):
-            Whether a relative offset should be applied to a dataset
+            Whether a relative offset should be applied to a dataset 
             (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
@@ -562,13 +449,13 @@ def define_model(
             Distance to system unit used to report retrieval results
             (Options: pc)
         PT_dim (int):
-            Dimensionality of the pressure-temperature field (uniform -> 1,
-            a day-night or evening-morning gradient -> 2, both day-night and
+            Dimensionality of the pressure-temperature field (uniform -> 1, 
+            a day-night or evening-morning gradient -> 2, both day-night and 
             evening-morning gradients -> 3)
             (Options: 1 / 2 / 3).
         X_dim (int):
             Max dimensionality of the mixing ratio field (not all species need
-            have gradients, this just specifies the highest dimensionality of
+            have gradients, this just specifies the highest dimensionality of 
             chemical gradients -- see the species_XX_gradient arguments)
             (Options: 1 / 2 / 3).
         cloud_dim (int):
@@ -591,9 +478,6 @@ def define_model(
             List of chemical species with a vertical mixing ratio gradient.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
-        high_res (list of str):
-            Define a model for high resolutional retrieval.
-            (Options: 'pca', 'sysrem')
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
         reference_parameter (str):
@@ -602,16 +486,16 @@ def define_model(
         disable_atmosphere (bool):
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
         aerosol (string):
-            If cloud_model = Mie and cloud_type = specific_aerosol
+            If cloud_model = Mie and cloud_type = specific_aerosol 
         scattering (bool):
             If True, uses a two-stream multiple scattering emission model.
         reflection (bool):
             If True, uses a two-stream multiple scattering reflection model.
         log_P_slope_phot (float):
-            Log pressure of the photosphere temperature parameter (only for the
+            Log pressure of the photosphere temperature parameter (only for the 
             Piette & Madhusudhan 2020 P-T profile).
         log_P_slope_arr (np.array of float):
-            Log pressures where the temperature difference parameters are
+            Log pressures where the temperature difference parameters are 
             defined (only for the Piette & Madhusudhan 2020 P-T profile).
         number_P_knots (float):
             Number of uniform knots in pressure space
@@ -623,61 +507,65 @@ def define_model(
             If True, sets log_K = 0.1 * log_Na
         reflection_up_to_5um (bool):
             If True, only computes albedo up to 5 um (to speed up computations).
-
+        high_res_method (list of str):
+            For high resolution retrievals, define which processing method
+            will be used. For PCA, the default high-res parameters are:
+            ['log_alpha', 'V_sys', 'K_p', 'W_conv']. For sysrem, the default
+            high-res parameters are: ['log_alpha', 'b', 'V_sys', 'K_p', 'W_conv'].
+            (Options: 'pca', 'sysrem')
+        high_res_params (list of str):
+            For high resolution retrievals, define the parameters used
+            (Options: '')        
+            
     Returns:
         model (dict):
             Dictionary containing the description of the desired POSEIDON model.
 
-    """
+    '''
 
-    # ***** Create chemical species arrays *****#
+    #***** Create chemical species arrays *****#
 
     # Create array containing all chemical species in model
     bulk_species = np.array(bulk_species)
     param_species = np.array(param_species)
 
     # For chemical equilibrium models, find the necessary chemical species
-    if X_profile == "chem_eq":
-        supported_chem_eq_species = np.intersect1d(
-            supported_species, fastchem_supported_species
-        )
-
+    if (X_profile == 'chem_eq'):
+        supported_chem_eq_species = np.intersect1d(supported_species, 
+                                                    fastchem_supported_species)
+        
         # If param_species = ['all'] then default to all species
-        if "all" in param_species:
+        if ('all' in param_species):
             param_species = supported_chem_eq_species
 
         # Check all user-specified species are compatible with the fastchem grid
         else:
-            if np.any(~np.isin(param_species, supported_chem_eq_species)) == True:
-                raise Exception(
-                    "A chemical species you selected is not supported "
-                    + "for equilibrium chemistry models.\n"
-                )
+            if (np.any(~np.isin(param_species, supported_chem_eq_species)) == True):
+                raise Exception("A chemical species you selected is not supported " +
+                                "for equilibrium chemistry models.\n")
 
-    # If Na_K_fixed_ratio, put K at the end of the list so that it's mixing ratio
-    # Can be appended to the end of the X_param array in
-    # profiles() in atmosphere.py
+    # If Na_K_fixed_ratio, put K at the end of the list so that it's mixing ratio 
+    # Can be appended to the end of the X_param array in 
+    # profiles() in atmosphere.py 
     if Na_K_fixed_ratio == True:
-        param_species = [i for i in param_species if i != "K"]
-        param_species.append("K")
+        param_species = [i for i in param_species if i != 'K']
+        param_species.append('K')
 
     # Combine bulk species with parametrised species
     chemical_species = np.append(bulk_species, param_species)
 
     # If Na_K_fixed_ratio is true, remove K from param_species, and check to make sure X_profile = 'isochem'
-    if Na_K_fixed_ratio == True and X_profile != "isochem":
-        raise Exception("Error: Na-K fixed ratio only supported for isochem profiles")
-
+    if Na_K_fixed_ratio == True and X_profile != 'isochem':
+        raise Exception('Error: Na-K fixed ratio only supported for isochem profiles')
+    
     if Na_K_fixed_ratio == True:
-        if "K" not in param_species or "Na" not in param_species:
-            raise Exception(
-                "If Na_K_fixed_ratio = True, please include Na and K in the param species"
-            )
-        param_species = [i for i in param_species if i != "K"]
+        if 'K' not in param_species or 'Na' not in param_species:
+            raise Exception('If Na_K_fixed_ratio = True, please include Na and K in the param species')
+        param_species = [i for i in param_species if i != 'K']
 
     # If PT_penalty = True but PT_profile != Pelletier, need to throw up an error
-    if PT_penalty == True and PT_profile != "Pelletier":
-        raise Exception("PT penalty only set up for Pelletier profile")
+    if PT_penalty == True and PT_profile != 'Pelletier':
+        raise Exception('PT penalty only set up for Pelletier profile')
 
     # Identify chemical species with active spectral features
     active_species = chemical_species[~np.isin(chemical_species, inactive_species)]
@@ -686,157 +574,105 @@ def define_model(
     species_vert_gradient = np.array(species_vert_gradient)
 
     # Check if cross sections are available for all the chemical species
-    if np.any(~np.isin(active_species, supported_species)) == True:
+    if (np.any(~np.isin(active_species, supported_species)) == True):
         raise Exception("A chemical species you selected is not supported.\n")
-
+    
     # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
-    if (
-        (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True)
-        and aerosol_species != ["free"]
-        and aerosol_species != ["file_read"]
-    ):
-        raise Exception(
-            "Please input supported aerosols (check supported_opac.py) or aerosol = ['free'] or ['file_read']."
-        )
+    if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True) and aerosol_species != ['free'] and aerosol_species != ['file_read']:
+        raise Exception('Please input supported aerosols (check supported_opac.py) or aerosol = [\'free\'] or [\'file_read\'].')
 
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
     for pair in supported_cia:
-        pair_1, pair_2 = pair.split("-")
+        pair_1, pair_2 = pair.split('-')   
         if (pair_1 in chemical_species) and (pair_2 in chemical_species):
-            CIA_pairs.append(pair)
+            CIA_pairs.append(pair)     
     CIA_pairs = np.array(CIA_pairs)
 
     # Create list of free-free absorption pairs
     ff_pairs = []
-    if ("H" in chemical_species) and ("e-" in chemical_species):
-        ff_pairs.append("H-ff")  # H- free-free
+    if ('H' in chemical_species) and ('e-' in chemical_species):  
+        ff_pairs.append('H-ff')       # H- free-free    
     ff_pairs = np.array(ff_pairs)
 
     # Create list of bound-free absorption species
     bf_species = []
-    if "H-" in chemical_species:
-        bf_species.append("H-bf")  # H- bound-free
+    if ('H-' in chemical_species):  
+        bf_species.append('H-bf')      # H- bound-free    
     bf_species = np.array(bf_species)
 
-    # ***** Geometrical properties of background atmosphere *****#
+    #***** Geometrical properties of background atmosphere *****#
 
     # Find dimensionality of background atmosphere
     Atmosphere_dimension = max(PT_dim, X_dim)
 
-    # ***** Finally, identify the free parameters defining this model *****#
+    #***** Finally, identify the free parameters defining this model *****#
 
-    (
-        param_names,
-        physical_param_names,
-        PT_param_names,
-        X_param_names,
-        cloud_param_names,
-        geometry_param_names,
-        stellar_param_names,
-        high_res_param_names,
-        N_params_cum,
-    ) = assign_free_params(
-        param_species,
-        object_type,
-        PT_profile,
-        X_profile,
-        cloud_model,
-        cloud_type,
-        gravity_setting,
-        mass_setting,
-        stellar_contam,
-        offsets_applied,
-        error_inflation,
-        PT_dim,
-        X_dim,
-        cloud_dim,
-        TwoD_type,
-        TwoD_param_scheme,
-        species_EM_gradient,
-        species_DN_gradient,
-        species_vert_gradient,
-        Atmosphere_dimension,
-        opaque_Iceberg,
-        surface,
-        high_res_params,
-        sharp_DN_transition,
-        reference_parameter,
-        disable_atmosphere,
-        aerosol_species,
-        log_P_slope_arr,
-        number_P_knots,
-        PT_penalty,
-    )
+    param_names, physical_param_names, \
+    PT_param_names, X_param_names, \
+    cloud_param_names, geometry_param_names, \
+    stellar_param_names, high_res_param_names, \
+    N_params_cum = assign_free_params(param_species, object_type, PT_profile,
+                                      X_profile, cloud_model, cloud_type, 
+                                      gravity_setting, mass_setting, stellar_contam, 
+                                      offsets_applied, error_inflation, PT_dim, 
+                                      X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
+                                      species_EM_gradient, species_DN_gradient, 
+                                      species_vert_gradient, Atmosphere_dimension,
+                                      opaque_Iceberg, surface, sharp_DN_transition,
+                                      reference_parameter, disable_atmosphere, 
+                                      aerosol_species, log_P_slope_arr,
+                                      number_P_knots, PT_penalty, high_res_params)
 
-    # If cloud_model = Mie, load in the cross section
-    if (
-        cloud_model == "Mie"
-        and aerosol_species != ["free"]
-        and aerosol_species != ["file_read"]
-    ):
+    # If cloud_model = Mie, load in the cross section 
+    if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
         aerosol_grid = load_aerosol_grid(aerosol_species)
     else:
         aerosol_grid = None
 
     # Package model properties
-    model = {
-        "model_name": model_name,
-        "object_type": object_type,
-        "Atmosphere_dimension": Atmosphere_dimension,
-        "PT_profile": PT_profile,
-        "X_profile": X_profile,
-        "cloud_model": cloud_model,
-        "cloud_type": cloud_type,
-        "high_res_method": high_res_method,
-        "gravity_setting": gravity_setting,
-        "mass_setting": mass_setting,
-        "chemical_species": chemical_species,
-        "bulk_species": bulk_species,
-        "active_species": active_species,
-        "CIA_pairs": CIA_pairs,
-        "ff_pairs": ff_pairs,
-        "bf_species": bf_species,
-        "param_species": param_species,
-        "radius_unit": radius_unit,
-        "mass_unit": mass_unit,
-        "distance_unit": distance_unit,
-        "species_EM_gradient": species_EM_gradient,
-        "species_DN_gradient": species_DN_gradient,
-        "species_vert_gradient": species_vert_gradient,
-        "stellar_contam": stellar_contam,
-        "nightside_contam": nightside_contam,
-        "offsets_applied": offsets_applied,
-        "error_inflation": error_inflation,
-        "param_names": param_names,
-        "physical_param_names": physical_param_names,
-        "PT_param_names": PT_param_names,
-        "X_param_names": X_param_names,
-        "cloud_param_names": cloud_param_names,
-        "geometry_param_names": geometry_param_names,
-        "stellar_param_names": stellar_param_names,
-        "high_res_param_names": high_res_param_names,
-        "N_params_cum": N_params_cum,
-        "TwoD_type": TwoD_type,
-        "TwoD_param_scheme": TwoD_param_scheme,
-        "PT_dim": PT_dim,
-        "X_dim": X_dim,
-        "cloud_dim": cloud_dim,
-        "surface": surface,
-        "sharp_DN_transition": sharp_DN_transition,
-        "reference_parameter": reference_parameter,
-        "disable_atmosphere": disable_atmosphere,
-        "aerosol_species": aerosol_species,
-        "aerosol_grid": aerosol_grid,
-        "scattering": scattering,
-        "reflection": reflection,
-        "log_P_slope_phot": log_P_slope_phot,
-        "log_P_slope_arr": log_P_slope_arr,
-        "Na_K_fixed_ratio": Na_K_fixed_ratio,
-        "reflection_up_to_5um": reflection_up_to_5um,
-        "PT_penalty": PT_penalty,
-    }
+    model = {'model_name': model_name, 'object_type': object_type,
+             'Atmosphere_dimension': Atmosphere_dimension,
+             'PT_profile': PT_profile, 'X_profile': X_profile,
+             'cloud_model': cloud_model, 'cloud_type': cloud_type,
+             'gravity_setting': gravity_setting, 'mass_setting': mass_setting,
+             'chemical_species': chemical_species, 'bulk_species': bulk_species,
+             'active_species': active_species, 'CIA_pairs': CIA_pairs,
+             'ff_pairs': ff_pairs, 'bf_species': bf_species,
+             'param_species': param_species, 
+             'radius_unit': radius_unit, 'mass_unit': mass_unit,
+             'distance_unit': distance_unit,
+             'species_EM_gradient': species_EM_gradient,
+             'species_DN_gradient': species_DN_gradient,
+             'species_vert_gradient': species_vert_gradient,
+             'stellar_contam': stellar_contam, 'nightside_contam': nightside_contam, 
+             'offsets_applied': offsets_applied, 
+             'error_inflation': error_inflation, 'param_names': param_names,
+             'physical_param_names': physical_param_names, 
+             'PT_param_names': PT_param_names, 'X_param_names': X_param_names, 
+             'cloud_param_names': cloud_param_names,
+             'geometry_param_names': geometry_param_names, 
+             'stellar_param_names': stellar_param_names, 
+             'N_params_cum': N_params_cum, 'TwoD_type': TwoD_type, 
+             'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
+             'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
+             'sharp_DN_transition': sharp_DN_transition,
+             'reference_parameter': reference_parameter,
+             'disable_atmosphere': disable_atmosphere,
+             'aerosol_species': aerosol_species,
+             'aerosol_grid': aerosol_grid,
+             'scattering' : scattering,
+             'reflection' : reflection,
+             'log_P_slope_phot': log_P_slope_phot,
+             'log_P_slope_arr': log_P_slope_arr,
+             'Na_K_fixed_ratio': Na_K_fixed_ratio,
+             'reflection_up_to_5um' : reflection_up_to_5um,
+             'PT_penalty' : PT_penalty,
+             'high_res_method': high_res_method,
+             'high_res_param_names': high_res_param_names,
+             }
 
+            
     return model
 
 

@@ -1,47 +1,25 @@
-""" 
+''' 
 Functions related to the free parameters defining a POSEIDON model.
 
-"""
+'''
 
 import numpy as np
 import warnings
 
-warnings.simplefilter(action="ignore", category=FutureWarning)
+warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def assign_free_params(
-    param_species,
-    object_type,
-    PT_profile,
-    X_profile,
-    cloud_model,
-    cloud_type,
-    gravity_setting,
-    mass_setting,
-    stellar_contam,
-    offsets_applied,
-    error_inflation,
-    PT_dim,
-    X_dim,
-    cloud_dim,
-    TwoD_type,
-    TwoD_param_scheme,
-    species_EM_gradient,
-    species_DN_gradient,
-    species_vert_gradient,
-    Atmosphere_dimension,
-    opaque_Iceberg,
-    surface,
-    high_res_params,
-    sharp_DN_transition,
-    reference_parameter,
-    disable_atmosphere,
-    aerosol_species,
-    log_P_slope_arr,
-    number_P_knots,
-    PT_penalty,
-):
-    """
+def assign_free_params(param_species, object_type, PT_profile, X_profile, 
+                       cloud_model, cloud_type, gravity_setting, mass_setting,
+                       stellar_contam, offsets_applied, error_inflation, 
+                       PT_dim, X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
+                       species_EM_gradient, species_DN_gradient, species_vert_gradient,
+                       Atmosphere_dimension, opaque_Iceberg, surface, 
+                       sharp_DN_transition, reference_parameter, 
+                       disable_atmosphere, aerosol_species, log_P_slope_arr,
+                       number_P_knots, PT_penalty, high_res_params,
+                       ):
+    '''
     From the user's chosen model settings, determine which free parameters
     define this POSEIDON model. The different types of free parameters are
     returned as separate arrays.
@@ -116,8 +94,6 @@ def assign_free_params(
             If using the Iceberg cloud model, True disables the kappa parameter.
         surface (bool):
             If True, model a surface via an opaque cloud deck.
-        high_res_params (list of string):
-            If not empty, define a model for high resolutional retrieval.
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
         reference_parameter (str):
@@ -136,6 +112,9 @@ def assign_free_params(
         PT_penalty (bool):
             If True, introduces the sigma_smooth parameter for retrievals
             (only for the Pelletier 2021 P-T profile).
+        high_res_params (list of str):
+            For high resolution retrievals, define the parameters used
+            (Options: '')  
 
     Returns:
         params (np.array of str):
@@ -153,20 +132,20 @@ def assign_free_params(
         stellar_params (np.array of str):
             Stellar heterogeneity parameters.
         high_res_params (np.array of str):
-            Parameters used for h igh resolutional retrievals.
+            Parameters used for high resolution cross correlation models.
         N_params_cumulative (np.array of int):
             Cumulative sum of number of parameters (used for indexing).
 
-    """
+    '''
 
     # Create lists storing names of free parameters
-    params = []  # All parameters
+    params = []           # All parameters
     physical_params = []  # Physical parameters
-    PT_params = []  # P-T profile parameters
-    X_params = []  # Mixing ratio parameters
-    cloud_params = []  # Cloud parameters
+    PT_params = []        # P-T profile parameters
+    X_params = []         # Mixing ratio parameters
+    cloud_params = []     # Cloud parameters
     geometry_params = []  # Geometry parameters
-    stellar_params = []  # Stellar parameters
+    stellar_params = []   # Stellar parameters
 
     # ***** Physical property parameters *****#
 
