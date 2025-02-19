@@ -1072,6 +1072,9 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
         T_best = atmosphere_best['T']
         log_X_best = np.log10(atmosphere_best['X'])
+
+    else:
+        T_best = 0.0
                     
     # For all the samples, generate spectra and PT profiles
     for i in range(N_sample_draws):
