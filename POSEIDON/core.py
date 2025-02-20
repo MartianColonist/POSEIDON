@@ -1561,17 +1561,17 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     P_cloud = np.array([P_cloud])
 
                 # Create the kappa arrays
-                kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
-                                                            CIA_pairs, ff_pairs, bf_species,
-                                                            n, T, P, wl, X, X_active, X_CIA, 
-                                                            X_ff, X_bf, a, gamma, P_cloud, 
-                                                            kappa_cloud_0, sigma_stored, 
-                                                            CIA_stored, Rayleigh_stored, 
-                                                            ff_stored, bf_stored, enable_haze, 
-                                                            enable_deck, enable_surface,
-                                                            N_sectors, N_zones, T_fine, 
-                                                            log_P_fine, P_surf, enable_Mie, 
-                                                            n_aerosol, sigma_ext_cloud)
+                kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate = extinction(chemical_species, active_species,
+                                                                                     CIA_pairs, ff_pairs, bf_species,
+                                                                                     n, T, P, wl, X, X_active, X_CIA, 
+                                                                                     X_ff, X_bf, a, gamma, P_cloud, 
+                                                                                     kappa_cloud_0, sigma_stored, 
+                                                                                     CIA_stored, Rayleigh_stored, 
+                                                                                     ff_stored, bf_stored, enable_haze, 
+                                                                                     enable_deck, enable_surface,
+                                                                                     N_sectors, N_zones, T_fine, 
+                                                                                     log_P_fine, P_surf, enable_Mie, 
+                                                                                     n_aerosol, sigma_ext_cloud)
                 
                 # If we read in an eddysed file (from PICASO or VIRGA) that
                 # contains the single scattering albedo, asymmetry parameter, or kappa_cloud
@@ -1587,14 +1587,29 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 # For Mie models with more than one species, we need to be more careful with the g and w array
                 elif thermal_scattering == True or reflection == True:
                     if len(aerosol_species) == 1 or aerosol_species == []:
-                        w_cloud = np.ones_like(kappa_cloud)*w_cloud
-                        g_cloud = np.ones_like(kappa_cloud)*g_cloud
-
-                    # Need to make a g and w array that vary with pressure layer where aerosols actually are 
-                    # I have yet to implement this, but the relevant code to weigh g and w is found here 
-                    # https://github.com/natashabatalha/virga/blob/ffa82d48ba77d841c73bb7b33793397d5a17413d/virga/justdoit.py#L191
+                        w_cloud_array = np.ones_like(kappa_cloud)*w_cloud
+                        g_cloud_array = np.ones_like(kappa_cloud)*g_cloud
+                    
+                    # else, its multiple clouds
                     else:
-                        raise Exception('Only 1 aerosol species supported for scattering')
+                        w_cloud_array = []
+                        g_cloud_array = []
+                        if (model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
+                            raise Exception('do this later elijah')
+                            #just add a fake g and w layer of something like -100 so toon functions know to skip first thing 
+                            #opaque_deck_is_first_index = True
+                        
+                        elif (reflection == True):
+                            raise Exception('cannot do two clouds in reflection (yet, fix this Elijah)')
+
+                        # else, need to reshape w and g arrays so that each aerosol has their own kappa_cloud like shape
+                        for aerosol in range(len(w_cloud)):
+                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+                    
+                    w_cloud = np.array(w_cloud_array)
+                    g_cloud = np.array(g_cloud_array)
+
                     
                 # Surfaces : create the surf_reflect object 
                 if surface == True or albedo_deck != -1:
@@ -1932,6 +1947,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                 g_cloud[index_below_P_surf+1:,:,:,:], 
                                                 zone_idx,
                                                 surf_reflect,
+                                                kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
                                                 hard_surface = 1, tridiagonal = 0, 
                                                 Gauss_quad = 5, numt = 1,
                                                 T_surf = T_surf)
@@ -1962,6 +1978,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                 F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
                                                                     kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
                                                                     w_cloud, g_cloud, zone_idx,surf_reflect,
+                                                                    kappa_cloud_seperate,
                                                                     hard_surface = 1, tridiagonal = 0, 
                                                                     Gauss_quad = 5, numt = 1,
                                                                     T_surf = T_surf)
@@ -1981,6 +1998,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                                     g_cloud[index_below_P_surf+1:,:,:,:], 
                                                                     zone_idx,
                                                                     surf_reflect,
+                                                                    kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
                                                                     hard_surface = 1, tridiagonal = 0, 
                                                                     Gauss_quad = 5, numt = 1,
                                                                     T_surf = T_surf)
@@ -2013,6 +2031,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                     g_cloud[index_below_P_surf+1:,:,:,:], 
                                                     zone_idx,
                                                     surf_reflect,
+                                                    kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
                                                     hard_surface = 1, tridiagonal = 0, 
                                                     Gauss_quad = 5, numt = 1,
                                                     T_surf = T_surf)
@@ -2036,6 +2055,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                                     g_cloud[index_below_P_surf+1:,:,:,:], 
                                                                     zone_idx,
                                                                     surf_reflect,
+                                                                    kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
                                                                     hard_surface = 1, tridiagonal = 0, 
                                                                     Gauss_quad = 5, numt = 1,
                                                                     T_surf = T_surf)
@@ -2067,6 +2087,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                             kappa_Ray, kappa_cloud, kappa_tot,
                                             w_cloud, g_cloud, zone_idx,
                                             surf_reflect,
+                                            kappa_cloud_seperate,
                                             hard_surface = 0, tridiagonal = 0, 
                                             Gauss_quad = 5, numt = 1)
                 
@@ -2079,6 +2100,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                             kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
                                                             w_cloud, g_cloud, zone_idx,
                                                             surf_reflect,
+                                                            kappa_cloud_seperate,
                                                             hard_surface = 0, tridiagonal = 0, 
                                                             Gauss_quad = 5, numt = 1)
                     

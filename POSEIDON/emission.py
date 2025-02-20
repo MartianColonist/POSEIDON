@@ -568,9 +568,10 @@ def emission_Toon(P, T, wl, dtau_tot,
                   kappa_Ray, kappa_cloud, kappa_tot,
                   w_cloud, g_cloud, zone_idx,
                   surf_reflect,
+                  kappa_cloud_seperate,
                   hard_surface = 0, tridiagonal = 0, 
                   Gauss_quad = 5, numt = 1,
-                  T_surf = 0):
+                  T_surf = 0,):
     
     ###############################################
     # ORIGINAL PICASO PREAMBLE (fluxes.py, get_thermal_1d())
@@ -674,6 +675,23 @@ def emission_Toon(P, T, wl, dtau_tot,
     # Similar to PICASO, we don't use any delta-eddington nor raman scattering for emission.
     #############################################################################  
 
+    # In order to account for multiple clouds, we compute sums in this loop
+    kappa_cloud_w_cloud_sum = np.zeros_like(kappa_cloud)
+    kappa_cloud_w_cloud_g_cloud_sum = np.zeros_like(kappa_cloud)
+
+    for aerosol in range(len(kappa_cloud_seperate)):
+
+        # Creating the sum for w_tot 
+
+        # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
+        w_cloud[aerosol,:,0,zone_idx,:] = w_cloud[aerosol,:,0,zone_idx,:] * 0.99999
+
+        # kappa_mie_w_cloud sum used in numerator of w_tot and denominator of g_tot
+        kappa_cloud_w_cloud_sum[:,0,zone_idx,:] += kappa_cloud_seperate[aerosol,:,0,zone_idx,:] * w_cloud[aerosol,:,0,zone_idx,:]
+
+        # kappa_cloud_w_cloud_g_cloud_sum used in numberator of g_tot 
+        kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:] += kappa_cloud_seperate[aerosol,:,0,zone_idx,:] * w_cloud[aerosol,:,0,zone_idx,:] * g_cloud[aerosol,:,0,zone_idx,:]
+
     # Numba doesn't like it when you multiply numpy arrays that are 1d vs 2d 
 
     # Calculate weighted, combined single scattering albedo
@@ -682,11 +700,8 @@ def emission_Toon(P, T, wl, dtau_tot,
     # or 
     # w = ((tau_ray * w_Ray) + (tau_Mie * w_Mie))/(tau_tot) 
     # where w_Ray = 1 (perfect scatterers), and taus = kappas
-    
-    # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
-    w_cloud[:,0,zone_idx,:] = w_cloud[:,0,zone_idx,:] * 0.99999
 
-    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud[:,0,zone_idx,:]))/kappa_tot
+    w_tot = ((0.99999 * kappa_Ray[:,0,zone_idx,:]) + (kappa_cloud_w_cloud_sum[:,0,zone_idx,:]))/kappa_tot
 
     # Calculate weighted, combined scattering asymmetry parameter
     # From COSB in optics.py, compute_opacity()
@@ -695,7 +710,7 @@ def emission_Toon(P, T, wl, dtau_tot,
     # or 
     # g = ((w_Ray*delta_tau_Ray*g_Ray) + (w_Mie * delta_tau_Mie * g_Mie))/ (w_ray*delta_tau_ray + w_Mie*delta_tau_Mie)
     # where g_Ray = 0 (isotropic scatterers), w_rRay = 1, and taus = kappas 
-    g_tot = ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud[:,0,zone_idx,:]
+    g_tot = (kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:])/(kappa_cloud_w_cloud_sum[:,0,zone_idx,:]+(0.99999 * kappa_Ray[:,0,zone_idx,:]))
 
     # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip all the axis)
     P = np.flipud(P)
