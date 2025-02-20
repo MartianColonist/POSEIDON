@@ -1094,7 +1094,7 @@ def generate_latex_param_names(param_names):
     # Define key parameters used in subscripts of parameter names
     phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 
                'Night', 'cloud', 'rel', '0', 'het', 'phot', 'fac', 'spot', 'surf',
-               'p', 'atm', 'tol']
+               'p', 'atm', 'tol', 'back']
     
     # Initialise output array
     latex_names = []

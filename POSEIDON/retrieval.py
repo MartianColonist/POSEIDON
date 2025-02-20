@@ -357,13 +357,19 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         else:
             P_surf = None
 
+        # Unpack background gas molecular mass if set as a free parameter
+        if ('mu_back' in physical_param_names):
+            mu_back = physical_params[np.where(physical_param_names == 'mu_back')[0][0]]
+        else:
+            mu_back = None
+
         #***** Step 2: generate atmosphere corresponding to parameter draw *****#
 
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params, 
                                      log_g, M_p, T_input, X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN, 
-                                     constant_gravity, chemistry_grid)
+                                     constant_gravity, chemistry_grid, mu_back)
         
         # If PT_penalty is true, then you compute the PT penalty
         # Only for Pelletier 2021 profiles
@@ -1329,6 +1335,12 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     else:
         P_surf = None
 
+    # Unpack background gas molecular mass if set as a free parameter
+    if ('mu_back' in physical_param_names):
+        mu_back = physical_params[np.where(physical_param_names == 'mu_back')[0][0]]
+    else:
+        mu_back = None
+
     if verbose == True:
         print('R_p_ref = ', physical_params[np.where(physical_param_names == 'R_p_ref')[0][0]], '* ', radius_unit)
         print('PT_params = np.array(', PT_params,')')
@@ -1344,7 +1356,8 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
                                  P_param_set = P_param_set, He_fraction = He_fraction, 
                                  N_slice_EM = N_slice_EM, N_slice_DN = N_slice_DN, 
                                  constant_gravity = constant_gravity,
-                                 chemistry_grid = chemistry_grid)
+                                 chemistry_grid = chemistry_grid,
+                                 mu_back = mu_back)
     
     return atmosphere
 

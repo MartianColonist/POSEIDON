@@ -9,9 +9,9 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def assign_free_params(param_species, object_type, PT_profile, X_profile, 
-                       cloud_model, cloud_type, gravity_setting, mass_setting,
-                       stellar_contam, offsets_applied, error_inflation, 
+def assign_free_params(param_species, bulk_species, object_type, PT_profile, 
+                       X_profile, cloud_model, cloud_type, gravity_setting, 
+                       mass_setting, stellar_contam, offsets_applied, error_inflation, 
                        PT_dim, X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
@@ -25,6 +25,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     Args:
         param_species (list of str):
             Chemical species with parametrised mixing ratios (trace species).
+        bulk_species (list of str):
+            The chemical species (or two for H2+He) filling most of the atmosphere.
         object_type (str):
             Type of planet / brown dwarf the user wishes to model
             (Options: transiting / directly_imaged).
@@ -184,6 +186,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
         if (surface == True):
             physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
+
+        if ('ghost' in bulk_species):
+            physical_params += ['mu_back']    # Background molecular weight (AMU)
 
         N_physical_params = len(physical_params)   # Store number of physical parameters
         params += physical_params                  # Add physical parameter names to combined list
