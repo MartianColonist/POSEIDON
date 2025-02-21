@@ -1,7 +1,7 @@
-"""
+'''
 Plotting routines to visualise POSEIDON output.
 
-"""
+'''
 
 import os
 import numpy as np

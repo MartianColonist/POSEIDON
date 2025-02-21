@@ -1,4 +1,4 @@
-""" 
+'''
 Functions to generate corner plots.
 
 Contributions from:
@@ -7,7 +7,7 @@ Johannes Buchner [PyMultiNest] (C) 2013-2019
 Josh Speagle [Dynesty] (MIT licensed)
 Ryan MacDonald [POSEIDON modifications] (2021-2025)
 
-"""
+'''
 
 from __future__ import absolute_import, unicode_literals, print_function, division
 

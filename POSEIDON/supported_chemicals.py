@@ -1,7 +1,7 @@
-""" 
+'''
 Supported chemical species in the current version of POSEIDON.
 
-"""
+'''
 
 import numpy as np
 

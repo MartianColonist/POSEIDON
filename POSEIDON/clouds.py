@@ -1,8 +1,7 @@
-######################################################
-######################################################
-#  Functions that are used to incorporate aerosols into POSEIDON
-######################################################
-######################################################
+''' 
+Functions that are used to incorporate aerosols into POSEIDON
+
+'''
 
 import numpy as np
 import scipy

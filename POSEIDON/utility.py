@@ -1,7 +1,7 @@
-""" 
+'''
 Various miscellaneous functions.
 
-"""
+'''
 
 import os
 import numpy as np
