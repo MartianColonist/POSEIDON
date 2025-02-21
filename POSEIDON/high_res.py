@@ -875,10 +875,10 @@ def loglikelihood_high_res(
     K_p = high_res_params[np.where(high_res_param_names == "K_p")[0][0]]
     V_sys = high_res_params[np.where(high_res_param_names == "V_sys")[0][0]]
 
-    if "log_alpha" in high_res_param_names:
-        a = 10 ** high_res_params[np.where(high_res_param_names == "log_alpha")[0][0]]
-    elif "a" in high_res_param_names:
-        a = high_res_params[np.where(high_res_param_names == "a")[0][0]]
+    if "log_alpha_HR" in high_res_param_names:
+        a = 10 ** high_res_params[np.where(high_res_param_names == "log_alpha_HR")[0][0]]
+    elif "alpha_HR" in high_res_param_names:
+        a = high_res_params[np.where(high_res_param_names == "alpha_HR")[0][0]]
     else:
         a = 1
 
@@ -892,8 +892,8 @@ def loglikelihood_high_res(
     else:
         W_conv = None
 
-    if "b" in high_res_param_names:
-        b = high_res_params[np.where(high_res_param_names == "b")[0][0]]
+    if "beta_HR" in high_res_param_names:
+        b = high_res_params[np.where(high_res_param_names == "beta_HR")[0][0]]
     else:
         b = None  # Nulling b
 
