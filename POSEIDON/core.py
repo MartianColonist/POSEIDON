@@ -1580,33 +1580,32 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     g_cloud = g_cloud_eddysed
                     kappa_cloud = kappa_cloud_eddysed
                 
-                # Else, we need to restructure w_cloud and g_cloud to span by layer 
-                # For Mie models with 1 species, the g and w can be held constant with each layer since
-                # Kappa cloud will encode where clouds are
-                # For models that are cloud free, you still need a g and w that's just an array of 0s
-                # For Mie models with more than one species, we need to be more careful with the g and w array
+                # Else, we need w and g from the precomputed aerosol database
+                # We loop over each aerosol species and reshape the w and g arrays to have the same 
+                # 4d shape as the kappa arrays 
+                # They are then looped over in toon emission and toon reflection 
                 elif thermal_scattering == True or reflection == True:
-                    if len(aerosol_species) == 1 or aerosol_species == []:
-                        w_cloud_array = np.ones_like(kappa_cloud)*w_cloud
-                        g_cloud_array = np.ones_like(kappa_cloud)*g_cloud
-                    
-                    # else, its multiple clouds
-                    else:
-                        w_cloud_array = []
-                        g_cloud_array = []
-                        if (model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
-                            raise Exception('do this later elijah')
-                            #just add a fake g and w layer of something like -100 so toon functions know to skip first thing 
-                            #opaque_deck_is_first_index = True
-                        
-                        elif (reflection == True):
-                            raise Exception('cannot do two clouds in reflection (yet, fix this Elijah)')
 
-                        # else, need to reshape w and g arrays so that each aerosol has their own kappa_cloud like shape
-                        for aerosol in range(len(w_cloud)):
-                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+                    # Intialize w_cloud and g_cloud arrays
+                    # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                    w_cloud_array = []
+                    g_cloud_array = []
+
+                    if (model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
+                        raise Exception('do this later elijah')
+                        #just add a fake g and w layer of something like -100 so toon functions know to skip first thing 
+                        #opaque_deck_is_first_index = True
                     
+                    elif (reflection == True):
+                        raise Exception('cannot do two clouds in reflection (yet, fix this elijah)')
+
+                    for aerosol in range(len(w_cloud)):
+                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                        # turn into a list so it doesn't end up being an array of arrays 
+                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+                    
+                    # Turn into an array so numba in toon functions is happy with indexing 
                     w_cloud = np.array(w_cloud_array)
                     g_cloud = np.array(g_cloud_array)
 
