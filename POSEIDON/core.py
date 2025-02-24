@@ -1592,12 +1592,15 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     g_cloud_array = []
 
                     if (model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
-                        raise Exception('do this later elijah')
+                        raise Exception('do this later elijah (opaque deck + cloud models, multiple clouds and scattering)')
                         #just add a fake g and w layer of something like -100 so toon functions know to skip first thing 
                         #opaque_deck_is_first_index = True
                     
                     elif (reflection == True):
                         raise Exception('cannot do two clouds in reflection (yet, fix this elijah)')
+                    
+                    elif (cloud_dim == 2) and (len(w_cloud)>1):
+                        raise Exception('Cannot do patchy multiple clouds (fix this later elijah)')
 
                     for aerosol in range(len(w_cloud)):
                         # For each w and g for each aerosol, make it have the same shape as kappa_cloud
