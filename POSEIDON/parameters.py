@@ -17,7 +17,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
                        aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty,
-                       surface_components, surface_model, surface_temp):
+                       surface_components, surface_model, surface_temp, surface_percentage_option):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -118,7 +118,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         surface_model (string):
             Surface model definition 
             (Options: gray, constant, lab_data)
-
+        surface_percentage_option (string):
+            Will make surface percentages log or linear (log is reccomended for CLR retrievals)
+            (Options: linear, log)
     Returns:
         params (np.array of str):
             Free parameters defining this POSEIDON model.
@@ -177,7 +179,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
                 if len(surface_components) > 1:
                     for n in range(len(surface_components)):
-                            surface_params += [surface_components[n] + '_percentage']
+                            if (surface_percentage_option == 'linear'):
+                                surface_params += [surface_components[n] + '_percentage']
+                            elif (surface_percentage_option == 'log'):
+                                surface_params += ['log_' + surface_components[n] + '_percentage']
+                                
             elif (surface_model == 'gray'):
                 pass
             else:

@@ -392,7 +392,8 @@ def define_model(model_name, bulk_species, param_species,
                  reflection_up_to_5um = False,
                  surface_components = [],
                  surface_temp = False,
-                 surface_model = 'gray'):
+                 surface_model = 'gray',
+                 surface_percentage_option = 'linear'):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -516,7 +517,9 @@ def define_model(model_name, bulk_species, param_species,
         surface_model (string):
             Surface model definition 
             (Options: gray, constant, lab_data)
-
+        surface_percentage_option (string):
+            Will make surface percentages log or linear (log is reccomended for CLR retrievals)
+            (Options: linear, log)
     Returns:
         model (dict):
             Dictionary containing the description of the desired POSEIDON model.
@@ -603,6 +606,10 @@ def define_model(model_name, bulk_species, param_species,
     if (np.any(~np.isin(surface_components, surface_supported_components)) == True) and (surface_model == 'lab_data'):
         raise Exception('Please input supported surface components (check supported_chemicals.py).')
     
+    # Check to make sure the high resolution alpha parameter option is log or linear
+    if (surface_percentage_option not in ['log', 'linear']):
+        raise Exception('Error: surface_percentage_option must be log or linear.')
+
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
     for pair in supported_cia:
@@ -645,7 +652,7 @@ def define_model(model_name, bulk_species, param_species,
                                       reference_parameter, disable_atmosphere, 
                                       aerosol_species, log_P_slope_arr,
                                       number_P_knots, PT_penalty,
-                                      surface_components, surface_model, surface_temp)
+                                      surface_components, surface_model, surface_temp, surface_percentage_option)
     
     # If cloud_model = Mie, load in the cross section 
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
@@ -2825,6 +2832,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_types['Grad_T']
 
     CLR_limit_check = 0   # Tracking variable for CLR limit check below
+    CLR_surface_limit_check = 0  # Tracking variable for CLR surface limit check below
 
     # Check that parameter types are all supported
     for parameter in param_names:
@@ -2839,7 +2847,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
 
         # Check that centred-log ratio prior for surface is only used for mixing ratios
         if ((prior_types[parameter] == 'CLR_surface') and (parameter not in surface_param_names)):
-            raise Exception("Unsupported prior for " + parameter)
+            raise Exception("Unsupported prior for " + parameter + ' (CLR Surface only available for surface components)')
 
         # Check that centred-log ratio is being employed in a 1D model
         if ((prior_types[parameter] == 'CLR') and (Atmosphere_dimension != 1)):
@@ -2873,6 +2881,28 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                                     "parameters must have the same lower limit.")
                 else:
                     CLR_limit_check = CLR_limit
+
+        # Check surface parameters have valid settings
+        if (parameter in surface_param_names):
+
+            # Check that all CLR variables have the same lower limit
+            if (prior_types[parameter] == 'CLR_surface'):
+
+                # If the prior is [0,1] stop it immediately 
+                if (prior_ranges[parameter][0] == 0) and (prior_ranges[parameter][1] > 1):
+                    raise Exception('CLR Prior works in log space, even though retrieved values will be from 0 to 1. Set prior like [-12,0].')
+
+                CLR_surface_limit = prior_ranges[parameter][0]
+                
+                if (CLR_surface_limit_check == 0):       # First parameter passes check
+                    CLR_surface_limit_check = CLR_surface_limit
+
+                if (CLR_surface_limit != CLR_surface_limit_check):
+                    raise Exception("When using a CLR prior, all log surface percentage " + 
+                                    "parameters must have the same lower limit.")
+                else:
+                    CLR_surface_limit_check = CLR_surface_limit
+
 
     # Package prior properties
     priors = {'prior_ranges': prior_ranges, 'prior_types': prior_types}
