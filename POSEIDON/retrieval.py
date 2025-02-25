@@ -852,6 +852,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             surface_drawn = np.array(cube[N_params_cum[7]:N_params_cum[8]])
 
             # then we only pull the ones that are specifically for the percentages (since that is what can be an input to CLR)
+            surface_percentage_indices = np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]
             surface_percentage_drawn = surface_drawn[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
 
             # This is just a quick fix right now, but the first parameter isn't consider free 
@@ -894,13 +895,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             elif (log_X[1] != -50.0): 
                 allowed_simplex_surfaces = 1       # Likelihood will be computed for this parameter combination
 
-            # percentages are always at the end
-            index_1 = N_params_cum[7]+(len(surface_percentage_drawn)-1)
-            index_2 = N_params_cum[8]
+            # adds number of params before surface_percentage_indices to get right index in cube
+            surface_percentage_indices = N_params_cum[7]+surface_percentage_indices
             
             # I couldn't get the CLR prior to work, but this just replaces things in the cube... which should work
             counter = 0
-            for n in range(index_1,index_2):
+            for n in surface_percentage_indices:
                 cube[n] = surface_percentages_CLR[counter]
                 counter += 1
             
