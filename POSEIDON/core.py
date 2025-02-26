@@ -709,6 +709,7 @@ def define_model(model_name, bulk_species, param_species,
              'surface_temp': surface_temp,
              'surface_model': surface_model,
              'surface_component_albedos': surface_component_albedos,
+             'surface_percentage_option': surface_percentage_option
              }
 
     return model
@@ -1258,6 +1259,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     surface_model = model['surface_model']
     surface_component_albedos = model['surface_component_albedos']
     surface_components = model['surface_components']
+    surface_percentage_option = model['surface_percentage_option']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1326,7 +1328,14 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     R_p_ref = atmosphere['R_p_ref']
     T_surf = atmosphere['T_surf']
     albedo_surf = atmosphere['albedo_surf']
+
     surface_component_percentages = atmosphere['surface_component_percentages']
+
+    # Normalize the percentages so they add up to one
+    # (note that in forward models, this is necessary but doesn't change input variables)
+    # (in retrievals, they should be normalized before they get to this step so that cube [drawn parameters] is updated)
+    if np.sum(surface_component_percentages) != 1.0:
+        surface_component_percentages = surface_component_percentages/np.sum(surface_component_percentages)
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1608,7 +1617,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                             surf_reflect = np.full_like(wl, albedo_surf)
 
                         elif surface_model == 'lab_data':
-                            surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos,)
+                            surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos)
                     
                     else:
                         surf_reflect = np.full_like(wl, albedo_deck)
@@ -2889,8 +2898,8 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
             if (prior_types[parameter] == 'CLR_surface'):
 
                 # If the prior is [0,1] stop it immediately 
-                if (prior_ranges[parameter][0] == 0) and (prior_ranges[parameter][1] > 1):
-                    raise Exception('CLR Prior works in log space, even though retrieved values will be from 0 to 1. Set prior like [-12,0].')
+                if (prior_ranges[parameter][0] == 0) and (prior_ranges[parameter][1] > 0):
+                    raise Exception('CLR Prior works in log space. Set surface_percentage_option = \'log\' in define_model() and set prior for all log percentages something like [-12,0].')
 
                 CLR_surface_limit = prior_ranges[parameter][0]
                 

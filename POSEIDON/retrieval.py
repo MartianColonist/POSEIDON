@@ -875,8 +875,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 #print('log_X: ', log_X)
                 #print('10**log_X: ',10**log_X)
                 
-                # Convert back to surface_percentages from log_X
-                surface_percentages_CLR = 10**log_X
+                surface_percentages_CLR = log_X
             else:
                 # For n = 2, you just take the average
                 surface_percentages_CLR = surface_percentage_drawn/np.sum(surface_percentage_drawn)
@@ -884,8 +883,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 # For the global variable, this must be defined
                 log_X = np.log10(surface_percentages_CLR)
 
-                surface_percentages_CLR = 10**log_X
-
+                surface_percentages_CLR = log_X
 
             # Check if this random parameter draw lies in the allowed simplex space (X_i > 10^-12 and sum to 1)
             global allowed_simplex_surfaces     # Needs a global, as prior function has no return
@@ -902,6 +900,40 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             counter = 0
             for n in surface_percentage_indices:
                 cube[n] = surface_percentages_CLR[counter]
+                counter += 1
+
+        # If the surface percentages are uniform, need to make sure they are normalized to 1 
+        # Note that this step occurs later in core.py in compute_spectrum()
+        # But it also needs to happen here for retrievals so that cube is updated with correct values
+        if any('percentage' in s for s in surface_param_names ) and ('CLR_surface' not in prior_types.values()):
+
+            # cube is not an array, and has to be turned into an array for the next line
+            # here we are drawing the drawn parameters that correspond to surface params
+            surface_drawn = np.array(cube[N_params_cum[7]:N_params_cum[8]])
+
+            # then we only pull the ones that are specifically for the percentages 
+            surface_percentage_indices = np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]
+            surface_percentage_drawn = surface_drawn[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+
+            # if they are log, will need to take 10** before normalizing 
+            if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
+                surface_percentage_drawn = np.power(10,surface_percentage_drawn)
+
+            # Normalize the percentages so they add up to one 
+            surface_percentages_normalized = surface_percentage_drawn/np.sum(surface_percentage_drawn)
+
+            # If they are log, take the log again after normalizing 
+            if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
+                surface_percentages_normalized = np.log10(surface_percentages_normalized)
+
+            # Redefine cube with those percentages 
+            # adds number of params before surface_percentage_indices to get right index in cube
+            surface_percentage_indices = N_params_cum[7]+surface_percentage_indices
+            
+            # I couldn't get the CLR prior to work, but this just replaces things in the cube... which should work
+            counter = 0
+            for n in surface_percentage_indices:
+                cube[n] = surface_percentages_normalized[counter]
                 counter += 1
             
     # Define the log-likelihood function

@@ -2239,16 +2239,30 @@ def unpack_surface_params(param_names, surface_in,
         albedo_surf = 0
     
     if any("percentage" in s for s in surface_param_names):
-        try:
-            surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
-        except:
-            # In retrievals, surface_in is not an array so the above statement doesn't work
-            surface_in = np.array(surface_in)
-            surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
-            
-        # Normalize the percentages so they add up to one
-        surface_component_percentages = surface_component_percentages/np.sum(surface_component_percentages)
+        # If they are log percentages, take 10** 
+        if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
+
+            try:
+                surface_component_percentages = np.power(10.0,surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]])
+            except:
+                # In retrievals, surface_in is not an array so the above statement doesn't work
+                surface_in = np.array(surface_in)
+                surface_component_percentages = np.power(10.0,surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]])
+
+        # else, assume they are linear 
+        else:
+            try:
+                surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+            except:
+                # In retrievals, surface_in is not an array so the above statement doesn't work
+                surface_in = np.array(surface_in)
+                surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+                
     else:
         surface_component_percentages = [1]
+
+    # Note that surface_component_percentages are later to be ensured to add to one in core.py, compute_spectrum
+    # The reason they aren't here is because 
+    # they can be normalized to one before they go to CLR_Surface in retrieval.py which is not good and biases the retrieval
     
     return P_surf, T_surf, albedo_surf, surface_component_percentages

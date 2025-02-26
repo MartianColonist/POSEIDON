@@ -4100,7 +4100,10 @@ def plot_histograms(planet, models, plot_parameters,
                     tick_labelsize = 12, title_fontsize = 12,
                     custom_labels = [], custom_ticks = [],
                     alpha_hist = 0.4,
-                    skip_retrieving_atmospheres = False
+                    skip_retrieving_atmospheres = False,
+                    percent_decimal_to_percent = True,
+                    log_percent_to_percent = False,
+                    percent_to_log_percent = False
                     ):
 
     '''
@@ -4268,13 +4271,7 @@ def plot_histograms(planet, models, plot_parameters,
                         if ('log_' in param): 
                             param_samples_m[:,q] = np.log10(element_ratio_norm)
                         else:
-                            param_samples_m[:,q] = element_ratio_norm
-
-                # Option to make the surface percentages into percents instead of decimals 
-                #elif ('percentage' in param): 
-                #    
-                #    param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]] * 100
-                    
+                            param_samples_m[:,q] = element_ratio_norm                        
 
                 # Filler gas
                 else:
@@ -4288,6 +4285,24 @@ def plot_histograms(planet, models, plot_parameters,
                             param_samples_m[:,q] = np.log10(X_stored[:,1])
                         else:
                             param_samples_m[:,q] = np.log10(X_stored[:,0])
+
+                # Option to make log surface percentages into decimal percents 
+                if (log_percent_to_percent == True) and ('percentage' in param):
+
+                    if (percent_decimal_to_percent == True):
+                        param_samples_m[:,q] = np.power(10,samples[:,np.where(param_names == param)[0][0]]) * 100
+                    else:
+                        param_samples_m[:,q] = np.power(10,samples[:,np.where(param_names == param)[0][0]])
+                
+                if (percent_to_log_percent == True) and ('percentage' in param):
+                        param_samples_m[:,q] = np.log10(samples[:,np.where(param_names == param)[0][0]])
+
+                # Option to make the surface percentages into percents instead of decimals 
+                if (percent_decimal_to_percent == True) and ('percentage' in param):
+
+                    # Log is treated above seperatly 
+                    if ('log' not in param):
+                        param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]] * 100
 
         param_vals.append(param_samples_m)
 
