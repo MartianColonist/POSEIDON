@@ -1333,6 +1333,13 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     f_aerosol_1 = atmosphere['f_aerosol_1']
     f_aerosol_2 = atmosphere['f_aerosol_2']
 
+    # Normalize the fractions so they add to one
+    # This step also occurs in retrieval.py, so this is just for forward models 
+    if (f_both + f_aerosol_1 + f_aerosol_2) != 1.0:
+        f_both = f_both/(f_both + f_aerosol_1 + f_aerosol_2)
+        f_aerosol_1 = f_aerosol_1/(f_both + f_aerosol_1 + f_aerosol_2)
+        f_aerosol_2 = f_aerosol_2/(f_both + f_aerosol_1 + f_aerosol_2)
+        
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
         enable_haze = 1
