@@ -955,9 +955,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             f_aerosol_2 = f_aerosol_2/(f_both + f_aerosol_1 + f_aerosol_2)
 
             # Replace f values with new normalized ones
+            #print(f_both + f_aerosol_1 + f_aerosol_2)
+            #print('cube before: ', cube[N_params_cum[2]:N_params_cum[3]])
             cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_both')!= -1)[0]] = f_both
             cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_aerosol_1')!= -1)[0]] = f_aerosol_1
             cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_aerosol_2')!= -1)[0]] = f_aerosol_2
+            #print('cube after: ', cube[N_params_cum[2]:N_params_cum[3]])
 
     # Define the log-likelihood function
     def LogLikelihood(cube, ndim, nparams):
