@@ -1335,7 +1335,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
     # Normalize the fractions so they add to one
     # This step also occurs in retrieval.py, so this is just for forward models 
-    if (f_both + f_aerosol_1 + f_aerosol_2) != 1.0:
+    # round to avoid errors from when its pre-normalized in the retrieval.py
+    if round(f_both + f_aerosol_1 + f_aerosol_2) != 1.0:
         f_both = f_both/(f_both + f_aerosol_1 + f_aerosol_2)
         f_aerosol_1 = f_aerosol_1/(f_both + f_aerosol_1 + f_aerosol_2)
         f_aerosol_2 = f_aerosol_2/(f_both + f_aerosol_1 + f_aerosol_2)
