@@ -1331,10 +1331,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
     surface_component_percentages = atmosphere['surface_component_percentages']
 
-    # Normalize the percentages so they add up to one
+    # Normalize the percentages so they add up to one (we round since its usually 0.999999 or 1.0000002 or something)
     # (note that in forward models, this is necessary but doesn't change input variables)
     # (in retrievals, they should be normalized before they get to this step so that cube [drawn parameters] is updated)
-    if np.sum(surface_component_percentages) != 1.0:
+    if round(np.sum(surface_component_percentages)) != 1.0:
         surface_component_percentages = surface_component_percentages/np.sum(surface_component_percentages)
 
     # Check if haze enabled in the cloud model

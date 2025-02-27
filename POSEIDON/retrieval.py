@@ -915,16 +915,24 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             surface_percentage_indices = np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]
             surface_percentage_drawn = surface_drawn[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
 
+            #print('before surface drawn, log ', surface_percentage_drawn)
+
             # if they are log, will need to take 10** before normalizing 
             if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
                 surface_percentage_drawn = np.power(10,surface_percentage_drawn)
 
+            #print('before surface drawn', surface_percentage_drawn, np.sum(surface_percentage_drawn))
+
             # Normalize the percentages so they add up to one 
             surface_percentages_normalized = surface_percentage_drawn/np.sum(surface_percentage_drawn)
+
+            #print('after normalization ', surface_percentages_normalized, np.sum(surface_percentages_normalized))
 
             # If they are log, take the log again after normalizing 
             if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
                 surface_percentages_normalized = np.log10(surface_percentages_normalized)
+
+            #print('after normalization, log ', surface_percentages_normalized)
 
             # Redefine cube with those percentages 
             # adds number of params before surface_percentage_indices to get right index in cube
@@ -932,9 +940,12 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             
             # I couldn't get the CLR prior to work, but this just replaces things in the cube... which should work
             counter = 0
+            #print('before cube',cube[N_params_cum[7]:N_params_cum[8]])
             for n in surface_percentage_indices:
                 cube[n] = surface_percentages_normalized[counter]
                 counter += 1
+
+            #print('after',cube[N_params_cum[7]:N_params_cum[8]])
             
     # Define the log-likelihood function
     def LogLikelihood(cube, ndim, nparams):
