@@ -26,6 +26,7 @@ from .core import make_atmosphere, compute_spectrum
 from .parameters import unpack_stellar_params
 from .stellar import precompute_stellar_spectra, stellar_contamination_general
 from .chemistry import load_chemistry_grid
+from .transmission import area_overlap_circles
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
@@ -263,6 +264,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
 
     # Unpack planet and star properties
     R_p = planet['planet_radius']
+    b_p = planet['planet_impact_parameter']
 
     if (star is not None):
         R_s = star['R_s']
@@ -289,8 +291,20 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         elif (radius_unit == 'R_E'):
             R_p_ref *= R_E
 
-        # The spectrum is remarkably simple for a ball of rock
-        spectrum = (R_p_ref / R_s)**2 * np.ones_like(wl)
+        # Calculate distance between planet and star centres
+        d = np.sqrt((b_p**2 + np.min(y_p)**2))
+
+        # Check if planet fully overlaps the star
+        if (d <= (R_s - R_p_ref)):
+            spectrum = (R_p_ref / R_s)**2 * np.ones_like(wl)
+
+        # Partial overlap case
+        elif (d > (R_s - R_p_ref)) and (d < (R_s + R_p_ref)):
+            spectrum = area_overlap_circles(d, R_p_ref, R_s) / (np.pi * (R_s**2)) * np.ones_like(wl)
+
+        # No overlap
+        else:
+            spectrum = np.zeros_like(wl)
 
         # No atmosphere dictionary needed if atmosphere disabled
         atmosphere = None
