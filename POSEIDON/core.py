@@ -1085,10 +1085,11 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     r_i_real, r_i_complex, log_X_Mie, \
     P_cloud_bottom, kappa_cloud_eddysed, \
     g_cloud_eddysed, w_cloud_eddysed, \
-    albedo_deck  = unpack_cloud_params(param_names, cloud_params,
-                                       cloud_model, cloud_dim, 
-                                       N_params_cum, TwoD_type)
-    
+    albedo_deck, \
+    f_both, f_aerosol_1, f_aerosol_2  = unpack_cloud_params(param_names, cloud_params,
+                                                            cloud_model, cloud_dim, 
+                                                            N_params_cum, TwoD_type)
+                                                
     #***** Store surface properties *****#
 
     P_surf, T_surf, albedo_surf, surface_component_percentages = unpack_surface_params(param_names, surface_params,
@@ -1121,7 +1122,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'P_cloud_bottom' : P_cloud_bottom, 
                   'kappa_cloud_eddysed' : kappa_cloud_eddysed, 'g_cloud_eddysed' : g_cloud_eddysed, 'w_cloud_eddysed' : w_cloud_eddysed,
                   'T_surf' : T_surf, 'albedo_surf' : albedo_surf, 'surface_component_percentages' : surface_component_percentages,
-                  'R_p_ref' : R_p_ref, 'albedo_deck' : albedo_deck
+                  'R_p_ref' : R_p_ref, 'albedo_deck' : albedo_deck, 
+                  'f_both' : f_both, 'f_aerosol_1' : f_aerosol_1, 'f_aerosol_2' : f_aerosol_2
                  }
 
     return atmosphere
@@ -1326,6 +1328,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     T_surf = atmosphere['T_surf']
     albedo_surf = atmosphere['albedo_surf']
     surface_component_percentages = atmosphere['surface_component_percentages']
+
+    f_both = atmosphere['f_both']
+    f_aerosol_1 = atmosphere['f_aerosol_1']
+    f_aerosol_2 = atmosphere['f_aerosol_2']
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1597,10 +1603,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         #opaque_deck_is_first_index = True
                     
                     elif (reflection == True):
-                        raise Exception('cannot do two clouds in reflection (yet, fix this elijah)')
-                    
-                    elif (cloud_dim == 2) and (len(w_cloud)>1):
-                        raise Exception('Cannot do patchy multiple clouds (fix this later elijah)')
+                        raise Exception('cannot do two or patchy clouds in reflection (yet, fix this elijah with updated kappa_cloud_seperate)')
 
                     for aerosol in range(len(w_cloud)):
                         # For each w and g for each aerosol, make it have the same shape as kappa_cloud
@@ -1611,6 +1614,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     # Turn into an array so numba in toon functions is happy with indexing 
                     w_cloud = np.array(w_cloud_array)
                     g_cloud = np.array(g_cloud_array)
+                
+                # two doesn't work for transmission right now 
+                elif spectrum_type == 'transmission' and (len(aerosol_species) == 2):
+                    raise Exception('Cannot do patchy multiple clouds in transmission yet (fix this elijah)')
 
                     
                 # Surfaces : create the surf_reflect object 
@@ -1758,11 +1765,48 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # but thermal = False
             dtau = dtau_tot
 
+            # If there are patchy clouds
+            # need to have kappa_cloud_seperate_clear
+            # And if aerools species = 2
+            # will need kappa_cloud_seperate_1 and kappa_cloud_seperate_2
+            # and kappa_tot_1 kappa_tot_2 and dtaut_tot_1 and dtau_tot_2
             if cloud_dim == 2:
-                kappa_cloud_clear = np.zeros_like(kappa_cloud)
-                kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                                    kappa_cloud_clear[:,0,zone_idx,:])
-                dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+
+                # If there is only one cloud species there are two models: cloudy and clear
+                if (len(aerosol_species) == 1):
+
+                    # Clear Model 
+                    kappa_cloud_clear = np.zeros_like(kappa_cloud)
+                    kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+                    kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                        kappa_cloud_clear[:,0,zone_idx,:])
+                    dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+                
+                # If there are two cloud species there are four models: cloudy (both species, which is default)
+                # the first aerosol alone, the second aerosol alone, and clear 
+                elif (len(aerosol_species) == 2):
+                    
+                    # Clear Model 
+                    kappa_cloud_clear = np.zeros_like(kappa_cloud)
+                    kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+                    kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                        kappa_cloud_clear[:,0,zone_idx,:])
+                    dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+
+                    # Aerosol 1
+                    kappa_cloud_aerosol_1 = kappa_cloud_seperate[0]
+                    kappa_cloud_seperate_aerosol_1 = np.array([kappa_cloud_seperate[0],np.zeros_like(kappa_cloud)])
+                    kappa_tot_aerosol_1 = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                        kappa_cloud_aerosol_1[:,0,zone_idx,:])
+                    dtau_tot_aerosol_1 = np.ascontiguousarray(kappa_tot_aerosol_1 * dz.reshape((len(P), 1)))
+
+                    # Aerosol 2
+                    kappa_cloud_aerosol_2 = kappa_cloud_seperate[1]
+                    kappa_cloud_seperate_aerosol_2 = np.array([np.zeros_like(kappa_cloud),kappa_cloud_seperate[1]])
+                    kappa_tot_aerosol_2 = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                        kappa_cloud_aerosol_2[:,0,zone_idx,:])
+                    dtau_tot_aerosol_2 = np.ascontiguousarray(kappa_tot_aerosol_2 * dz.reshape((len(P), 1)))
+
 
         # Without scattering, compute single steam radiative transfer
         if (thermal == True) and (thermal_scattering == False):
@@ -1872,7 +1916,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 else:
                     dtau = 0
 
-            # Else, its a gas giant (no hard surface) 
+            # Else, its a gas giant or brown dwarf or something similar (no hard surface) 
             # This is the 'normal' option. 
             else:
                 
@@ -2081,10 +2125,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 else:
                     dtau = 0
 
-            # Else, its a gas giant (no hard surface) 
+            # Else, its a gas giant or brown dwarf or something similar  (no hard surface) 
             else:
 
                 # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                # This includes all clouds combined when there is fractional clouds 
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                             kappa_Ray, kappa_cloud, kappa_tot,
                                             w_cloud, g_cloud, zone_idx,
@@ -2095,18 +2140,53 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 
                 dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
 
-                # For 1 + 1D fractional clouds
                 if cloud_dim == 2:
                     
-                    F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
-                                                            kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                                            w_cloud, g_cloud, zone_idx,
-                                                            surf_reflect,
-                                                            kappa_cloud_seperate,
-                                                            hard_surface = 0, tridiagonal = 0, 
-                                                            Gauss_quad = 5, numt = 1)
+                    # 1D + 1D is clear + cloudy, so need to compute clear model here 
+                    if (len(aerosol_species) == 1):
+
+                        F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                                kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                                w_cloud, g_cloud, zone_idx,
+                                                                surf_reflect,
+                                                                kappa_cloud_seperate_clear,
+                                                                hard_surface = 0, tridiagonal = 0, 
+                                                                Gauss_quad = 5, numt = 1)
                     
-                    F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+                        F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+
+                    # 1D + 1D + 1D + 1D is clear + cloudy (both) + cloudy (aerosol 1) + cloudy (aerosol 2)
+                    # So need to compute three additional models 
+                    if (len(aerosol_species) == 2):
+
+                        F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                                kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                                w_cloud, g_cloud, zone_idx,
+                                                                surf_reflect,
+                                                                kappa_cloud_seperate_clear,
+                                                                hard_surface = 0, tridiagonal = 0, 
+                                                                Gauss_quad = 5, numt = 1)
+
+                        F_p_aerosol_1, dtau_aerosol_1 = emission_Toon(P, T, wl, dtau_tot_aerosol_1, 
+                                                                kappa_Ray, kappa_cloud_aerosol_1, kappa_tot_aerosol_1,
+                                                                w_cloud, g_cloud, zone_idx,
+                                                                surf_reflect,
+                                                                kappa_cloud_seperate_aerosol_1,
+                                                                hard_surface = 0, tridiagonal = 0, 
+                                                                Gauss_quad = 5, numt = 1)
+                        
+                        F_p_aerosol_2, dtau_aerosol_2 = emission_Toon(P, T, wl, dtau_tot_aerosol_2, 
+                                                                kappa_Ray, kappa_cloud_aerosol_2, kappa_tot_aerosol_2,
+                                                                w_cloud, g_cloud, zone_idx,
+                                                                surf_reflect,
+                                                                kappa_cloud_seperate_aerosol_2,
+                                                                hard_surface = 0, tridiagonal = 0, 
+                                                                Gauss_quad = 5, numt = 1)
+                    
+                        F_p = ((f_both*F_p) + 
+                               (f_aerosol_1 * F_p_aerosol_1) + 
+                               (f_aerosol_2 * F_p_aerosol_2) + 
+                               ((1-(f_both + f_aerosol_1 + f_aerosol_2))*F_p_clear))
                 
         elif (thermal == False) and (thermal_scattering == True):
             raise Exception("If thermal_scattering is True, thermal must also be True. If you want reflection only, set thermal = False, thermal_scattering = False, and reflection = True.")
@@ -2286,7 +2366,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     # Create an albedo of 0's from 5um onwards
                     albedo_zeros = np.zeros(len(wl[index_5um:]))
 
-                    # Joint both arrays together
+                    # Join both arrays together
                     albedo = np.concatenate((albedo_cut, albedo_zeros))
 
                     # For 1 + 1D patchy clouds
