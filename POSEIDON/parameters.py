@@ -654,6 +654,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                     # Since f_aerosol name is already a param in fuzzy deck 
                     cloud_params += ['f_aerosol_1']
                     cloud_params += ['f_aerosol_2']
+                    cloud_params += ['f_clear']
                 else:
                     # Might include a 'permanent' cloud like a fe slab in the future. 
                     raise Exception('Patchy clouds only avaible for up to two species. Otherwise reach out to Elijah.')
@@ -1681,7 +1682,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         P_slab_bottom = 100.0
         a, gamma = 1.0, -4.0  
         f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
-        f_cloud_both, f_cloud_aerosol_1, f_cloud_aerosol_2 = 0,0,0
+        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
 
         # Mie scattering parameters not needed
         r_m = []
@@ -1749,7 +1750,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         w_cloud_eddysed = 0
 
         # Set fractional clouds for two aerosol species to dummy variables 
-        f_cloud_both, f_cloud_aerosol_1, f_cloud_aerosol_2 = 0,0,0
+        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
          
     # 3D patchy cloud model from MacDonald & Lewis (2022)
     elif (cloud_model == 'Iceberg'):
@@ -1809,7 +1810,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         albedo_deck = -1 
 
         # Two aerosol species fraction not needed 
-        f_cloud_both, f_cloud_aerosol_1, f_cloud_aerosol_2 = 0,0,0
+        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
 
     # Mie clouds 
     elif (cloud_model == 'Mie'):
@@ -1839,7 +1840,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                 except:
                     f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0]] 
 
-                f_cloud_both, f_cloud_aerosol_1, f_cloud_aerosol_2 = 0,0,0
+                f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
             
             # Else its two aerosol species 
             else:
@@ -1847,10 +1848,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                     f_both = clouds_in[np.where(cloud_param_names == 'f_both')[0][0]]  
                     f_aerosol_1 = clouds_in[np.where(cloud_param_names == 'f_aerosol_1')[0][0]]   
                     f_aerosol_2 = clouds_in[np.where(cloud_param_names == 'f_aerosol_2')[0][0]]     
+                    f_clear = clouds_in[np.where(cloud_param_names == 'f_clear')[0][0]]   
                 except:
                     f_both = clouds_in[np.where(cloud_param_names == 'f_both')[0]] 
                     f_aerosol_1 = clouds_in[np.where(cloud_param_names == 'f_aerosol_1')[0]]   
                     f_aerosol_2 = clouds_in[np.where(cloud_param_names == 'f_aerosol_2')[0]]  
+                    f_clear = clouds_in[np.where(cloud_param_names == 'f_clear')[0]]  
 
                 f_cloud = 0 
 
@@ -2118,12 +2121,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
         albedo_deck = -1
-        f_both, f_aerosol_1, f_aerosol_2 = 0,0,0
+        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
     
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
            fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom, \
            kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed, albedo_deck, \
-           f_both, f_aerosol_1, f_aerosol_2
+           f_both, f_aerosol_1, f_aerosol_2, f_clear
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

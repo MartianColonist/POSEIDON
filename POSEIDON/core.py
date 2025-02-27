@@ -1086,9 +1086,9 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     P_cloud_bottom, kappa_cloud_eddysed, \
     g_cloud_eddysed, w_cloud_eddysed, \
     albedo_deck, \
-    f_both, f_aerosol_1, f_aerosol_2  = unpack_cloud_params(param_names, cloud_params,
-                                                            cloud_model, cloud_dim, 
-                                                            N_params_cum, TwoD_type)
+    f_both, f_aerosol_1, f_aerosol_2, f_clear  = unpack_cloud_params(param_names, cloud_params,
+                                                                    cloud_model, cloud_dim, 
+                                                                    N_params_cum, TwoD_type)
                                                 
     #***** Store surface properties *****#
 
@@ -1123,7 +1123,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'kappa_cloud_eddysed' : kappa_cloud_eddysed, 'g_cloud_eddysed' : g_cloud_eddysed, 'w_cloud_eddysed' : w_cloud_eddysed,
                   'T_surf' : T_surf, 'albedo_surf' : albedo_surf, 'surface_component_percentages' : surface_component_percentages,
                   'R_p_ref' : R_p_ref, 'albedo_deck' : albedo_deck, 
-                  'f_both' : f_both, 'f_aerosol_1' : f_aerosol_1, 'f_aerosol_2' : f_aerosol_2
+                  'f_both' : f_both, 'f_aerosol_1' : f_aerosol_1, 'f_aerosol_2' : f_aerosol_2, 'f_clear' : f_clear
                  }
 
     return atmosphere
@@ -1332,14 +1332,17 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     f_both = atmosphere['f_both']
     f_aerosol_1 = atmosphere['f_aerosol_1']
     f_aerosol_2 = atmosphere['f_aerosol_2']
+    f_clear = atmosphere['f_clear']
 
     # Normalize the fractions so they add to one
     # This step also occurs in retrieval.py, so this is just for forward models 
     # round to avoid errors from when its pre-normalized in the retrieval.py
-    if round(f_both + f_aerosol_1 + f_aerosol_2) != 1.0:
-        f_both = f_both/(f_both + f_aerosol_1 + f_aerosol_2)
-        f_aerosol_1 = f_aerosol_1/(f_both + f_aerosol_1 + f_aerosol_2)
-        f_aerosol_2 = f_aerosol_2/(f_both + f_aerosol_1 + f_aerosol_2)
+    if round(f_both + f_aerosol_1 + f_aerosol_2 + f_clear) != 1.0:
+        sum_to_normalize_to = f_both + f_aerosol_1 + f_aerosol_2 + f_clear
+        f_both = f_both/(sum_to_normalize_to)
+        f_aerosol_1 = f_aerosol_1/(sum_to_normalize_to)
+        f_aerosol_2 = f_aerosol_2/(sum_to_normalize_to)
+        f_clear = f_clear/(sum_to_normalize_to)
         
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1626,6 +1629,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 # two doesn't work for transmission right now 
                 elif spectrum_type == 'transmission' and (len(aerosol_species) == 2):
                     raise Exception('Cannot do patchy multiple clouds in transmission yet (fix this elijah)')
+                
+                # two doesn't work for transmission right now 
+                elif (thermal == True) and (thermal_scattering == False) and (len(aerosol_species) == 2):
+                    raise Exception('Cannot do patchy multiple clouds in thermal without scattering yet (fix this elijah)')
 
                     
                 # Surfaces : create the surf_reflect object 
@@ -2194,7 +2201,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         F_p = ((f_both*F_p) + 
                                (f_aerosol_1 * F_p_aerosol_1) + 
                                (f_aerosol_2 * F_p_aerosol_2) + 
-                               ((1-(f_both + f_aerosol_1 + f_aerosol_2))*F_p_clear))
+                               (f_clear*F_p_clear))
                 
         elif (thermal == False) and (thermal_scattering == True):
             raise Exception("If thermal_scattering is True, thermal must also be True. If you want reflection only, set thermal = False, thermal_scattering = False, and reflection = True.")
