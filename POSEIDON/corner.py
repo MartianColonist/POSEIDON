@@ -992,7 +992,7 @@ def generate_cornerplot(planet, model, params_to_plot = None,
 def generate_overplot(planet, models, params_to_plot = [], 
                       model_display_names = None, true_vals = None,
                       truth_colour = 'green', colour_schemes = ['purple', 'green'], 
-                      span = None, overplot_name = None,
+                      span = None, overplot_name = None, annotation_text_size = 20,
                       two_sigma_upper_limits = [], two_sigma_lower_limits = []):
     '''
     Generate overplotted giant triangle plot of doom to visualise the results 
@@ -1069,7 +1069,7 @@ def generate_overplot(planet, models, params_to_plot = [],
             # Extract quantities needed to use the Dynesty corner plotting script
             data = a.get_data()
             i = data[:, 1].argsort()[::-1]
-            if params_to_plot is not None:
+            if (len(params_to_plot) != 0):
                 indices_to_plot = [
                     list(param_names).index(param) for param in params_to_plot
                 ]
@@ -1121,7 +1121,7 @@ def generate_overplot(planet, models, params_to_plot = [],
             existing_fig[0].text(0.7, (0.75 + 0.05 * model_i),
                                  model_display_names[model_i],
                                  horizontalalignment="left",
-                                 fontsize=20,
+                                 fontsize=annotation_text_size,
                                  color=colour_schemes[model_i],
                                  )
 
