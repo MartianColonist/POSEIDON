@@ -1374,7 +1374,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     N_spectra = len(spectra)
 
     # Unpack model and atmospheric properties
-    planet_name = planet['planet_name']
+    if (planet != None):
+        planet_name = planet['planet_name']
+    else:
+        planet_name = ''
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
@@ -1744,7 +1747,10 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             else:
                 ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
         elif (plot_type == 'direct_emission'):
-            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
+            if (y_unit == 'Fp'):
+                ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
+            elif (y_unit in ['Fs', 'F*']):
+                ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
         elif (plot_type == 'brightness_temp'):
             ax1.set_ylabel(r'Brightness Temperature (K)', fontsize =  y_label_fontsize)
 
@@ -2134,7 +2140,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         else:
             ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = 16)
     elif (plot_type == 'direct_emission'):
-        ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+        if (y_unit == 'Fp'):
+            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
+        elif (y_unit in ['Fs', 'F*']):
+            ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = 16)
 
     # Add planet name label
     ax1.text(0.02, 0.96, planet_name, horizontalalignment='left', 
@@ -2894,7 +2903,10 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             else:
                 ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
         elif (plot_type == 'direct_emission'):
-            ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
+            if (y_unit == 'Fp'):
+                ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
+            elif (y_unit in ['Fs', 'F*']):
+                ax1.set_ylabel(r'$F_{\rm{s}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
 
     # Set the x and y tick font sizes
     ax1.tick_params(axis='x', labelsize=x_tick_fontsize)
@@ -3486,6 +3498,9 @@ def plot_stellar_flux(flux, wl, wl_min = None, wl_max = None, flux_min = None,
             The simplest stellar flux plot you've ever seen.
 
     '''
+
+    print("WARNING: This function is deprecated and will be removed in a future " + 
+          "version of POSEIDON.")
     
     # Initialise figure
     fig = plt.figure()  
