@@ -2172,7 +2172,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         err_log_g_phot = 0.1
 
     # Unpack data error bars (not error inflation parameter prior)
-    err_data = data['err_data']    
+    if model['high_res_method'] is None:
+        err_data = data['err_data']
+    else:
+        err_data = 1
 
     # Normalise retrieved planet radius parameter into Jupiter or Earth radii
     if (radius_unit == 'R_J'):

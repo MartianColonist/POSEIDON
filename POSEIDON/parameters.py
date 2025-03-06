@@ -852,7 +852,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                                      N_species_params, N_cloud_params,
                                      N_geometry_params, N_stellar_params, 
                                      N_offset_params, N_error_params, 
-                                     high_res_params])
+                                     N_high_res_params])
 
     return params, physical_params, PT_params, X_params, cloud_params, \
            geometry_params, stellar_params, high_res_params, N_params_cumulative
