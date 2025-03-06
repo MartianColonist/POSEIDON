@@ -922,7 +922,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         # Unpack offset and error inflation parameters
         _, _, _, _, _, _, \
-        offset_params, err_inflation_params = split_params(cube, N_params_cum)
+        offset_params, err_inflation_params, _ = split_params(cube, N_params_cum)
         
         # Load error bars specified in data files
         err_data = data['err_data']
@@ -1273,7 +1273,7 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
 
     # split parameters into each atmosphere category
     physical_params, PT_params, log_X_params, \
-    cloud_params, geometry_params, _, _, _ = split_params(param_values, N_params_cum)
+    cloud_params, geometry_params, _, _, _, _ = split_params(param_values, N_params_cum)
     
     # Unpack reference pressure if set as a free parameter
     if ('log_P_ref' in physical_param_names):
