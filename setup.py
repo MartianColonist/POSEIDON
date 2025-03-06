@@ -31,6 +31,7 @@ setup(
         "pytest",
         "cmasher",
         "batman-package",
+        "scikit-learn",
     ],
     zip_safe=False,
 )
