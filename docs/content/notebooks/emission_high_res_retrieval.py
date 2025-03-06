@@ -46,16 +46,19 @@ model_name = "Retrieval"  # Model name used for plots, output files etc.
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 
 param_species = ["H2O", "CO"]
-high_res_params = ["K_p", "V_sys", "log_alpha", "W_conv"]
 
 model = define_model(
     model_name,
     bulk_species,
     param_species,
     PT_profile="Madhu",
-    high_res_params=high_res_params,
     reference_parameter="R_p_ref",
     high_res_method="sysrem", # should be the same as the method used to preprocess the data
+    alpha_high_res_option = 'log',
+    fix_alpha_high_res = False, 
+    fix_W_conv_high_res = False, 
+    fix_beta_high_res = True, 
+    fix_Delta_phi_high_res = True,
 )
 
 # Check the free parameters defining this model
@@ -79,7 +82,7 @@ prior_types["log_P2"] = "uniform"
 prior_types["log_P3"] = "uniform"
 prior_types["K_p"] = "uniform"
 prior_types["V_sys"] = "uniform"
-prior_types["log_alpha"] = "uniform"
+prior_types["log_alpha_HR"] = "uniform"
 prior_types["W_conv"] = "uniform"
 
 # Initialise prior range dictionary
@@ -96,7 +99,7 @@ prior_ranges["log_P2"] = [-5, 2]
 prior_ranges["log_P3"] = [-2, 2]
 prior_ranges["K_p"] = [150, 250]
 prior_ranges["V_sys"] = [-50, 50]
-prior_ranges["log_alpha"] = [-2, 2]
+prior_ranges["log_alpha_HR"] = [-2, 2]
 prior_ranges["W_conv"] = [0, 50]
 
 # Create prior object for retrieval

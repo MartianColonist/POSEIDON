@@ -1545,19 +1545,18 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
              '-> ' + str(wl[0]) + ' - ' + str(wl[-1]) + ' um @ ' + wl_grid_description + '\n',
              '\n',
              '#################################\n',
-             '\n',
-             'Datasets:\n',
-             '\n']
+            '\n']
     
     # Write datasets and instruments used in retrieval
-    for i in range(len(datasets)):
-        
-        lines += ['-> ' + instruments[i] + ' (' + datasets[i] + ')\n']
-           
+    
+    if datasets is not None:
+        lines += ['Datasets:\n',
+                '\n']
+        for i in range(len(datasets)):
+            lines += ['-> ' + instruments[i] + ' (' + datasets[i] + ')\n']
+        lines += ['\n','#################################\n']           
     # Add model stats
     lines += ['\n',
-              '#################################\n',
-              '\n',
               'Algorithm = ' + sampling_algorithm + '\n',
               'N_params = ' + str(n_params) + '\n',
               'N_live = ' + str(N_live) + '\n',
@@ -1582,8 +1581,12 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
                 '\n',
                 '#################################\n']
     else:
+        if datasets is not None:
+            reason = "N_params >= N_data"
+        else:
+            reason = "this is a high-res retrieval"
         lines += ['\n',
-                'Reduced chi-square undefined because N_params >= N_data!\n',
+                f'Reduced chi-square undefined because {reason}!\n',
                 '\n',
                 '-> chi^2_red = Undefined\n',
                 '-> degrees of freedom = Undefined\n',
@@ -1696,10 +1699,15 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     n_params = len(param_names)
 
     # Unpack data properties
-    err_data = data['err_data']
-    ydata = data['ydata']
-    instruments = data['instruments']
-    datasets = data['datasets']
+    if model['high_res_method'] is None:
+        err_data = data['err_data']
+        ydata = data['ydata']
+        instruments = data['instruments']
+        datasets = data['datasets']
+    else:
+        instruments = None
+        datasets = None
+
 
     # Unpack model properties
     radius_unit = model['radius_unit']
@@ -1721,14 +1729,19 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     # Store best-fitting reduced chi-squared
     max_likelihood = best_fit['log_likelihood']
     best_fit_params = best_fit['parameters']
-    norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
-    best_chi_square = -2.0 * (max_likelihood - norm_log)
+    if model['high_res_method'] is None:            
+        norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+        best_chi_square = -2.0 * (max_likelihood - norm_log)
 
-    # Check for N_params >= N_data, for which chi^2_r is undefined
-    if ((len(ydata) - n_params) > 0):
-        dof = (len(ydata) - n_params)  
-        reduced_chi_square = best_chi_square/dof
+        # Check for N_params >= N_data, for which chi^2_r is undefined
+        if ((len(ydata) - n_params) > 0):
+            dof = (len(ydata) - n_params)  
+            reduced_chi_square = best_chi_square/dof
+        else:
+            dof = np.nan
+            reduced_chi_square = np.nan
     else:
+        best_chi_square = np.nan
         dof = np.nan
         reduced_chi_square = np.nan
 
@@ -1865,5 +1878,5 @@ def mock_missing(name):
             f'The module {name} you tried to call is not importable; '
             f'this is likely due to it not being installed.')
     return type(name, (), {'__init__': init})
-  
+
   

@@ -1,3 +1,4 @@
+# %%
 from POSEIDON.high_res import read_high_res_data
 
 planet_name = 'WASP-121b'
@@ -52,10 +53,9 @@ model_name = "High-res retrieval 2"  # Model name used for plots, output files e
 
 bulk_species = ["H2", "He"]  # H2 + He comprises the bulk atmosphere
 # param_species = ["Fe", "Cr", "Mg", "V", "Ti"] # Add more chemical species to the model here
-param_species = ["Fe"]
+param_species = []
 
 method = "sysrem"
-high_res_params = ["log_alpha", "K_p", "V_sys", "W_conv"]
 
 # Create the model object
 model = define_model(
@@ -63,9 +63,13 @@ model = define_model(
     bulk_species,
     param_species,
     PT_profile="isotherm",
-    high_res_params=high_res_params,
     reference_parameter="R_p_ref",
     high_res_method="sysrem",
+    alpha_high_res_option = 'log',
+    fix_alpha_high_res = False, 
+    fix_W_conv_high_res = False, 
+    fix_beta_high_res = True, 
+    fix_Delta_phi_high_res = True,
 )
 
 # Check the free parameters defining this model
@@ -85,7 +89,7 @@ prior_types["log_X"] = "uniform"
 prior_types["K_p"] = "uniform"
 prior_types["V_sys"] = "uniform"
 prior_types["log_alpha"] = "uniform"
-prior_types["b"] = "uniform"
+prior_types["beta_HR"] = "uniform"
 prior_types["W_conv"] = "uniform"
 
 # Initialise prior range dictionary
@@ -98,7 +102,7 @@ prior_ranges["log_X"] = [-15, 0]
 prior_ranges["K_p"] = [170, 230]
 prior_ranges["V_sys"] = [-10, 10]
 prior_ranges["log_alpha"] = [-1, 2]
-prior_ranges["b"] = [0.1, 10]
+prior_ranges["beta_HR"] = [0.1, 10]
 prior_ranges["W_conv"] = [1, 50]
 
 # Create prior object for retrieval
@@ -130,6 +134,7 @@ log_P_fine = np.arange(
 # Now we can pre-interpolate the sampled opacities (may take up to a minute)
 opac = read_opacities(model, wl, opacity_treatment, T_fine, log_P_fine)
 
+# %%
 from POSEIDON.retrieval import run_retrieval
 
 # ***** Specify fixed atmospheric settings for retrieval *****#

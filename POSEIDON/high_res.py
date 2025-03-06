@@ -905,7 +905,7 @@ def loglikelihood_high_res(
             F_p = planet_spectrum
             F_s = star_spectrum
         loglikelihood = 0
-        for key in data.keys():
+        for key in data.keys(): # loop through all the datasets
             if method == "sysrem":
                 loglikelihood += loglikelihood_sysrem(
                     V_sys, K_p, d_phi, a, b, wl, F_p, data[key], F_s
@@ -930,8 +930,7 @@ def loglikelihood_high_res(
         else:
             F_p = planet_spectrum
         loglikelihood = 0
-        for key in data.keys():
-            # wl_vacuum = airtovac(wl * 1e4) / 1e4
+        for key in data.keys(): # loop through all the datasets
             loglikelihood += loglikelihood_sysrem(
                 V_sys, K_p, d_phi, a, b, wl, F_p, data[key]
             )

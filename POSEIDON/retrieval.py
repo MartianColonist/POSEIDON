@@ -155,19 +155,19 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             t0 = time.perf_counter()
 
         # Run MultiNest
-        PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
-                              prior_ranges, spectrum_type, wl, P, P_ref,
-                              R_p_ref, P_param_set, He_fraction, N_slice_EM, 
-                              N_slice_DN, N_params, T_phot_grid, T_het_grid, 
-                              log_g_phot_grid, log_g_het_grid, I_phot_grid, 
-                              I_het_grid, y_p, F_s_obs, constant_gravity,
-                              chemistry_grid, resume = resume, verbose = verbose,
-                              outputfiles_basename = basename, 
-                              n_live_points = N_live, multimodal = False,
-                              evidence_tolerance = ev_tol, log_zero = -1e90,
-                              importance_nested_sampling = False, 
-                              sampling_efficiency = sampling_target, 
-                              const_efficiency_mode = False)
+        # PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
+        #                       prior_ranges, spectrum_type, wl, P, P_ref,
+        #                       R_p_ref, P_param_set, He_fraction, N_slice_EM, 
+        #                       N_slice_DN, N_params, T_phot_grid, T_het_grid, 
+        #                       log_g_phot_grid, log_g_het_grid, I_phot_grid, 
+        #                       I_het_grid, y_p, F_s_obs, constant_gravity,
+        #                       chemistry_grid, resume = resume, verbose = verbose,
+        #                       outputfiles_basename = basename, 
+        #                       n_live_points = N_live, multimodal = False,
+        #                       evidence_tolerance = ev_tol, log_zero = -1e90,
+        #                       importance_nested_sampling = False, 
+        #                       sampling_efficiency = sampling_target, 
+        #                       const_efficiency_mode = False)
 
         # Write retrieval results to file
         if (rank == 0):
@@ -197,9 +197,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                            N_output_samples)
 
             # Write POSEIDON retrieval output files
-            if (high_res_method is not None):  # TODO: could fix by only writing high_res related results
-                write_MultiNest_results(planet, model, data, retrieval_name,
-                                        N_live, ev_tol, sampling_algorithm, wl, R)
+            write_MultiNest_results(planet, model, data, retrieval_name,
+                                    N_live, ev_tol, sampling_algorithm, wl, R)
 
             # Save sampled spectrum
             write_retrieved_spectrum(retrieval_name, wl, spec_low2, 
@@ -1103,7 +1102,8 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                 log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
 
             spectrum_stored = np.zeros(shape=(N_sample_draws, len(wl)))
-            ymodel_samples = np.zeros(shape=(N_sample_draws, len(data['wl_data'])))
+        if model['high_res_method'] is None:
+            ymodel_samples = np.zeros(shape=(N_sample_draws, len(ymodel)))
 
         if (disable_atmosphere == False):
 
@@ -1113,7 +1113,8 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
         # Store spectrum in sample array
         spectrum_stored[i,:] = spectrum
-        ymodel_samples[i,:] = ymodel
+        if model['high_res_method'] is None:
+            ymodel_samples[i,:] = ymodel
             
     # Compute 1 and 2 sigma confidence intervals for P-T and mixing ratio profiles and spectrum
         
