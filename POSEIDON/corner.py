@@ -989,7 +989,7 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         return (fig, axes)
 
 
-def generate_overplot(planet, models, params_to_plot = [], 
+def generate_overplot(planet, models, params_to_plot = None, 
                       model_display_names = None, true_vals = None,
                       truth_colour = 'green', colour_schemes = ['purple', 'green'], 
                       span = None, overplot_name = None,
