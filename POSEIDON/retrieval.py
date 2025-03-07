@@ -155,19 +155,19 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             t0 = time.perf_counter()
 
         # Run MultiNest
-        # PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
-        #                       prior_ranges, spectrum_type, wl, P, P_ref,
-        #                       R_p_ref, P_param_set, He_fraction, N_slice_EM, 
-        #                       N_slice_DN, N_params, T_phot_grid, T_het_grid, 
-        #                       log_g_phot_grid, log_g_het_grid, I_phot_grid, 
-        #                       I_het_grid, y_p, F_s_obs, constant_gravity,
-        #                       chemistry_grid, resume = resume, verbose = verbose,
-        #                       outputfiles_basename = basename, 
-        #                       n_live_points = N_live, multimodal = False,
-        #                       evidence_tolerance = ev_tol, log_zero = -1e90,
-        #                       importance_nested_sampling = False, 
-        #                       sampling_efficiency = sampling_target, 
-        #                       const_efficiency_mode = False)
+        PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
+                               prior_ranges, spectrum_type, wl, P, P_ref,
+                               R_p_ref, P_param_set, He_fraction, N_slice_EM, 
+                               N_slice_DN, N_params, T_phot_grid, T_het_grid, 
+                               log_g_phot_grid, log_g_het_grid, I_phot_grid, 
+                               I_het_grid, y_p, F_s_obs, constant_gravity,
+                               chemistry_grid, resume = resume, verbose = verbose,
+                               outputfiles_basename = basename, 
+                               n_live_points = N_live, multimodal = False,
+                               evidence_tolerance = ev_tol, log_zero = -1e90,
+                               importance_nested_sampling = False, 
+                               sampling_efficiency = sampling_target, 
+                               const_efficiency_mode = False)
 
         # Write retrieval results to file
         if (rank == 0):
