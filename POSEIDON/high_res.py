@@ -15,11 +15,8 @@ def airtovac(wlum):
     # Convert wavelengths (microns) in air to wavelengths in vaccuum (empirical).
     wl = wlum * 1e4
     s = 1e4 / wl
-    n = 1 + (
-        0.00008336624212083
-        + 0.02408926869968 / (130.1065924522 - s**  2)
-        + 0.0001599740894897 / (38.92568793293 - s**2)
-    )
+    n = 1 + (0.00008336624212083 + 0.02408926869968 / (130.1065924522 - s**  2)
+            + 0.0001599740894897 / (38.92568793293 - s**2))
     return wl * n * 1e-4
 
 
@@ -107,25 +104,11 @@ def blaze_correction(flux, filter_size, Print=True):
     return flux
 
 
-def prepare_high_res_data(
-    data_dir,
-    name,
-    spectrum_type,
-    method,
-    flux,
-    wl_grid,
-    phi,
-    uncertainties=None,
-    transit_weight=None,
-    V_bary=None,
-    pca_ncomp=4,
-    sysrem_niter=15,
-):
+def prepare_high_res_data(data_dir, name, spectrum_type, method, flux, wl_grid, phi,
+                        uncertainties=None, transit_weight=None, V_bary=None, pca_ncomp=4, sysrem_niter=15):
     if spectrum_type == "transmission":
         if transit_weight is None:
-            raise Exception(
-                "Please provide transit_weight for transmission spectroscopy."
-            )
+            raise Exception("Please provide transit_weight for transmission spectroscopy.")
 
     processed_data_path = os.path.join(data_dir, name, "data_processed.hdf5")
 
@@ -354,27 +337,14 @@ def fit_out_transit_spec(flux, transit_weight, degree=2, spec="median", Print=Tr
 
 
 def get_RV_range(Kp_range, Vsys_range, phi):
-    RV_min = min(
-        [
-            np.min(Kp_range * np.sin(2 * np.pi * phi[i])) + np.min(Vsys_range)
-            for i in range(len(phi))
-        ]
-    )
-
-    RV_max = max(
-        [
-            np.max(Kp_range * np.sin(2 * np.pi * phi[i])) + np.max(Vsys_range)
-            for i in range(len(phi))
-        ]
-    )
-
+    RV_min = min([np.min(Kp_range * np.sin(2 * np.pi * phi[i])) + np.min(Vsys_range) for i in range(len(phi))])
+    RV_max = max([np.max(Kp_range * np.sin(2 * np.pi * phi[i])) + np.max(Vsys_range) for i in range(len(phi))])
     RV_range = np.arange(RV_min, RV_max + 1)
+
     return RV_range
 
 
-def cross_correlate(
-    Kp_range, Vsys_range, RV_range, wl, planet_spectrum, data, Print=True
-):
+def cross_correlate(Kp_range, Vsys_range, RV_range, wl, planet_spectrum, data, Print=True):
     if Print:
         time0 = time.time()
     uncertainties = data["uncertainties"]
@@ -434,15 +404,8 @@ def cross_correlate(
     return CCF_Kp_Vsys, CCF_phase_RV
 
 
-def plot_CCF_phase_RV(
-    phi,
-    RV_range,
-    CCF_phase_RV,
-    species,
-    plot_label=False,
-    save_path=None,
-    cmap=cmr.ember,
-):
+def plot_CCF_phase_RV(phi, RV_range, CCF_phase_RV, label=None,
+                      save_file_path=None, cmap=cmr.ember):
     for i in range(len(CCF_phase_RV)):
         CCF_phase_RV[i] = CCF_phase_RV[i] - np.mean(CCF_phase_RV[i])
         CCF_phase_RV[i] /= np.std(CCF_phase_RV[i])
@@ -455,34 +418,22 @@ def plot_CCF_phase_RV(
         cmap=cmap,
         origin="lower",
     )
-    if plot_label:
-        ax.text(
-            0.05,
-            0.3,
-            species,
-            ha="left",
-            va="top",
-            transform=ax.transAxes,
-            color="white",
-            fontsize=32,
-        )
+    if label:
+        ax.text(0.05, 0.3, label, ha="left", va="top",
+                transform=ax.transAxes, color="white", fontsize=32)
 
     cbar = plt.colorbar(im)
-    # ax.plot(
-    #     np.arange(-180, -50),
-    #     (np.arange(-180, -50) + 100) / (200) / (2 * np.pi)
-    #     + 0.4,  # phi start from 90 degrees. sin(phi-90) -90 = -phi
-    #     "--",
-    #     color="red",
-    #     alpha=0.5,
-    # )
+    # Attempting to draw the trail with expected slope. Commented back to draw the line!
+    # ax.plot(np.arange(-180, -50),
+    #     (np.arange(-180, -50) + 100) / (200) / (2 * np.pi) + 0.4, # phi start from 90 degrees. sin(phi-90) -90 = -phi
+    #     "--", color="red", alpha=0.5)
     # plot(V_sys_arr[loc[1]], phi[loc[0]], "xk", ms=7)
     # axis([V_sys_arr.min(), V_sys_arr.max(), phi.min(), phi.max()])
     ax.set_xlabel(r"$\rm{V_p}$ (km/s)")
     ax.set_ylabel(r"$\phi$", rotation=0, labelpad=20)
     ax.set_title(r"$\Delta$ CCF ($\sigma$)")
-    if save_path:
-        plt.savefig(save_path, bbox_inches="tight", pad_inches=0.1)
+    if save_file_path:
+        plt.savefig(save_file_path, bbox_inches="tight", pad_inches=0.1)
     return
 
 
@@ -499,23 +450,12 @@ def find_nearest_idx(array, value):
     return idx
 
 
-def plot_CCF_Kp_Vsys(
-    Kp_range,
-    Vsys_range,
-    CCF_Kp_Vsys,
-    species,
-    Kp,
-    Vsys=0,
-    RM_mask_size=10,
-    plot_slice=False,
-    plot_label=False,
-    savefig=False,
-    file_path=None,
-    cmap=cmr.ember,
-):
+def plot_CCF_Kp_Vsys(Kp_range, Vsys_range, CCF_Kp_Vsys, label=None,
+                    Kp_expected=None, Vsys_expected=None, RM_mask_size=10,
+                    plot_slice=False, save_file_path=None, cmap=cmr.ember):
     # Expected value
     CCF_Kp_Vsys = CCF_Kp_Vsys - np.mean(CCF_Kp_Vsys)
-    idx = find_nearest_idx(Vsys_range, Vsys)
+    idx = find_nearest_idx(Vsys_range, Vsys_expected)
     mask = np.ones(len(Vsys_range), dtype=bool)
     mask[idx - RM_mask_size : idx + RM_mask_size] = False
     stdev = np.std(CCF_Kp_Vsys[:, mask])
@@ -525,61 +465,37 @@ def plot_CCF_Kp_Vsys(
 
     colors = cmr.take_cmap_colors(cmap, 10, cmap_range=(0.1, 0.9), return_fmt="hex")
     if plot_slice:
-        fig, axes = plt.subplots(
-            2,
-            1,
-            figsize=(8, 10),
-            constrained_layout=True,
-            gridspec_kw={"height_ratios": [8, 2]},
-        )
+        fig, axes = plt.subplots(2, 1, figsize=(8, 10), constrained_layout=True,
+                                gridspec_kw={"height_ratios": [8, 2]})
         ax1 = axes[0]
         ax2 = axes[1]
-        idx = find_nearest_idx(Kp_range, Kp)
+        idx = find_nearest_idx(Kp_range, Kp_expected)
         slicee = CCF_Kp_Vsys[idx] / stdev
         ax2.plot(Vsys_range, slicee, c=colors[5])
-        ax2.axis(
-            [
-                np.min(Vsys_range),
-                np.max(Vsys_range),
-                1.1 * slicee.min(),
-                1.1 * slicee.max(),
-            ]
-        )
+        ax2.axis([np.min(Vsys_range), np.max(Vsys_range), 1.1 * slicee.min(), 1.1 * slicee.max()])
         ax2.set_xlabel(r"$\Delta$V$_{sys}$(km/s)")
         ax2.set_ylabel(r"$\Delta$ CCF ($\sigma$)")
-        ax2.set_title("Slice at K$_{p}$ = " + str(Kp) + " km/s")
-        ax2.axvline(x=Vsys, ls="--", color="black")
+        ax2.set_title("Slice at K$_{p}$ = " + str(Kp_expected) + " km/s")
+        ax2.axvline(x=Vsys_expected, ls="--", color="black")
     else:
         fig, ax1 = plt.subplots(figsize=(8, 8), constrained_layout=False)
-    im = ax1.imshow(
-        CCF_Kp_Vsys / stdev,
-        extent=[Vsys_range.min(), Vsys_range.max(), Kp_range.min(), Kp_range.max()],
-        aspect=len(Vsys_range) / len(Kp_range),
-        interpolation="bilinear",
-        cmap=cmap,
-        origin="lower",
-    )
-    if plot_label:
-        ax1.text(
-            0.05,
-            0.15,
-            species,
-            ha="left",
-            va="top",
-            transform=ax1.transAxes,
-            color="white",
-            fontsize=32,
-        )
+    im = ax1.imshow(CCF_Kp_Vsys / stdev,
+                    extent=[Vsys_range.min(), Vsys_range.max(), Kp_range.min(), Kp_range.max()],
+                    aspect=len(Vsys_range) / len(Kp_range), interpolation="bilinear",
+                    cmap=cmap, origin="lower",)
+    if label:
+        ax1.text(0.05, 0.15, label, ha="left", va="top",
+            transform=ax1.transAxes, color="white", fontsize=32)
     cbar = plt.colorbar(im, ax=ax1, shrink=0.8)
-    ax1.axvline(x=Vsys, color="white", ls="--", lw=2)
-    ax1.axhline(y=Kp, color="white", ls="--", lw=2)
+    ax1.axvline(x=Vsys_expected, color="white", ls="--", lw=2)
+    ax1.axhline(y=Kp_expected, color="white", ls="--", lw=2)
     ax1.plot(Vsys_range[loc[1]], Kp_range[loc[0]], "xk", ms=15, mew=3)
     ax1.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
     ax1.set_ylabel(r"K$_{p}$ (km/s)")
     ax1.set_title(r"$\Delta$ CCF ($\sigma$)")
 
-    if savefig:
-        plt.savefig(file_path, bbox_inches="tight", pad_inches=0.1)
+    if save_file_path:
+        plt.savefig(save_file_path, bbox_inches="tight", pad_inches=0.1)
 
     return
 
@@ -609,11 +525,11 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
         data (dict):
             Data dictionary read using utility.read_high_res_data. All values should be prepared beforehand.
             Has the following key-value pairss:
-                data_arr (3D np.array of float):
+                reasiduals (3D np.array of float):
                     3D Array representing the top principal components removed data.
                     Shape: (nord x nphi x npix)
-                data_scale (3D np.array of float):
-                    3D Array representing the top principal components of data.
+                flux (3D np.array of float):
+                    3D Array representing the raw flux of data.
                     Shape: (nord x nphi x npix)
                 V_bary (np.array of float):
                     Array of time-resolved Earth-star velocity. We have absorbed V_sys into V_bary, so V_sys = V_sys_literature + d_V_sys.
@@ -693,9 +609,7 @@ def loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, planet_spectrum, star_spectrum, 
     return loglikelihood_sum, CCF_sum
 
 
-def loglikelihood_sysrem(
-    V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data, star_spectrum=None
-):
+def loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, planet_spectrum, data, star_spectrum=None):
     """
     Perform the loglikelihood calculation using SysRem. Based on N. Gibson 2021.
     nord: number of spectral order.
@@ -790,12 +704,8 @@ def loglikelihood_sysrem(
             wl_shifted_p = wl_slice * (1.0 - delta_lambda_p[j])
             F_p = np.interp(wl_shifted_p, wl, planet_spectrum * a)
             if star_spectrum is None:
-                models_shifted[j] = (1 - transit_weight[j]) / max_transit_depth * (
-                    -F_p
-                ) + 1
-                models_shifted[j] /= np.median(
-                    models_shifted[j]
-                )  # divide by the median over wavelength
+                models_shifted[j] = (1 - transit_weight[j]) / max_transit_depth * (-F_p) + 1
+                models_shifted[j] /= np.median(models_shifted[j])  # divide by the median over wavelength
             else:
                 wl_shifted_s = wl_slice * (1.0 - delta_lambda_s[j])
                 F_s = np.interp(wl_shifted_s, wl, star_spectrum)
@@ -840,16 +750,8 @@ def loglikelihood_sysrem(
     return loglikelihood_sum
 
 
-def loglikelihood_high_res(
-    wl,
-    planet_spectrum,
-    star_spectrum,
-    data,
-    spectrum_type,
-    method,
-    high_res_params,
-    high_res_param_names,
-):
+def loglikelihood_high_res(wl, planet_spectrum, star_spectrum, data,
+                        spectrum_type, method, high_res_params, high_res_param_names):
     """
     Return the loglikelihood given the observed flux, Keplerian velocity, and centered system velocity.
     Should only use this function in a high resolutional rerieval.
@@ -907,33 +809,23 @@ def loglikelihood_high_res(
         loglikelihood = 0
         for key in data.keys(): # loop through all the datasets
             if method == "sysrem":
-                loglikelihood += loglikelihood_sysrem(
-                    V_sys, K_p, d_phi, a, b, wl, F_p, data[key], F_s
-                )
+                loglikelihood += loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, F_p, data[key], F_s)
             elif method == "PCA":
-                loglikelihood, _ = loglikelihood_PCA(
-                    V_sys, K_p, d_phi, a, wl, F_p, F_s, data[key]
-                )
+                loglikelihood, _ = loglikelihood_PCA(V_sys, K_p, d_phi, a, wl, F_p, F_s, data[key])
             else:
-                raise Exception(
-                    "Emission spectroscopy only supports sysrem and PCA for now."
-                )
+                raise Exception("Emission spectroscopy only supports sysrem and PCA for now.")
         return loglikelihood
 
     elif spectrum_type == "transmission":
         if method != "sysrem":
-            raise Exception(
-                "Transmission spectroscopy only supports fast filtering with sysrem (Gibson et al. 2022)."
-            )
+            raise Exception("Transmission spectroscopy only supports fast filtering with sysrem (Gibson et al. 2022).")
         if W_conv is not None:
             F_p = gaussian_filter1d(planet_spectrum, W_conv)
         else:
             F_p = planet_spectrum
         loglikelihood = 0
         for key in data.keys(): # loop through all the datasets
-            loglikelihood += loglikelihood_sysrem(
-                V_sys, K_p, d_phi, a, b, wl, F_p, data[key]
-            )
+            loglikelihood += loglikelihood_sysrem(V_sys, K_p, d_phi, a, b, wl, F_p, data[key])
         return loglikelihood
     else:
         raise Exception("Spectrum type should be 'emission' or 'transmission'.")
@@ -991,36 +883,24 @@ def remove_outliers(wl_grid, flux):
 
 
 def transit_model(R_p, R_s, a, phi):
-    params = batman.TransitParams()  # object to store transit parameters
-    params.t0 = 0  # time of inferior conjunction
-    params.per = 1  # orbital period, dummy value
-    params.rp = R_p / R_s  # planet radius (in units of stellar radii)
-    params.a = a / R_s  # semi-major axis (in units of stellar radii)
-    params.inc = 90.0  # orbital inclination (in degrees)
-    params.ecc = 0.0  # eccentricity
-    params.w = 90.0  # longitude of periastron (in degrees)
-    params.limb_dark = "quadratic"  # limb darkening model
-    params.u = [0, 0]  # limb darkening coefficients
-    t = phi * params.per  # times at which to calculate light curve
+    params = batman.TransitParams()     # object to store transit parameters
+    params.t0 = 0                       # time of inferior conjunction
+    params.per = 1                      # orbital period, dummy value
+    params.rp = R_p / R_s               # planet radius (in units of stellar radii)
+    params.a = a / R_s                  # semi-major axis (in units of stellar radii)
+    params.inc = 90.0                   # orbital inclination (in degrees)
+    params.ecc = 0.0                    # eccentricity
+    params.w = 90.0                     # longitude of periastron (in degrees)
+    params.limb_dark = "quadratic"      # limb darkening model
+    params.u = [0, 0]                   # limb darkening coefficients
+    t = phi * params.per                # times at which to calculate light curve
     m = batman.TransitModel(params, t)  # initializes model
     transit_weight = m.light_curve(params)
     return transit_weight
 
 
-def make_injection_data(
-    data,
-    data_dir,
-    name,
-    wl,
-    planet_spectrum,
-    K_p,
-    V_sys,
-    method,
-    a=None,
-    continuum=None,
-    W_conv=None,
-    star_spectrum=None,
-):
+def make_injection_data(data, data_dir, name, wl, planet_spectrum, K_p, V_sys,
+                        method, a=None, continuum=None, W_conv=None, star_spectrum=None):
     residuals = data["residuals"]
     flux = data["flux"]
     wl_grid = data["wl_grid"]
@@ -1054,16 +934,11 @@ def make_injection_data(
         for j in range(nphi):
             wl_shifted_p = wl_slice * (1.0 - delta_lambda[j])
             if emission:
-                F_p_F_s[i, j, :] = np.interp(
-                    wl_shifted_p, wl, planet_spectrum
-                ) / np.interp(wl_slice, wl, star_spectrum)
+                F_p_F_s[i, j, :] = np.interp(wl_shifted_p, wl, planet_spectrum
+                                    ) / np.interp(wl_slice, wl, star_spectrum)
             else:
-                F_p[i, j, :] = (
-                    -np.interp(wl_shifted_p, wl, planet_spectrum)
-                    * (1 - transit_weight[j])
-                    / max_transit_depth
-                    + 1
-                )
+                F_p[i, j, :] = (-np.interp(wl_shifted_p, wl, planet_spectrum)
+                    * (1 - transit_weight[j]) / max_transit_depth + 1)
 
     if emission:
         data_injected = (1 + F_p_F_s) * (flux - residuals)
@@ -1077,16 +952,7 @@ def make_injection_data(
             data_injected, initial_guess=[0.1, np.mean(data_injected)]
         )
 
-    prepare_high_res_data(
-        data_dir,
-        name,
-        spectrum_type,
-        method,
-        data_injected,
-        wl_grid,
-        phi,
-        uncertainties,
-        transit_weight,
-    )
+    prepare_high_res_data(data_dir, name, spectrum_type, method, data_injected,
+                          wl_grid, phi, uncertainties, transit_weight)
 
     return
