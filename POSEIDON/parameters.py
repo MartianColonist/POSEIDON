@@ -9,9 +9,9 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def assign_free_params(param_species, object_type, PT_profile, X_profile, 
-                       cloud_model, cloud_type, gravity_setting, mass_setting,
-                       stellar_contam, offsets_applied, error_inflation, 
+def assign_free_params(param_species, bulk_species, object_type, PT_profile, 
+                       X_profile, cloud_model, cloud_type, gravity_setting, 
+                       mass_setting, stellar_contam, offsets_applied, error_inflation, 
                        PT_dim, X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface, 
@@ -30,6 +30,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     Args:
         param_species (list of str):
             Chemical species with parametrised mixing ratios (trace species).
+        bulk_species (list of str):
+            The chemical species (or two for H2+He) filling most of the atmosphere.
         object_type (str):
             Type of planet / brown dwarf the user wishes to model
             (Options: transiting / directly_imaged).
@@ -60,8 +62,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             Whether a relative offset should be applied to a dataset
             (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
-            Whether to consider inflation of error bars in a retrieval
-            (Options: Line15).
+            Error bar inflation treatment in a retrieval
+            (Options: Line15 / Piette20).
         PT_dim (int):
             Dimensionality of the pressure-temperature field (uniform -> 1,
             a day-night or evening-morning gradient -> 2, both day-night and
@@ -214,6 +216,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
         if (surface == True):
             physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
+
+        if ('ghost' in bulk_species):
+            physical_params += ['mu_back']    # Background molecular weight (AMU)
 
         N_physical_params = len(physical_params)   # Store number of physical parameters
         params += physical_params                  # Add physical parameter names to combined list
@@ -797,13 +802,16 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         N_offset_params = 0
     else:
         raise Exception("Error: unsupported offset prescription.")
-    
+
     #***** Error inflation parameters *****#
 
     if error_inflation == "Line15":
         params += ["b"]
         N_error_params = 1
-    elif error_inflation == None:
+    elif (error_inflation == 'Piette20'): 
+        params += ['x_tol']
+        N_error_params = 1
+    elif (error_inflation == None):    
         N_error_params = 0
     else:
         raise Exception("Error: unsupported error adjustment prescription.")

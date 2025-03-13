@@ -542,6 +542,10 @@ def define_model(model_name, bulk_species, param_species,
     bulk_species = np.array(bulk_species)
     param_species = np.array(param_species)
 
+    # Check that the 'ghost' species option is only for thr bulk species
+    if ('ghost' in param_species):
+        raise Exception("The ghost molecule can only be the bulk species.\n")
+
     # For chemical equilibrium models, find the necessary chemical species
     if (X_profile == 'chem_eq'):
         supported_chem_eq_species = np.intersect1d(supported_species, 
@@ -629,8 +633,8 @@ def define_model(model_name, bulk_species, param_species,
     PT_param_names, X_param_names, \
     cloud_param_names, geometry_param_names, \
     stellar_param_names, high_res_param_names, \
-    N_params_cum = assign_free_params(param_species, object_type, PT_profile,
-                                      X_profile, cloud_model, cloud_type, 
+    N_params_cum = assign_free_params(param_species, bulk_species, object_type, 
+                                      PT_profile, X_profile, cloud_model, cloud_type, 
                                       gravity_setting, mass_setting, stellar_contam, 
                                       offsets_applied, error_inflation, PT_dim, 
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
@@ -872,7 +876,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_g = None, M_p = None, T_input = [], X_input = [], 
                     P_surf = None, P_param_set = 1.0e-2, He_fraction = 0.17, 
                     N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
-                    chemistry_grid = None):
+                    chemistry_grid = None, mu_back = None):
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
     full generality, this function generates 3D pressure-temperature and mixing 
@@ -923,6 +927,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
         chemistry_grid (dict):
             For models with a pre-computed chemistry grid only, this dictionary
             is produced in chemistry.py.
+        mu_back (float):
+            Mean molecular mass of background gas, if bulk_species = ['ghost'] (AMU).
     
     Returns:
         atmosphere (dict):
@@ -1049,7 +1055,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            beta, phi, theta, species_vert_gradient, He_fraction,
                            T_input, X_input, P_param_set, log_P_slope_phot,
                            log_P_slope_arr, Na_K_fixed_ratio, constant_gravity,
-                           chemistry_grid, PT_penalty, T_eq)
+                           chemistry_grid, PT_penalty, T_eq, mu_back)
 
     #***** Store cloud / haze / aerosol properties *****#
 
@@ -1083,7 +1089,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'dphi': dphi, 'dtheta': dtheta, 'kappa_cloud_0': kappa_cloud_0, 
                   'P_cloud': P_cloud, 'f_cloud': f_cloud, 'phi_cloud_0': phi_cloud_0, 
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
-                  'is_physical': is_physical,
+                  'is_physical': is_physical, 'mu_back': mu_back,
                   'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 
                   'fractional_scale_height': fractional_scale_height,
                   'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 
@@ -2212,7 +2218,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_P1': [-6, 2], 'log_P2': [-6, 2], 
                              'log_P3': [-2, 2], 'log_P_mid': [-5, 1], 
                              'log_P_surf': [-4, 1], 'log_P_ref': [-6, 2],
-                             'log_X': [-12, -1],
+                             'log_X': [-12, -1], 'mu_back': [2.3, 50],
                              'Delta_log_X': [-10, 10], 'Grad_log_X': [-1, 1], 
                              'log_a': [-4, 8], 'gamma': [-20, 2], 
                              'log_P_cloud': [-6, 2], 'phi_cloud': [0, 1],
@@ -2233,6 +2239,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'delta_rel_3': [-1.0e-3, 1.0e-3],
                              'b': [np.log10(0.001*np.min(err_data**2)),
                                    np.log10(100.0*np.max(err_data**2))],
+                             'x_tol': [0.05, 1.0],
                              'C_to_O': [0.3, 1.9], 'log_Met' : [-0.9, 3.9],
                              'log_r_m': [-3, 1], 'log_n_max': [5.0, 20.0],  
                              'fractional_scale_height': [0.1, 1], 
