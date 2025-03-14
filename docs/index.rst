@@ -82,6 +82,7 @@ Contributor Hall of Fame:
 
    content/citations
    content/contributing
+   content/poseidon_papers
    autoapi/index
 
 

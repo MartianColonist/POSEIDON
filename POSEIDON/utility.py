@@ -1,4 +1,4 @@
-''' 
+'''
 Various miscellaneous functions.
 
 '''
@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 import pymultinest
 import re
+import pickle
 from mpi4py import MPI
 from numba import jit, cuda
 from spectres import spectres
@@ -921,9 +922,9 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
  
 
 def plot_collection(new_y, new_x, collection = []):
-    
-    ''' Convenient function to combine distinct spectra and wavelength
-        grids into a single object for plotting purposes.
+    ''' 
+    Convenient function to combine distinct spectra and wavelength
+    grids into a single object for plotting purposes.
     
     '''
         
@@ -933,8 +934,8 @@ def plot_collection(new_y, new_x, collection = []):
     
     
 def round_sig_figs(value, sig_figs):
-    
-    ''' Round a quantity to a specified number of significant figures.
+    ''' 
+    Round a quantity to a specified number of significant figures.
     
     '''
 
@@ -945,8 +946,8 @@ def round_sig_figs(value, sig_figs):
     
 
 def confidence_intervals(sample_draws, array, length, integer=False):
-    
-    ''' Order posterior samples to create 1 & 2 sigma contours + median values.
+    ''' 
+    Order posterior samples to create 1 & 2 sigma contours + median values.
     
     '''
         
@@ -1020,13 +1021,13 @@ def confidence_intervals(sample_draws, array, length, integer=False):
             arr_high3 = arr_ordered_interp(sig_3) 
                 
         return arr_low3, arr_low2, arr_low1, arr_median, arr_high1, arr_high2, arr_high3
-          
-           
+
+      
 def write_params_file(param_names, results_prefix):
-    
-    ''' Write file containing a single column listing the free parameters
-        used in a retrieval. This file can be read in later when generating 
-        corner plots at a future time.
+    '''
+    Write file containing a single column listing the free parameters
+    used in a retrieval. This file can be read in later when generating 
+    corner plots at a future time.
         
     '''
 
@@ -1037,9 +1038,9 @@ def write_params_file(param_names, results_prefix):
     
     
 def write_samples_file(samples, param_names, n_params, results_prefix):
-    
-    ''' Write file containing the equally weighted posterior samples for 
-        each free parameter in a retrieval.
+    ''' 
+    Write file containing the equally weighted posterior samples for 
+    each free parameter in a retrieval.
     
     '''
     
@@ -1056,8 +1057,8 @@ def write_samples_file(samples, param_names, n_params, results_prefix):
     
         
 def find_str(string, substring):
-    
-    ''' Find positional index within a string where a substring starts.
+    ''' 
+    Find positional index within a string where a substring starts.
     
     '''
     
@@ -1074,13 +1075,13 @@ def find_str(string, substring):
 
     return -1
 
-    
+
 def generate_latex_param_names(param_names):
-    
-    ''' Generate LaTeX code for an array of parameters for use in plots.
+    ''' 
+    Generate LaTeX code for an array of parameters for use in plots.
     
     '''
-    
+
     # Define lower and upper Greek alphabets for later use
     greek_letters_low = ['alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta',
                          'eta', 'theta', 'iota', 'kappa', 'lambda', 'mu', 'nu',
@@ -1090,27 +1091,27 @@ def generate_latex_param_names(param_names):
                          'Eta', 'Theta', 'Iota', 'Kappa', 'Lambda', 'Mu', 'Nu',
                          'Xi', 'Omicron', 'Pi', 'Rho', 'Sigma', 'Tau', 'Upsilon',
                          'Phi', 'Chi', 'Psi', 'Omega']
-    
+
     # Define key parameters used in subscripts of parameter names
     phrases = ['high', 'mid', 'deep', 'ref', 'DN', 'term', 'Morn', 'Even', 'Day', 
                'Night', 'cloud', 'rel', '0', 'het', 'phot', 'fac', 'spot', 'surf',
-               'p', 'atm', 'tol', 'back']
-    
+               'p', 'atm', 'tol', 'back', 'conv', 'HR']
+
     # Initialise output array
     latex_names = []
-    
+
     # Loop over each free parameter
     for param in param_names:
-            
-        components = []    # Array of 'special' components for this parameter (e.g. 'log', 'bar')
-        idxs = []          # Indices where each component starts
-        lens= []           # Number of characters in each component
-        
+
+        components = []  # Array of 'special' components for this parameter (e.g. 'log', 'bar')
+        idxs = []        # Indices where each component starts
+        lens = []        # Number of characters in each component
+
         captured_characters = np.zeros(len(param)).astype(np.int64)  # Stays zero for entries with solo letters (e.g. 'H' in 'H2O')
 
         # Note that many of these temporary fixes are made obsolete
         # due to plot_histograms now having custom_labels() argument
-        
+
         # Temporary fix for 'slope' P-T profile parameters
         if (param in ['Delta_T_10-1mb', 'Delta_T_100-10mb', 'Delta_T_1-0.1b',
                       'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 'Delta_T_32-10b',
@@ -1128,26 +1129,24 @@ def generate_latex_param_names(param_names):
         # Temporary fix for aerosol parameter names 
         if ('Pbase' in param):
             string = '$\\log \\, \\mathrm{P_{base}} \\, \\mathrm{SiO_2}$'
-            latex_names += [string]
-            continue
         if ('log_X_SiO2_base' in param):
             string = '$\\log \\, \\, \\mathrm{SiO_2} \\, \\mathrm{_{base}}$'
             latex_names += [string]
             continue
         if ('r_m' in param):
 
-            aerosol_name = param.split('_')[3]
+            aerosol_name = param.split("_")[3]
 
-            if('SiO2' in param):
-                string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{SiO_2}$'
+            if "SiO2" in param:
+                string = "$\\log \\, \\mathrm{r_m} \\, \\mathrm{SiO_2}$"
                 latex_names += [string]
                 continue
-            if('Fe2O3' in param):
-                string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{Fe_2O_3}$'
+            if "Fe2O3" in param:
+                string = "$\\log \\, \\mathrm{r_m} \\, \\mathrm{Fe_2O_3}$"
                 latex_names += [string]
                 continue
             else:
-                string = '$\\log \\, \\mathrm{r_m} \\, \\mathrm{' + aerosol_name + '}$'
+                string = "$\\log \\, \\mathrm{r_m} \\, \\mathrm{" + aerosol_name + "}$"
                 latex_names += [string]
                 continue
 
@@ -1245,9 +1244,8 @@ def generate_latex_param_names(param_names):
             latex_names += [string]
             continue
 
-
         # Quick fix for log_Na + K
-        #if ('log_Na' in param):
+        # if ('log_Na' in param):
         #    string = '$\\log \\, \mathrm{Na} \\, (+ 0.1 \\, \mathrm{K})$'
         #    latex_names += [string]
         #    continue
@@ -1278,10 +1276,16 @@ def generate_latex_param_names(param_names):
             lens += [3]
             captured_characters[idx:idx+3] = 1
 
-            
         for letter in greek_letters_low:
             if (letter == 'eta'):   # Special check for 'eta', since  contained in 'beta' and 'theta'
                 if ((letter in param) and ('theta' not in param) and ('beta' not in param)):
+                    idx = find_str(param, letter)   # Find index where Greek letter starts
+                    idxs += [idx]
+                    components += ['greek_low']
+                    lens += [len(letter)]
+                    captured_characters[idx:idx+len(letter)] = 1
+            elif (letter == 'psi'):   # Special check for 'psi', since  contained in 'upsilon'
+                if ((letter in param) and ('upsilon' not in param)):
                     idx = find_str(param, letter)   # Find index where Greek letter starts
                     idxs += [idx]
                     components += ['greek_low']
@@ -1456,10 +1460,10 @@ def return_quantiles(stats, param, i, radius_unit, spectrum_type,
     ''' Extract the median, +/- N sigma (specified by 'quantile'), string 
         formatter and units for a given free parameter.
         
-        Note: 'quantile' supports 1, 2, 3, or 5 sigma.
+    Note: 'quantile' supports 1, 2, 3, or 5 sigma.
     
     '''
-    
+
     quantile = quantile.replace(' ', '')   # Remove space to match PyMultiNest key
 
     # Load PyMultiNest output to extract median and specified sigma quantiles
@@ -1501,7 +1505,7 @@ def return_quantiles(stats, param, i, radius_unit, spectrum_type,
         
     return sig_m, centre, sig_p, formatter, unit
 
-    
+
 def write_summary_file(results_prefix, planet_name, retrieval_name, 
                        sampling_algorithm, n_params, N_live, ev_tol, param_names, 
                        stats, ln_Z, ln_Z_err, reduced_chi_square, chi_square,
@@ -1550,19 +1554,18 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
              '-> ' + str(wl[0]) + ' - ' + str(wl[-1]) + ' um @ ' + wl_grid_description + '\n',
              '\n',
              '#################################\n',
-             '\n',
-             'Datasets:\n',
-             '\n']
+            '\n']
     
     # Write datasets and instruments used in retrieval
-    for i in range(len(datasets)):
-        
-        lines += ['-> ' + instruments[i] + ' (' + datasets[i] + ')\n']
-           
+    
+    if datasets is not None:
+        lines += ['Datasets:\n',
+                '\n']
+        for i in range(len(datasets)):
+            lines += ['-> ' + instruments[i] + ' (' + datasets[i] + ')\n']
+        lines += ['\n','#################################\n']           
     # Add model stats
     lines += ['\n',
-              '#################################\n',
-              '\n',
               'Algorithm = ' + sampling_algorithm + '\n',
               'N_params = ' + str(n_params) + '\n',
               'N_live = ' + str(N_live) + '\n',
@@ -1587,8 +1590,12 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
                 '\n',
                 '#################################\n']
     else:
+        if datasets is not None:
+            reason = "N_params >= N_data"
+        else:
+            reason = "this is a high-res retrieval"
         lines += ['\n',
-                'Reduced chi-square undefined because N_params >= N_data!\n',
+                f'Reduced chi-square undefined because {reason}!\n',
                 '\n',
                 '-> chi^2_red = Undefined\n',
                 '-> degrees of freedom = Undefined\n',
@@ -1688,8 +1695,8 @@ def write_summary_file(results_prefix, planet_name, retrieval_name,
 
     # Commit the lines array to file
     summary_file.writelines(lines)
-    
-    
+
+
 def write_MultiNest_results(planet, model, data, retrieval_name,
                             N_live, ev_tol, sampling_algorithm, wl, R,
                             ymodel_best, spectrum_type):
@@ -1706,10 +1713,15 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     n_params = len(param_names)
 
     # Unpack data properties
-    err_data = data['err_data']
-    ydata = data['ydata']
-    instruments = data['instruments']
-    datasets = data['datasets']
+    if model['high_res_method'] is None:
+        err_data = data['err_data']
+        ydata = data['ydata']
+        instruments = data['instruments']
+        datasets = data['datasets']
+    else:
+        instruments = None
+        datasets = None
+
 
     # Unpack model properties
     radius_unit = model['radius_unit']
@@ -1733,29 +1745,36 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     # Store best-fitting reduced chi-squared
     max_likelihood = best_fit['log_likelihood']
     best_fit_params = best_fit['parameters']
-
+    
     # Load values for error inflation parameters (if included in model)
-    _, _, _, _, _, _, _, \
+    _, _, _, _, _, _, _, _, \
     err_inflation_params = split_params(best_fit_params, N_params_cum)
+    
+    if (model['high_res_method'] is None):
+      
+        # Calculate the normalisation term for the log-likelihood
+        if (error_inflation == 'Line15'):
+            err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
+            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+        elif (error_inflation == 'Piette20'):
+            err_eff_sq = (err_data*err_data + (err_inflation_params[0]*ymodel_best)**2)
+            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+        else:
+            norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+        
+        # Calculate the best-fitting model chi-squared    
+        best_chi_square = -2.0 * (max_likelihood - norm_log)
 
-    # Calculate the normalisation term for the log-likelihood
-    if (error_inflation == 'Line15'):
-        err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
-        norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
-    elif (error_inflation == 'Piette20'):
-        err_eff_sq = (err_data*err_data + (err_inflation_params[0]*ymodel_best)**2)
-        norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+        # Check for N_params >= N_data, for which chi^2_r is undefined
+        if ((len(ydata) - n_params) > 0):
+            dof = (len(ydata) - n_params)  
+            reduced_chi_square = best_chi_square/dof
+        else:
+            dof = np.nan
+            reduced_chi_square = np.nan
+            
     else:
-        norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
-
-    # Calculate the best-fitting model chi-squared    
-    best_chi_square = -2.0 * (max_likelihood - norm_log)
-
-    # Check for N_params >= N_data, for which chi^2_r is undefined
-    if ((len(ydata) - n_params) > 0):
-        dof = (len(ydata) - n_params)  
-        reduced_chi_square = best_chi_square/dof
-    else:
+        best_chi_square = np.nan
         dof = np.nan
         reduced_chi_square = np.nan
 
@@ -1775,11 +1794,10 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
 
 
 def get_vmr(name, mol, planet_name):
-
     ''' 
     Gets the vmr from the results.txt file
 
-    INPUTS:
+    Args:
         name (string):
             model name
         mol (string):
@@ -1787,7 +1805,7 @@ def get_vmr(name, mol, planet_name):
         planet_name (string)
             name of planet (to load results file)
 
-    OUTPUTS:
+    Returns:
         vmr (float):
             The vmr of the variable (or just the value before the +/-)
         sig1, sig2 (float):
@@ -1816,7 +1834,7 @@ def get_vmr(name, mol, planet_name):
                 sig2 = sig2.replace(')', '')
                 sig2 = float(sig2)
 
-                # If we continue, there are other lines that will fulfill
+                # If we continue, there are other lines that will fullfil
                 # if criteria and overwrite what we want with wider
                 # (2, 3,  5 sigma) bounds
                 return vmr, sig1, sig2
@@ -1826,11 +1844,10 @@ def get_vmr(name, mol, planet_name):
 
 
 def make_latex_table_from_results(model_names_array, variables, planet_name):
-
     ''' 
     Gets the vmr from the results.txt file
 
-    INPUTS:
+    Args:
         model_names_array (array of string):
             model names for each model to print out
         variables (array of string):
@@ -1838,7 +1855,7 @@ def make_latex_table_from_results(model_names_array, variables, planet_name):
         planet_name (string)
             name of planet (to load results file)
 
-    OUTPUTS:
+    Returns:
         Prints out a latex friendly table
     
     '''
@@ -1895,3 +1912,4 @@ def mock_missing(name):
             f'this is likely due to it not being installed.')
     return type(name, (), {'__init__': init})
 
+  

@@ -9,7 +9,6 @@ import os
 import pymultinest
 from mpi4py import MPI
 from scipy.special import ndtri
-from spectres import spectres
 from numba.core.decorators import jit
 from scipy.special import erfcinv
 from scipy.special import lambertw as W
@@ -25,6 +24,7 @@ from .utility import write_MultiNest_results, round_sig_figs, closest_index, \
 from .core import make_atmosphere, compute_spectrum
 from .parameters import unpack_stellar_params
 from .stellar import precompute_stellar_spectra, stellar_contamination_general
+from .high_res import loglikelihood_high_res
 from .chemistry import load_chemistry_grid
 from .transmission import area_overlap_circles
 
@@ -35,7 +35,6 @@ rank = comm.Get_rank()
 allowed_simplex = 1
 
 
-
 def run_retrieval(planet, star, model, opac, data, priors, wl, P, 
                   P_ref = None, R_p_ref = None, P_param_set = 1.0e-2, 
                   R = None, retrieval_name = None, He_fraction = 0.17, 
@@ -44,9 +43,10 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                   stellar_T_step = 20, stellar_log_g_step = 0.1, 
                   N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest', 
                   resume = False, verbose = True, sampling_target = 'parameter',
-                  chem_grid = 'fastchem', N_output_samples = 1000,):
+                  chem_grid = 'fastchem', N_output_samples = 1000,
+                  ):
     '''
-    ADD DOCSTRING
+    ADD DOCSTRING (will hopefully be done before the heat death of the Universe)
     '''
 
     # Unpack planet name
@@ -65,6 +65,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     reference_parameter = model['reference_parameter']
     disable_atmosphere = model['disable_atmosphere']
     X_profile = model['X_profile']
+    high_res_method = model['high_res_method']
 
     # Unpack stellar properties
     if (star is not None):
@@ -78,11 +79,11 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
         raise Exception("Error: Must provide R_p_ref when P_ref is a free parameter.")
     
     if ((disable_atmosphere == True) and ('transmission' not in spectrum_type)):
-        raise Exception("Error: An atmosphere can only be disabled for transmission spectra ")
+        raise Exception("Error: An atmosphere can only be disabled for transmission spectra.")
 
     N_params = len(param_names)
 
-    if (retrieval_name is None):
+    if retrieval_name is None:
         retrieval_name = model_name
     else:
         retrieval_name = model_name + '_' + retrieval_name
@@ -91,7 +92,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/'
 
     # Load chemistry grid (e.g. equilibrium chemistry) if option selected
-    if (X_profile == 'chem_eq'):
+    if X_profile == "chem_eq":
         chemistry_grid = load_chemistry_grid(param_species, chem_grid, comm, rank)
     else:
         chemistry_grid = None
@@ -123,12 +124,6 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
         # Load stellar spectrum
         F_s = star['F_star']
         d = planet['system_distance']
-      #  wl_s = star['wl_star']
-
-      #  if (wl_s != wl):
-      #      raise Exception("Error: wavelength grid for stellar spectrum does " +
-      #                      "not match wavelength grid of planet spectrum. " +
-      #                      "Did you forget to provide 'wl' to create_star?")
 
         # Distance only used for flux ratios, so set it to 1 since it cancels
         if (d is None):
@@ -144,7 +139,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
         # Stellar flux not needed for transmission spectra
         F_s_obs = None
 
-    if (rank == 0):
+    if rank == 0:
         print("POSEIDON now running '" + retrieval_name + "'")
 
     # Run POSEIDON retrieval using PyMultiNest
@@ -162,19 +157,18 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
 
         # Run MultiNest
         PyMultiNest_retrieval(planet, star, model, opac, data, prior_types, 
-                              prior_ranges, spectrum_type, wl, P, P_ref,
-                              R_p_ref, P_param_set, He_fraction, N_slice_EM, 
-                              N_slice_DN, N_params, T_phot_grid, T_het_grid, 
-                              log_g_phot_grid, log_g_het_grid, I_phot_grid, 
-                              I_het_grid, y_p, F_s_obs, constant_gravity,
-                              chemistry_grid,
-                              resume = resume, verbose = verbose,
-                              outputfiles_basename = basename, 
-                              n_live_points = N_live, multimodal = False,
-                              evidence_tolerance = ev_tol, log_zero = -1e90,
-                              importance_nested_sampling = False, 
-                              sampling_efficiency = sampling_target, 
-                              const_efficiency_mode = False)
+                               prior_ranges, spectrum_type, wl, P, P_ref,
+                               R_p_ref, P_param_set, He_fraction, N_slice_EM, 
+                               N_slice_DN, N_params, T_phot_grid, T_het_grid, 
+                               log_g_phot_grid, log_g_het_grid, I_phot_grid, 
+                               I_het_grid, y_p, F_s_obs, constant_gravity,
+                               chemistry_grid, resume = resume, verbose = verbose,
+                               outputfiles_basename = basename, 
+                               n_live_points = N_live, multimodal = False,
+                               evidence_tolerance = ev_tol, log_zero = -1e90,
+                               importance_nested_sampling = False, 
+                               sampling_efficiency = sampling_target, 
+                               const_efficiency_mode = False)
 
         # Write retrieval results to file
         if (rank == 0):
@@ -184,7 +178,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             total = round_sig_figs((t1-t0)/3600.0, 2)  # Round to 2 significant figures
             
             print('POSEIDON retrieval finished in ' + str(total) + ' hours')
-      
+
             # Compute samples of retrieved P-T, mixing ratio profiles, and spectrum
             T_low2, T_low1, T_median, \
             T_high1, T_high2, \
@@ -217,7 +211,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             # Save ymodel samples
             ymodel_samples_object = np.array(ymodel_samples).T
             np.savetxt('../samples/' + retrieval_name + '_ymodel_samples.txt', ymodel_samples_object.T)
-               
+            
             # Only write retrieved P-T profile and mixing ratio arrays if atmosphere enabled
             if (disable_atmosphere == False):
 
@@ -231,7 +225,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                       log_X_high1, log_X_high2)
 
             print("All done! Output files can be found in " + output_dir + "results/")
-         
+
     comm.Barrier()
 
     # Change directory back to directory where user's python script is located
@@ -261,6 +255,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     nightside_contam = model['nightside_contam']
     disable_atmosphere = model['disable_atmosphere']
     PT_penalty = model['PT_penalty']
+    high_res_method = model['high_res_method']
 
     # Unpack planet and star properties
     R_p = planet['planet_radius']
@@ -278,8 +273,9 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     physical_params, PT_params, \
     log_X_params, cloud_params, \
     geometry_params, stellar_params, \
-    offset_params, err_inflation_params = split_params(param_vector, N_params_cum)
-            
+    offset_params, err_inflation_params, \
+    high_res_params = split_params(param_vector, N_params_cum)
+
     # If the atmosphere is disabled
     if ((disable_atmosphere == True) and ('transmission' in spectrum_type)):
 
@@ -309,7 +305,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         # No atmosphere dictionary needed if atmosphere disabled
         atmosphere = None
 
-        lnprior_TP = 0   # Not needed for flat lines, so set to zero
+        ln_prior_TP = 0   # Not needed for flat lines, so set to zero
 
     else:
 
@@ -389,7 +385,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         # Only for Pelletier 2021 profiles
         if PT_penalty == True:
 
-            # Unpack Ptop and Pbottom 
+            # Unpack P_top and P_bottom 
             log_P_min = np.min(np.log10(P))
             log_P_max = np.max(np.log10(P))
 
@@ -399,18 +395,17 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             sigma_s = PT_params[-1]
 
             # Delta log p goes in denominator of the sum
-            # restep here just returns the spacing 
-            deltalogp = np.linspace(log_P_min,log_P_max,num=num_of_knots,retstep=True)[1]
+            # re-step here just returns the spacing 
+            delta_log_p = np.linspace(log_P_min, log_P_max, num=num_of_knots, retstep=True)[1]
 
             # Sum in Equation 11, with the addition of a 1/2 ln (2 pi sigma_smooth**2) from Line et al 2011
-            sum = np.sum(((T_points[2:] - 2*T_points[1:-1] + T_points[:-2])**2)/(deltalogp**3) ) - 0.5 * np.log(2*np.pi*sigma_s**2)
+            sum = np.sum(((T_points[2:] - 2*T_points[1:-1] + T_points[:-2])**2)/(delta_log_p**3) ) - 0.5 * np.log(2*np.pi*sigma_s**2)
             
             # Prefix remains the same from Equation 11
-            lnprior_TP = (-1.0/(2.0*sigma_s**2)) * (1/(log_P_max-log_P_min)) * sum
+            ln_prior_TP = (-1.0/(2.0*sigma_s**2)) * (1/(log_P_max-log_P_min)) * sum
 
         else:
-            lnprior_TP = 0
-        
+            ln_prior_TP = 0
 
         #***** Step 3: generate spectrum of atmosphere ****#
 
@@ -429,7 +424,12 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         if (np.any(np.isnan(spectrum))):
             
             # Quit if given parameter combination is unphysical
-            return 0, spectrum, atmosphere, lnprior_TP
+            return 0, spectrum, atmosphere, ln_prior_TP
+
+    # For high-resolution retrievals, we skip the rest of the forward model,
+    # since only the spectrum and atmosphere are needed
+    if (high_res_method is not None):
+        return 0, spectrum, atmosphere, ln_prior_TP  # No y_model needed for high-res retrievals here
 
     #***** Step 4: stellar contamination *****#
     
@@ -531,7 +531,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             F_s_binned = bin_spectrum_to_data(F_s_obs, wl, data)
             ymodel = F_p_binned/F_s_binned
 
-    return ymodel, spectrum, atmosphere, lnprior_TP
+    return ymodel, spectrum, atmosphere, ln_prior_TP
 
 
 @jit(nopython = True)
@@ -546,7 +546,7 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
     n = len(chem_params_drawn)     # Number of species free parameters
 
     # Limits correspond to condition that all X_i > 10^(-12)
-    prior_lower_CLR = ((n-1.0)/n) * (limit * np.log(10.0) + np.log(n-1.0))      # Lower limit corresponds to species underabundant
+    prior_lower_CLR = ((n-1.0)/n) * (limit * np.log(10.0) + np.log(n-1.0))      # Lower limit corresponds to species under-abundant
     prior_upper_CLR = ((1.0-n)/n) * (limit * np.log(10.0))                      # Upper limit corresponds to species dominant
 
     CLR = np.zeros(shape=(n+1))   # Vector of CLR variables
@@ -609,23 +609,30 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     offsets_applied = model['offsets_applied']
     stellar_contam = model['stellar_contam']
     PT_penalty = model['PT_penalty']
+    high_res_method = model['high_res_method']
+    high_res_param_names = model['high_res_param_names']
+    
+   # R_p = planet["planet_radius"]
+   # d = planet["system_distance"]
+   # R_s = star["R_s"]
 
     # Unpack number of free mixing ratio parameters for prior function  
     N_species_params = len(X_params)
 
     # Assign PyMultiNest keyword arguments
     n_dims = N_params
-    
-    # Pre-compute normalisation for log-likelihood 
-    err_data = data['err_data']
-    norm_log_default = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+
+    # Pre-compute normalisation for log-likelihood
+    if (high_res_method is None):   # Not needed for high-res retrievals
+        err_data = data["err_data"]
+        norm_log_default = (-0.5 * np.log(2.0 * np.pi * err_data * err_data)).sum()
 
     # Create variable governing if a mixing ratio parameter combination lies in 
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
     global allowed_simplex    # Needs to be global, as prior function has no return
 
     allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
-    
+
     # Define the prior transformation function
     def Prior(cube, ndim, nparams):
         ''' 
@@ -864,8 +871,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 i_prime = N_params_cum[1] + i
                 
                 cube[i_prime] = log_X[(1+i)]   # log_X[0] is not a free parameter
-      
-            
+
+
     # Define the log-likelihood function
     def LogLikelihood(cube, ndim, nparams):
         ''' 
@@ -888,11 +895,10 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         if (allowed_simplex == 0):
             loglikelihood = -1.0e100   
             return loglikelihood
-        
+
         # Unpack stellar parameters
-        _, _, _, _, \
-        _, stellar_params, \
-        _, _ = split_params(cube, N_params_cum)
+        _, _, _, _, _, \
+        stellar_params, _, _, _ = split_params(cube, N_params_cum)
 
         # Reject models with spots hotter than faculae (by definition)
         if ((stellar_contam != None) and ('two_spots' in stellar_contam)):
@@ -906,18 +912,17 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             if ((T_spot > T_phot) or (T_fac < T_phot) or (T_spot > T_fac)):
                 loglikelihood = -1.0e100   
                 return loglikelihood
-                
-        
+
         #***** For valid parameter combinations, run forward model *****#
 
-        ymodel, spectrum, _, lnprior_TP = forward_model(cube, planet, star, model, opac, data, 
+        ymodel, spectrum, _, ln_prior_TP = forward_model(cube, planet, star, model, opac, data, 
                                                         wl, P, P_ref_set, R_p_ref_set, P_param_set, 
                                                         He_fraction, N_slice_EM, N_slice_DN, 
                                                         spectrum_type, T_phot_grid, T_het_grid, 
                                                         log_g_phot_grid, log_g_het_grid,
                                                         I_phot_grid, I_het_grid, y_p, F_s_obs,
                                                         constant_gravity, chemistry_grid)
-        
+
         # Reject unphysical spectra (forced to be NaN by function above)
         if (np.any(np.isnan(spectrum))):
             
@@ -926,12 +931,25 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             
             # Quit if given parameter combination is unphysical
             return loglikelihood
-        
-        
+
+        if (high_res_method is not None):
+
+            # Unpack high-resolution retrieval parameters
+            _, _, _, _, _, \
+            _, _, _, high_res_params = split_params(cube, N_params_cum)
+
+            # Compute the log-likelihood relevant for high-resolution retrievals
+            loglikelihood = loglikelihood_high_res(wl, spectrum, F_s_obs, data,
+                                                   spectrum_type, high_res_method,
+                                                   high_res_params, high_res_param_names)
+            
+            return loglikelihood
+
         #***** Handle error bar inflation and offsets (if optionally enabled) *****#
 
+        # Unpack offset and error inflation parameters
         _, _, _, _, _, _, \
-        offset_params, err_inflation_params = split_params(cube, N_params_cum)
+        offset_params, err_inflation_params, _ = split_params(cube, N_params_cum)
         
         # Load error bars specified in data files
         err_data = data['err_data']
@@ -1022,21 +1040,20 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             
         else: 
             ydata_adjusted = ydata
-        
-        
+
         #***** Calculate ln(likelihood) ****#
     
         loglikelihood = (-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq).sum()
         loglikelihood += norm_log
 
         # Add the PT penalty 
-        loglikelihood += lnprior_TP
+        loglikelihood += ln_prior_TP
                     
         return loglikelihood
     
     # Run PyMultiNest
     pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
-	
+
 
 def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P, 
                       P_ref_set, R_p_ref_set, P_param_set, He_fraction, 
@@ -1134,7 +1151,9 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                 log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
 
             spectrum_stored = np.zeros(shape=(N_sample_draws, len(wl)))
-            ymodel_samples = np.zeros(shape=(N_sample_draws, len(data['wl_data'])))
+
+            if model['high_res_method'] is None:
+                ymodel_samples = np.zeros(shape=(N_sample_draws, len(ymodel)))
 
         if (disable_atmosphere == False):
 
@@ -1144,7 +1163,9 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
         # Store spectrum in sample array
         spectrum_stored[i,:] = spectrum
-        ymodel_samples[i,:] = ymodel
+
+        if model['high_res_method'] is None:
+            ymodel_samples[i,:] = ymodel
             
     # Compute 1 and 2 sigma confidence intervals for P-T and mixing ratio profiles and spectrum
         
@@ -1304,7 +1325,7 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
 
     # split parameters into each atmosphere category
     physical_params, PT_params, log_X_params, \
-    cloud_params, geometry_params, _, _, _ = split_params(param_values, N_params_cum)
+    cloud_params, geometry_params, _, _, _, _ = split_params(param_values, N_params_cum)
     
     # Unpack reference pressure if set as a free parameter
     if ('log_P_ref' in physical_param_names):
@@ -1462,4 +1483,3 @@ def Bayesian_model_comparison(planet_name, model_1, model_2,
     os.chdir('../../../../')
     
     return
-                                

@@ -42,6 +42,14 @@ Brown Dwarf Direct Imaging Spectroscopy
 
    notebooks/brown_dwarf
 
+High-Resolution Cross-Correlation Spectroscopy
+-------------------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   notebooks/transmission_high_res_cross_correlate
+   notebooks/emission_high_res_cross_correlate
 
 Miscellaneous
 -------------
@@ -51,5 +59,4 @@ Miscellaneous
 
    notebooks/PT_profiles
    notebooks/aerosol_database
-
 
