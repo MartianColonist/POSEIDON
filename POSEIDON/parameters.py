@@ -805,19 +805,20 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
 
     #***** Error inflation parameters *****#
 
-    if (error_inflation == 'Line15'):
-        params += ['b']
-        N_error_params = 1
-    elif (error_inflation == 'Piette20'): 
-        params += ['x_tol']
-        N_error_params = 1
-    elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)): 
-        params += ['b', 'x_tol']
-        N_error_params = 2
-    elif (error_inflation == None):    
+    if (error_inflation == None):
         N_error_params = 0
     else:
-        raise Exception("Error: unsupported error adjustment prescription.")
+        if (error_inflation == 'Line15'):
+            params += ['b']
+            N_error_params = 1
+        elif (error_inflation == 'Piette20'): 
+            params += ['x_tol']
+            N_error_params = 1
+        elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)): 
+            params += ['b', 'x_tol']
+            N_error_params = 2
+        else:
+            raise Exception("Error: unsupported error adjustment prescription.")
 
     #***** High resolution retrieval parameters *****#
 

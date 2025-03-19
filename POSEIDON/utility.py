@@ -1753,18 +1753,19 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     if (model['high_res_method'] is None):
       
         # Calculate the normalisation term for the log-likelihood
-        if (error_inflation == 'Line15'):
-            err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
-            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
-        elif (error_inflation == 'Piette20'):
-            err_eff_sq = (err_data*err_data + (err_inflation_params[0]*ymodel_best)**2)
-            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
-        elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)):
-            err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]) + 
-                          ((err_inflation_params[1]*ymodel_best)**2))
-            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
-        else:
+        if (error_inflation == None):
             norm_log = (-0.5*np.log(2.0*np.pi*err_data*err_data)).sum()
+        else:
+            if (error_inflation == 'Line15'):
+                err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
+                norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+            elif (error_inflation == 'Piette20'):
+                err_eff_sq = (err_data*err_data + (err_inflation_params[0]*ymodel_best)**2)
+                norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+            elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)):
+                err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]) + 
+                            ((err_inflation_params[1]*ymodel_best)**2))
+                norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
         
         # Calculate the best-fitting model chi-squared    
         best_chi_square = -2.0 * (max_likelihood - norm_log)

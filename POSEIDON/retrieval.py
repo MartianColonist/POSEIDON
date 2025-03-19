@@ -955,31 +955,20 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         err_data = data['err_data']
         
         # Compute effective error, if unknown systematics included
-        if (error_inflation == 'Line15'):
-            err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
-            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
-        elif (error_inflation == 'Piette20'):
-            err_eff_sq = (err_data*err_data + (err_inflation_params[0]*ymodel)**2)
-            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
-        elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)):
-            err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]) + 
-                          ((err_inflation_params[1]*ymodel)**2))
-            norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
-        else: 
+        if (error_inflation == None):
             err_eff_sq = err_data*err_data
             norm_log = norm_log_default
-
-        # Load transit depth data points and indices of any offset ranges
-      #  ydata = data['ydata']
-      #  offset_start = data['offset_start']
-      #  offset_end = data['offset_end']
-
-        # Apply relative offset between datasets
-      #  if (offsets_applied == 'single_dataset'):
-      #      ydata_adjusted = ydata.copy()
-      #      ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
-      #  else: 
-      #      ydata_adjusted = ydata
+        else:
+            if (error_inflation == 'Line15'):
+                err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
+                norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+            elif (error_inflation == 'Piette20'):
+                err_eff_sq = (err_data*err_data + (err_inflation_params[0]*ymodel)**2)
+                norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+            elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)):
+                err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]) + 
+                            ((err_inflation_params[1]*ymodel)**2))
+                norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
 
         # Load transit depth data points and indices of any offset ranges
         ydata = data['ydata']

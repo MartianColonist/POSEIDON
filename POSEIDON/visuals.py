@@ -2629,21 +2629,24 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         model_name = model['model_name']
 
         # Add offsets for a single dataset 
-        if (error_inflation == 'Line15'):
-            error_inflation_params = ['b']
-        elif (error_inflation == 'Piette20'):
-            error_inflation_params = ['x_tol']
-        elif ('Line15' in error_inflation) and ('Piette20' in error_inflation):
-            error_inflation_params = ['b', 'x_tol']
-        else:
+        if (error_inflation == None):
             error_inflation_params = []
-
+        else:
+            if (error_inflation == 'Line15'):
+                error_inflation_params = ['b']
+            elif (error_inflation == 'Piette20'):
+                error_inflation_params = ['x_tol']
+            elif ('Line15' in error_inflation) and ('Piette20' in error_inflation):
+                error_inflation_params = ['b', 'x_tol']
+        
         # Retrieve offset value from results file
         results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
         results_file_name = model_name + '_results.txt'
 
-        if (('Line15' in error_inflation_params) or ('Piette20' in error_inflation_params)):
-
+        # Inflate error bars in the plot by the media retrieved error inflation parameter(s)
+        if (error_inflation == None):
+            err_data_to_plot = err_data
+        else:
             err_inflation_param_values = []
 
             # Open results file to find retrieved median error inflation value
@@ -2687,10 +2690,7 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                 # Calculate effective error bars including the median error inflation parameter
                 err_data_to_plot = np.sqrt(err_data**2 + np.power(10.0, err_inflation_param_values[0]) +
                                            (err_inflation_param_values[1] * ymodel_median)**2)
-
-            else:
-                err_data_to_plot = err_data
-
+    
     else:
         err_data_to_plot = err_data
 
