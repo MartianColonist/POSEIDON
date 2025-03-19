@@ -2630,33 +2630,38 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
 
         # Add offsets for a single dataset 
         if (error_inflation == 'Line15'):
-            error_inflation_parameter = 'b'
+            error_inflation_params = ['b']
         elif (error_inflation == 'Piette20'):
-            error_inflation_parameter = 'x_tol'
+            error_inflation_params = ['x_tol']
+        elif ('Line15' in error_inflation) and ('Piette20' in error_inflation):
+            error_inflation_params = ['b', 'x_tol']
         else:
-            error_inflation_parameter = None
+            error_inflation_params = []
 
         # Retrieve offset value from results file
         results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
         results_file_name = model_name + '_results.txt'
 
-        if (error_inflation in ['Line15', 'Piette20']):
+        if (('Line15' in error_inflation_params) or ('Piette20' in error_inflation_params)):
+
+            err_inflation_param_values = []
 
             # Open results file to find retrieved median error inflation value
             with open(results_dir + results_file_name, 'r') as f:
                 for line in f:
-                    if (error_inflation_parameter in line):
-                        err_inflation_param_value = float(line.split()[2])  # Median error inflation parameter
+                    for error_inflation_parameter in error_inflation_params:
+                        if (error_inflation_parameter in line):
+                            err_inflation_param_values += float(line.split()[2])  # Median error inflation parameter
 
-                    # Stop reading file after 1 sigma constraints
-                    if ('2 σ constraints' in line):
-                        break
+                        # Stop reading file after 1 sigma constraints
+                        if ('2 σ constraints' in line):
+                            break
 
             # Apply error inflation to the data (Line+2015 prescription)
             if (error_inflation == 'Line15'):
 
                 # Calculate effective error bars including the median error inflation parameter
-                err_data_to_plot = np.sqrt(err_data**2 + np.power(10.0, err_inflation_param_value))
+                err_data_to_plot = np.sqrt(err_data**2 + np.power(10.0, err_inflation_param_values[0]))
 
             # Apply error inflation to the data (Piette+2020 prescription)
             elif (error_inflation == 'Piette20'):
@@ -2668,7 +2673,20 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                 ymodel_median = bin_spectrum_to_data(spec_med, wl, data_properties)
 
                 # Calculate effective error bars including the median error inflation parameter
-                err_data_to_plot = np.sqrt(err_data**2 + (err_inflation_param_value * ymodel_median)**2)
+                err_data_to_plot = np.sqrt(err_data**2 + (err_inflation_param_values[0] * ymodel_median)**2)
+
+            # Apply both error inflation prescriptions to data (Line+2015 & Piette+2020)
+            elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)):
+
+                # Extract median spectrum and wavelength grid
+                (spec_med, wl) = spectra_median[0]
+
+                # Bin the median spectrum to the data resolution
+                ymodel_median = bin_spectrum_to_data(spec_med, wl, data_properties)
+
+                # Calculate effective error bars including the median error inflation parameter
+                err_data_to_plot = np.sqrt(err_data**2 + np.power(10.0, err_inflation_param_values[0]) +
+                                           (err_inflation_param_values[1] * ymodel_median)**2)
 
             else:
                 err_data_to_plot = err_data

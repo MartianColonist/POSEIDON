@@ -63,7 +63,7 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
             (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Error bar inflation treatment in a retrieval
-            (Options: Line15 / Piette20).
+            (Options: Line15 / Piette20 / Line15+Piette20).
         PT_dim (int):
             Dimensionality of the pressure-temperature field (uniform -> 1,
             a day-night or evening-morning gradient -> 2, both day-night and
@@ -805,12 +805,15 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
 
     #***** Error inflation parameters *****#
 
-    if error_inflation == "Line15":
-        params += ["b"]
+    if (error_inflation == 'Line15'):
+        params += ['b']
         N_error_params = 1
     elif (error_inflation == 'Piette20'): 
         params += ['x_tol']
         N_error_params = 1
+    elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)): 
+        params += ['b', 'x_tol']
+        N_error_params = 2
     elif (error_inflation == None):    
         N_error_params = 0
     else:

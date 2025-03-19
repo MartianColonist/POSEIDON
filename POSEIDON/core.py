@@ -440,7 +440,7 @@ def define_model(model_name, bulk_species, param_species,
             (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
-            (Options: Line15).
+            (Options: Line15 / Piette20 / Line15+Piette20).
         radius_unit (str)
             Planet radius unit used to report retrieval results
             (Options: R_J / R_E)
