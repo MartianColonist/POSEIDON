@@ -863,7 +863,7 @@ def numba_cumsum(mat):
         new_mat[:,i] = np.cumsum(mat[:,i])
     return new_mat
 
-#@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True)
 def reflection_Toon(P, wl, dtau_tot,
                     kappa_Ray, kappa_cloud, kappa_tot,
                     w_cloud, g_cloud, zone_idx,
@@ -1152,7 +1152,7 @@ def reflection_Toon(P, wl, dtau_tot,
 
     sq3 = np.sqrt(3.)
     if toon_coefficients == 1:#eddington
-        g1  = (7-w_dedd*(4+3*ftau_cld*g_dedd))/4 #(sq3*0.5)*(2. - w0*(1.+cosb)) #table 1 # 
+        g1  =  (7-w_dedd*(4+3*ftau_cld*g_dedd))/4 #(sq3*0.5)*(2. - w0*(1.+cosb)) #table 1 # 
         g2  = -(1-w_dedd*(4-3*ftau_cld*g_dedd))/4 #(sq3*w0*0.5)*(1.-cosb)        #table 1 # 
 
     # DEFAULT
@@ -1210,7 +1210,7 @@ def reflection_Toon(P, wl, dtau_tot,
             if tridiagonal==0:
                 A, B, C, D = setup_tri_diag(N_layer,N_wl, c_plus_up, c_minus_up, 
                                     c_plus_down, c_minus_down, b_top, b_surface, surf_reflect,
-                                     gama, dtau_dedd, 
+                                    gama, dtau_dedd, 
                                     exptrm_positive,  exptrm_minus) 
 
             #else:
