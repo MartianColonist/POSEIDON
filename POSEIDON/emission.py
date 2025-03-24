@@ -863,7 +863,7 @@ def numba_cumsum(mat):
         new_mat[:,i] = np.cumsum(mat[:,i])
     return new_mat
 
-@jit(nopython=True, cache=True)
+#@jit(nopython=True, cache=True)
 def reflection_Toon(P, wl, dtau_tot,
                     kappa_Ray, kappa_cloud, kappa_tot,
                     w_cloud, g_cloud, zone_idx,
@@ -1277,9 +1277,9 @@ def reflection_Toon(P, wl, dtau_tot,
             H=negative*(gama*multi_plus+multi_minus)    *w_dedd
             A=(multi_plus*c_plus_up+multi_minus*c_minus_up) *w_dedd
 
-            G=G*0.5/np.pi
-            H=H*0.5/np.pi
-            A=A*0.5/np.pi
+            G*=0.5/np.pi
+            H*=0.5/np.pi
+            A*=0.5/np.pi
 
             ################################ BEGIN OPTIONS FOR DIRECT SCATTERING####################
             #define f (fraction of forward to back scattering), 
