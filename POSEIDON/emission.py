@@ -465,7 +465,7 @@ def tri_diag_solve(l, a, b, c, d):
         Solution, x 
     '''
 
-    AS, DS, CS, DS,XK = np.zeros(l), np.zeros(l), np.zeros(l), np.zeros(l), np.zeros(l) # copy arrays
+    AS, DS, XK = np.zeros(l), np.zeros(l), np.zeros(l) # copy arrays
 
     AS[-1] = a[-1]/b[-1]
     DS[-1] = d[-1]/b[-1]
