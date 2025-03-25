@@ -546,8 +546,8 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
     n = len(chem_params_drawn)     # Number of species free parameters
 
     # Limits correspond to condition that all X_i > 10^(-12)
-    prior_lower_CLR = ((n-1.0)/n) * (limit * np.log(10.0) + np.log(n-1.0))      # Lower limit corresponds to species under-abundant
-    prior_upper_CLR = ((1.0-n)/n) * (limit * np.log(10.0))                      # Upper limit corresponds to species dominant
+    prior_lower_CLR = (((n+1)-1.0)/(n+1)) * (limit * np.log(10.0) + np.log((n+1)-1.0))      # Lower limit corresponds to species under-abundant
+    prior_upper_CLR = ((1.0-(n+1))/(n+1)) * (limit * np.log(10.0))                          # Upper limit corresponds to species dominant
 
     CLR = np.zeros(shape=(n+1))   # Vector of CLR variables
     X = np.zeros(shape=(n+1))     # Vector of mixing ratio parameters
@@ -557,9 +557,9 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
  
         CLR[1+i] = ((chem_params_drawn[i] * (prior_upper_CLR - prior_lower_CLR)) + prior_lower_CLR) 
           
-    if (np.abs(np.sum(CLR[1:n])) <= prior_upper_CLR):   # Impose same prior on X_0
+    if (np.abs(np.sum(CLR[1:n+1])) <= prior_upper_CLR):   # Impose same prior on X_0
             
-        CLR[0] = -1.0*np.sum(CLR[1:n])   # CLR variables must sum to 0, so that X_i sum to 1
+        CLR[0] = -1.0*np.sum(CLR[1:n+1])   # CLR variables must sum to 0, so that X_i sum to 1
         
         if ((np.max(CLR) - np.min(CLR)) <= (-1.0 * limit * np.log(10.0))):      # Necessary for all X_i > 10^(-12)    
         
@@ -580,7 +580,7 @@ def CLR_Prior(chem_params_drawn, limit = -12.0):
         
             return (np.ones(n+1)*(-50.0))   # Fails check -> return dummy array of log values
     
-    elif (np.abs(np.sum(CLR[1:n])) > prior_upper_CLR):   # If falls outside of allowed triangular subspace
+    elif (np.abs(np.sum(CLR[1:n+1])) > prior_upper_CLR):   # If falls outside of allowed triangular subspace
         
         return (np.ones(n+1)*(-50.0))    # Fails check -> return dummy array of log values
 
