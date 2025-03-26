@@ -2653,12 +2653,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             with open(results_dir + results_file_name, 'r') as f:
                 for line in f:
                     for error_inflation_parameter in error_inflation_params:
-                        if (error_inflation_parameter in line):
-                            err_inflation_param_values += float(line.split()[2])  # Median error inflation parameter
+                        if (((error_inflation_parameter in line)) and (len(error_inflation_parameter) == len(line.split()[0]))):
+                            err_inflation_param_values += [float(line.split()[2])]  # Median error inflation parameter
 
-                        # Stop reading file after 1 sigma constraints
-                        if ('2 σ constraints' in line):
-                            break
+                    # Stop reading file after 1 sigma constraints
+                    if ('2 σ constraints' in line):
+                        break
 
             # Apply error inflation to the data (Line+2015 prescription)
             if (error_inflation == 'Line15'):
