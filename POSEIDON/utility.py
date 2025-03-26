@@ -1748,7 +1748,7 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     
     # Load values for error inflation parameters (if included in model)
     _, _, _, _, _, _, _, _, \
-    err_inflation_params = split_params(best_fit_params, N_params_cum)
+    err_inflation_params, _ = split_params(best_fit_params, N_params_cum)
     
     if (model['high_res_method'] is None):
       
