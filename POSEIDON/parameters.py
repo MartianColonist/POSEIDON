@@ -1688,7 +1688,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         P_slab_bottom = 100.0
         a, gamma = 1.0, -4.0  
         f_cloud, phi_0, theta_0 = 0.0, -90.0, 90.0
-        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
+        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
 
         # Mie scattering parameters not needed
         r_m = []
@@ -1756,7 +1756,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         w_cloud_eddysed = 0
 
         # Set fractional clouds for two aerosol species to dummy variables 
-        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
+        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
          
     # 3D patchy cloud model from MacDonald & Lewis (2022)
     elif (cloud_model == 'Iceberg'):
@@ -1816,7 +1816,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         albedo_deck = -1 
 
         # Two aerosol species fraction not needed 
-        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
+        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
 
     # Mie clouds 
     elif (cloud_model == 'Mie'):
@@ -1846,7 +1846,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                 except:
                     f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0]] 
 
-                f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
+                f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
             
             # Else its two aerosol species 
             else:
@@ -2127,7 +2127,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
         albedo_deck = -1
-        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,0
+        f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
     
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
            fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom, \
