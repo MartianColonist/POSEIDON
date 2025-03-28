@@ -2450,19 +2450,59 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                 toon_coefficients=0, tridiagonal=0, b_top=0)
                     
                     if cloud_dim == 2:
+                        # 1D + 1D is clear + cloudy, so need to compute clear model here 
+                        if (len(aerosol_species) == 1):
+                            albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
+                                                    kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                    w_cloud, g_cloud, zone_idx,
+                                                    surf_reflect,
+                                                    kappa_cloud_seperate_clear,
+                                                    single_phase = 3, multi_phase = 0,
+                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                    Gauss_quad = 5, numt = 1,
+                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                            
 
-                        albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
-                                                kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                                w_cloud, g_cloud, zone_idx,
-                                                surf_reflect,
-                                                kappa_cloud_seperate_clear,
-                                                single_phase = 3, multi_phase = 0,
-                                                frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                                Gauss_quad = 5, numt = 1,
-                                                toon_coefficients=0, tridiagonal=0, b_top=0)
-                        
+                            albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
 
-                        albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+                        # 1D + 1D + 1D + 1D is clear + cloudy (both) + cloudy (aerosol 1) + cloudy (aerosol 2)
+                        # So need to compute three additional models 
+                        if (len(aerosol_species) == 2):
+
+                            albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
+                                                    kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                    w_cloud, g_cloud, zone_idx,
+                                                    surf_reflect,
+                                                    kappa_cloud_seperate_clear,
+                                                    single_phase = 3, multi_phase = 0,
+                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                    Gauss_quad = 5, numt = 1,
+                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                            
+                            albedo_aerosol_1 = reflection_Toon(P, wl, dtau_tot_aerosol_1,
+                                                    kappa_Ray, kappa_cloud_aerosol_1, kappa_tot_aerosol_1,
+                                                    w_cloud, g_cloud, zone_idx,
+                                                    surf_reflect,
+                                                    kappa_cloud_seperate_aerosol_1,
+                                                    single_phase = 3, multi_phase = 0,
+                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                    Gauss_quad = 5, numt = 1,
+                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                            
+                            albedo_aerosol_2 = reflection_Toon(P, wl, dtau_tot_aerosol_2,
+                                                    kappa_Ray, kappa_cloud_aerosol_2, kappa_tot_aerosol_2,
+                                                    w_cloud, g_cloud, zone_idx,
+                                                    surf_reflect,
+                                                    kappa_cloud_seperate_aerosol_2,
+                                                    single_phase = 3, multi_phase = 0,
+                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                    Gauss_quad = 5, numt = 1,
+                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                            
+                            albedo = ((f_both*albedo) + 
+                               (f_aerosol_1 * albedo_aerosol_1) + 
+                               (f_aerosol_2 * albedo_aerosol_2) + 
+                               (f_clear*albedo_clear))
 
                     
         # Calculate effective photosphere radius at tau = 2/3
