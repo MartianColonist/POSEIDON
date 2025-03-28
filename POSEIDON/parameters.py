@@ -17,7 +17,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
                        aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty,
-                       surface_components, surface_model, surface_temp):
+                       surface_components, surface_model, surface_temp, surface_percentage_option):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -118,7 +118,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         surface_model (string):
             Surface model definition 
             (Options: gray, constant, lab_data)
-
+        surface_percentage_option (string):
+            Will make surface percentages log or linear (log is reccomended for CLR retrievals)
+            (Options: linear, log)
     Returns:
         params (np.array of str):
             Free parameters defining this POSEIDON model.
@@ -177,7 +179,11 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
                 if len(surface_components) > 1:
                     for n in range(len(surface_components)):
-                            surface_params += [surface_components[n] + '_percentage']
+                            if (surface_percentage_option == 'linear'):
+                                surface_params += [surface_components[n] + '_percentage']
+                            elif (surface_percentage_option == 'log'):
+                                surface_params += ['log_' + surface_components[n] + '_percentage']
+                                
             elif (surface_model == 'gray'):
                 pass
             else:
@@ -2321,16 +2327,30 @@ def unpack_surface_params(param_names, surface_in,
         albedo_surf = 0
     
     if any("percentage" in s for s in surface_param_names):
-        try:
-            surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
-        except:
-            # In retrievals, surface_in is not an array so the above statement doesn't work
-            surface_in = np.array(surface_in)
-            surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
-            
-        # Normalize the percentages so they add up to one
-        surface_component_percentages = surface_component_percentages/np.sum(surface_component_percentages)
+        # If they are log percentages, take 10** 
+        if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
+
+            try:
+                surface_component_percentages = np.power(10.0,surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]])
+            except:
+                # In retrievals, surface_in is not an array so the above statement doesn't work
+                surface_in = np.array(surface_in)
+                surface_component_percentages = np.power(10.0,surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]])
+
+        # else, assume they are linear 
+        else:
+            try:
+                surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+            except:
+                # In retrievals, surface_in is not an array so the above statement doesn't work
+                surface_in = np.array(surface_in)
+                surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+                
     else:
         surface_component_percentages = [1]
+
+    # Note that surface_component_percentages are later to be ensured to add to one in core.py, compute_spectrum
+    # The reason they aren't here is because 
+    # they can be normalized to one before they go to CLR_Surface in retrieval.py which is not good and biases the retrieval
     
     return P_surf, T_surf, albedo_surf, surface_component_percentages

@@ -3786,6 +3786,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
     # Determine histogram bounds (defaults to +/- 5σ)
     if (span == []):
         span = [0.999999426697 for q in range(N_params)]
+    
     span = list(span)
     
     #***** Generate panels *****#
@@ -3821,14 +3822,27 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 colour = retrieval_colour_list[m]   # Each retrieval has a different colour
 
             # Set minimum and maximum mixing ratio plot limits
-            # FIX : This throws up an error when you're only plotting one parameter...
             try:
-                param_min, param_max = span[q]
+                # If there is only one plot parameters, this doesn't work since the list isn't a list of lists 
+                # i.e. if len (plot_parameters = 1) then span = (-5,-1) and if >2 ((-5,-1), (-5,-1)) etc
+                if (len(plot_parameters) == 1):
+                    param_min, param_max = span[0], span[1]
+                else:
+                    param_min, param_max = span[q]
+            
+            # Lij: I'm not sure what this code does (why is there a try except here?) but I tried to fix 
+            #      for len(plot_parameters) == 1
             except:
-                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
-                span[q] = _quantile(param_vals_m[:,q], quant)
-                param_min = span[q][0]
-                param_max = span[q][1]
+                if (len(plot_parameters) == 1):
+                    quant = [0.5 - 0.5 * span, 0.5 + 0.5 * span]
+                    span = _quantile(param_vals_m[:], quant)
+                    param_min = span[0]
+                    param_max = span[1]
+                else:
+                    quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+                    span[q] = _quantile(param_vals_m[:,q], quant)
+                    param_min = span[q][0]
+                    param_max = span[q][1]
 
             x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
                                                 alpha=0.0, edgecolor='None', density=True, stacked=True)
@@ -3847,12 +3861,26 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Set minimum and maximum mixing ratio plot limits
             try:
-                param_min, param_max = span[q]
+                # If there is only one plot parameters, this doesn't work since the list isn't a list of lists 
+                # i.e. if len (plot_parameters = 1) then span = (-5,-1) and if >2 ((-5,-1), (-5,-1)) etc
+                if (len(plot_parameters) == 1):
+                    param_min, param_max = span[0], span[1]
+                else:
+                    param_min, param_max = span[q]
+            
+            # Lij: I'm not sure what this code does (why is there a try except here?) but I tried to fix 
+            #      for len(plot_parameters) == 1
             except:
-                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
-                span[q] = _quantile(param_vals_m[:,q], quant)
-                param_min = span[q][0]
-                param_max = span[q][1]
+                if (len(plot_parameters) == 1):
+                    quant = [0.5 - 0.5 * span, 0.5 + 0.5 * span]
+                    span = _quantile(param_vals_m[:], quant)
+                    param_min = span[0]
+                    param_max = span[1]
+                else:
+                    quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+                    span[q] = _quantile(param_vals_m[:,q], quant)
+                    param_min = span[q][0]
+                    param_max = span[q][1]
 
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
@@ -4071,7 +4099,10 @@ def plot_histograms(planet, models, plot_parameters,
                     tick_labelsize = 12, title_fontsize = 12,
                     custom_labels = [], custom_ticks = [],
                     alpha_hist = 0.4,
-                    skip_retrieving_atmospheres = False
+                    skip_retrieving_atmospheres = False,
+                    percent_decimal_to_percent = True,
+                    log_percent_to_percent = False,
+                    percent_to_log_percent = False
                     ):
 
     '''
@@ -4239,7 +4270,7 @@ def plot_histograms(planet, models, plot_parameters,
                         if ('log_' in param): 
                             param_samples_m[:,q] = np.log10(element_ratio_norm)
                         else:
-                            param_samples_m[:,q] = element_ratio_norm
+                            param_samples_m[:,q] = element_ratio_norm                        
 
                 # Filler gas
                 else:
@@ -4253,6 +4284,24 @@ def plot_histograms(planet, models, plot_parameters,
                             param_samples_m[:,q] = np.log10(X_stored[:,1])
                         else:
                             param_samples_m[:,q] = np.log10(X_stored[:,0])
+
+                # Option to make log surface percentages into decimal percents 
+                if (log_percent_to_percent == True) and ('percentage' in param):
+
+                    if (percent_decimal_to_percent == True):
+                        param_samples_m[:,q] = np.power(10,samples[:,np.where(param_names == param)[0][0]]) * 100
+                    else:
+                        param_samples_m[:,q] = np.power(10,samples[:,np.where(param_names == param)[0][0]])
+                
+                if (percent_to_log_percent == True) and ('percentage' in param):
+                        param_samples_m[:,q] = np.log10(samples[:,np.where(param_names == param)[0][0]])
+
+                # Option to make the surface percentages into percents instead of decimals 
+                if (percent_decimal_to_percent == True) and ('percentage' in param):
+
+                    # Log is treated above seperatly 
+                    if ('log' not in param):
+                        param_samples_m[:,q] = samples[:,np.where(param_names == param)[0][0]] * 100
 
         param_vals.append(param_samples_m)
 

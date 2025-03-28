@@ -393,7 +393,8 @@ def define_model(model_name, bulk_species, param_species,
                  reflection_up_to_5um = False,
                  surface_components = [],
                  surface_temp = False,
-                 surface_model = 'gray'):
+                 surface_model = 'gray',
+                 surface_percentage_option = 'linear'):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -519,7 +520,9 @@ def define_model(model_name, bulk_species, param_species,
         surface_model (string):
             Surface model definition 
             (Options: gray, constant, lab_data)
-
+        surface_percentage_option (string):
+            Will make surface percentages log or linear (log is reccomended for CLR retrievals)
+            (Options: linear, log)
     Returns:
         model (dict):
             Dictionary containing the description of the desired POSEIDON model.
@@ -607,6 +610,10 @@ def define_model(model_name, bulk_species, param_species,
     if (np.any(~np.isin(surface_components, surface_supported_components)) == True) and (surface_model == 'lab_data'):
         raise Exception('Please input supported surface components (check supported_chemicals.py).')
     
+    # Check to make sure the high resolution alpha parameter option is log or linear
+    if (surface_percentage_option not in ['log', 'linear']):
+        raise Exception('Error: surface_percentage_option must be log or linear.')
+
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
     for pair in supported_cia:
@@ -649,7 +656,7 @@ def define_model(model_name, bulk_species, param_species,
                                       reference_parameter, disable_atmosphere, 
                                       aerosol_species, log_P_slope_arr,
                                       number_P_knots, PT_penalty,
-                                      surface_components, surface_model, surface_temp)
+                                      surface_components, surface_model, surface_temp, surface_percentage_option)
     
     # If cloud_model = Mie, load in the cross section 
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
@@ -707,6 +714,7 @@ def define_model(model_name, bulk_species, param_species,
              'surface_temp': surface_temp,
              'surface_model': surface_model,
              'surface_component_albedos': surface_component_albedos,
+             'surface_percentage_option': surface_percentage_option
              }
 
     return model
@@ -1259,6 +1267,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     surface_model = model['surface_model']
     surface_component_albedos = model['surface_component_albedos']
     surface_components = model['surface_components']
+    surface_percentage_option = model['surface_percentage_option']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1327,7 +1336,14 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     R_p_ref = atmosphere['R_p_ref']
     T_surf = atmosphere['T_surf']
     albedo_surf = atmosphere['albedo_surf']
+
     surface_component_percentages = atmosphere['surface_component_percentages']
+
+    # Normalize the percentages so they add up to one (we round since its usually 0.999999 or 1.0000002 or something)
+    # (note that in forward models, this is necessary but doesn't change input variables)
+    # (in retrievals, they should be normalized before they get to this step so that cube [drawn parameters] is updated)
+    if round(np.sum(surface_component_percentages)) != 1.0:
+        surface_component_percentages = surface_component_percentages/np.sum(surface_component_percentages)
 
     f_both = atmosphere['f_both']
     f_aerosol_1 = atmosphere['f_aerosol_1']
@@ -1646,7 +1662,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                             surf_reflect = np.full_like(wl, albedo_surf)
 
                         elif surface_model == 'lab_data':
-                            surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos,)
+                            surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos)
                     
                     else:
                         surf_reflect = np.full_like(wl, albedo_deck)
@@ -2850,6 +2866,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Unpack parameter names
     param_names = model['param_names']
     X_param_names = model['X_param_names']
+    surface_param_names = model['surface_param_names']
     PT_profile = model['PT_profile']
     radius_unit = model['radius_unit']
     mass_unit = model['mass_unit']
@@ -3140,6 +3157,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_types['Grad_T']
 
     CLR_limit_check = 0   # Tracking variable for CLR limit check below
+    CLR_surface_limit_check = 0  # Tracking variable for CLR surface limit check below
 
     # Check that parameter types are all supported
     for parameter in param_names:
@@ -3151,10 +3169,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         # Check that centred-log ratio prior is only used for mixing ratios
         if ((prior_types[parameter] == 'CLR') and (parameter not in X_param_names)):
             raise Exception("Unsupported prior for " + parameter)
-        
+
         # Check that centred-log ratio prior for surface is only used for mixing ratios
         if ((prior_types[parameter] == 'CLR_surface') and (parameter not in surface_param_names)):
-            raise Exception("Unsupported prior for " + parameter)
+            raise Exception("Unsupported prior for " + parameter + ' (CLR Surface only available for surface components)')
 
         # Check that centred-log ratio is being employed in a 1D model
         if ((prior_types[parameter] == 'CLR') and (Atmosphere_dimension != 1)):
@@ -3189,9 +3207,32 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 else:
                     CLR_limit_check = CLR_limit
 
+        # Check surface parameters have valid settings
+        if (parameter in surface_param_names):
+
+            # Check that all CLR variables have the same lower limit
+            if (prior_types[parameter] == 'CLR_surface'):
+
+                # If the prior is [0,1] stop it immediately 
+                if (prior_ranges[parameter][0] == 0) and (prior_ranges[parameter][1] > 0):
+                    raise Exception('CLR Prior works in log space. Set surface_percentage_option = \'log\' in define_model() and set prior for all log percentages something like [-12,0].')
+
+                CLR_surface_limit = prior_ranges[parameter][0]
+                
+                if (CLR_surface_limit_check == 0):       # First parameter passes check
+                    CLR_surface_limit_check = CLR_surface_limit
+
+                if (CLR_surface_limit != CLR_surface_limit_check):
+                    raise Exception("When using a CLR prior, all log surface percentage " + 
+                                    "parameters must have the same lower limit.")
+                else:
+                    CLR_surface_limit_check = CLR_surface_limit
+
+
     # Package prior properties
     priors = {'prior_ranges': prior_ranges, 'prior_types': prior_types}
 
     return priors
+
 
 

@@ -923,6 +923,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             # Normalize the percentages so they add up to one 
             surface_percentages_normalized = surface_percentage_drawn/np.sum(surface_percentage_drawn)
 
+            
             # If they are log, take the log again after normalizing 
             if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
                 surface_percentages_normalized = np.log10(surface_percentages_normalized)
@@ -933,6 +934,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             
             # I couldn't get the CLR prior to work, but this just replaces things in the cube... which should work
             counter = 0
+            #print('before cube',cube[N_params_cum[7]:N_params_cum[8]])
             for n in surface_percentage_indices:
                 cube[n] = surface_percentages_normalized[counter]
                 counter += 1
