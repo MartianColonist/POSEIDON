@@ -171,6 +171,89 @@ def emission_single_stream(T, dz, wl, kappa, Gauss_quad = 2):
     
     return F, dtau
 
+@jit(nopython = True)
+def emission_single_stream_w_albedo(T, dz, wl, kappa, Gauss_quad = 2, 
+                                    surf_reflect = [], index_below_P_surf = 0):
+    '''
+    Compute the emergent top-of-atmosphere flux from a planet or brown dwarf.
+
+    This function  considers only pure thermal emission (i.e. no scattering).
+
+    Args:
+        T (np.array of float):
+            Temperatures in each atmospheric layer (K).
+        dz (np.array of float):
+            Vertical extent of each atmospheric layer (m).
+        wl (np.array of float): 
+            Wavelength grid (μm).
+        kappa (2D np.array of float):
+            Extinction coefficient in each layer as a function of wavelength (m^-1).
+        Gauss_quad (int):
+            Gaussian quadrature order for integration over emitting surface
+            (Options: 2 / 3).
+        surf_reflect : numpy.ndarray    
+            Surface reflectivity as a function of wavelength.
+        index_below_P_surf : int
+            Index below P_surf, so that the blackbody can be computed. 
+            (Note that P_surf can be between two pressure levels, we take the lower one)
+    
+    Returns:
+        F (np.array of float):
+            Spectral surface flux in SI units (W/m^2/sr/m).
+
+    '''
+    
+    # Load weights and cos(theta) values for desired Gaussian quadrature scheme
+    if (Gauss_quad == 2):
+        W = np.array([0.5, 0.5])
+        mu = np.array([0.5 - 0.5*np.sqrt(1.0/3.0), 0.5 + 0.5*np.sqrt(1.0/3.0)])
+    elif (Gauss_quad == 3):
+        W = np.array([5.0/18.0, 4.0/9.0, 5.0/18.0])
+        mu = np.array([0.5 - 0.5*np.sqrt(3.0/5.0), 0.5, 0.5 + 0.5*np.sqrt(3.0/5.0)])
+
+    # Surface Emissivity 
+    emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
+
+    # Calculate Planck function in each layer and each wavelength
+    B = planck_lambda_arr(T, wl)
+
+    # The blackbody at the hard surface/top of the cloud deck is 
+    # emissivity * blackbody 
+    B[index_below_P_surf,:] = B[index_below_P_surf,:]*emissivity 
+    
+    # Initial intensity at the base of the atmosphere is a Planck function 
+    I = np.ones(shape=(len(mu),len(wl))) * B[0,:]
+    
+    # Initialise surface flux array
+    F = np.zeros(len(wl))
+
+    # Initialise differential optical depth array
+    dtau = np.zeros(shape=(len(T), len(wl)))
+    
+    # For each wavelength
+    for k in range(len(wl)):
+    
+        # For each ray travelling at mu = cos(theta)
+        for j in range(len(mu)):
+
+            # For each atmospheric layer
+            for i in range(len(T)):
+    
+                # Compute vertical optical depth across the layer
+                dtau_vert = kappa[i,k] * dz[i]
+                dtau[i,k] = dtau_vert
+                
+                # Compute transmissivity of the layer
+                Trans = np.exp((-1.0 * dtau_vert)/mu[j])
+                
+                # Solve for emergent intensity from the layer top
+                I[j,k] = Trans * I[j,k] + (1.0 - Trans) * B[i,k]
+                
+            # Add contribution of this ray/angle to the surface flux
+            F[k] += 2.0 * np.pi * mu[j] * I[j,k] * W[j]
+    
+    return F, dtau
+
 
 def emission_single_stream_GPU(T, dz, wl, kappa, Gauss_quad = 2):
     '''
@@ -485,9 +568,10 @@ def emission_Toon(P, T, wl, dtau_tot,
                   kappa_Ray, kappa_cloud, kappa_tot,
                   w_cloud, g_cloud, zone_idx,
                   surf_reflect,
+                  kappa_cloud_seperate,
                   hard_surface = 0, tridiagonal = 0, 
                   Gauss_quad = 5, numt = 1,
-                  T_surf = 0):
+                  T_surf = 0,):
     
     ###############################################
     # ORIGINAL PICASO PREAMBLE (fluxes.py, get_thermal_1d())
@@ -591,6 +675,23 @@ def emission_Toon(P, T, wl, dtau_tot,
     # Similar to PICASO, we don't use any delta-eddington nor raman scattering for emission.
     #############################################################################  
 
+    # In order to account for multiple clouds, we compute sums in this loop
+    kappa_cloud_w_cloud_sum = np.zeros_like(kappa_cloud)
+    kappa_cloud_w_cloud_g_cloud_sum = np.zeros_like(kappa_cloud)
+
+    for aerosol in range(len(kappa_cloud_seperate)):
+
+        # Creating the sum for w_tot 
+
+        # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
+        w_cloud[aerosol,:,0,zone_idx,:] = w_cloud[aerosol,:,0,zone_idx,:] * 0.99999
+
+        # kappa_mie_w_cloud sum used in numerator of w_tot and denominator of g_tot
+        kappa_cloud_w_cloud_sum[:,0,zone_idx,:] += kappa_cloud_seperate[aerosol,:,0,zone_idx,:] * w_cloud[aerosol,:,0,zone_idx,:]
+
+        # kappa_cloud_w_cloud_g_cloud_sum used in numberator of g_tot 
+        kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:] += kappa_cloud_seperate[aerosol,:,0,zone_idx,:] * w_cloud[aerosol,:,0,zone_idx,:] * g_cloud[aerosol,:,0,zone_idx,:]
+
     # Numba doesn't like it when you multiply numpy arrays that are 1d vs 2d 
 
     # Calculate weighted, combined single scattering albedo
@@ -599,11 +700,8 @@ def emission_Toon(P, T, wl, dtau_tot,
     # or 
     # w = ((tau_ray * w_Ray) + (tau_Mie * w_Mie))/(tau_tot) 
     # where w_Ray = 1 (perfect scatterers), and taus = kappas
-    
-    # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
-    w_cloud[:,0,zone_idx,:] = w_cloud[:,0,zone_idx,:] * 0.99999
 
-    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud[:,0,zone_idx,:]))/kappa_tot
+    w_tot = ((0.99999 * kappa_Ray[:,0,zone_idx,:]) + (kappa_cloud_w_cloud_sum[:,0,zone_idx,:]))/kappa_tot
 
     # Calculate weighted, combined scattering asymmetry parameter
     # From COSB in optics.py, compute_opacity()
@@ -612,7 +710,7 @@ def emission_Toon(P, T, wl, dtau_tot,
     # or 
     # g = ((w_Ray*delta_tau_Ray*g_Ray) + (w_Mie * delta_tau_Mie * g_Mie))/ (w_ray*delta_tau_ray + w_Mie*delta_tau_Mie)
     # where g_Ray = 0 (isotropic scatterers), w_rRay = 1, and taus = kappas 
-    g_tot = ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud[:,0,zone_idx,:]
+    g_tot = (kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:])/(kappa_cloud_w_cloud_sum[:,0,zone_idx,:]+(0.99999 * kappa_Ray[:,0,zone_idx,:]))
 
     # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip all the axis)
     P = np.flipud(P)
@@ -1445,7 +1543,7 @@ def emission_bare_surface(T_surf, wl, surf_reflect):
     T = np.array([T_surf])
     B = planck_lambda_arr(T, wl)
 
-    # Initial intensity at the base of the atmosphere is a Planck function 
+    # Need emissivity 
     emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
 
     # For a bare body rock, F = pi * I * emissivity

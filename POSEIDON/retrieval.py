@@ -577,6 +577,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     param_names = model['param_names']
     param_species = model['param_species']
     X_params = model['X_param_names']
+    cloud_param_names = model['cloud_param_names']
     surface_param_names = model['surface_param_names']
     N_params_cum = model['N_params_cum']
     Atmosphere_dimension = model['Atmosphere_dimension']
@@ -905,7 +906,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         # If the surface percentages are uniform, need to make sure they are normalized to 1 
         # Note that this step occurs later in core.py in compute_spectrum()
         # But it also needs to happen here for retrievals so that cube is updated with correct values
-        if any('percentage' in s for s in surface_param_names ) and ('CLR_surface' not in prior_types.values()):
+        if any('percentage' in s for s in surface_param_names) and ('CLR_surface' not in prior_types.values()):
 
             # cube is not an array, and has to be turned into an array for the next line
             # here we are drawing the drawn parameters that correspond to surface params
@@ -915,24 +916,17 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
             surface_percentage_indices = np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]
             surface_percentage_drawn = surface_drawn[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
 
-            #print('before surface drawn, log ', surface_percentage_drawn)
-
             # if they are log, will need to take 10** before normalizing 
             if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
                 surface_percentage_drawn = np.power(10,surface_percentage_drawn)
 
-            #print('before surface drawn', surface_percentage_drawn, np.sum(surface_percentage_drawn))
-
             # Normalize the percentages so they add up to one 
             surface_percentages_normalized = surface_percentage_drawn/np.sum(surface_percentage_drawn)
 
-            #print('after normalization ', surface_percentages_normalized, np.sum(surface_percentages_normalized))
-
+            
             # If they are log, take the log again after normalizing 
             if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
                 surface_percentages_normalized = np.log10(surface_percentages_normalized)
-
-            #print('after normalization, log ', surface_percentages_normalized)
 
             # Redefine cube with those percentages 
             # adds number of params before surface_percentage_indices to get right index in cube
@@ -945,8 +939,33 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 cube[n] = surface_percentages_normalized[counter]
                 counter += 1
 
-            #print('after',cube[N_params_cum[7]:N_params_cum[8]])
-            
+        # If there are patchy multiple clouds (f_both, f_aerosol_1, and f_aerosol_2)
+        # The parameters need to be normalized to 1 in the cube
+        # This step also occurs in core.py in compute_spectrum()
+        if any('f_both' in s for s in cloud_param_names):
+
+            # cube is not an array, and has to be turned into an array for the next line
+            # here we are drawing the drawn parameters that correspond to cloud params
+            cloud_drawn = np.array(cube[N_params_cum[2]:N_params_cum[3]])
+
+            f_both = cloud_drawn[np.where(np.char.find(cloud_param_names,'f_both')!= -1)[0]]
+            f_aerosol_1 = cloud_drawn[np.where(np.char.find(cloud_param_names,'f_aerosol_1')!= -1)[0]]
+            f_aerosol_2 = cloud_drawn[np.where(np.char.find(cloud_param_names,'f_aerosol_2')!= -1)[0]]
+            f_clear = cloud_drawn[np.where(np.char.find(cloud_param_names,'f_clear')!= -1)[0]]
+
+            sum_to_normalize_to = f_both + f_aerosol_1 + f_aerosol_2 + f_clear
+            f_both = f_both/(sum_to_normalize_to)
+            f_aerosol_1 = f_aerosol_1/(sum_to_normalize_to)
+            f_aerosol_2 = f_aerosol_2/(sum_to_normalize_to)
+            f_clear = f_clear/(sum_to_normalize_to)
+
+            # Replace f values with new normalized ones
+            # np.where returns a 2d array of indices which is why you have to take two [0] [0]
+            cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_both')!= -1)[0][0]] = f_both
+            cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_aerosol_1')!= -1)[0][0]] = f_aerosol_1
+            cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_aerosol_2')!= -1)[0][0]] = f_aerosol_2
+            cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_clear')!= -1)[0][0]] = f_clear
+
     # Define the log-likelihood function
     def LogLikelihood(cube, ndim, nparams):
         ''' 
