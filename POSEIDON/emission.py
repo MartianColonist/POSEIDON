@@ -966,7 +966,7 @@ def numba_cumsum(mat):
         new_mat[:,i] = np.cumsum(mat[:,i])
     return new_mat
 
-@jit(nopython=True, cache=True)
+#@jit(nopython=True, cache=True)
 def reflection_Toon(P, wl, dtau_tot,
                     kappa_Ray, kappa_cloud, kappa_tot,
                     w_cloud, g_cloud, zone_idx,
@@ -1171,6 +1171,9 @@ def reflection_Toon(P, wl, dtau_tot,
         # This replaced g_cloud in the og reflection function
         g_cloud_tot_weighted[:,0,zone_idx,:] += (kappa_cloud_seperate[aerosol,:,0,zone_idx,:]/kappa_cloud[:,0,zone_idx,:]) * g_cloud[aerosol,:,0,zone_idx,:]
 
+    # If nan, just replace (this only happens when kappa_cloud is 0, and the division messes it up)
+    g_cloud_tot_weighted[np.isnan(g_cloud_tot_weighted)] = 0
+
     # From optics.py, compute_opacity 
     # We calculate the ftaus, tau, and delta_eddington corrections 
 
@@ -1199,8 +1202,7 @@ def reflection_Toon(P, wl, dtau_tot,
     # gcos2 
     # ftau_ray = TAURAY/(TAURAY + single_scattering_cld * TAUCLD)
     # GCOS2 = 0.5*ftau_ray #Hansen & Travis 1974 for Rayleigh scattering 
-
-    ftau_ray = kappa_Ray[:,0,zone_idx,:]/(kappa_Ray[:,0,zone_idx,:] + kappa_cloud_g_cloud_sum)
+    ftau_ray = kappa_Ray[:,0,zone_idx,:]/(kappa_Ray[:,0,zone_idx,:] + kappa_cloud_g_cloud_sum[:,0,zone_idx,:])
 
     gcos2 = 0.5*ftau_ray
 

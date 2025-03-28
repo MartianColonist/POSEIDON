@@ -1594,6 +1594,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     P_cloud = np.array([P_cloud])
 
                 # Create the kappa arrays
+
                 kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate = extinction(chemical_species, active_species,
                                                                                      CIA_pairs, ff_pairs, bf_species,
                                                                                      n, T, P, wl, X, X_active, X_CIA, 
@@ -1630,16 +1631,21 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         #opaque_deck_is_first_index = True
                     
                     elif (reflection == True) and (len(aerosol_species) == 2):
-                        raise Exception('WARNING: Not benchmarked for patchy multiple clouds yet, but it is technically implemented.')
+                        print('WARNING: Not benchmarked for patchy multiple clouds yet, but it is technically implemented.')
                     
                     elif (thermal_scattering == True) and (len(aerosol_species) == 2):
-                        raise Exception('WARNING: Not benchmarked for patchy multiple clouds yet, but it is technically implemented.')
+                        print('WARNING: Not benchmarked for patchy multiple clouds yet, but it is technically implemented.')
 
-                    for aerosol in range(len(w_cloud)):
-                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                        # turn into a list so it doesn't end up being an array of arrays 
-                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+                    if len(aerosol_species) != 0:
+                        for aerosol in range(len(w_cloud)):
+                            # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                            # turn into a list so it doesn't end up being an array of arrays 
+                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+                    else:
+                        # Just a list of 0s
+                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud).tolist())
                     
                     # Turn into an array so numba in toon functions is happy with indexing 
                     w_cloud = np.array(w_cloud_array)
