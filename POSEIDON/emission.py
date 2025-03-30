@@ -1181,6 +1181,7 @@ def reflection_Toon(P, wl, dtau_tot,
 
     # From emission_Toon we figured out that 
     # cosb = g_tot = ftau_cld * g_cloud 
+    # where ftau_cld = fractional scattering due to cloud 
     # however, the above is only valid in emission. In reflection, g_cloud remains g_cloud
     # but we can still use the above equation to figure out ftau_cld in POSEIDON terms 
     # in emission_Toon 
@@ -1194,10 +1195,11 @@ def reflection_Toon(P, wl, dtau_tot,
 
     # old 1 cloud species ftau_cloud 
     # note, idk why it has the g_cloud in the equation when I derived above that it shouldn't 
-    # It looks like thats whats used in optics.py in picaso though, so g_tot = ftau_cld 
     # ftau_cld = ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud[:,0,zone_idx,:]
+    # I took out the g in this new expression... 
 
-    ftau_cld = (kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:])/(kappa_cloud_w_cloud_sum[:,0,zone_idx,:]+(0.99999 * kappa_Ray[:,0,zone_idx,:]))
+    #ftau_cld = (kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:])/(kappa_cloud_w_cloud_sum[:,0,zone_idx,:]+(0.99999 * kappa_Ray[:,0,zone_idx,:]))
+    ftau_cld = (kappa_cloud_w_cloud_sum[:,0,zone_idx,:])/(kappa_cloud_w_cloud_sum[:,0,zone_idx,:]+(0.99999 * kappa_Ray[:,0,zone_idx,:]))
 
     # gcos2 
     # ftau_ray = TAURAY/(TAURAY + single_scattering_cld * TAUCLD)
