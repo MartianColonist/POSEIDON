@@ -1289,7 +1289,8 @@ def vary_one_parameter(model, planet, star, param_name, vary_list, wl, opac,
 ############################################################################################
 
 def load_aerosol_grid(aerosol_species, grid = 'aerosol', 
-                        comm = MPI.COMM_WORLD, rank = 0):
+                        comm = MPI.COMM_WORLD, rank = 0,
+                        lognormal_logwith_free = False):
     '''
     Load a aerosol cross section grid (similar to load_chemistry_grid in chemistry.py)
 
@@ -1301,7 +1302,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
             located in the POSEIDON input directory (specified in your .bashrc
             file) with a name format like 'GRID_database.hdf5' 
             (e.g. 'aerosol_database.hdf5'). By default, POSEIDON ships with
-            an aerosol grid computed from the LX-MIE algorith:
+            an aerosol grid computed from the LX-MIE algorithm:
             (Options: aerosol).
         comm (MPI communicator):
             Communicator used to allocate shared memory on multiple cores.
@@ -1318,7 +1319,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
         print("Reading in database for aerosol cross sections...")
 
     # Check that the selected aerosol grid is supported
-    if (grid not in ['aerosol']):
+    if (grid not in ['aerosol','SiO2_free_logwidth']):
         raise Exception("Error: unsupported aerosol grid")
 
     # Find the directory where the user downloaded the input grid
@@ -1340,47 +1341,77 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     wl_grid = np.array(database['Info/Wavelength grid'])
     r_m_grid = np.array(database['Info/Particle Size grid'])
 
+    # If lognormal logwith is a free parameter, things will be a bit different 
+    if lognormal_logwith_free == True:
+        log_r_m_std_dev_array = np.linspace(0.01,1.5,50)
+        log_r_m_std_dev_array[16] = 0.5
+        # I quit the program a bit early, so it only goes from 0.01 to 1.43
+        log_r_m_std_dev_array = log_r_m_std_dev_array[:-2]
+
     # Find sizes of each dimension
     wl_num, r_m_num = len(wl_grid), len(r_m_grid)
+
+    if lognormal_logwith_free == True:
+        log_r_m_std_dev_num = len(log_r_m_std_dev_array)
 
     # Store number of chemical species
     N_species = len(aerosol_species)
 
-    # Create array to store the log mixing ratios from the grid 
-    sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species, 6, r_m_num, wl_num))
+    # Create array to store the cross sections and scattering properties  from the grid
+
+    # If false, just assume log_r_m_std_dev = 0.5
+    if lognormal_logwith_free == False:
+
+        sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species, 3, r_m_num, wl_num))
+        
+        # Only first core needs to load the aerosols into shared memory
+        if (rank == 0):
+
+            # Add each aerosol species to mixing ratio array
+            for q, species in enumerate(aerosol_species):
+
+                # Load grid for species q, then reshape into a 2D numpy array
+                ext_array = np.array(database[species]['0.5']['eff_ext'])
+                ext_array = ext_array.reshape(r_m_num, wl_num)
+
+                g_array = np.array(database[species]['0.5']['eff_g'])
+                g_array = g_array.reshape(r_m_num, wl_num)
+
+                w_array = np.array(database[species]['0.5']['eff_w'])
+                w_array = w_array.reshape(r_m_num, wl_num)
+
+                # Package grid for species q into combined array
+                sigma_Mie_grid[q,0,:,:] = ext_array
+                sigma_Mie_grid[q,1,:,:] = g_array
+                sigma_Mie_grid[q,2,:,:] = w_array
     
-    # Only first core needs to load the aerosols into shared memory
-    if (rank == 0):
+    # Else, the width is a free param, and its about to get crazy 
+    else:
+        
+        sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species,log_r_m_std_dev_num, 3, r_m_num, wl_num))
+        
+        # Only first core needs to load the aerosols into shared memory
+        if (rank == 0):
 
-        # Add each aerosol species to mixing ratio array
-        for q, species in enumerate(aerosol_species):
+            for s, species in enumerate(aerosol_species):
 
-            # Load grid for species q, then reshape into a 2D numpy array
-            ext_array = np.array(database[species]['eff_ext'])
-            ext_array = ext_array.reshape(r_m_num, wl_num)
+                # Add each aerosol species to mixing ratio array
+                for q,log_rm_std_dev in enumerate(log_r_m_std_dev_array):
 
-            abs_array = np.array(database[species]['eff_abs'])
-            abs_array = abs_array.reshape(r_m_num, wl_num)
+                    # Load grid for species q, then reshape into a 2D numpy array
+                    ext_array = np.array(database[species][str(log_rm_std_dev)]['eff_ext'])
+                    ext_array = ext_array.reshape(r_m_num, wl_num)
 
-            scat_array = np.array(database[species]['eff_scat'])
-            scat_array = scat_array.reshape(r_m_num, wl_num)
-            
-            back_array = np.array(database[species]['eff_back'])
-            back_array = back_array.reshape(r_m_num, wl_num)
+                    g_array = np.array(database[species][str(log_rm_std_dev)]['eff_g'])
+                    g_array = g_array.reshape(r_m_num, wl_num)
 
-            g_array = np.array(database[species]['eff_g'])
-            g_array = g_array.reshape(r_m_num, wl_num)
+                    w_array = np.array(database[species][str(log_rm_std_dev)]['eff_w'])
+                    w_array = w_array.reshape(r_m_num, wl_num)
 
-            w_array = np.array(database[species]['eff_w'])
-            w_array = w_array.reshape(r_m_num, wl_num)
-
-            # Package grid for species q into combined array
-            sigma_Mie_grid[q,0,:,:] = ext_array
-            sigma_Mie_grid[q,1,:,:] = abs_array
-            sigma_Mie_grid[q,2,:,:] = scat_array
-            sigma_Mie_grid[q,3,:,:] = back_array
-            sigma_Mie_grid[q,4,:,:] = g_array
-            sigma_Mie_grid[q,5,:,:] = w_array
+                    # Package grid for species q into combined array
+                    sigma_Mie_grid[s,q,0,:,:] = ext_array
+                    sigma_Mie_grid[s,q,1,:,:] = g_array
+                    sigma_Mie_grid[s,q,2,:,:] = w_array
 
     # Close HDF5 file
     database.close()
@@ -1389,13 +1420,19 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     comm.Barrier()
 
     # Package atmosphere properties
-    aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid, 'wl_grid': wl_grid, 'r_m_grid' : r_m_grid}
+    if lognormal_logwith_free == False:
+        aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid, 'wl_grid': wl_grid, 'r_m_grid' : r_m_grid}
+    else:
+        aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid,
+                        'wl_grid': wl_grid, 'r_m_grid' : r_m_grid, 'log_r_m_std_dev_grid' : log_r_m_std_dev_array}
 
     return aerosol_grid
 
 
 def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array, 
-                               aerosol_species, return_dict = True):
+                               aerosol_species, return_dict = True,
+                               lognormal_logwith_free = False,
+                               log_r_m_std_dev = 0.5):
     '''
     Interpolate a pre-computed grid of aerosol cross sections
     onto a model wl range, and mean particle size.
@@ -1427,22 +1464,22 @@ def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array,
     sigma_Mie_grid = aerosol_grid['sigma_Mie_grid']
     r_m_grid = aerosol_grid['r_m_grid']
     wl_grid = aerosol_grid['wl_grid']
+
+    if lognormal_logwith_free == True:
+        log_r_m_std_dev_grid = aerosol_grid['log_r_m_std_dev_grid']
+
     aerosol_species = np.array(aerosol_species)
-    
-    # Store lengths of r_m and wl arrays
-    len_r_m, len_wl = np.array(r_m_array).size, np.array(wl).size
-    max_len = max(len_r_m, len_wl)
 
     np.seterr(divide = 'ignore')
 
     # Check that the chemical species we want to interpolate are supported
-    if (grid == 'aerosol'):
-        supported_species = aerosol_supported_species
-    else:
-        raise Exception("Error: unsupported aerosol grid")
-    if isinstance(aerosol_species, str):
-        if aerosol_species not in supported_species: 
-            raise Exception(aerosol_species + " is not supported by the aerosol grid. Check supported_opac.py")
+    #if (grid == 'aerosol'):
+    #    supported_species = aerosol_supported_species
+    #else:
+    #    raise Exception("Error: unsupported aerosol grid")
+    #if isinstance(aerosol_species, str):
+    #    if aerosol_species not in supported_species: 
+    #        raise Exception(aerosol_species + " is not supported by the aerosol grid. Check supported_opac.py")
 
     # Check that the desired wl and r_m
     def not_valid(params, grid):
@@ -1452,6 +1489,10 @@ def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array,
         raise Exception("Requested wavelength range is out of the grid bounds (0.2 to 30 um).")
     if not_valid(r_m_array, r_m_grid):
         raise Exception("Requested mean particle size is out of the grid bounds. (0.001 to 10 um)")
+    
+    if lognormal_logwith_free == True:
+        if not_valid(log_r_m_std_dev, log_r_m_std_dev_grid):
+            raise Exception("Requested log_r_m_std_dev is out of the grid bounds. (0.01 to 1.43)")
 
     # Interpolate cross sections onto the r_m and wl 
     def interpolate(species):
@@ -1460,35 +1501,67 @@ def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array,
         q = np.where(aerosol_species == species)[0][0]
 
         # Create interpolator object
-        grid_interp = RegularGridInterpolator(([0,1,2,3,4,5],r_m_grid, wl_grid), sigma_Mie_grid[q,:,:,:])
+        grid_interp = RegularGridInterpolator(([0,1,2], r_m_grid, wl_grid), sigma_Mie_grid[q,:,:,:])
         
-        return [grid_interp((0,r_m_array[q],wl)), grid_interp((1,r_m_array[q],wl)), grid_interp((2,r_m_array[q],wl)), 
-                grid_interp((3,r_m_array[q],wl)), grid_interp((4,r_m_array[q],wl)), grid_interp((5,r_m_array[q],wl))]
+        return [grid_interp((0,r_m_array[q],wl)), grid_interp((1,r_m_array[q],wl)), grid_interp((2,r_m_array[q],wl))]
+    
+    # Interpolate with log_r_m_std_dev included 
+    def interpolate_lognormal_logwidth_free(species, log_r_m_std_dev):
+
+        # Find index of the species
+        q = np.where(aerosol_species == species)[0][0]
+
+        # Create interpolator object
+        grid_interp = RegularGridInterpolator((log_r_m_std_dev_grid, [0,1,2], r_m_grid, wl_grid), sigma_Mie_grid[q,:,:,:,:])
+        
+        return [grid_interp((log_r_m_std_dev, 0,r_m_array,wl)), grid_interp((log_r_m_std_dev,1,r_m_array,wl)), grid_interp((log_r_m_std_dev,2,r_m_array,wl))]
     
     # Returning an array (default) 
     if not return_dict:
-        if isinstance(aerosol_species, str):
-            return interpolate(aerosol_species)
-        sigma_Mie_list = []
-        for _, species in enumerate(aerosol_species):
-            sigma_Mie_list.append(interpolate(species))
-        sigma_Mie_interp_array = np.array(sigma_Mie_list)
-        return sigma_Mie_interp_array
-    
+
+        if lognormal_logwith_free == False:
+            if isinstance(aerosol_species, str):
+                return interpolate(aerosol_species)
+            sigma_Mie_list = []
+            for _, species in enumerate(aerosol_species):
+                sigma_Mie_list.append(interpolate(species))
+            sigma_Mie_interp_array = np.array(sigma_Mie_list)
+            return sigma_Mie_interp_array
+
+        else:
+            if isinstance(aerosol_species, str):
+                return interpolate_lognormal_logwidth_free(aerosol_species,log_r_m_std_dev)  
+            sigma_Mie_list = []
+            for _, species in enumerate(aerosol_species):
+                sigma_Mie_list.append(interpolate_lognormal_logwidth_free(species, log_r_m_std_dev))
+            sigma_Mie_interp_array = np.array(sigma_Mie_list)
+            return sigma_Mie_interp_array
+        
     # Returning a dictionary
     else:
-        sigma_Mie_interp_dict = {}
-        if isinstance(aerosol_species, str):
-            sigma_Mie_interp_dict[aerosol_species] = interpolate(aerosol_species)
-            return sigma_Mie_interp_dict
-        for _, species in enumerate(aerosol_species):
-            sigma_Mie_interp_dict[species] = {}
-            sigma_Mie_interp_dict[species]['eff_ext'] = interpolate(species)[0]
-            sigma_Mie_interp_dict[species]['eff_abs'] = interpolate(species)[1]
-            sigma_Mie_interp_dict[species]['eff_scat'] = interpolate(species)[2]
-            sigma_Mie_interp_dict[species]['eff_back'] = interpolate(species)[3]
-            sigma_Mie_interp_dict[species]['eff_g'] = interpolate(species)[4]
-            sigma_Mie_interp_dict[species]['eff_w'] = interpolate(species)[5]
+
+        if lognormal_logwith_free == False:
+            sigma_Mie_interp_dict = {}
+            if isinstance(aerosol_species, str):
+                sigma_Mie_interp_dict[aerosol_species] = interpolate(aerosol_species)
+                return sigma_Mie_interp_dict
+            for _, species in enumerate(aerosol_species):
+                sigma_Mie_interp_dict[species] = {}
+                sigma_Mie_interp_dict[species]['eff_ext'] = interpolate(species)[0]
+                sigma_Mie_interp_dict[species]['eff_g'] = interpolate(species)[1]
+                sigma_Mie_interp_dict[species]['eff_w'] = interpolate(species)[2]
+        
+        else:
+            sigma_Mie_interp_dict = {}
+            if isinstance(aerosol_species, str):
+                sigma_Mie_interp_dict[aerosol_species] = interpolate_lognormal_logwidth_free(aerosol_species, log_r_m_std_dev)  
+                return sigma_Mie_interp_dict
+            for _, species in enumerate(aerosol_species):
+                sigma_Mie_interp_dict[species] = {}
+                sigma_Mie_interp_dict[species]['eff_ext'] = interpolate_lognormal_logwidth_free(species, log_r_m_std_dev)[0]
+                sigma_Mie_interp_dict[species]['eff_g'] = interpolate_lognormal_logwidth_free(species, log_r_m_std_dev)[1]
+                sigma_Mie_interp_dict[species]['eff_w'] = interpolate_lognormal_logwidth_free(species, log_r_m_std_dev)[2]
+
         return sigma_Mie_interp_dict
 
 
