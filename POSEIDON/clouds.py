@@ -3417,7 +3417,8 @@ def precompute_cross_sections_one_aerosol_miepython(file_name, aerosol_name,
                                                  log_r_m_std_dev = 0.5,
                                                  number_cores = 1,
                                                  log_r_m_min = -3,
-                                                 log_r_m_max = 1,):
+                                                 log_r_m_max = 1,
+                                                 saveall = False):
 
     '''
     Same as precompute_cross_sections_one_aerosol_custom except it uses miepython instead of LX-MIE (much faster)
@@ -3442,6 +3443,9 @@ def precompute_cross_sections_one_aerosol_miepython(file_name, aerosol_name,
 
         log_r_m_max (float, optional):
             maximum radii to be computed
+
+        saveall (bool, optional):
+            saves all the extra arrays 
         
     '''
 
@@ -3612,29 +3616,37 @@ def precompute_cross_sections_one_aerosol_miepython(file_name, aerosol_name,
 
     # Save each radiative property as a seperate numpy array for future 
     title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
-    #np.save(title,ext_array,allow_pickle = True)
+    if saveall == True:
+        np.save(title,ext_array,allow_pickle = True)
 
     title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
-    #np.save(title,scat_array,allow_pickle = True)
+    if saveall == True:
+        np.save(title,scat_array,allow_pickle = True)
 
     title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
-    #np.save(title,abs_array,allow_pickle = True)
+    if saveall == True:
+        np.save(title,abs_array,allow_pickle = True)
 
     title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
-    #np.save(title,back_array,allow_pickle = True)
+    if saveall == True:
+        np.save(title,back_array,allow_pickle = True)
 
     title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
-    #np.save(title,w_array,allow_pickle = True)
+    if saveall == True:
+        np.save(title,w_array,allow_pickle = True)
 
     title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' +  aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
-    #np.save(title,g_array,allow_pickle = True)
+    if saveall == True:
+        np.save(title,g_array,allow_pickle = True)
 
     # Save all of them together as the jumbo array
-    title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
     jumbo_array.append([ext_array,scat_array,abs_array,back_array,w_array,g_array])
-    np.save(title,jumbo_array,allow_pickle = True)
+    if saveall == True:
+        title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
+        np.save(title,jumbo_array,allow_pickle = True)
 
     # Also save a copy in the folder that is used to generate the database 
+    # Do this always
     title = input_file_path + "opacity/aerosol_Mie_properties/jumbo_Mie_" + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
     np.save(title,jumbo_array,allow_pickle = True)
 
