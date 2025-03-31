@@ -29,7 +29,8 @@ from .utility import create_directories, write_spectrum, read_data
 from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
                      open_pymsg_grid
 from .supported_chemicals import supported_species, supported_cia, inactive_species, \
-                                 fastchem_supported_species, aerosol_supported_species
+                                 fastchem_supported_species, aerosol_supported_species, \
+                                 aerosols_lognormal_logwidth_free
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
@@ -386,7 +387,8 @@ def define_model(model_name, bulk_species, param_species,
                  log_P_slope_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0],
                  number_P_knots = 0, PT_penalty = False,
                  Na_K_fixed_ratio = False,
-                 reflection_up_to_5um = False):
+                 reflection_up_to_5um = False,
+                 lognormal_logwidth_free = False):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -503,6 +505,9 @@ def define_model(model_name, bulk_species, param_species,
             If True, sets log_K = 0.1 * log_Na
         reflection_up_to_5um (bool):
             If True, only computes albedo up to 5 um (to speed up computations).
+        lognormal_logwidth_free (bool):
+            If True, has log_r_m_std_dev be a free parameter for aerosols. 
+            Only applicable for certain aerosols with precomputed grids. 
 
     Returns:
         model (dict):
@@ -567,6 +572,9 @@ def define_model(model_name, bulk_species, param_species,
     # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
     if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True) and aerosol_species != ['free'] and aerosol_species != ['file_read']:
         raise Exception('Please input supported aerosols (check supported_opac.py) or aerosol = [\'free\'] or [\'file_read\'].')
+    
+    if (lognormal_logwidth_free == True) and (np.any(~np.isin(aerosol_species, aerosols_lognormal_logwidth_free)) == True):
+        raise Exception('Please input supported aerosols for lognormal_logwidth free.')
 
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
@@ -609,11 +617,20 @@ def define_model(model_name, bulk_species, param_species,
                                       opaque_Iceberg, surface, sharp_DN_transition,
                                       reference_parameter, disable_atmosphere, 
                                       aerosol_species, log_P_slope_arr,
-                                      number_P_knots, PT_penalty)
+                                      number_P_knots, PT_penalty,
+                                      lognormal_logwidth_free)
     
-    # If cloud_model = Mie, load in the cross section 
+    # If cloud_model = Mie, load in the cross section grid
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
-        aerosol_grid = load_aerosol_grid(aerosol_species)
+        # Normal grid load in (assumes log_r_m_std_dev = 0.5)
+        if lognormal_logwidth_free == False:
+            aerosol_grid = load_aerosol_grid(aerosol_species)
+
+        # Grid with an extra dimension for log_r_m_std_dev
+        else:
+            grid_name = aerosol_species[0] + '_free_logwidth'
+            aerosol_grid = load_aerosol_grid(aerosol_species, grid = grid_name,
+                                             lognormal_logwith_free = True)
     else:
         aerosol_grid = None
         
@@ -655,7 +672,8 @@ def define_model(model_name, bulk_species, param_species,
              'log_P_slope_arr': log_P_slope_arr,
              'Na_K_fixed_ratio': Na_K_fixed_ratio,
              'reflection_up_to_5um' : reflection_up_to_5um,
-             'PT_penalty' : PT_penalty
+             'PT_penalty' : PT_penalty,
+             'lognormal_logwidth_free' : lognormal_logwidth_free
              }
 
     return model
@@ -920,6 +938,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     aerosol_species = model['aerosol_species']
     Na_K_fixed_ratio = model['Na_K_fixed_ratio']
     PT_penalty = model['PT_penalty']
+    lognormal_logwidth_free = model['lognormal_logwidth_free']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -1025,9 +1044,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     r_m, log_n_max, fractional_scale_height, \
     r_i_real, r_i_complex, log_X_Mie, \
     P_cloud_bottom, kappa_cloud_eddysed, \
-    g_cloud_eddysed, w_cloud_eddysed = unpack_cloud_params(param_names, cloud_params,
-                                                           cloud_model, cloud_dim, 
-                                                           N_params_cum, TwoD_type)
+    g_cloud_eddysed, w_cloud_eddysed, \
+    log_r_m_std_dev  = unpack_cloud_params(param_names, cloud_params,
+                                           cloud_model, cloud_dim, 
+                                           N_params_cum, TwoD_type)
     
     # Compute the scale height (for fuzzy deck aerosol models)
     if is_physical == False:
@@ -1053,6 +1073,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie,
                   'P_cloud_bottom' : P_cloud_bottom, 
                   'kappa_cloud_eddysed' : kappa_cloud_eddysed, 'g_cloud_eddysed' : g_cloud_eddysed, 'w_cloud_eddysed' : w_cloud_eddysed,
+                  'log_r_m_std_dev' : log_r_m_std_dev
                  }
 
     return atmosphere
@@ -1177,6 +1198,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     scattering = model['scattering']
     reflection = model['reflection']
     reflection_up_to_5um = model['reflection_up_to_5um']
+    lognormal_logwidth_free = model['lognormal_logwidth_free']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1240,6 +1262,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     kappa_cloud_eddysed = atmosphere['kappa_cloud_eddysed']
     g_cloud_eddysed = atmosphere['g_cloud_eddysed']
     w_cloud_eddysed = atmosphere['w_cloud_eddysed']
+    log_r_m_std_dev = atmosphere['log_r_m_std_dev']
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -1338,7 +1361,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                           r_m, r_i_real, r_i_complex, model['cloud_type'],
                                                           P_cloud = P_cloud,
                                                           log_n_max = log_n_max, 
-                                                          fractional_scale_height = fractional_scale_height)
+                                                          fractional_scale_height = fractional_scale_height,)
 
                     # Otherwise, use the aerosol_grid to and pull radiative properties
                     else: 
@@ -1349,7 +1372,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      aerosol_grid = aerosol_grid,
                                                      P_cloud = P_cloud,
                                                      log_n_max = log_n_max, 
-                                                     fractional_scale_height = fractional_scale_height)
+                                                     fractional_scale_height = fractional_scale_height,
+                                                     lognormal_logwidth_free=lognormal_logwidth_free,
+                                                     log_r_m_std_dev=log_r_m_std_dev)
 
                 # If its a slab
                 elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
@@ -1370,7 +1395,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                     aerosol_grid = aerosol_grid,
                                                     log_X_Mie = log_X_Mie,
                                                     P_cloud = P_cloud,
-                                                    P_cloud_bottom = P_cloud_bottom)
+                                                    P_cloud_bottom = P_cloud_bottom,
+                                                    lognormal_logwidth_free=lognormal_logwidth_free,
+                                                     log_r_m_std_dev=log_r_m_std_dev)
                             
                           
                 # If its a uniform X run
@@ -1388,7 +1415,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      r_m, aerosol_species,
                                                      cloud_type = model['cloud_type'],
                                                      aerosol_grid = aerosol_grid,
-                                                     log_X_Mie = log_X_Mie)
+                                                     log_X_Mie = log_X_Mie,
+                                                     lognormal_logwidth_free=lognormal_logwidth_free,
+                                                     log_r_m_std_dev=log_r_m_std_dev)
                         
                 # If its an opaque deck + uniform X run
                 elif (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
@@ -1407,7 +1436,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      cloud_type = model['cloud_type'],
                                                      aerosol_grid = aerosol_grid,
                                                      log_X_Mie = log_X_Mie,
-                                                     P_cloud = P_cloud)
+                                                     P_cloud = P_cloud,
+                                                     lognormal_logwidth_free=lognormal_logwidth_free,
+                                                     log_r_m_std_dev=log_r_m_std_dev)
 
                 # If its a opaque_deck_plus_slab run 
                 elif (model['cloud_type'] == 'opaque_deck_plus_slab'):
@@ -1428,7 +1459,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                     aerosol_grid = aerosol_grid,
                                                     log_X_Mie = log_X_Mie,
                                                     P_cloud = P_cloud,
-                                                    P_cloud_bottom = P_cloud_bottom)
+                                                    P_cloud_bottom = P_cloud_bottom,
+                                                     lognormal_logwidth_free=lognormal_logwidth_free,
+                                                     log_r_m_std_dev=log_r_m_std_dev)
                         
                 # If its a fuzzy_deck_plus_slab run 
                 elif (model['cloud_type'] == 'fuzzy_deck_plus_slab'):
@@ -1442,7 +1475,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                      log_n_max = log_n_max, 
                                                      fractional_scale_height = fractional_scale_height,
                                                      log_X_Mie = log_X_Mie,
-                                                     P_cloud_bottom = P_cloud_bottom)
+                                                     P_cloud_bottom = P_cloud_bottom,
+                                                     lognormal_logwidth_free=lognormal_logwidth_free,
+                                                     log_r_m_std_dev=log_r_m_std_dev)
 
             
             else:

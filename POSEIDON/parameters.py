@@ -16,7 +16,8 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface,
                        sharp_DN_transition, reference_parameter, disable_atmosphere,
-                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty):
+                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty,
+                       lognormal_logwidth_free):
     '''
     From the user's chosen model settings, determine which free parameters 
     define this POSEIDON model. The different types of free parameters are
@@ -110,6 +111,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         PT_penalty (bool):
             If True, introduces the sigma_smooth parameter for retrievals
             (only for the Pelletier 2021 P-T profile).
+        lognormal_logwidth_free (bool):
+            If True, has log_r_m_std_dev be a free parameter for aerosols. 
+            Only applicable for certain aerosols with precomputed grids. 
 
     Returns:
         params (np.array of str):
@@ -698,6 +702,10 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
             elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab', 'opaque_deck_plus_uniform_X', 'one_slab']):
                 raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, one_slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X.")
+            
+            if (lognormal_logwidth_free == True):
+                for aerosol in aerosol_species: 
+                    cloud_params += ['log_rm_std_dev_' + aerosol]
         
         elif (cloud_model == 'eddysed'):
             # If working with a 2D patchy cloud model
@@ -1574,6 +1582,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_real = 0
         r_i_complex = 0
         log_X_Mie = []
+        log_r_m_std_dev = 0.5
 
         # Set eddysed values to dummy values 
         kappa_cloud_eddysed = 0
@@ -1619,6 +1628,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_real = 0
         r_i_complex = 0
         log_X_Mie = []
+        log_r_m_std_dev = 0.5
 
         # Set eddysed values to dummy values 
         kappa_cloud_eddysed = 0
@@ -1673,6 +1683,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_real = 0
         r_i_complex = 0
         log_X_Mie = []
+        log_r_m_std_dev = 0.5
 
         # Set eddysed values to dummy values 
         kappa_cloud_eddysed = 0
@@ -1711,7 +1722,16 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                 f_cloud = clouds_in[np.where(cloud_param_names == 'f_cloud')[0]] 
 
             phi_0 = -90
-            theta_0 = -90.0       
+            theta_0 = -90.0     
+
+        # Lognormal logwidth free 
+        if any("log_rm_std_dev" in s for s in cloud_param_names):
+            try:
+                log_r_m_std_dev  = clouds_in[np.where(np.char.find(cloud_param_names, 'log_rm_std_dev')!= -1)[0][0]]
+            except:
+                log_r_m_std_dev  = clouds_in[np.where(np.char.find(cloud_param_names, 'log_rm_std_dev')!= -1)[0]]
+        else:
+            log_r_m_std_dev = 0.5
 
         # Set the Mie parameters 
         # Sorry that below is a bit of a mess if anyone is looking at this in the future
@@ -1918,10 +1938,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_real = 0
         r_i_complex = 0
         log_X_Mie = []
+        log_r_m_std_dev = 0.5
     
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
            fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom, \
-           kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed
+           kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed, log_r_m_std_dev
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):

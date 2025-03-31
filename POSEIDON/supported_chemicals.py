@@ -48,3 +48,6 @@ aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4_liqu
                                       'Saturn-Phosphorus-Haze', 'SiC', 'SiO', 'SiO2', 'SiO2_amorph','SiO2_crystalline_2023', 'SiO2_alpha_palik', 'SiO2_glass_palik', 'Soot', 'Soot_6mm', 'Tholin', 'Tholin-CO-0625', 'Tholin-CO-1',
                                       'TiC', 'TiO2_anatase', 'TiO2_rutile', 'VO', 'ZnS',
                                       'MgSiO3_r_m_std_dev_01','MgSiO3_r_m_std_dev_1','MgSiO3_g_w_calc_mean','MgSiO3_g_w_calc_trap'])
+
+# Aerosols with precomputed grids that have free lognormal logwidths
+aerosols_lognormal_logwidth_free = np.array(['SiO2'])

@@ -1335,7 +1335,10 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     aerosol_species = np.array(aerosol_species)
     
     # Open aerosol grid HDF5 file
-    database = h5py.File(input_file_path + 'opacity/'  + grid + '_database.hdf5', 'r')
+    try:
+        database = h5py.File(input_file_path + 'opacity/'  + grid + '_database.hdf5', 'r')
+    except:
+        raise Exception('POSEIDON could not find ', input_file_path + 'opacity/'  + grid + '_database.hdf5. Is it downloaded and in the opacity folder?')
 
     # Load the dimensions of the grid
     wl_grid = np.array(database['Info/Wavelength grid'])
@@ -1582,7 +1585,9 @@ def Mie_cloud(P,wl,r, H, n,
               log_n_max = 0, 
               fractional_scale_height = 0,
               log_X_Mie = 0,
-              P_cloud_bottom = 0):
+              P_cloud_bottom = 0,
+              log_r_m_std_dev = 0.5,
+              lognormal_logwidth_free = False):
 
 
     '''
@@ -1650,19 +1655,13 @@ def Mie_cloud(P,wl,r, H, n,
 
         -------- Optional Arguments -------
 
-        r_m_std_dev (float) :
+        log_r_m_std_dev (float) :
             Geometric standard deviation for particle size 
 
-        z_max (float) : 
-            Maximum z that you want the effective cross section integral carried out over
-            z = [ln(r) - ln(r_m)] / [r_m_std_dev^2], where r is the particle size 
-            Integral carried out from -z to z with more density around 0 (size ~ mean size)
+        lognormal_logwidth_free (bool):
+            If True, has log_r_m_std_dev be a free parameter for aerosols. 
+            Only applicable for certain aerosols with precomputed grids. 
 
-        num_integral_points (int) : 
-            Number of points in the z array 
-
-        R_Mie (int) : 
-            Optional wavelength resolution used to calculate ETA 
 
     
     Returns: n_aerosol, sigma_Mie
@@ -1717,6 +1716,7 @@ def Mie_cloud(P,wl,r, H, n,
             n_aerosol = np.zeros_like(r)
 
             # Find index in P array where top of slab is 
+            print(P_cloud)
             P_cloud_index_top = find_nearest(P,P_cloud[q])
 
             # Find index in P array where bottom of slab is 
@@ -1794,14 +1794,18 @@ def Mie_cloud(P,wl,r, H, n,
     # Load in effective cross section (as function of wavelength)
     #########################
 
-    # If the aerosol grid wasn't read in already 
-    if (aerosol_grid == None):
-        aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol', 
-                        comm = MPI.COMM_WORLD, rank = 0)
-
     # Interpolate the grid across wl and r_m to get the radiative properties of aerosols
-    sigma_Mie_interp_dict = interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m, 
-                               aerosol_species, return_dict = True)
+    if lognormal_logwidth_free == False:
+        sigma_Mie_interp_dict = interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m, 
+                                aerosol_species, return_dict = True,
+                                lognormal_logwith_free= False)
+    else:
+        sigma_Mie_interp_dict = interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m, 
+                                aerosol_species, return_dict = True,
+                                lognormal_logwith_free= True,
+                                log_r_m_std_dev = log_r_m_std_dev)
+    
+
     
     # To work with Numba we defined these
     sigma_ext_cld_array = []
