@@ -3737,7 +3737,7 @@ def make_aerosol_database():
     print('---------------------')
 
     # Initialize and generate new data_base 
-    database = h5py.File('./aerosol_database.hdf5', 'w')
+    database = h5py.File(input_file_path + 'opacity/aerosol_database.hdf5', 'w')
 
     h = database.create_group('Info')
     h1 = h.create_dataset('Wavelength grid', data=wavelengths, compression='gzip', dtype='float64', shuffle=True)

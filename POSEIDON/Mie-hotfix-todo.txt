@@ -1,4 +1,7 @@
-0. Remake aerosol grid on HAL
+0. Remake aerosol grid on HAL 
+- Normal one (68 species)
+- Directional (144 species, need to get files names made first to match supported_species.py)
+- Diamonds (7 species)
 1. Make lognormal logwidth a free param option (test w/ SiO2 grid)
 2. Fix load aerosol grid to work with and without 1 
 3. Allow Mie_cloud_free() to be miepython instead of LX-MIE
