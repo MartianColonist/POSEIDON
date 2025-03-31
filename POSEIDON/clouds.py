@@ -12,6 +12,8 @@ from mpi4py import MPI
 import h5py
 import os 
 import glob
+import miepython
+import multiprocessing as mp
 
 from .utility import shared_memory_array
 from .supported_chemicals import aerosol_supported_species
@@ -2413,18 +2415,12 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
         # This next part interpolated the Qext points that were made from the coarse x histogram 
         # And interpolates them back onto the dense x array 
 
-        # SSA is computed directly from efficiencies 
-        w_hist = Qscat_hist/Qext_hist
-
         # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
         spl = scipy.interpolate.splrep(x_hist, Qext_hist)
         Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
 
         spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
         Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
-
-        spl = scipy.interpolate.splrep(x_hist, w_hist)
-        w_intpl = scipy.interpolate.splev(dense_xs, spl)
 
         spl = scipy.interpolate.splrep(x_hist, Qback_hist)
         Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
@@ -2436,7 +2432,6 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
         Qext_intpl = np.reshape(Qext_intpl, (len(wl_Mie), len(radii)))
         Qscat_intpl = np.reshape(Qscat_intpl, (len(wl_Mie), len(radii)))
         Qback_intpl = np.reshape(Qback_intpl, (len(wl_Mie), len(radii)))
-        w_intpl = np.reshape(w_intpl, (len(wl_Mie), len(radii)))
         g_intpl = np.reshape(g_intpl, (len(wl_Mie), len(radii)))
 
 
@@ -2447,7 +2442,6 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
         Qext_intpl_array = []
         Qscat_intpl_array = []
         Qback_intpl_array = []
-        w_intpl_array = []
         g_intpl_array = []
 
         # Loop through each wavelength 
@@ -2470,18 +2464,12 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
             spl = scipy.interpolate.splrep(x_hist, Qext_hist)
             Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
 
-            # SSA 
-            w_hist = Qscat_hist/Qext_hist
-
             # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
             spl = scipy.interpolate.splrep(x_hist, Qext_hist)
             Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
 
             spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
             Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
-
-            spl = scipy.interpolate.splrep(x_hist, w_hist)
-            w_intpl = scipy.interpolate.splev(dense_xs, spl)
 
             spl = scipy.interpolate.splrep(x_hist, Qback_hist)
             Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
@@ -2493,14 +2481,12 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
             Qext_intpl_array.append(Qext_intpl)
             Qscat_intpl_array.append(Qscat_intpl)
             Qback_intpl_array.append(Qback_intpl)
-            w_intpl_array.append(w_intpl)
             g_intpl_array.append(g_intpl)
 
         # Reshape the mega array so that the first index is wavelngth, second is radius 
         Qext_intpl = np.reshape(Qext_intpl_array, (len(wl_Mie), len(radii)))
         Qscat_intpl = np.reshape(Qscat_intpl_array, (len(wl_Mie), len(radii)))
         Qback_intpl = np.reshape(Qback_intpl_array, (len(wl_Mie), len(radii)))
-        w_intpl = np.reshape(w_intpl_array, (len(wl_Mie), len(radii)))
         g_intpl = np.reshape(g_intpl_array, (len(wl_Mie), len(radii)))
 
 
@@ -2516,9 +2502,13 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
     # BackScatter Cross section 
     eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
 
-    # Effective w and g (with medians, feel free to change to trapezoidal integration)
-    eff_w = np.median(w_intpl, axis=1)
-    eff_g = np.median(g_intpl, axis=1)
+    # Effective w and g 
+    # Fixed thanks to Thomas Kennedy! 
+    eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+
+    eff_g = eff_g_cross_section_weighted / eff_scat_cross_section
+
+    eff_w = eff_scat_cross_section / eff_ext_cross_section
 
     # Interpolate the eff_cross_section from wl_Mie back to native wl
     interp = interp1d(wl_Mie, eff_ext_cross_section)
@@ -2570,8 +2560,9 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
 ######################################################
 ######################################################
 
+
 ############################################################################################
-# Main DataBase Functions
+# Main DataBase Functions (use LX-MIE)
 ############################################################################################
 
 
@@ -2775,19 +2766,12 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
             # Get the coarse Qext with the constant eta 
             Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
 
-            # SSA and weighted g 
-            w_hist = Qscat_hist/Qext_hist
-            #g_hist = g_hist/Qscat_hist
-
             # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
             spl = scipy.interpolate.splrep(x_hist, Qext_hist)
             Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
 
             spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
             Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
-
-            spl = scipy.interpolate.splrep(x_hist, w_hist)
-            w_intpl = scipy.interpolate.splev(dense_xs, spl)
 
             spl = scipy.interpolate.splrep(x_hist, Qback_hist)
             Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
@@ -2799,14 +2783,12 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
             Qext_intpl_array.append(Qext_intpl)
             Qscat_intpl_array.append(Qscat_intpl)
             Qback_intpl_array.append(Qback_intpl)
-            w_intpl_array.append(w_intpl)
             g_intpl_array.append(g_intpl)
 
         # Reshape the mega array so that the first index is wavelngth, second is radius 
         Qext_intpl = np.reshape(Qext_intpl_array, (len(wl_Mie), len(radii)))
         Qscat_intpl = np.reshape(Qscat_intpl_array, (len(wl_Mie), len(radii)))
         Qback_intpl = np.reshape(Qback_intpl_array, (len(wl_Mie), len(radii)))
-        w_intpl = np.reshape(w_intpl_array, (len(wl_Mie), len(radii)))
         g_intpl = np.reshape(g_intpl_array, (len(wl_Mie), len(radii)))
 
         # Empty arrays to store the following values into 
@@ -2830,9 +2812,12 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
         eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
 
         # Effective w and g
-        # Can change this to a trapezoidal or a mean if you want
-        eff_w[idx_start:idx_end] = np.median(w_intpl, axis=1)
-        eff_g[idx_start:idx_end] = np.median(g_intpl, axis=1)
+        # Fixed via Thomas Kennedy 
+        eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+
+        eff_g[idx_start:idx_end] = eff_g_cross_section_weighted / eff_scat_cross_section
+
+        eff_w[idx_start:idx_end] = eff_scat_cross_section / eff_ext_cross_section
 
         # Append everything to arrays to save
         ext_array.append(eff_ext_cross_section)
@@ -2881,8 +2866,7 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
 def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
                                                  r_m_std_dev = 0.5,
                                                  log_r_m_min = -3,
-                                                 log_r_m_max = 1,
-                                                 g_w_calc = 'median'):
+                                                 log_r_m_max = 1,):
 
     '''
     Calculates .npy files from a refractive index txt file (lab data)
@@ -2909,15 +2893,9 @@ def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
 
         log_r_m_max (float, optional):
             maximum radii to be computed
-        
-        g_w_calc (string, optional):
-            how g and w are averaged. Options are 'median', 'mean', 'trap'
     '''
 
     global all_etas, all_xs, all_Qexts, all_Qscats, all_Qbacks, all_gs
-
-    if g_w_calc != 'median' and g_w_calc!= 'mean' and g_w_calc != 'trap':
-        raise Exception('Supported g and w calculations is median (default), mean, or trap (trapezoidal integration)')
 
     # Constants for the Qext Calculation
     z_max = 5
@@ -3094,19 +3072,12 @@ def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
             # Get the coarse Qext with the constant eta 
             Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
 
-            # SSA and weighted g 
-            w_hist = Qscat_hist/Qext_hist
-            #g_hist = g_hist/Qscat_hist
-
             # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
             spl = scipy.interpolate.splrep(x_hist, Qext_hist)
             Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
 
             spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
             Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
-
-            spl = scipy.interpolate.splrep(x_hist, w_hist)
-            w_intpl = scipy.interpolate.splev(dense_xs, spl)
 
             spl = scipy.interpolate.splrep(x_hist, Qback_hist)
             Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
@@ -3118,14 +3089,12 @@ def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
             Qext_intpl_array.append(Qext_intpl)
             Qscat_intpl_array.append(Qscat_intpl)
             Qback_intpl_array.append(Qback_intpl)
-            w_intpl_array.append(w_intpl)
             g_intpl_array.append(g_intpl)
 
         # Reshape the mega array so that the first index is wavelngth, second is radius 
         Qext_intpl = np.reshape(Qext_intpl_array, (len(wl_Mie), len(radii)))
         Qscat_intpl = np.reshape(Qscat_intpl_array, (len(wl_Mie), len(radii)))
         Qback_intpl = np.reshape(Qback_intpl_array, (len(wl_Mie), len(radii)))
-        w_intpl = np.reshape(w_intpl_array, (len(wl_Mie), len(radii)))
         g_intpl = np.reshape(g_intpl_array, (len(wl_Mie), len(radii)))
 
         # Empty arrays to store the following values into 
@@ -3149,17 +3118,11 @@ def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
         eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
 
         # Effective w and g
-        if g_w_calc == 'median':
-            eff_w[idx_start:idx_end] = np.median(w_intpl, axis=1)
-            eff_g[idx_start:idx_end] = np.median(g_intpl, axis=1)
+        eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
 
-        elif g_w_calc == 'mean':
-            eff_w[idx_start:idx_end] = np.mean(w_intpl, axis=1)
-            eff_g[idx_start:idx_end] = np.mean(g_intpl, axis=1)     
-        
-        elif g_w_calc == 'trap':
-            eff_w[idx_start:idx_end] = np.trapz(probs*w_intpl, z)
-            eff_g[idx_start:idx_end] = np.trapz(probs*g_intpl, z) 
+        eff_g[idx_start:idx_end] = eff_g_cross_section_weighted / eff_scat_cross_section
+
+        eff_w[idx_start:idx_end] = eff_scat_cross_section / eff_ext_cross_section
 
         # Append everything to arrays to save
         ext_array.append(eff_ext_cross_section)
@@ -3286,18 +3249,12 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
         # Get the coarse Qext with the constant eta 
         Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
 
-        # SSA and weighted g 
-        w_hist = Qscat_hist/Qext_hist
-
         # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
         spl = scipy.interpolate.splrep(x_hist, Qext_hist)
         Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
 
         spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
         Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
-
-        spl = scipy.interpolate.splrep(x_hist, w_hist)
-        w_intpl = scipy.interpolate.splev(dense_xs, spl)
 
         spl = scipy.interpolate.splrep(x_hist, Qback_hist)
         Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
@@ -3309,14 +3266,12 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
         Qext_intpl_array.append(Qext_intpl)
         Qscat_intpl_array.append(Qscat_intpl)
         Qback_intpl_array.append(Qback_intpl)
-        w_intpl_array.append(w_intpl)
         g_intpl_array.append(g_intpl)
 
     # Reshape the mega array so that the first index is wavelngth, second is radius 
     Qext_intpl = np.reshape(Qext_intpl_array, (len(wavelengths), len(radii)))
     Qscat_intpl = np.reshape(Qscat_intpl_array, (len(wavelengths), len(radii)))
     Qback_intpl = np.reshape(Qback_intpl_array, (len(wavelengths), len(radii)))
-    w_intpl = np.reshape(w_intpl_array, (len(wavelengths), len(radii)))
     g_intpl = np.reshape(g_intpl_array, (len(wavelengths), len(radii)))
 
     # Effective Cross section is a trapezoidal integral
@@ -3332,8 +3287,12 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
     eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
 
     # Effective w and g
-    eff_w = np.median(w_intpl, axis=1)
-    eff_g = np.median(g_intpl, axis=1)
+    # Fixed thanks to Thomas Kennedy 
+    eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+
+    eff_g = eff_g_cross_section_weighted / eff_scat_cross_section
+
+    eff_w = eff_scat_cross_section / eff_ext_cross_section
 
     all_etas = []
     all_xs = []
@@ -3344,6 +3303,340 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
 
     return eff_ext_cross_section, eff_scat_cross_section, eff_abs_cross_section, eff_back_cross_section, eff_w, eff_g
 
+############################################################################################
+# Miepython functions 
+# See https://miepython.readthedocs.io/en/latest/
+############################################################################################
+
+def compute_mie_properties(r_m, wl_Mie, eta_array, r_m_array,
+                           ext_array, scat_array, abs_array, 
+                           back_array, w_array, g_array,
+                           z_max, num_integral_points, log_r_m_std_dev,
+                           idx_start, idx_end):
+
+    import time
+    start_time = time.time()
+    
+
+    # Where in wl_Mie to subarray starts 
+
+    where_in_rm = np.argwhere(r_m_array == r_m)[0][0]
+
+    # LX-MIE algorithm starts here. See Mie_cloud_free() for details
+    z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
+    z = np.append(z[::-1], -z)
+
+    probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
+    radii = r_m * np.exp(z * log_r_m_std_dev) # This takes the place of rm * exp(sigma z)
+    geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
+
+    Qext_intpl_array = []
+    Qscat_intpl_array = []
+    Qback_intpl_array = []
+    w_intpl_array = []
+    g_intpl_array = []
+
+    # Loop through each wavelength 
+    for m in range(len(wl_Mie)):
+        
+        # Take the dense xs, but keep wavelength constant this time around
+        dense_xs = 2*np.pi*radii / wl_Mie[m]
+        dense_xs = dense_xs.flatten()
+
+        # Make xs more coarse
+        x_hist = np.histogram(dense_xs, bins='auto')[1]
+
+        # Pull the refractive index for the wavelength we are on 
+        eta = eta_array[m]
+
+        # Replace LX-MIE with miepython
+        Qext_hist, Qscat_hist, Qback_hist, g_hist  = miepython.mie(eta, x_hist)
+
+        # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
+        spl = scipy.interpolate.splrep(x_hist, Qext_hist)
+        Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+        spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
+        Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+        spl = scipy.interpolate.splrep(x_hist, Qback_hist)
+        Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+        spl = scipy.interpolate.splrep(x_hist, g_hist)
+        g_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+        # Append it to the array that will have all the Qext
+        Qext_intpl_array.append(Qext_intpl)
+        Qscat_intpl_array.append(Qscat_intpl)
+        Qback_intpl_array.append(Qback_intpl)
+        g_intpl_array.append(g_intpl)
+
+    # Reshape the mega array so that the first index is wavelngth, second is radius 
+    Qext_intpl = np.reshape(Qext_intpl_array, (len(wl_Mie), len(radii)))
+    Qscat_intpl = np.reshape(Qscat_intpl_array, (len(wl_Mie), len(radii)))
+    Qback_intpl = np.reshape(Qback_intpl_array, (len(wl_Mie), len(radii)))
+    g_intpl = np.reshape(g_intpl_array, (len(wl_Mie), len(radii)))
+
+    # Empty arrays to store the following values into 
+    eff_ext_cross_section = np.full(5011, 1e-250)
+    eff_scat_cross_section = np.full(5011, 1e-250)
+    eff_abs_cross_section = np.full(5011, 1e-250)
+    eff_back_cross_section = np.full(5011, 1e-250)
+    eff_w = np.full(5011, 1e-250)
+    eff_g = np.full(5011, 1e-250)
+    eff_g_cross_section_weighted = np.full(5011, 1e-250)
+
+    # Effective Cross section is a trapezoidal integral
+    eff_ext_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+
+    # Scattering Cross section 
+    eff_scat_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+
+    # Absorption Cross section
+    eff_abs_cross_section[idx_start:idx_end] = eff_ext_cross_section[idx_start:idx_end] - eff_scat_cross_section[idx_start:idx_end]
+
+    # BackScatter Cross section 
+    eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+
+
+    eff_g_cross_section_weighted[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+
+    eff_g[idx_start:idx_end] = eff_g_cross_section_weighted[idx_start:idx_end] / eff_scat_cross_section[idx_start:idx_end]
+
+    eff_w[idx_start:idx_end] = eff_scat_cross_section[idx_start:idx_end] / eff_ext_cross_section[idx_start:idx_end]
+
+    # Append everything to arrays to save
+    ext_array[(where_in_rm*5011):((where_in_rm+1)*5011)] = eff_ext_cross_section
+    scat_array[(where_in_rm*5011):((where_in_rm+1)*5011)] = eff_scat_cross_section
+    abs_array[(where_in_rm*5011):((where_in_rm+1)*5011)] = eff_abs_cross_section
+    back_array[(where_in_rm*5011):((where_in_rm+1)*5011)] = eff_back_cross_section
+    w_array[(where_in_rm*5011):((where_in_rm+1)*5011)] = eff_w
+    g_array[(where_in_rm*5011):((where_in_rm+1)*5011)] = eff_g
+
+def precompute_cross_sections_one_aerosol_miepython(file_name, aerosol_name,
+                                                 log_r_m_std_dev = 0.5,
+                                                 number_cores = 1,
+                                                 log_r_m_min = -3,
+                                                 log_r_m_max = 1,):
+
+    '''
+    Same as precompute_cross_sections_one_aerosol_custom except it uses miepython instead of LX-MIE (much faster)
+    It also can be run on multiple cores and solve for different particle size distributions
+
+    INPUTS 
+
+        file_name (txt):
+            file name of the txt file with the directory included
+
+        aerosol_name (txt):
+            name that you want the npy file saved with
+
+        log_r_m_std_dev (float, optional):
+            standard deviations of the lognormal distributions
+
+        number_cores (int, optional):
+            Number of cores to run things on (makes precomputation much faster)
+
+        log_r_m_min (float, optional):
+            mininum radii to be computed
+
+        log_r_m_max (float, optional):
+            maximum radii to be computed
+        
+    '''
+
+    # Constants for the Qext Calculation
+    z_max = 5
+    num_integral_points = 100
+    R_Mie = 1000
+
+    # Saved Arrays 
+    wl_Mie = []
+    ext_array = []
+    scat_array = []
+    abs_array = []
+    back_array = []
+    w_array = []
+    g_array = []
+    jumbo_array = []
+
+    # Create wl_Mie array which goes from 0.2 to 30 at R = 1000
+    wl_min = 0.2
+    wl_max = 30
+    wl_Mie = np.append(wl_Mie,wl_grid_constant_R(wl_min, wl_max, R_Mie))
+
+    # Default indices for the cross section, g, and w arrays
+    # This only changes if the lab data doesn't span the entire wl range 
+    idx_start = 0
+    idx_end = 5011
+
+    # Radii 
+    r_m_array = 10**np.linspace(log_r_m_min,log_r_m_max,1000)
+
+    # Load in the input file path
+    input_file_path = os.environ.get("POSEIDON_input_data")
+
+    if input_file_path == None:
+        raise Exception("POSEIDON cannot locate the input folder.\n" +
+                        "Please set the 'POSEIDON_input_data' variable in " +
+                        "your .bashrc or .bash_profile to point to the " +
+                        "POSEIDON input folder.")
+
+    #########################
+    # Load in refractive indices (as function of wavelength)
+    #########################
+    try :
+        file_name = file_name
+        print('Loading in : ', file_name)
+        try:
+            file_as_numpy = np.loadtxt(file_name, comments = '#').T
+        except:
+            file_as_numpy = np.loadtxt(file_name, skiprows = 2).T
+
+        # If its index, wavelength, n, k we need to do something different. 
+        if len(file_as_numpy) == 4:
+            wavelengths = file_as_numpy[1]
+            real_indices = file_as_numpy[2]
+            imaginary_indices = file_as_numpy[3]
+            file_as_numpy = np.array([wavelengths,real_indices,imaginary_indices])
+
+    except :
+        raise Exception('Could not load in file. Make sure directory is included in the input')
+
+
+    wavelengths = file_as_numpy[0]
+
+    # Truncating wl grid if necessary 
+    # Any values not covered will be set to 0 in the database
+    if np.max(wavelengths) < 30 or np.min(wavelengths) > 0.2:
+
+        print('Wavelength column does not span 0.2 to 30 um')
+
+        # If less than 30 and greater than 0.2
+        if np.max(wavelengths) < 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = np.max(wavelengths)
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start:idx_end]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to '+  str(np.max(wl_Mie)))
+
+        # If less than 30 only
+        elif np.max(wavelengths) < 30 and np.min(wavelengths) <= 0.2:
+
+            wl_min = 0.2
+            wl_max = np.max(wavelengths)
+
+            idx_start = 0
+            idx_end = find_nearest(wl_Mie, wl_max)
+
+            wl_Mie = wl_Mie[:idx_end]
+            
+            print('Wavelength grid will be truncated to : 0.2 to ' + str(np.max(wl_Mie)))
+
+        # If more than 0.2 only 
+        elif np.max(wavelengths) >= 30 and np.min(wavelengths) > 0.2:
+
+            wl_min = np.min(wavelengths)
+            wl_max = 30
+
+            idx_start = find_nearest(wl_Mie,wl_min) + 1
+            idx_end = 5011
+
+            # Find nearest pulls the closest value below the given value, so we go up one index
+            wl_Mie = wl_Mie[idx_start:]
+
+            print('Wavelength grid will be truncated to : ' + str(np.min(wl_Mie)) + ' to 30')
+
+    # Loading in the refractive indices 
+    interp_reals = interp1d(wavelengths, file_as_numpy[1])
+    interp_complexes = interp1d(wavelengths, file_as_numpy[2])
+    eta_array = interp_reals(wl_Mie) + -1j *interp_complexes(wl_Mie)
+
+    # Multiprocessing requires 1D arrays (if we use shared memory)
+    jobs = []
+    ext_array = mp.Array('d', np.zeros(len(r_m_array)*5011))
+    scat_array = mp.Array('d', np.zeros(len(r_m_array)*5011))
+    abs_array = mp.Array('d', np.zeros(len(r_m_array)*5011))
+    back_array = mp.Array('d', np.zeros(len(r_m_array)*5011))
+    w_array = mp.Array('d', np.zeros(len(r_m_array)*5011))
+    g_array = mp.Array('d', np.zeros(len(r_m_array)*5011))
+
+    for r_m in r_m_array:
+    
+        # Initialize processes
+        p = mp.Process(target=compute_mie_properties,
+                        args=(r_m, wl_Mie, eta_array, r_m_array,
+                           ext_array, scat_array, abs_array, 
+                           back_array, w_array, g_array,
+                           z_max, num_integral_points, log_r_m_std_dev,
+                           idx_start, idx_end))
+        
+        jobs.append(p)
+        p.start()
+
+        # This intentionally-infinite loop continuously
+        # calculates the number of running processes, then
+        # exits if the number of processes is less than
+        # the number requested. This allows additional
+        # processes to spawn as other finish, which is
+        # more efficient than waiting for them all to
+        # finish since some processes can take much longer
+        # than others
+        while True:
+            procs = 0
+            for proc in jobs:
+                if proc.is_alive():
+                    procs += 1
+
+            if procs < number_cores:
+                break
+
+    # Make sure all processes finish
+    for proc in jobs:
+        proc.join()
+
+    # Reshape the arrays 
+    ext_array = np.reshape(ext_array, (len(r_m_array),5011))
+    scat_array= np.reshape(scat_array, (len(r_m_array),5011))
+    abs_array = np.reshape(abs_array, (len(r_m_array),5011)) 
+    back_array = np.reshape(back_array, (len(r_m_array),5011))
+    w_array = np.reshape(w_array, (len(r_m_array),5011))
+    g_array = np.reshape(g_array, (len(r_m_array),5011))
+
+
+    # Save each radiative property as a seperate numpy array for future 
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
+    #np.save(title,ext_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
+    #np.save(title,scat_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
+    #np.save(title,abs_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
+    #np.save(title,back_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
+    #np.save(title,w_array,allow_pickle = True)
+
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' +  aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
+    #np.save(title,g_array,allow_pickle = True)
+
+    # Save all of them together as the jumbo array
+    title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
+    jumbo_array.append([ext_array,scat_array,abs_array,back_array,w_array,g_array])
+    np.save(title,jumbo_array,allow_pickle = True)
+
+    # Also save a copy in the folder that is used to generate the database 
+    title = input_file_path + "opacity/aerosol_Mie_properties/jumbo_Mie_" + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
+    np.save(title,jumbo_array,allow_pickle = True)
 
 def make_aerosol_database():
 
@@ -3352,6 +3645,8 @@ def make_aerosol_database():
     This functionality allows for users to create new eff cross section arrays using 
     precompute_cross_sections_one_aerosol()
     With their own lab data and add it to the database
+    Assumes the nominal wl_Mie and r_m_array used in the functions above (not custom particle sizes)
+    Takes into account lognormal logwidth used to generate cross sections
     '''
 
     # Load in where the opacity folder is 
@@ -3365,6 +3660,7 @@ def make_aerosol_database():
 
     # Load in the aerosol files used to generate database
     mydir = input_file_path + "opacity/aerosol_Mie_properties/"
+
     file_list = glob.glob(mydir + "jumbo*.npy")
     file_list.sort()
 
@@ -3373,31 +3669,45 @@ def make_aerosol_database():
     print(mydir)
     print('---------------------')
 
-    aerosol_list = []
-
-    # Getting a string for each aerosol in the folder 
-    for file in file_list:
-        file_split = file.split('/')
-        file = file_split[-1]
-        file = file[10:]
-        file = file[:-4]
-        
-        aerosol_list.append(file)
-
-    print('---------------------')
-    print('Generating database from the following aerosols')
-    print('---------------------')
-
     # Wavelength and r_m array used to generate the npy files
     R_Mie = 1000
     wavelengths = wl_grid_constant_R(0.2, 30, R_Mie)
     r_m_array = 10**np.linspace(-3,1,1000)
 
-    # Create the dictionary for aerosols and load in all npy files
+    aerosol_name_and_width_dict = {}
     aerosols_dict = {}
-    for i in range(len(aerosol_list)):
-        title = file_list[i]
-        jumbo = np.load(title,allow_pickle = True)
+
+    for file_name in file_list:
+        # Normal file name is: 'input_file_path + opacity/aerosol_Mie_properties/jumbo_Mie_aerosolname_lognormal_logwidth_logrmstdev.npy'
+        # Need to extract aerosolname and logrmstdev 
+
+        # Remove the directory name, and just get the jumbo file name 
+        file_split = file_name.split('/')
+        aerosol_name = file_split[-1]
+        # Get rid of the jumbo 
+        aerosol_name = aerosol_name[10:]
+        # Get rid of everything after _lognormal
+        index_lognormal = aerosol_name.find('_lognormal_')
+        aerosol_name = aerosol_name[:index_lognormal]
+
+        # Lognormal width 
+        # Need to get the final index of index logwith for this to work 
+        index_logwidth = file_name.find('_logwidth_') + len('_logwidth_') 
+        # Get the index of .npy (can't split by . since lognormal is contains a decimal always)
+        index_npy = file_name.find('.npy')
+
+        log_r_m_std_dev = file_name[index_logwidth:index_npy]
+        
+        # If the key already exist, just add the new width to it
+        if aerosol_name in aerosol_name_and_width_dict:
+            aerosol_name_and_width_dict[aerosol_name].append(float(log_r_m_std_dev))
+        
+        # If the key doesn't already exist, create it 
+        else:
+            aerosol_name_and_width_dict[aerosol_name] = [float(log_r_m_std_dev)]
+
+        # Add aerosol_width cross sections to aerosol dictionary the hdf5 file is made from 
+        jumbo = np.load(file_name,allow_pickle = True)
 
         try:
             eff_ext = jumbo[0]
@@ -3414,19 +3724,25 @@ def make_aerosol_database():
             eff_w = jumbo[0][4]
             eff_g = jumbo[0][5]
 
-        aerosols_dict[aerosol_list[i] + '_ext'] = eff_ext 
-        aerosols_dict[aerosol_list[i] + '_abs'] = eff_abs
-        aerosols_dict[aerosol_list[i] + '_scat'] = eff_scat
-        aerosols_dict[aerosol_list[i] + '_back'] = eff_back 
-        aerosols_dict[aerosol_list[i] + '_g'] = eff_g 
-        aerosols_dict[aerosol_list[i] + '_w'] = eff_w 
+        aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) + '_ext'] = eff_ext 
+        aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) + '_abs'] = eff_abs
+        aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) + '_scat'] = eff_scat
+        aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) + '_back'] = eff_back 
+        aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) + '_g'] = eff_g 
+        aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) + '_w'] = eff_w 
+
+    print('---------------------')
+    print('Generating database from the following aerosols')
+    print('-(and particle size distribution widths)')
+    print('---------------------')
 
     # Initialize and generate new data_base 
-    database = h5py.File(input_file_path + 'opacity/aerosol_database.hdf5', 'w')
+    database = h5py.File('./aerosol_database.hdf5', 'w')
 
     h = database.create_group('Info')
     h1 = h.create_dataset('Wavelength grid', data=wavelengths, compression='gzip', dtype='float64', shuffle=True)
     h2 = h.create_dataset('Particle Size grid', data=r_m_array, compression='gzip', dtype='float64', shuffle=True)
+    ### Particle size lognormal width 
 
     h1.attrs["Variable"] = "wl"
     h2.attrs["Variable"] = "r_m"
@@ -3434,39 +3750,50 @@ def make_aerosol_database():
     h1.attrs["Units"] = "um"
     h2.attrs["Units"] = "um"
 
-    for i in range(len(aerosol_list)):
+    for key in aerosol_name_and_width_dict.keys():
 
         # Print the name to show to user which one is being added 
-        print(aerosol_list[i])
+        print(key)
 
-        g = database.create_group(aerosol_list[i])
-        g1 = g.create_dataset('eff_ext', data=aerosols_dict[aerosol_list[i] + '_ext'], compression='gzip', dtype='float32', shuffle=True)
-        g1.attrs["Varaible"] = "Effective Extinction Cross Section"
-        g1.attrs["Units"] = "um^2"
+        # Create database group based on aerosol 
+        g = database.create_group(key)
 
-        g2 = g.create_dataset('eff_abs', data=aerosols_dict[aerosol_list[i] + '_abs'], compression='gzip', dtype='float32', shuffle=True)
-        g2.attrs["Varaible"] = "Effective Absorption Cross Section"
-        g2.attrs["Units"] = "um^2"
+        # Create seperate groups for each particle size distribution width 
+        for n in range(len(aerosol_name_and_width_dict[key])):
+            
+            log_r_m_std_dev = aerosol_name_and_width_dict[key][n]
 
-        g3 = g.create_dataset('eff_scat', data=aerosols_dict[aerosol_list[i] + '_scat'], compression='gzip', dtype='float32', shuffle=True)
-        g3.attrs["Varaible"] = "Effective Scattering Cross Section"
-        g3.attrs["Units"] = "um^2"
+            print('- ', log_r_m_std_dev)
 
-        g4 = g.create_dataset('eff_back', data=aerosols_dict[aerosol_list[i] + '_back'], compression='gzip', dtype='float32', shuffle=True)
-        g4.attrs["Varaible"] = "Effective Back Scattering Cross Section"
-        g4.attrs["Units"] = "um^2"
+            g0 = g.create_group(str(log_r_m_std_dev))
 
-        g5 = g.create_dataset('eff_g', data=aerosols_dict[aerosol_list[i] + '_g'], compression='gzip', dtype='float32', shuffle=True)
-        g5.attrs["Varaible"] = "Effective Asymmetry Parameter"
-        g5.attrs["Units"] = ""
+            g1 = g0.create_dataset('eff_ext', data=aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) + '_ext'], compression='gzip', dtype='float32', shuffle=True)
+            g1.attrs["Varaible"] = "Effective Extinction Cross Section"
+            g1.attrs["Units"] = "um^2"
 
-        g6 = g.create_dataset('eff_w', data=aerosols_dict[aerosol_list[i] + '_w'], compression='gzip', dtype='float32', shuffle=True)
-        g6.attrs["Varaible"] = "Effective Single Scattering Albedo"
-        g6.attrs["Units"] = ""
+            g2 = g0.create_dataset('eff_abs', data=aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) +  '_abs'], compression='gzip', dtype='float32', shuffle=True)
+            g2.attrs["Varaible"] = "Effective Absorption Cross Section"
+            g2.attrs["Units"] = "um^2"
+
+            g3 = g0.create_dataset('eff_scat', data=aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) +  '_scat'], compression='gzip', dtype='float32', shuffle=True)
+            g3.attrs["Varaible"] = "Effective Scattering Cross Section"
+            g3.attrs["Units"] = "um^2"
+
+            g4 = g0.create_dataset('eff_back', data=aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) +  '_back'], compression='gzip', dtype='float32', shuffle=True)
+            g4.attrs["Varaible"] = "Effective Back Scattering Cross Section"
+            g4.attrs["Units"] = "um^2"
+
+            g5 = g0.create_dataset('eff_g', data=aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) +  '_g'], compression='gzip', dtype='float32', shuffle=True)
+            g5.attrs["Varaible"] = "Effective Asymmetry Parameter"
+            g5.attrs["Units"] = ""
+
+            g6 = g0.create_dataset('eff_w', data=aerosols_dict[aerosol_name + '_' + str(log_r_m_std_dev) +  '_w'], compression='gzip', dtype='float32', shuffle=True)
+            g6.attrs["Varaible"] = "Effective Single Scattering Albedo"
+            g6.attrs["Units"] = ""
 
     print('---------------------')
     print('Saving new aerosol database as')
-    print(input_file_path + 'opacity/aerosol_database.hdf5')
+    print('/aerosol_database.hdf5')
     print('---------------------')
 
     database.close()
