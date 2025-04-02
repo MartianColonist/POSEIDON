@@ -1596,7 +1596,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Mutschke (2004) <https://ui.adsabs.harvard.edu/abs/2004A%26A...423..983M/abstract>`_
 
@@ -2407,7 +2407,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      -  `Herve Herbin & Petitprez (2023) <https://www.tandfonline.com/doi/full/10.1080/02786826.2023.2165899>`_
 
@@ -2429,7 +2429,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2491,7 +2491,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2604,7 +2604,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
@@ -2751,7 +2751,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Zernike (1965) <https://ui.adsabs.harvard.edu/abs/1965JOSA...55..210Z/abstract>`_
 
@@ -2823,7 +2823,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - Personal Communication
 
@@ -2921,7 +2921,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Khare (1993) <https://ui.adsabs.harvard.edu/abs/1993Icar..103..290K/abstract>`_
 
@@ -2980,7 +2980,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
@@ -3004,7 +3004,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
@@ -3070,7 +3070,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Palmer & Williams (1975) <https://ui.adsabs.harvard.edu/abs/1975ApOpt..14..208P/abstract>`_
 
@@ -3124,7 +3124,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Noy (1981) <https://ui.adsabs.harvard.edu/abs/1981JGR....8611985N/abstract>`_
 
@@ -3155,7 +3155,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Chang & Charalampopoulos <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
 
@@ -3215,7 +3215,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
 
@@ -3241,7 +3241,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
 
