@@ -3815,21 +3815,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
                 # Plot one sigma limits by default
                 if ((len(two_sigma_upper_limits) == 0) and (len(two_sigma_lower_limits) == 0)):
-                    
-                    '''
-                    if (m == 0):
-                        fmt = "{{0:{0}}}".format(title_fmt).format
-                        title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
-                        title = title.format(fmt(median), fmt((median-low1)), fmt((high1-median)))
-                        title = "{0} = {1}".format(param_label, title)
-                        title = "{0}".format(title)
-                        ax.set_title(title, fontsize = title_fontsize)
-
-                        # Plot median and +/- 1σ confidence intervals
-                        ax.axvline(median, lw=2, ls="-", alpha=0.7, color='dimgray')
-                        ax.axvline(low1, lw=1, ls="dashed", color='black')
-                        ax.axvline(high1, lw=1, ls="dashed", color='black')
-                    '''
                                     
                     # Add title
                     title = r"${{{0}}}_{{-{1}}}^{{+{2}}}$"
@@ -3909,49 +3894,14 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 # Add param name to x-axis label instead
                 ax.set_xlabel(param_label, fontsize = title_fontsize)
 
-            # Create sub-axis for error bar
-      #      newax = plt.gcf().add_axes(ax.get_position(), sharex=ax, frameon=False)
-      #      newax.set_ylim(0, 1)
-        
-      #      ylim = newax.get_ylim()
-      #      y = ylim[0] + 0.06*(m+1)*(ylim[1] - ylim[0])
-   
-      #      newax.errorbar(x=median, y=y,
-      #                     xerr=np.transpose([[median - low1, high1 - median]]), 
-      #                     color='lightgreen', ecolor='green', markersize=3, 
-      #                     markeredgewidth = 0.6, linewidth=0.9, capthick=0.9,
-      #                     capsize=1.7, marker='s')
-
-      #      newax.tick_params(axis='both', which='major', labelsize=8)
-
             ax.set_yticks([])
             ax.tick_params(axis='both', which='major', labelsize = tick_labelsize)
-
-            #if (param == 'T'):
-            #    xmajorLocator = MultipleLocator(250)
-            #    xminorLocator = MultipleLocator(250/2)
-            #    ax.xaxis.set_major_locator(xmajorLocator)
-            #    ax.xaxis.set_minor_locator(xminorLocator)
-
-            #if (param == 'log_r_m_SiO2') or (param == 'log_r_m_Fe2O3'):
-            #    xmajorLocator = MultipleLocator(1)
-            #    xminorLocator = MultipleLocator(0.5)
-            #    ax.xaxis.set_major_locator(xmajorLocator)
-            #    ax.xaxis.set_minor_locator(xminorLocator)
             
             if('log_r_m' in param):
                 xmajorLocator = MultipleLocator(1)
                 xminorLocator = MultipleLocator(0.5)
                 ax.xaxis.set_major_locator(xmajorLocator)
                 ax.xaxis.set_minor_locator(xminorLocator)
-
-            #if (param == 'log_X_SiO2') or (param == 'log_X_Fe2O3'):
-            #    xmajorLocator = MultipleLocator(5)
-            #    xminorLocator = MultipleLocator(2.5)
-            #    ax.xaxis.set_major_locator(xmajorLocator)
-            #    ax.xaxis.set_minor_locator(xminorLocator)
-
-         #   if (param in ['T_spot', 'T_fac', 'T_phot', 'T_het', 'Delta_T_het']):
             
             # Better axis label spacing for temperatures
             if ('T' in param):
@@ -4011,7 +3961,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 ax.xaxis.set_major_locator(xmajorLocator)
                 ax.xaxis.set_minor_locator(xminorLocator)
 
-
         # Overplot true value
         if (len(truths) != 0):
             ax.axvline(x=truths[q], linewidth=1.5, linestyle='-', color='crimson', alpha=0.8)
@@ -4019,16 +3968,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         if (len(vertical_lines) != 0):
             for n in range(len(vertical_lines)):
                 ax.axvline(x=vertical_lines[n][q], linewidth=1.5, linestyle='-', color=vertical_lines_colors[n], alpha=0.8)
-
-
-        # Add parameter 
-      #  ax.text(0.06, 0.94, param_label, color=colour, 
-      #          fontsize = 10, horizontalalignment='left', 
-      #          verticalalignment='top', transform=ax.transAxes)
-       
-        # For first column add y label
-     #   if (column_idx == 0):
-     #       ax.set_ylabel(r'Probability density (normalized)', fontsize = 9, labelpad = 10)
 
     return fig
 
