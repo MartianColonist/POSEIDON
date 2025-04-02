@@ -708,23 +708,23 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
         # Arrays containing synthetic data and 1-sigma errors
         syn_data = np.zeros(shape=(N_data))
 
-        # Open output file where synthetic data will be written
+        # Construct file name 
+        file_name = data_dir + '/' + planet_name + '_SYNTHETIC_'
+
         if (instruments[i] != 'None'):
-            if (label is None):
-                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
-                         instruments[i] + '_N_trans_' + str(N_trans_i) + 
-                         '.dat', 'w')
-            else:
-                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
-                        instruments[i] + '_' + label + '_N_trans_' + 
-                        str(N_trans_i) + '.dat', 'w')
-        else:
-            if (label is None):
-                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
-                         '_N_trans_' + str(N_trans_i) + '.dat', 'w')
-            else:
-                f = open(data_dir + '/' + planet_name + '_SYNTHETIC_' + 
-                         label + '_N_trans_' + str(N_trans_i) + '.dat', 'w')
+            file_name += instruments[i] + '_'
+        if (label != None):
+            file_name += label + '_'
+        
+        file_name += 'N_trans_' + str(N_trans_i)
+
+        if (Gauss_scatter == False):
+            file_name += '_no_Gauss'
+
+        file_name += '.dat'
+
+        # Open output file where synthetic data will be written
+        f = open(file_name, 'w')
                 
         # Add Gaussian errors to binned points to produce synthetic data set
         for j in range(N_data):
