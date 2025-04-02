@@ -44,6 +44,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                   N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest', 
                   resume = False, verbose = True, sampling_target = 'parameter',
                   chem_grid = 'fastchem', N_output_samples = 1000,
+                  save_ymodel = False,
                   ):
     '''
     ADD DOCSTRING (will hopefully be done before the heat death of the Universe)
@@ -209,8 +210,11 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                      spec_low1, spec_median, spec_high1, spec_high2)
             
             # Save ymodel samples
-            ymodel_samples_object = np.array(ymodel_samples).T
-            np.savetxt('../samples/' + retrieval_name + '_ymodel_samples.txt', ymodel_samples_object.T)
+            if (save_ymodel == True):
+
+                ymodel_samples_object = np.array(ymodel_samples).T
+
+                np.savetxt('../samples/' + retrieval_name + '_ymodel_samples.txt', ymodel_samples_object.T)
             
             # Only write retrieved P-T profile and mixing ratio arrays if atmosphere enabled
             if (disable_atmosphere == False):
