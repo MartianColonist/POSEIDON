@@ -47,6 +47,7 @@ from .parameters import split_params
 from .retrieval import get_retrieved_atmosphere
 from .species_data import solar_abundances
 
+
 # Define some more flexible linestyles for convenience
 linestyles = {'loosely dotted':        (0, (1, 10)),
               'dotted':                (0, (1, 1)),
@@ -479,6 +480,79 @@ def plot_geometry_spectrum_mixed(planet, star, model, atmosphere, spectra,
                                  data_marker_size_list = [], wl_axis = 'log', 
                                  figure_shape = 'default', 
                                  legend_location = 'upper right', legend_box = True):
+    '''
+    Plots two 2D slice plots through the planetary atmosphere (to scale).
+
+    Args:
+        planet (dict):
+            POSEIDON planet properties dictionary.
+        star (dict):
+            POSEIDON stellar properties dictionary (currently unused).
+        model (dict):
+            POSEIDON model properties dictionary.
+        atmosphere (dict):
+            POSEIDON atmospheric properties dictionary.
+        spectra (list):
+            List of spectra to plot.
+        y_p (float):
+            Projected coordinate of planet centre from observer perspective.
+        plot_labels (bool):
+            If False, removes text labels from the plot.
+        show_star (bool):
+            If True, plots the star in the background from observer perspective.
+        annotate_Rp (bool):
+            If True, adds an arrow to the terminator perspective plot showing
+            the radius of the planet (works best when show_star = True).
+        back_colour (str):
+            Background colour of figure.
+        data_properties (dict, optional): 
+            Dictionary containing data properties.
+        show_data (bool): 
+            If True, shows data on the right-hand side plot.
+        plot_full_res (bool): 
+            If True, shows full resolution spectra.
+        bin_spectra (bool): 
+            If True, bins spectra.
+        R_to_bin (int): 
+            Binning spectral resolution.
+        wl_min (float): 
+            Minimum wavelength for plotting.
+        wl_max (float): 
+            Maximum wavelength for plotting.
+        y_min (float): 
+            Minimum y-axis value for plotting.
+        y_max (float): 
+            Maximum y-axis value for plotting.
+        y_unit (str): 
+            Unit for y-axis. Default is 'transit_depth'.
+        plt_label (str): 
+            Label for the plot.
+        colour_list (list): 
+            List of colours for plotting spectra.
+        spectra_labels (list): 
+            List of labels for spectra.
+        data_colour_list (list): 
+            List of colours for data points.
+        data_labels (list): 
+            List of labels for data points.
+        data_marker_list (list): 
+            List of markers for data points.
+        data_marker_size_list (list): 
+            List of marker sizes for data points.
+        wl_axis (str): 
+            Axis for wavelength.
+        figure_shape (str): 
+            Shape of the figure.
+        legend_location (str):
+            Location of the legend.
+        legend_box (bool):
+            If True, shows legend box.
+
+    Returns:
+        fig (matplotlib figure object):
+            The geometric slice plot.
+
+    '''
 
     # Unpack model and atmospheric properties
     planet_name = planet['planet_name']
@@ -1895,7 +1969,15 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
         show_data_cap (bool, optional):
-            Flag indicating whether to show the caps on the data error bars.\
+            Flag indicating whether to show the caps on the data error bars.
+        data_alpha (float, optional):
+            Alpha for the central circle colours on each data point.
+        data_edge_width (float, optional):
+            Border line width for the central circle on each data point.
+        ax (matplotlib axis object, optional):
+            Matplotlib axis provided externally.
+        save_fig (bool, optional):
+            If True, saves a PDF in the POSEIDON output folder.
 
     Returns:
         fig (matplotlib figure object):
@@ -3363,6 +3445,14 @@ def plot_chem_retrieved(planet_name, chemical_species, log_Xs_median,
             Maximum log10 mixing ratio to plot.
 		    legend_location (str, optional):
             Location of the legend. Default is 'lower left'.
+        log_P_min (float, optional):
+            Minimum value for the log10 pressure.
+        log_P_max (float, optional):
+            Maximum value for the log10 pressure.
+        log_X_min (float, optional):
+            Minimum log10 mixing ratio to plot.
+        log_X_max (float, optional):
+            Maximum log10 mixing ratio to plot.
 	
     Returns:
 		    fig (matplotlib figure object):
@@ -3619,6 +3709,31 @@ def plot_stellar_flux(flux, wl, wl_min = None, wl_max = None, flux_min = None,
 
 
 def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array, alpha_hist):
+    '''
+    Function to plot a histogram of parameter values.
+
+    Args:
+        nbins (int): 
+            Number of bins for the histogram.
+        vals (list): 
+            List of parameter values for each model.
+        colour (str): 
+            Colour for the histogram.
+        ax (matplotlib axis object): 
+            Axis to plot on.
+        shrink_factor (float): 
+            Factor to shrink the y-axis.
+        x_max_array (np.array): 
+            Array of maximum x values for scaling.
+        alpha_hist (float): 
+            Alpha value for histogram bars.
+
+    Returns:
+        low3, low2, low1, median, high1, high2, high3: 
+            Confidence intervals for the parameter values.
+    
+    '''
+
     
   #  weights = np.ones_like(vals)/float(len(vals))
     
@@ -3639,8 +3754,38 @@ def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array, alpha_hi
     return low3, low2, low1, median, high1, high2, high3
 
 
-def plot_parameter_panel(ax, param_vals, N_bins, param, 
-                         param_min, param_max, colour, x_max_array, alpha_hist):
+def plot_parameter_panel(ax, param_vals, N_bins, param_min, param_max, 
+                         colour, x_max_array, alpha_hist):
+    '''
+    Setup function to plot the histogram panel for a given parameter.
+
+    Args:
+        ax (matplotlib axis object): 
+            Axis to plot on.
+        param_vals (list): 
+            List of parameter values for each model.
+        N_bins (int): 
+            Number of bins for the histogram.
+        param_min (float): 
+            Minimum value for the parameter.
+        param_max (float): 
+            Maximum value for the parameter.
+        colour (str): 
+            Colour for the histogram.
+        x_max_array (np.array): 
+            Array of maximum x values for scaling.
+        alpha_hist (float): 
+            Alpha value for histogram bars.
+
+    Returns:
+        low1 (float): 
+            Lower 1σ confidence interval.
+        median (float): 
+            Median value.
+        high1 (float): 
+            Upper 1σ confidence interval.
+    '''
+    
     
     # Plot histogram
     _, low2, low1, median, high1, high2, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array, alpha_hist)
@@ -3652,6 +3797,7 @@ def plot_parameter_panel(ax, param_vals, N_bins, param,
 
     return low1, median, high1
 
+
 def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_colour_list, 
                               retrieval_colour_list, retrieval_labels, span, truths, 
                               N_rows, N_columns, N_bins,
@@ -3661,8 +3807,60 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                               custom_labels = [], custom_ticks = [],
                               alpha_hist = 0.4, show_title = True,
                               two_sigma_upper_limits = [], two_sigma_lower_limits = [],
-                              mass_unit = 'M_J',
                               ):
+    '''
+    Plot retrieved parameters as histograms.
+
+    Args:
+        axes_in (list): 
+            List of axes to plot on. If empty, new axes will be created.
+        param_vals (list): 
+            List of parameter values for each model.
+        plot_parameters (list): 
+            List of parameters to plot.
+        parameter_colour_list (list): 
+            List of colours for each parameter.
+        retrieval_colour_list (list): 
+            List of colours for each retrieval.
+        retrieval_labels (list): 
+            List of labels for each retrieval.
+        span (list): 
+            List of min and max values for each parameter.
+        truths (list): 
+            True values for each parameter.
+        N_rows (int): 
+            Number of rows in the plot grid.
+        N_columns (int): 
+            Number of columns in the plot grid.
+        N_bins (list): 
+            Number of bins for each histogram.
+        vertical_lines (list): 
+            Vertical lines to plot on the histograms.
+        vertical_lines_colors (list): 
+            Colours for the vertical lines.
+        tick_labelsize (int, optional):
+            Font size for tick labels. Default is 8.
+        title_fontsize (int, optional):
+            Font size for titles. Default is 12.
+        title_vert_spacing (float, optional):
+            Vertical spacing between titles. Default is 0.2.
+        custom_labels (list, optional):
+            Custom labels for the parameters. Default is empty list.
+        custom_ticks (list, optional):
+            Custom ticks for the parameters. Default is empty list.
+        alpha_hist (float, optional):
+            Alpha value for histogram bars. Default is 0.4.
+        show_title (bool, optional):
+            Whether to show titles on the plots. Default is True.
+        two_sigma_upper_limits (list, optional):
+            Upper limits for two sigma confidence intervals. Default is empty list.
+        two_sigma_lower_limits (list, optional):
+            Lower limits for two sigma confidence intervals. Default is empty list.
+
+    Returns:
+        fig (matplotlib figure object):
+            The retrieved parameters plot.
+    '''
 
     N_params = len(plot_parameters)
     N_models = len(param_vals)
@@ -3729,20 +3927,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         else:
             title_fmt = '.2f'
 
-        '''
-        # Add mass unit
-        if (param == 'M_p'):
-            if (mass_unit == 'M_J'):
-                param_label == '$M_{\\mathrm{p}} \, (M_{J})$'
-            elif (mass_unit == 'M_E'):
-                param_label == '$M_{\\mathrm{p}} \, (M_{E})$'
-
-        # Add temperature unit
-        if ('T' in param):
-            param_label = param_label[:-1] + ' \, (\\mathrm{K})$'
-
-        '''
-
         # Find the maximum x to set the y off of 
         x_max_array = []
 
@@ -3797,7 +3981,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 param_max = span[q][1]
 
             # Plot histogram
-            low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q], param,
+            low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q],
                                                        param_min, param_max, colour, x_max_array = x_max_array,
                                                        alpha_hist = alpha_hist)
 
@@ -3831,7 +4015,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
                 # Title has 2 sigma upper/lower limits where user flags the given parameter
                 else:
-                    if (two_sigma_upper_limits[q] == True):
+                    if (param in two_sigma_upper_limits):
 
                         # Find 95th percentile
                         qh = _quantile(param_vals_m[:,q], [0.95])[0]
@@ -3851,7 +4035,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                                                     lw=2, ls='-', shrinkA=0, shrinkB=0),
                                     alpha=0.8)
 
-                    elif (two_sigma_lower_limits[q] == True):
+                    elif (param in two_sigma_lower_limits):
 
                         # Find 5th percentile
                         ql = _quantile(param_vals_m[:,q], [0.05])[0]
@@ -4043,23 +4227,76 @@ def plot_histograms(planet, models, plot_parameters,
                     title_fontsize = 12, title_vert_spacing = 0.2,
                     custom_labels = [], custom_ticks = [],
                     alpha_hist = 0.4, 
-                    two_sigma_upper_limits = [], two_sigma_lower_limits = [],
-                    mass_unit = 'M_J',
-                    ):
-
+                    two_sigma_upper_limits = [], two_sigma_lower_limits = []):
     '''
     Plot a set of histograms from one or more retrievals.
 
-    Detailed docstring TBD.
+    Args:
+        planet (dict):
+            Dictionary containing the planet properties.
+        models (list of dicts):
+            List of dictionaries containing the model properties.
+        plot_parameters (list of str):
+            List of parameters to plot.
+        parameter_colour_list (list of str, optional):
+            List of colours for each parameter.
+        retrieval_colour_list (list of str, optional):
+            List of colours for each retrieval model.
+        retrieval_labels (list of str, optional):
+            List of labels for each retrieval model.
+        span (list of float, optional):
+            Span for each parameter to plot.
+        truths (list of float, optional):
+            True values for each parameter.
+        N_bins (list of int, optional):
+            Number of bins for each histogram.
+        N_rows (int, optional):
+            Number of rows in the figure. Default is None.
+        N_columns (int, optional):
+            Number of columns in the figure. Default is None.
+        axes (list of matplotlib axes, optional):
+            List of axes to plot on. Default is empty list.
+        retrieval_codes (list of str, optional):
+            List of retrieval codes for each model. Default is empty list.
+        external_samples (list of np.array, optional):
+            List of external samples for each model. Default is empty list.
+        external_param_names (list of list of str, optional):
+            List of external parameter names for each model. Default is empty list.
+        plt_label (str, optional):
+            Label for the plot file name. Default is None.
+        save_fig (bool, optional):
+            Whether to save the figure or not. Default is True.
+        show_title (bool, optional):
+            Whether to show the title or not. Default is True.
+        vertical_lines (list of float, optional):
+            List of vertical lines to plot. Default is empty list.
+        vertical_line_colors (list of str, optional):
+            List of colors for vertical lines. Default is empty list.
+        tick_labelsize (int, optional):
+            Font size for tick labels. Default is 12.
+        title_fontsize (int, optional):
+            Font size for titles. Default is 12.
+        title_vert_spacing (float, optional):
+            Vertical spacing between titles. Default is 0.2.
+        custom_labels (list of str, optional):
+            Custom labels for the parameters. Default is empty list.
+        custom_ticks (list of list of float, optional):
+            Custom ticks for the x-axis. Default is empty list.
+        alpha_hist (float, optional):
+            Transparency for the histograms. Default is 0.4.
+        two_sigma_upper_limits (list of str, optional):
+            List of parameters with two sigma upper limits. Default is empty list.
+        two_sigma_lower_limits (list of str, optional):
+            List of parameters with two sigma lower limits. Default is empty list.
 
     '''
 
     N_models = len(models)
     N_params_to_plot = len(plot_parameters)
 
+    # Check user provided settings are valid
     if (N_models > 10):
         raise Exception("Max supported number of retrieval models is 10.")
-
     if (N_models == 1) and (len(parameter_colour_list) == 0):
         parameter_colour_list = ['darkblue', 'darkgreen', 'orangered', 'magenta',
                                  'saddlebrown', 'grey', 'brown']
@@ -4074,15 +4311,12 @@ def plot_histograms(planet, models, plot_parameters,
         if (len(retrieval_colour_list) != N_models):
             raise Exception("Number of retrieval colours does not match the " +
                             "number of retrieval models.")
-    if ((len(two_sigma_upper_limits) != 0) and (len(two_sigma_upper_limits) != N_params_to_plot)):
-        raise Exception("Number of two sigma upper limits does not match number of parameters.")
-    if ((len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != N_params_to_plot)):
-        raise Exception("Number of two sigma lower limits does not match number of parameters.")
     if (len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != 0):
-        if (np.any(np.array(two_sigma_upper_limits)*np.array(two_sigma_lower_limits)) == True):
-            raise Exception("Cannot have both a two sigma lower and upper limit.")
+        for param in two_sigma_upper_limits:
+            if (param in two_sigma_lower_limits):
+                raise Exception("Cannot have both a two sigma lower and upper limit for a given parameter.")
 
-
+    
     param_vals = []    # List to store parameter values for all models, samples, and parameters
 
     # For each retrieval
@@ -4252,7 +4486,6 @@ def plot_histograms(planet, models, plot_parameters,
                                     show_title = show_title,
                                     two_sigma_upper_limits = two_sigma_upper_limits,
                                     two_sigma_lower_limits = two_sigma_lower_limits,
-                                    mass_unit = mass_unit,
                                     )
     
     # Save figure to file
