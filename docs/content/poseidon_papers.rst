@@ -3,9 +3,11 @@
 POSEIDON Papers
 ===============
 
-Each list includes the ADS link, a summary of how POSEIDON was used, an indication of who on the paper actually developed/used POSEIDON, and a figure for visual reference. Papers are categorized into development and collaboration papers.
+Each list includes the ADS link, a summary of how POSEIDON was used, an 
+indication of who on the paper actually developed/used POSEIDON, and a figure 
+for visual reference. Papers are categorised into development and collaboration papers.
 
-.. note:: Need Ryan's input on collaboration names and if anything was specifically showcased in some papers.
+.. note:: In preparation! 
 
 Development Papers
 ------------------
@@ -158,5 +160,5 @@ Kirk et al (2021)
 * **Usage**: POSEIDON used to perform free chemistry retrievals on the ultrahot Jupiter WASP-103b’s ground-based optical + HST and Spitzer infrared transmission spectrum. Findings indicate best explanation involves stellar contamination, with weak evidence of H2O, HCN, and TiO. First paper to use the stellar contamination component of POSEIDON and fit ground-based data.
 * **Lead Developer**: Ryan MacDonald
 
-.. note:: This document continues with additional papers following a similar format.
+.. note:: The list of papers is not exhaustive and will be updated as more papers are  published. If you have a paper that uses POSEIDON, please let us know!
 
