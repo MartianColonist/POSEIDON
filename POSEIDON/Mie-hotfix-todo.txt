@@ -14,6 +14,7 @@ X. Fix shared array error
 X. Make aerosol_Mie_properties and precomputed_Mie_properties folders if they don't exist 
 X. Make new tutorial for multiple cores
 X. Make new figures for website
+X. Update the txt file with new DOCDD links
 
 3/31
 Updated clouds.py with new miepython precomputation algorithm, make-database, load-database, and interpolate-database

@@ -1716,7 +1716,6 @@ def Mie_cloud(P,wl,r, H, n,
             n_aerosol = np.zeros_like(r)
 
             # Find index in P array where top of slab is 
-            print(P_cloud)
             P_cloud_index_top = find_nearest(P,P_cloud[q])
 
             # Find index in P array where bottom of slab is 
