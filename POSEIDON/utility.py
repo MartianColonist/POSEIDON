@@ -1113,10 +1113,13 @@ def generate_latex_param_names(param_names):
         # due to plot_histograms now having custom_labels() argument
 
         # Temporary fix for 'slope' P-T profile parameters
-        if (param in ['Delta_T_10-1mb', 'Delta_T_100-10mb', 'Delta_T_1-0.1b',
-                      'Delta_T_3.2-1b', 'Delta_T_10-3.2b', 'Delta_T_32-10b',
-                      'Delta_T_100-32b']):
+        if (param in ['Delta_T_1', 'Delta_T_2', 'Delta_T_3', 'Delta_T_4', 
+                      'Delta_T_5', 'Delta_T_6', 'Delta_T_7', 'Delta_T_8',
+                      'Delta_T_9', 'Delta_T_10', 'Delta_T_11', 'Delta_T_12']):
             latex_names += ['$\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
+            continue
+        if (param == 'T_phot_PT'):
+            latex_names += ['$T_{\\mathrm{phot}}$']
             continue
 
         # General handling for isotopologue parameters (e.g. 'log_12C-17O')
@@ -1230,7 +1233,7 @@ def generate_latex_param_names(param_names):
                 string = '$\\log \\, \\mathrm{P_{top,slab}}$'
                 latex_names += [string]
                 continue
-            # Else, it just grabs the beggining of the aerosol_name 
+            # Else, it just grabs the beginning of the aerosol_name 
             else:
                 aerosol_name = param.split('_')[4]
                 string = '$\\log \\, \\mathrm{P_{top,slab}} \\, \\mathrm{' + aerosol_name + '}$'
@@ -1259,6 +1262,10 @@ def generate_latex_param_names(param_names):
             offset_number = param[-1]
             string = '$\\delta_{\\mathrm{rel, \\, ' + offset_number + '}}$'
             latex_names += [string]
+            continue
+
+        if (param == 'M_p'):
+            latex_names += ['$M_{\\mathrm{p}}$']
             continue
 
         # Find which components are in this parameter's name, and where they occur
