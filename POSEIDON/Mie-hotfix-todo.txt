@@ -1,6 +1,6 @@
 0. Remake aerosol grid on HAL 
-- Normal one (68 species) - RUNNING
-- Directional (144 species, need to get files names made first to match supported_species.py)
+- Normal one (68 species) - DONE
+- Directional (144 species, need to get files names made first to match supported_species.py) - DONE
 - Diamonds (7 species)
 1. Make lognormal logwidth a free param option (test w/ SiO2 grid) - DONE
 2. Fix load aerosol grid to work with and without 1 - DONE
@@ -12,9 +12,14 @@ X. Fix all utility functions in clouds.py
 X. Clean up core.py if-statements
 X. Fix shared array error 
 X. Make aerosol_Mie_properties and precomputed_Mie_properties folders if they don't exist 
-X. Make new tutorial for multiple cores
-X. Make new figures for website
+X. Make new tutorial for multiple core production of precomputed properties
+X. Make new figures for website (of aerosol properties on opacity database)
 X. Update the txt file with new DOCDD links
+
+BENCHMARKING WITH IZZY
+1. Clear atmosphere, thermal emission and reflection 
+2. MgSiO3 cloud, thermal emission and reflection 
+3. Overlapping clouds
 
 3/31
 Updated clouds.py with new miepython precomputation algorithm, make-database, load-database, and interpolate-database
