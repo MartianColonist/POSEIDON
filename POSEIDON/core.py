@@ -1,21 +1,22 @@
 ''' 
 POSEIDON CORE ROUTINE.
 
-Copyright 2023-2024, Ryan J. MacDonald.
+Copyright 2023-2025, Ryan J. MacDonald.
 
 '''
+
 
 import os
 
 # Force a single core to be used by numpy (mpirun handles parallelisation)
-os.environ['OMP_NUM_THREADS'] = '1'
-os.environ['OPENBLAS_NUM_THREADS'] = '1'
-os.environ['MKL_NUM_THREADS'] = '1'
-os.environ['CBLAS_NUM_THREADS'] = '1'
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["OPENBLAS_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+os.environ["CBLAS_NUM_THREADS"] = "1"
 
 # These settings only used for GPU models (experimental)
-os.environ['block'] = '128'
-os.environ['thread'] = '128'
+os.environ["block"] = "128"
+os.environ["thread"] = "128"
 
 import numpy as np
 from numba.core.decorators import jit
@@ -49,18 +50,19 @@ from .utility import mock_missing
 try:
     import cupy as cp
 except ImportError:
-    cp = mock_missing('cupy')
+    cp = mock_missing("cupy")
 
 
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
 
-block = int(os.environ['block'])
-thread = int(os.environ['thread'])
+block = int(os.environ["block"])
+thread = int(os.environ["thread"])
 
 import warnings
 
-warnings.filterwarnings("ignore") # Suppress numba performance warning
+warnings.filterwarnings("ignore")  # Suppress numba performance warning
+
 
 def find_nearest(array, value):
     array = np.asarray(array)
@@ -302,7 +304,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
 
 def create_planet(planet_name, R_p, mass = None, gravity = None, 
-                  log_g = None, T_eq = None, d = None, d_err = None, b_p = 0.0, a_p = None):
+                  log_g = None, T_eq = None, d = None, d_err = None, 
+                  b_p = 0.0, a_p = None):
     '''
     Initialise the planet dictionary object used by POSEIDON.
 
@@ -385,8 +388,11 @@ def define_model(model_name, bulk_species, param_species,
                  log_P_slope_phot = 0.5,
                  log_P_slope_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0],
                  number_P_knots = 0, PT_penalty = False,
-                 Na_K_fixed_ratio = False,
-                 reflection_up_to_5um = False):
+                 Na_K_fixed_ratio = False, reflection_up_to_5um = False,
+                 high_res_method = None, alpha_high_res_option = 'log',
+                 fix_alpha_high_res = False, fix_W_conv_high_res = False, 
+                 fix_beta_high_res = True, fix_Delta_phi_high_res = True,
+                 ):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -434,7 +440,7 @@ def define_model(model_name, bulk_species, param_species,
             (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
             Whether to consider inflation of error bars in a retrieval
-            (Options: Line15).
+            (Options: Line15 / Piette20 / Line15+Piette20).
         radius_unit (str)
             Planet radius unit used to report retrieval results
             (Options: R_J / R_E)
@@ -503,7 +509,27 @@ def define_model(model_name, bulk_species, param_species,
             If True, sets log_K = 0.1 * log_Na
         reflection_up_to_5um (bool):
             If True, only computes albedo up to 5 um (to speed up computations).
-
+        high_res_method (list of str):
+            For high resolution retrievals, define which processing method
+            will be used - only not None for high-res retrievals
+            (Options: None, 'pca', 'sysrem').
+        alpha_high_res_option (str):
+            For high resolution retrievals, specify whether the retrieved model
+            scaling parameter is in log space (default) or linear space
+            (Options: 'log', 'linear').
+        fix_alpha_high_res (bool):
+            If True, the alpha (model scaling) parameter in high resolution 
+            retrievals will be fixed to 1 and not a retrieved parameter.
+        fix_W_conv_high_res (bool):
+            If True, the W_conv (broadening) parameter in high resolution 
+            retrievals will be fixed to 0 and not a retrieved parameter.
+        fix_beta_high_res (bool):
+            If True, the beta (error scaling) parameter in high resolution 
+            retrievals will be fixed to 1 and not a retrieved parameter.
+        fix_Delta_phi_high_res (bool):
+            If True, the Delta_phi (phase shift) parameter in high resolution 
+            retrievals will be fixed to 0 and not a retrieved parameter.
+            
     Returns:
         model (dict):
             Dictionary containing the description of the desired POSEIDON model.
@@ -515,6 +541,10 @@ def define_model(model_name, bulk_species, param_species,
     # Create array containing all chemical species in model
     bulk_species = np.array(bulk_species)
     param_species = np.array(param_species)
+
+    # Check that the 'ghost' species option is only for thr bulk species
+    if ('ghost' in param_species):
+        raise Exception("The ghost molecule can only be the bulk species.\n")
 
     # For chemical equilibrium models, find the necessary chemical species
     if (X_profile == 'chem_eq'):
@@ -530,7 +560,7 @@ def define_model(model_name, bulk_species, param_species,
             if (np.any(~np.isin(param_species, supported_chem_eq_species)) == True):
                 raise Exception("A chemical species you selected is not supported " +
                                 "for equilibrium chemistry models.\n")
-    
+
     # If Na_K_fixed_ratio, put K at the end of the list so that it's mixing ratio 
     # Can be appended to the end of the X_param array in 
     # profiles() in atmosphere.py 
@@ -567,6 +597,10 @@ def define_model(model_name, bulk_species, param_species,
     # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
     if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True) and aerosol_species != ['free'] and aerosol_species != ['file_read']:
         raise Exception('Please input supported aerosols (check supported_opac.py) or aerosol = [\'free\'] or [\'file_read\'].')
+    
+    # Check to make sure the high resolution alpha parameter option is log or linear
+    if (alpha_high_res_option not in ['log', 'linear']):
+        raise Exception('Error: alpha_high_res_option must be log or linear.')
 
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
@@ -598,9 +632,9 @@ def define_model(model_name, bulk_species, param_species,
     param_names, physical_param_names, \
     PT_param_names, X_param_names, \
     cloud_param_names, geometry_param_names, \
-    stellar_param_names, \
-    N_params_cum = assign_free_params(param_species, object_type, PT_profile,
-                                      X_profile, cloud_model, cloud_type, 
+    stellar_param_names, high_res_param_names, \
+    N_params_cum = assign_free_params(param_species, bulk_species, object_type, 
+                                      PT_profile, X_profile, cloud_model, cloud_type, 
                                       gravity_setting, mass_setting, stellar_contam, 
                                       offsets_applied, error_inflation, PT_dim, 
                                       X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
@@ -609,14 +643,16 @@ def define_model(model_name, bulk_species, param_species,
                                       opaque_Iceberg, surface, sharp_DN_transition,
                                       reference_parameter, disable_atmosphere, 
                                       aerosol_species, log_P_slope_arr,
-                                      number_P_knots, PT_penalty)
-    
+                                      number_P_knots, PT_penalty, 
+                                      high_res_method, alpha_high_res_option,
+                                      fix_alpha_high_res, fix_W_conv_high_res, 
+                                      fix_beta_high_res, fix_Delta_phi_high_res)
+
     # If cloud_model = Mie, load in the cross section 
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
         aerosol_grid = load_aerosol_grid(aerosol_species)
     else:
         aerosol_grid = None
-        
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -655,9 +691,12 @@ def define_model(model_name, bulk_species, param_species,
              'log_P_slope_arr': log_P_slope_arr,
              'Na_K_fixed_ratio': Na_K_fixed_ratio,
              'reflection_up_to_5um' : reflection_up_to_5um,
-             'PT_penalty' : PT_penalty
+             'PT_penalty' : PT_penalty,
+             'high_res_method': high_res_method,
+             'high_res_param_names': high_res_param_names,
              }
 
+            
     return model
 
 
@@ -730,7 +769,7 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
     wl = 1.0e4/nu   # Convert from cm^-1 to um
     
     return wl
-    
+
 
 def read_opacities(model, wl, opacity_treatment = 'opacity_sampling', 
                    T_fine = None, log_P_fine = None, opacity_database = 'High-T',
@@ -767,7 +806,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         testing (bool):
             For GitHub Actions automated tests. If True, disables reading the 
             full opacity database (since GitHub Actions can't handle downloading 
-            the full database - alas, 30+ GB is a little too large!).
+            the full database - alas, 70+ GB is a little too large!).
     
     Returns:
         opac (dict):
@@ -837,7 +876,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_g = None, M_p = None, T_input = [], X_input = [], 
                     P_surf = None, P_param_set = 1.0e-2, He_fraction = 0.17, 
                     N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
-                    chemistry_grid = None):
+                    chemistry_grid = None, mu_back = None):
     '''
     Generate an atmosphere from a user-specified model and parameter set. In
     full generality, this function generates 3D pressure-temperature and mixing 
@@ -888,6 +927,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
         chemistry_grid (dict):
             For models with a pre-computed chemistry grid only, this dictionary
             is produced in chemistry.py.
+        mu_back (float):
+            Mean molecular mass of background gas, if bulk_species = ['ghost'] (AMU).
     
     Returns:
         atmosphere (dict):
@@ -1014,7 +1055,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            beta, phi, theta, species_vert_gradient, He_fraction,
                            T_input, X_input, P_param_set, log_P_slope_phot,
                            log_P_slope_arr, Na_K_fixed_ratio, constant_gravity,
-                           chemistry_grid, PT_penalty, T_eq)
+                           chemistry_grid, PT_penalty, T_eq, mu_back)
 
     #***** Store cloud / haze / aerosol properties *****#
 
@@ -1048,11 +1089,15 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'dphi': dphi, 'dtheta': dtheta, 'kappa_cloud_0': kappa_cloud_0, 
                   'P_cloud': P_cloud, 'f_cloud': f_cloud, 'phi_cloud_0': phi_cloud_0, 
                   'theta_cloud_0': theta_cloud_0, 'a': a, 'gamma': gamma, 
-                  'is_physical': is_physical,
-                  'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 'fractional_scale_height': fractional_scale_height,
-                  'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie,
+                  'is_physical': is_physical, 'mu_back': mu_back,
+                  'H': H, 'r_m': r_m, 'log_n_max': log_n_max, 
+                  'fractional_scale_height': fractional_scale_height,
+                  'aerosol_species': aerosol_species, 'r_i_real': r_i_real, 
+                  'r_i_complex': r_i_complex, 'log_X_Mie': log_X_Mie,
                   'P_cloud_bottom' : P_cloud_bottom, 
-                  'kappa_cloud_eddysed' : kappa_cloud_eddysed, 'g_cloud_eddysed' : g_cloud_eddysed, 'w_cloud_eddysed' : w_cloud_eddysed,
+                  'kappa_cloud_eddysed' : kappa_cloud_eddysed,
+                  'g_cloud_eddysed' : g_cloud_eddysed, 
+                  'w_cloud_eddysed' : w_cloud_eddysed,
                  }
 
     return atmosphere
@@ -1104,7 +1149,7 @@ def check_atmosphere_physical(atmosphere, opac):
         # For line-by-line models, there is not fine temperature grid
         else:
             return True
-            
+
 
 def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      spectrum_type = 'transmission', save_spectrum = False,
@@ -2133,7 +2178,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         err_log_g_phot = 0.1
 
     # Unpack data error bars (not error inflation parameter prior)
-    err_data = data['err_data']    
+    if model['high_res_method'] is None:
+        err_data = data['err_data']
+    else:
+        err_data = 1
 
     # Normalise retrieved planet radius parameter into Jupiter or Earth radii
     if (radius_unit == 'R_J'):
@@ -2160,7 +2208,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         prior_ranges['d'] = [prior_ranges['d'][0]/d_norm,
                              prior_ranges['d'][1]/d_norm]
 
-    # Set default priors (used if user doesn't specify one or more priors)
+    # Set default priors (if the user doesn't specify one or more priors)
     prior_ranges_defaults = {'R_p_ref': [0.85*R_p/R_p_norm, 1.15*R_p/R_p_norm],
                              'M_p': [0.50*M_p/M_p_norm, 1.50*M_p/M_p_norm],
                              'log_g': [2.0, 5.0], 'T': [400, 3000], 
@@ -2170,7 +2218,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_P1': [-6, 2], 'log_P2': [-6, 2], 
                              'log_P3': [-2, 2], 'log_P_mid': [-5, 1], 
                              'log_P_surf': [-4, 1], 'log_P_ref': [-6, 2],
-                             'log_X': [-12, -1], 
+                             'log_X': [-12, -1], 'mu_back': [2.3, 50],
                              'Delta_log_X': [-10, 10], 'Grad_log_X': [-1, 1], 
                              'log_a': [-4, 8], 'gamma': [-20, 2], 
                              'log_P_cloud': [-6, 2], 'phi_cloud': [0, 1],
@@ -2191,6 +2239,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'delta_rel_3': [-1.0e-3, 1.0e-3],
                              'b': [np.log10(0.001*np.min(err_data**2)),
                                    np.log10(100.0*np.max(err_data**2))],
+                             'x_tol': [0.05, 1.0],
                              'C_to_O': [0.3, 1.9], 'log_Met' : [-0.9, 3.9],
                              'log_r_m': [-3, 1], 'log_n_max': [5.0, 20.0],  
                              'fractional_scale_height': [0.1, 1], 
@@ -2201,6 +2250,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'T_equ' : [400, 3000], 'T_int' : [400, 3000],
                              'alpha_Line' : [0, 1], 'beta_Line' : [0.25, 2],
                              'Upsilon': [-180, 180], 'log_P_X_i': [-5, 1],
+                             'K_p': [-200, 200], 'V_sys': [-100, 100],
+                             'W_conv': [0, 50], 'Delta_Phi': [-0.05, 0.05],
+                             'log_alpha_HR': [-2, 2], 'alpha_HR': [1, 10],
+                             'beta_HR': [0.1, 10],
                             }   
 
     # Iterate through parameters, ensuring we have a full set of priors
@@ -2447,5 +2500,3 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     priors = {'prior_ranges': prior_ranges, 'prior_types': prior_types}
 
     return priors
-
-

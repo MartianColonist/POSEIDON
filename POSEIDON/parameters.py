@@ -9,37 +9,44 @@ import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
-def assign_free_params(param_species, object_type, PT_profile, X_profile, 
-                       cloud_model, cloud_type, gravity_setting, mass_setting,
-                       stellar_contam, offsets_applied, error_inflation, 
+def assign_free_params(param_species, bulk_species, object_type, PT_profile, 
+                       X_profile, cloud_model, cloud_type, gravity_setting, 
+                       mass_setting, stellar_contam, offsets_applied, error_inflation, 
                        PT_dim, X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
-                       Atmosphere_dimension, opaque_Iceberg, surface,
-                       sharp_DN_transition, reference_parameter, disable_atmosphere,
-                       aerosol_species, log_P_slope_arr, number_P_knots, PT_penalty):
+                       Atmosphere_dimension, opaque_Iceberg, surface, 
+                       sharp_DN_transition, reference_parameter, 
+                       disable_atmosphere, aerosol_species, log_P_slope_arr,
+                       number_P_knots, PT_penalty, 
+                       high_res_method, alpha_high_res_option, 
+                       fix_alpha_high_res, fix_W_conv_high_res, 
+                       fix_beta_high_res, fix_Delta_phi_high_res,
+                       ):
     '''
-    From the user's chosen model settings, determine which free parameters 
+    From the user's chosen model settings, determine which free parameters
     define this POSEIDON model. The different types of free parameters are
     returned as separate arrays.
-    
+
     Args:
         param_species (list of str):
             Chemical species with parametrised mixing ratios (trace species).
+        bulk_species (list of str):
+            The chemical species (or two for H2+He) filling most of the atmosphere.
         object_type (str):
             Type of planet / brown dwarf the user wishes to model
             (Options: transiting / directly_imaged).
         PT_profile (str):
-            Chosen P-T profile parametrisation 
-            (Options: isotherm / gradient / two-gradients / Madhu / slope / 
+            Chosen P-T profile parametrisation
+            (Options: isotherm / gradient / two-gradients / Madhu / slope /
              file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
             (Options: isochem / gradient / two-gradients / lever / file_read).
         cloud_model (str):
-            Chosen cloud parametrisation 
+            Chosen cloud parametrisation
             (Options: cloud-free / MacMad17 / Iceberg / Mie).
         cloud_type (str):
-            Cloud extinction type to consider 
+            Cloud extinction type to consider
             (Options: deck / haze / deck_haze).
         gravity_setting (str):
             Whether log_g is fixed or a free parameter.
@@ -49,28 +56,28 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             (Options: fixed / free).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
-            (Options: one_spot / one_spot_free_log_g / two_spots / 
+            (Options: one_spot / one_spot_free_log_g / two_spots /
              two_spots_free_log_g).
         offsets_applied (str):
-            Whether a relative offset should be applied to a dataset 
+            Whether a relative offset should be applied to a dataset
             (Options: single_dataset / two_datasets / three_datasets).
         error_inflation (str):
-            Whether to consider inflation of error bars in a retrieval
-            (Options: Line15).
+            Error bar inflation treatment in a retrieval
+            (Options: Line15 / Piette20 / Line15+Piette20).
         PT_dim (int):
-            Dimensionality of the pressure-temperature field (uniform -> 1, 
-            a day-night or evening-morning gradient -> 2, both day-night and 
+            Dimensionality of the pressure-temperature field (uniform -> 1,
+            a day-night or evening-morning gradient -> 2, both day-night and
             evening-morning gradients -> 3)
             (Options: 1 / 2 / 3).
         X_dim (int):
             Max dimensionality of the mixing ratio field (not all species need
-            have gradients, this just specifies the highest dimensionality of 
+            have gradients, this just specifies the highest dimensionality of
             chemical gradients -- see the species_XX_gradient arguments)
             (Options: 1 / 2 / 3).
         cloud_dim (int):
             Dimensionality of the cloud model prescription (only the Iceberg
             cloud model supports 3D clouds)
-            (Options: 1 / 2 / 3). 
+            (Options: 1 / 2 / 3).
         TwoD_type (str):
             For 2D models, specifies whether the model considers day-night
             gradients or evening-morning gradients
@@ -102,14 +109,34 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         aerosol_species (list of string):
             Either 'free' or specific aerosol(s).
         log_P_slope_array (np.array of float):
-            Log pressures where the temperature difference parameters are 
+            Log pressures where the temperature difference parameters are
             defined (Piette & Madhusudhan 2020 profile only).
         number_P_knots (float):
-            Number of uniform knots in pressure space 
+            Number of uniform knots in pressure space
             (only for the Pelletier 2021 P-T profile).
         PT_penalty (bool):
             If True, introduces the sigma_smooth parameter for retrievals
             (only for the Pelletier 2021 P-T profile).
+        high_res_method (list of str):
+            For high resolution retrievals, define which processing method
+            will be used - only not None for high-res retrievals
+            (Options: None, 'pca', 'sysrem').
+        alpha_high_res_option (str):
+            For high resolution retrievals, specify whether the retrieved model
+            scaling parameter is in log space (default) or linear space
+            (Options: 'log', 'linear').
+        fix_alpha_high_res (bool):
+            If True, the alpha (model scaling) parameter in high resolution 
+            retrievals will be fixed to 1 and not a retrieved parameter.
+        fix_W_conv_high_res (bool):
+            If True, the W_conv (broadening) parameter in high resolution 
+            retrievals will be fixed to 0 and not a retrieved parameter.
+        fix_beta_high_res (bool):
+            If True, the beta (error scaling) parameter in high resolution 
+            retrievals will be fixed to 1 and not a retrieved parameter.
+        fix_Delta_phi_high_res (bool):
+            If True, the Delta_phi (phase shift) parameter in high resolution 
+            retrievals will be fixed to 0 and not a retrieved parameter.
 
     Returns:
         params (np.array of str):
@@ -126,11 +153,13 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             Multidimensional atmospheric geometry parameters.
         stellar_params (np.array of str):
             Stellar heterogeneity parameters.
+        high_res_params (np.array of str):
+            Parameters used for high resolution cross correlation models.
         N_params_cumulative (np.array of int):
             Cumulative sum of number of parameters (used for indexing).
 
     '''
-    
+
     # Create lists storing names of free parameters
     params = []           # All parameters
     physical_params = []  # Physical parameters
@@ -139,19 +168,22 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     cloud_params = []     # Cloud parameters
     geometry_params = []  # Geometry parameters
     stellar_params = []   # Stellar parameters
+    high_res_params = []  # High resolution retrieval parameters
+
+    # ***** Physical property parameters *****#
 
     # Models with no atmosphere only have Rp as a free parameter
-    if (disable_atmosphere == True):
+    if disable_atmosphere == True:
 
-        physical_params += ['R_p_ref']   # Reference radius parameter (in R_J or R_E)
+        physical_params += ["R_p_ref"]  # Reference radius parameter (in R_J or R_E)
 
         N_physical_params = 1
-        N_PT_params = 0 
+        N_PT_params = 0
         N_species_params = 0
         N_cloud_params = 0
         N_geometry_params = 0
 
-        params += physical_params         # Add physical parameter names to combined list
+        params += physical_params  # Add physical parameter names to combined list
 
     # Models including atmospheres
     else:
@@ -185,6 +217,9 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         if (surface == True):
             physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
 
+        if ('ghost' in bulk_species):
+            physical_params += ['mu_back']    # Background molecular weight (AMU)
+
         N_physical_params = len(physical_params)   # Store number of physical parameters
         params += physical_params                  # Add physical parameter names to combined list
 
@@ -216,7 +251,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
 
         if ((PT_profile == 'slope') and (PT_dim > 1)):
             raise Exception("Slope profile only supported for 1D models")
-            
+
         # 1D model (global average)
         if (PT_dim == 1): 
     
@@ -246,7 +281,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             elif (PT_profile == 'Line'):
                 PT_params += ['log_kappa_IR', 'log_gamma', 'log_gamma_2', 
                               'alpha_Line', 'beta_Line', 'T_int']
-            
+
         # 2D model (asymmetric terminator or day-night transition)
         elif (PT_dim == 2):
 
@@ -310,7 +345,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
             
         N_PT_params = len(PT_params)   # Store number of P-T profile parameters
         params += PT_params            # Add P-T parameter names to combined list
-        
+
         #***** Mixing ratio parameters *****#
 
         if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'lever', 'chem_eq']):
@@ -533,7 +568,7 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                 
         N_species_params = len(X_params)   # Store number of mixing ratio parameters
         params += X_params                 # Add mixing ratio parameter names to combined list
-                   
+
         #***** Cloud parameters *****#
     
         # Cloud-free models need no extra free parameters
@@ -696,8 +731,10 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_X_' + aerosol]
 
-            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 'opaque_deck_plus_slab', 'opaque_deck_plus_uniform_X', 'one_slab']):
-                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, slab, one_slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X.")
+            elif (cloud_type not in ['fuzzy_deck', 'uniform_X', 'slab', 'fuzzy_deck_plus_slab', 
+                                     'opaque_deck_plus_slab', 'opaque_deck_plus_uniform_X', 'one_slab']):
+                raise Exception("Error: unsupported cloud type. Supported types : fuzzy_deck, uniform_X, \n" + 
+                                "slab, one_slab, fuzzy_deck_plus_slab, opaque_deck_plus_slab, opaque_deck_plus_uniform_X.")
         
         elif (cloud_model == 'eddysed'):
             # If working with a 2D patchy cloud model
@@ -765,17 +802,51 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
         N_offset_params = 0
     else:
         raise Exception("Error: unsupported offset prescription.")
-     
-    #***** Error adjustment parameters *****#
 
-    if (error_inflation == 'Line15'): 
-        params += ['b']
-        N_error_params = 1
-    elif (error_inflation == None):    
+    #***** Error inflation parameters *****#
+
+    if (error_inflation == None):
         N_error_params = 0
     else:
-        raise Exception("Error: unsupported error adjustment prescription.")
-    
+        if (error_inflation == 'Line15'):
+            params += ['b']
+            N_error_params = 1
+        elif (error_inflation == 'Piette20'): 
+            params += ['x_tol']
+            N_error_params = 1
+        elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)): 
+            params += ['b', 'x_tol']
+            N_error_params = 2
+        else:
+            raise Exception("Error: unsupported error adjustment prescription.")
+
+    #***** High resolution retrieval parameters *****#
+
+    if (high_res_method is not None):
+
+        # Add required high-resolution retrieval parameters
+        high_res_params += ['K_p']
+        high_res_params += ['V_sys']
+
+        # Add optional high-resolution retrieval parameters
+        if (fix_W_conv_high_res == False):
+            high_res_params += ['W_conv']
+
+        if (fix_Delta_phi_high_res == False):
+            high_res_params += ['Delta_phi']
+
+        if (fix_alpha_high_res == False):
+            if (alpha_high_res_option == 'linear'):
+                high_res_params += ['alpha_HR']
+            elif (alpha_high_res_option == 'log'):
+                high_res_params += ['log_alpha_HR']
+
+        if (fix_beta_high_res == False):
+            high_res_params += ['beta_HR']
+
+    N_high_res_params = len(high_res_params)    # Store number of high-res parameters
+    params += high_res_params                   # Add high-res parameter names to combined list
+
     #***** Final recasting of parameter arrays *****#
 
     # Convert parameter lists to numpy arrays
@@ -786,17 +857,19 @@ def assign_free_params(param_species, object_type, PT_profile, X_profile,
     cloud_params = np.array(cloud_params)
     geometry_params = np.array(geometry_params)
     stellar_params = np.array(stellar_params)
-    
+    high_res_params = np.array(high_res_params)
+
     # The cumulative sum of the number of each type of parameter saves time indexing later 
     N_params_cumulative = np.cumsum([N_physical_params, N_PT_params, 
                                      N_species_params, N_cloud_params,
                                      N_geometry_params, N_stellar_params, 
-                                     N_offset_params, N_error_params])
-    
+                                     N_offset_params, N_error_params, 
+                                     N_high_res_params])
+
     return params, physical_params, PT_params, X_params, cloud_params, \
-           geometry_params, stellar_params, N_params_cumulative
-    
-    
+           geometry_params, stellar_params, high_res_params, N_params_cumulative
+
+
 def split_params(params_drawn, N_params_cumulative):
     '''
     Split the array of drawn parameters from a retrieval (e.g. the MultiNest 
@@ -825,9 +898,11 @@ def split_params(params_drawn, N_params_cumulative):
             Drawn values of the data offset parameters.
         err_inflation_drawn (list of float | np.array of float):
             Drawn values of the error inflation parameters.
+        high_res_drawn (list of float | np.array of float):
+            Drawn values of the high-resolution retrieval parameters.
 
     '''
-    
+
     # Extract physical property parameters
     physical_drawn = params_drawn[0:N_params_cumulative[0]]
     
@@ -851,11 +926,14 @@ def split_params(params_drawn, N_params_cumulative):
     
     # Extract error adjustment parameters      
     err_inflation_drawn = params_drawn[N_params_cumulative[6]:N_params_cumulative[7]]
-        
+
+    # Extract high res parameters
+    high_res_drawn = params_drawn[N_params_cumulative[7]:N_params_cumulative[8]]
+
     return physical_drawn, PT_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
-           stellar_drawn, offsets_drawn, err_inflation_drawn
- 
-    
+           stellar_drawn, offsets_drawn, err_inflation_drawn, high_res_drawn
+
+
 def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                    X_profile, TwoD_type, TwoD_param_scheme, species_EM_gradient,
                    species_DN_gradient, species_vert_gradient, alpha, beta):
@@ -2068,4 +2146,3 @@ def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
 
     return f_het, f_spot, f_fac, T_het, T_spot, T_fac, T_phot, log_g_het, \
            log_g_spot, log_g_fac, log_g_phot
-

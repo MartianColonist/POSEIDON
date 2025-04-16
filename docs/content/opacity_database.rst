@@ -20,6 +20,8 @@ recent theoretical and experimental advances:
 * Improved line position accuracy for high-resolution analyses (i.e. ExoMol's MARVEL procedure).
 * UV-Visible wavelength coverage (down to :math:`0.2 \, \mathrm{\mu m}`, where available).
 
+Note: POSEIDON v1.3 uses the same opacity database as v1.2.
+
 The current line-by-line opacity sources included in POSEIDON are summarised below:
 
 .. list-table::
@@ -1283,7 +1285,7 @@ ________________
 
 POSEIDON v1.2 includes an extensive database of Mie scattering properties for
 atmospheric aerosols. The database and its computation are detailed in full in
-Mullens et al. (2024).
+`Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_.
 
 .. list-table::
    :widths: 20 20 20 20 20 20 20
@@ -1592,7 +1594,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -2403,7 +2405,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -2425,7 +2427,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -2487,7 +2489,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -2600,7 +2602,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -2747,7 +2749,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -2819,7 +2821,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -2917,7 +2919,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -2976,7 +2978,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -3000,7 +3002,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -3066,7 +3068,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -3120,7 +3122,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -3151,7 +3153,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -3211,7 +3213,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
@@ -3237,7 +3239,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
