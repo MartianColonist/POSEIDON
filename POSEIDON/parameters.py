@@ -1838,6 +1838,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         
         if (cloud_dim == 1):
             f_cloud, phi_0, theta_0 = 1.0, -90.0, -90.0   # 1D uniform cloud
+            f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
         elif (cloud_dim == 2):
             # If its one aerosol species 
             if ('f_cloud' in cloud_param_names):
