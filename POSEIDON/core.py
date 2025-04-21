@@ -43,7 +43,7 @@ from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon, reflection_Toon
 
-from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid
+from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid, assign_Mie_model_assumptions
 
 from .utility import mock_missing
 
@@ -1344,142 +1344,14 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # aerosol grid is being used or not 
             if (model['cloud_model'] == 'Mie'):
 
-                # Load in the aerosol grid for compositionally specific aerosols
-                aerosol_grid = model['aerosol_grid']
+                n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = assign_Mie_model_assumptions(model, aerosol_species,
+                                                                                            P, wl, r, H, n,
+                                                                                            r_m, r_i_real, r_i_complex,
+                                                                                            P_cloud, P_cloud_bottom, log_X_Mie,
+                                                                                            log_n_max, fractional_scale_height,
+                                                                                            lognormal_logwidth_free, log_r_m_std_dev,
+                                                                                            )
 
-                # Create a wl_Mie array (which is at R = 1000) for file_read or constant
-                # refractive indices
-                wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
-
-                # If its a fuzzy deck cloud type
-                if (model['cloud_type'] == 'fuzzy_deck'):
-                    
-                    # Check to see if it is file_read or constant refractive index
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                          P_cloud = P_cloud,
-                                                          log_n_max = log_n_max, 
-                                                          fractional_scale_height = fractional_scale_height,)
-
-                    # Otherwise, use the aerosol_grid to and pull radiative properties
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     P_cloud = P_cloud,
-                                                     log_n_max = log_n_max, 
-                                                     fractional_scale_height = fractional_scale_height,
-                                                     lognormal_logwidth_free=lognormal_logwidth_free,
-                                                     log_r_m_std_dev=log_r_m_std_dev)
-
-                # If its a slab
-                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                        log_X_Mie = log_X_Mie,
-                                                        P_cloud = P_cloud,
-                                                        P_cloud_bottom = P_cloud_bottom)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                    r_m, aerosol_species,
-                                                    cloud_type = model['cloud_type'],
-                                                    aerosol_grid = aerosol_grid,
-                                                    log_X_Mie = log_X_Mie,
-                                                    P_cloud = P_cloud,
-                                                    P_cloud_bottom = P_cloud_bottom,
-                                                    lognormal_logwidth_free=lognormal_logwidth_free,
-                                                     log_r_m_std_dev=log_r_m_std_dev)
-                            
-                          
-                # If its a uniform X run
-                elif (model['cloud_type'] == 'uniform_X'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                          log_X_Mie = log_X_Mie)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     log_X_Mie = log_X_Mie,
-                                                     lognormal_logwidth_free=lognormal_logwidth_free,
-                                                     log_r_m_std_dev=log_r_m_std_dev)
-                        
-                # If its an opaque deck + uniform X run
-                elif (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                          log_X_Mie = log_X_Mie,
-                                                          P_cloud = P_cloud)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     log_X_Mie = log_X_Mie,
-                                                     P_cloud = P_cloud,
-                                                     lognormal_logwidth_free=lognormal_logwidth_free,
-                                                     log_r_m_std_dev=log_r_m_std_dev)
-
-                # If its a opaque_deck_plus_slab run 
-                elif (model['cloud_type'] == 'opaque_deck_plus_slab'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                        log_X_Mie = log_X_Mie,
-                                                        P_cloud = P_cloud,
-                                                        P_cloud_bottom = P_cloud_bottom)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                    r_m, aerosol_species,
-                                                    cloud_type = model['cloud_type'],
-                                                    aerosol_grid = aerosol_grid,
-                                                    log_X_Mie = log_X_Mie,
-                                                    P_cloud = P_cloud,
-                                                    P_cloud_bottom = P_cloud_bottom,
-                                                     lognormal_logwidth_free=lognormal_logwidth_free,
-                                                     log_r_m_std_dev=log_r_m_std_dev)
-                        
-                # If its a fuzzy_deck_plus_slab run 
-                elif (model['cloud_type'] == 'fuzzy_deck_plus_slab'):
-
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     P_cloud = P_cloud,
-                                                     log_n_max = log_n_max, 
-                                                     fractional_scale_height = fractional_scale_height,
-                                                     log_X_Mie = log_X_Mie,
-                                                     P_cloud_bottom = P_cloud_bottom,
-                                                     lognormal_logwidth_free=lognormal_logwidth_free,
-                                                     log_r_m_std_dev=log_r_m_std_dev)
-
-            
             else:
 
                 # Generate empty arrays so the dark god numba is satisfied
