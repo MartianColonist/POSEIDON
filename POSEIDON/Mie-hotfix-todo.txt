@@ -1,20 +1,25 @@
 0. Remake aerosol grid on HAL 
-- Normal one (68 species) - DONE
+- Normal one (68 species)                                                                     - DONE
 - Directional (144 species, need to get files names made first to match supported_species.py) - DONE
-- Diamonds (7 species) - Running
-1. Make lognormal logwidth a free param option (test w/ SiO2 grid) - DONE
-2. Fix load aerosol grid to work with and without 1 - DONE
+- Diamonds (7 species)                                                                        - DONE
+1. Make lognormal logwidth a free param option (test w/ SiO2 grid)                            - DONE
+2. Fix load aerosol grid to work with and without 1                                           - DONE
 3. Allow Mie_cloud_free() to be miepython instead of LX-MIE
 4. Either combine all precompute functions or have LX-Mie and miepython versions be seperate (with same functionalities and saving schemes)
 5. Test all functionalities 
 
 X. Fix all utility functions in clouds.py 
-X. Clean up core.py if-statements (move all if statements in core.py dealing with clouds to clouds.py)
+X. Clean up core.py if-statements 
+- To clouds.py                                                                                 -DONE
+- To emission.py 
 X. Fix shared array error 
 X. Make aerosol_Mie_properties and precomputed_Mie_properties folders if they don't exist 
 X. Add to tutorial for multiple core production of precomputed properties
 X. Make new figures for website (of aerosol properties on opacity database)
 X. Update the txt file with new DOCDD links
+
+X. Add patchy 2D clouds
+X. Benchmark toon functions with picaso
 
 BENCHMARKING WITH IZZY
 1. Clear atmosphere, thermal emission and reflection 
@@ -30,3 +35,6 @@ Integrated free log_r_m_std_dev into Mie_cloud and found it works with compute_s
 Started to remake Normal aerosol database on Hal 
 Got the directional and diamond indices renamed.
 -> Will need to make sure they're edited for the algorithm. 
+
+4/21
+Clean up core.py Mie statements and moved them to clouds.py
