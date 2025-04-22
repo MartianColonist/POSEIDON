@@ -2364,7 +2364,7 @@ def get_and_update(eta,xs):
 def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_type, 
                    P_cloud = 0, log_n_max = 0, fractional_scale_height = 0,
                    log_X_Mie = 0, P_cloud_bottom = -100, r_m_std_dev = 0.5, z_max = 5,
-                   num_integral_points = 100):
+                   num_integral_points = 100, algorithm = 'miepython'):
     '''
     Calculates the number density n(P) and cross section sigma(wavelength) for different aerosol cloud models
     Also pulls the asymmetry parameter and single scattering albedo
@@ -2444,6 +2444,9 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
 
         R_Mie (int) : 
             Optional wavelength resolution used to calculate ETA 
+
+        algorithm (str):
+            Either 'LX-MIE' or 'miepython'. The second is faster, and therefore the default.
 
     
     Returns: n_aerosol, sigma_Mie
@@ -2637,7 +2640,12 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
         # Qext is then calculated for all cache misses and added to the cache.
         ###
 
-        Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
+        if algorithm == 'LX_MIE':
+            Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
+        elif algorithm == 'miepython':
+            Qext_hist, Qscat_hist, Qback_hist, g_hist  = miepython.mie(eta, x_hist)
+        else:
+            raise Exception('Mie algorithm must be LX_MIE or miepython')
 
         # This next part interpolated the Qext points that were made from the coarse x histogram 
         # And interpolates them back onto the dense x array 
@@ -2685,7 +2693,12 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
             eta = eta_array[m]
 
             # Get the coarse Qext with the constant eta 
-            Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
+            if algorithm == 'LX_MIE':
+                Qext_hist, Qscat_hist, Qback_hist, g_hist = get_and_update(eta, x_hist) 
+            elif algorithm == 'miepython':
+                Qext_hist, Qscat_hist, Qback_hist, g_hist  = miepython.mie(eta, x_hist)
+            else:
+                raise Exception('Mie algorithm must be LX_MIE or miepython')
 
             # Revert from coarse Qext back to dense Qext 
             spl = scipy.interpolate.splrep(x_hist, Qext_hist)
@@ -3530,6 +3543,7 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
 
     return eff_ext_cross_section, eff_scat_cross_section, eff_abs_cross_section, eff_back_cross_section, eff_w, eff_g
 
+
 ############################################################################################
 # Miepython functions 
 # See https://miepython.readthedocs.io/en/latest/
@@ -3639,6 +3653,7 @@ def compute_mie_properties(r_m, wl_Mie, eta_array, r_m_array,
     back_array[(where_in_rm*5011):((where_in_rm+1)*5011)] = eff_back_cross_section
     w_array[(where_in_rm*5011):((where_in_rm+1)*5011)] = eff_w
     g_array[(where_in_rm*5011):((where_in_rm+1)*5011)] = eff_g
+
 
 def precompute_cross_sections_one_aerosol_miepython(file_name, aerosol_name,
                                                  log_r_m_std_dev = 0.5,
@@ -3876,6 +3891,7 @@ def precompute_cross_sections_one_aerosol_miepython(file_name, aerosol_name,
     # Do this always
     title = input_file_path + "opacity/aerosol_Mie_properties/jumbo_Mie_" + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
     np.save(title,jumbo_array,allow_pickle = True)
+
 
 def make_aerosol_database():
 

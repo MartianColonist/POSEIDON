@@ -840,17 +840,17 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             if isinstance(P_cloud, np.ndarray) == False:
                 P_cloud = np.array([P_cloud])
 
-            kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
-                                                           CIA_pairs, ff_pairs, bf_species,
-                                                           n, T, P, wl, X, X_active, X_CIA, 
-                                                           X_ff, X_bf, a, gamma, P_cloud, 
-                                                           kappa_cloud_0, sigma_stored, 
-                                                           CIA_stored, Rayleigh_stored, 
-                                                           ff_stored, bf_stored, enable_haze, 
-                                                           enable_deck, enable_surface,
-                                                           N_sectors, N_zones, T_fine, 
-                                                           log_P_fine, P_surf, enable_Mie, 
-                                                           n_aerosol, sigma_ext_cloud)
+            kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate = extinction(chemical_species, active_species,
+                                                                                CIA_pairs, ff_pairs, bf_species,
+                                                                                n, T, P, wl, X, X_active, X_CIA, 
+                                                                                X_ff, X_bf, a, gamma, P_cloud, 
+                                                                                kappa_cloud_0, sigma_stored, 
+                                                                                CIA_stored, Rayleigh_stored, 
+                                                                                ff_stored, bf_stored, enable_haze, 
+                                                                                enable_deck, enable_surface,
+                                                                                N_sectors, N_zones, T_fine, 
+                                                                                log_P_fine, P_surf, enable_Mie, 
+                                                                                n_aerosol, sigma_ext_cloud)
             
             
             # This is to store the contribution kappas
@@ -2257,17 +2257,17 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             if isinstance(P_cloud, np.ndarray) == False:
                 P_cloud = np.array([P_cloud])
 
-            kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
-                                                           CIA_pairs, ff_pairs, bf_species,
-                                                           n, T, P, wl, X, X_active, X_CIA, 
-                                                           X_ff, X_bf, a, gamma, P_cloud, 
-                                                           kappa_cloud_0, sigma_stored, 
-                                                           CIA_stored, Rayleigh_stored, 
-                                                           ff_stored, bf_stored, enable_haze, 
-                                                           enable_deck, enable_surface,
-                                                           N_sectors, N_zones, T_fine, 
-                                                           log_P_fine, P_surf, enable_Mie, 
-                                                           n_aerosol, sigma_ext_cloud)
+            kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate = extinction(chemical_species, active_species,
+                                                                                CIA_pairs, ff_pairs, bf_species,
+                                                                                n, T, P, wl, X, X_active, X_CIA, 
+                                                                                X_ff, X_bf, a, gamma, P_cloud, 
+                                                                                kappa_cloud_0, sigma_stored, 
+                                                                                CIA_stored, Rayleigh_stored, 
+                                                                                ff_stored, bf_stored, enable_haze, 
+                                                                                enable_deck, enable_surface,
+                                                                                N_sectors, N_zones, T_fine, 
+                                                                                log_P_fine, P_surf, enable_Mie, 
+                                                                                n_aerosol, sigma_ext_cloud)
             
             
             # This is to store the contribution kappas

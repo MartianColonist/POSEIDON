@@ -1442,7 +1442,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 g_cloud = np.array(g_cloud_array)
             
             # two doesn't work for transmission right now 
-            elif spectrum_type == 'transmission' and (len(aerosol_species) == 2):
+            elif spectrum_type == 'transmission' and (len(aerosol_species) == 2) and (cloud_dim == 2):
                 raise Exception('Cannot do patchy multiple clouds in transmission yet (fix this elijah)')
             
            # elif (thermal == True) and (scattering == False) and (len(aerosol_species) == 2):
