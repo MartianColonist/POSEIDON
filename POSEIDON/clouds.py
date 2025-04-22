@@ -3993,6 +3993,7 @@ def make_aerosol_database():
 
         # Print the name to show to user which one is being added 
         print(key)
+        aerosol_name = key
 
         # Create database group based on aerosol 
         g = database.create_group(key)

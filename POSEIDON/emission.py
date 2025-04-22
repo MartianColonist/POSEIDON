@@ -484,8 +484,11 @@ def tri_diag_solve(l, a, b, c, d):
 def emission_Toon(P, T, wl, dtau_tot, 
                   kappa_Ray, kappa_cloud, kappa_tot,
                   w_cloud, g_cloud, zone_idx,
+                  surf_reflect,
+                  kappa_cloud_seperate,
                   hard_surface = 0, tridiagonal = 0, 
-                  Gauss_quad = 5, numt = 1):
+                  Gauss_quad = 5, numt = 1,
+                  T_surf = 0,):
     
     ###############################################
     # ORIGINAL PICASO PREAMBLE (fluxes.py, get_thermal_1d())
@@ -577,8 +580,10 @@ def emission_Toon(P, T, wl, dtau_tot,
     # ubar 1 is calculated below (outgoing incident angles)
     # IMPORTANT : We end up redefining iubar = ubar1[ng,nt] to iubar = gangle[ng]
     # 
-    # surf_reflect = 0s (for emission, eventually will add support for terresterial planets) 
-    # hard_surface = 0 (support only for gas giants)
+    # surf_reflect = 0s if surface is false or its a gray surface
+    # otherwise, it is constant or from lab data
+    #
+    # hard_surface = 0 (gas giants) or 1 (terrestrial worlds)
     # tridiagonal = 0 (support only for tridiagonal matrices)
     #
     # We additionally loop over the gauss angles at the end
@@ -586,6 +591,23 @@ def emission_Toon(P, T, wl, dtau_tot,
     #
     # Similar to PICASO, we don't use any delta-eddington nor raman scattering for emission.
     #############################################################################  
+
+    # In order to account for multiple clouds, we compute sums in this loop
+    kappa_cloud_w_cloud_sum = np.zeros_like(kappa_cloud)
+    kappa_cloud_w_cloud_g_cloud_sum = np.zeros_like(kappa_cloud)
+
+    for aerosol in range(len(kappa_cloud_seperate)):
+
+        # Creating the sum for w_tot 
+
+        # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
+        w_cloud[aerosol,:,0,zone_idx,:] = w_cloud[aerosol,:,0,zone_idx,:] * 0.99999
+
+        # kappa_mie_w_cloud sum used in numerator of w_tot and denominator of g_tot
+        kappa_cloud_w_cloud_sum[:,0,zone_idx,:] += kappa_cloud_seperate[aerosol,:,0,zone_idx,:] * w_cloud[aerosol,:,0,zone_idx,:]
+
+        # kappa_cloud_w_cloud_g_cloud_sum used in numberator of g_tot 
+        kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:] += kappa_cloud_seperate[aerosol,:,0,zone_idx,:] * w_cloud[aerosol,:,0,zone_idx,:] * g_cloud[aerosol,:,0,zone_idx,:]
 
     # Numba doesn't like it when you multiply numpy arrays that are 1d vs 2d 
 
@@ -595,11 +617,8 @@ def emission_Toon(P, T, wl, dtau_tot,
     # or 
     # w = ((tau_ray * w_Ray) + (tau_Mie * w_Mie))/(tau_tot) 
     # where w_Ray = 1 (perfect scatterers), and taus = kappas
-    
-    # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
-    w_cloud[:,0,zone_idx,:] = w_cloud[:,0,zone_idx,:] * 0.99999
 
-    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud[:,0,zone_idx,:]))/kappa_tot
+    w_tot = ((0.99999 * kappa_Ray[:,0,zone_idx,:]) + (kappa_cloud_w_cloud_sum[:,0,zone_idx,:]))/kappa_tot
 
     # Calculate weighted, combined scattering asymmetry parameter
     # From COSB in optics.py, compute_opacity()
@@ -608,7 +627,7 @@ def emission_Toon(P, T, wl, dtau_tot,
     # or 
     # g = ((w_Ray*delta_tau_Ray*g_Ray) + (w_Mie * delta_tau_Mie * g_Mie))/ (w_ray*delta_tau_ray + w_Mie*delta_tau_Mie)
     # where g_Ray = 0 (isotropic scatterers), w_rRay = 1, and taus = kappas 
-    g_tot = ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud[:,0,zone_idx,:]
+    g_tot = (kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:])/(kappa_cloud_w_cloud_sum[:,0,zone_idx,:]+(0.99999 * kappa_Ray[:,0,zone_idx,:]))
 
     # Compute planet flux including scattering (function expects 0 index to be top of atmosphere, so flip all the axis)
     P = np.flipud(P)
@@ -620,9 +639,6 @@ def emission_Toon(P, T, wl, dtau_tot,
     N_wl = len(wl)
     N_layer = len(P)
     N_level = N_layer + 1 # Number of levels (one more than the number of layers)
-
-    #### No reflective surface (for now)
-    surf_reflect = np.zeros(N_wl)
 
     T_level = np.zeros(N_level)
     log_P_level = np.zeros(N_level)
@@ -723,7 +739,10 @@ def emission_Toon(P, T, wl, dtau_tot,
     b_top = (1.0 - np.exp(-tau_top / mu1 )) * all_b[0,:] * np.pi #  Btop=(1.-np.exp(-tautop/ubari))*B[0]
     #print('hard_surface=',hard_surface)
     if hard_surface:
-        b_surface = all_b[-1,:]*np.pi #for terrestrial, hard surface  
+        emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
+        #b_surface =  emissivity*planck_lambda_arr([T_surf], wl)[-1,:]*np.pi #for terrestrial, hard surface
+        #b_surface =  emissivity*all_b[-1,:]*np.pi #for terrestrial, hard surface 
+        b_surface =  emissivity*all_b[-1,:]*np.pi #for terrestrial, hard surface 
     else: 
         b_surface= (all_b[-1,:] + b1[-1,:]*mu1)*np.pi #(for non terrestrial)
 
@@ -801,9 +820,10 @@ def emission_Toon(P, T, wl, dtau_tot,
 
             #intensity boundary conditions
             if hard_surface:
-                int_plus[-1,:] = all_b[-1,:] *2*np.pi  # terrestrial flux /pi = intensity
+                emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
+                int_plus[-1,:] = emissivity*all_b[-1,:] *2*np.pi  # terrestrial flux /pi = intensity
             else:
-                int_plus[-1,:] = ( all_b[-1,:] + b1[-1,:] * iubar)*2*np.pi #no hard surface   
+                int_plus[-1,:] = ( all_b[-1,:] + b1[-1,:] * iubar)*2*np.pi #no hard surface 
 
             int_minus[0,:] =  (1 - np.exp(-tau_top / iubar)) * all_b[0,:] *2*np.pi
             
@@ -863,10 +883,12 @@ def numba_cumsum(mat):
         new_mat[:,i] = np.cumsum(mat[:,i])
     return new_mat
 
-@jit(nopython=True, cache=True)
+#@jit(nopython=True, cache=True)
 def reflection_Toon(P, wl, dtau_tot,
                     kappa_Ray, kappa_cloud, kappa_tot,
                     w_cloud, g_cloud, zone_idx,
+                    surf_reflect,
+                    kappa_cloud_seperate,
                     single_phase = 3, multi_phase = 0,
                     frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                     Gauss_quad = 5, numt = 1,
@@ -1007,7 +1029,8 @@ def reflection_Toon(P, wl, dtau_tot,
     # w0_og = w_tot      calculated below (weighted, combined single scattering albedo)
     # cosb_og = g_cloud  (IMPORTANT : in reflection, we don't take the weighted version)
     #
-    # surf_reflect = 0s (for emission, eventually will add support for terresterial planets) 
+    # surf_reflect = 0s if surface is false or its a gray surface
+    # otherwise, it is constant or from lab data
     #
     # ubar0 (ingoing incident angles) are calculated below with phase_angle 0
     # ubar1 (outgoing incident angles) are calculated below with phase_angle = 0
@@ -1039,16 +1062,43 @@ def reflection_Toon(P, wl, dtau_tot,
     N_layer = len(P)
     N_level = N_layer + 1 # Number of levels (one more than the number of layers)
 
+    # In order to account for multiple clouds, we compute sums in this loop
+    kappa_cloud_w_cloud_sum = np.zeros_like(kappa_cloud)
+    kappa_cloud_g_cloud_sum = np.zeros_like(kappa_cloud)
+    kappa_cloud_w_cloud_g_cloud_sum = np.zeros_like(kappa_cloud)
+    g_cloud_tot_weighted = np.zeros_like(kappa_cloud)
+
+    for aerosol in range(len(kappa_cloud_seperate)):
+
+        # Creating the sum for w_tot 
+
+        # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
+        w_cloud[aerosol,:,0,zone_idx,:] = w_cloud[aerosol,:,0,zone_idx,:] * 0.99999
+
+        # kappa_mie_w_cloud sum used in numerator of w_tot and denominator of g_tot
+        kappa_cloud_w_cloud_sum[:,0,zone_idx,:] += kappa_cloud_seperate[aerosol,:,0,zone_idx,:] * w_cloud[aerosol,:,0,zone_idx,:]
+
+        # kappa_g_cloud sum used in the denominator of ftau_ray 
+        kappa_cloud_g_cloud_sum[:,0,zone_idx,:] += kappa_cloud_seperate[aerosol,:,0,zone_idx,:] * g_cloud[aerosol,:,0,zone_idx,:]
+
+        # kappa_cloud_w_cloud_g_cloud_sum used in numberator of g_tot 
+        kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:] += kappa_cloud_seperate[aerosol,:,0,zone_idx,:] * w_cloud[aerosol,:,0,zone_idx,:] * g_cloud[aerosol,:,0,zone_idx,:]
+
+        # Since this code asssumes g_cloud to be ranging from 0 to 1 and weighted in some way, this is how I did it... (kappa_cloud_aerosol/kappa_cloud_tot) 
+        # This replaced g_cloud in the og reflection function
+        g_cloud_tot_weighted[:,0,zone_idx,:] += (kappa_cloud_seperate[aerosol,:,0,zone_idx,:]/kappa_cloud[:,0,zone_idx,:]) * g_cloud[aerosol,:,0,zone_idx,:]
+
+    # If nan, just replace (this only happens when kappa_cloud is 0, and the division messes it up)
+    g_cloud_tot_weighted[np.isnan(g_cloud_tot_weighted)] = 0
+
     # From optics.py, compute_opacity 
     # We calculate the ftaus, tau, and delta_eddington corrections 
-
-    # In order to account for w_cloud = 1, which causes numerical errors, we take this as well
-    w_cloud[:,0,zone_idx,:] = w_cloud[:,0,zone_idx,:] * 0.99999
 
     # ftau_cld 
 
     # From emission_Toon we figured out that 
     # cosb = g_tot = ftau_cld * g_cloud 
+    # where ftau_cld = fractional scattering due to cloud 
     # however, the above is only valid in emission. In reflection, g_cloud remains g_cloud
     # but we can still use the above equation to figure out ftau_cld in POSEIDON terms 
     # in emission_Toon 
@@ -1056,28 +1106,38 @@ def reflection_Toon(P, wl, dtau_tot,
     # it follows that 
     # ftau_cld = ((w_cloud * kappa_cloud) / ((w_cloud * kappa_cloud) + kappa_Ray))
 
-    ftau_cld = ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud[:,0,zone_idx,:]
+    # With multiple clouds 
+    # g_tot = ((sum of w_cloud * kappa_cloud)/ (sum of (w_cloud * kappa_cloud)) + kappa_Ray) * g_cloud
+    # g_tot = (kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:])/(kappa_cloud_w_cloud_sum[:,0,zone_idx,:]+(0.99999 * kappa_Ray[:,0,zone_idx,:]))
+
+    # old 1 cloud species ftau_cloud 
+    # note, idk why it has the g_cloud in the equation when I derived above that it shouldn't 
+    # ftau_cld = ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) / ((w_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:]) + kappa_Ray[:,0,zone_idx,:])) * g_cloud[:,0,zone_idx,:]
+    # I took out the g in this new expression... 
+
+    #ftau_cld = (kappa_cloud_w_cloud_g_cloud_sum[:,0,zone_idx,:])/(kappa_cloud_w_cloud_sum[:,0,zone_idx,:]+(0.99999 * kappa_Ray[:,0,zone_idx,:]))
+    ftau_cld = (kappa_cloud_w_cloud_sum[:,0,zone_idx,:])/(kappa_cloud_w_cloud_sum[:,0,zone_idx,:]+(0.99999 * kappa_Ray[:,0,zone_idx,:]))
 
     # gcos2 
     # ftau_ray = TAURAY/(TAURAY + single_scattering_cld * TAUCLD)
     # GCOS2 = 0.5*ftau_ray #Hansen & Travis 1974 for Rayleigh scattering 
+    ftau_ray = kappa_Ray[:,0,zone_idx,:]/(kappa_Ray[:,0,zone_idx,:] + kappa_cloud_g_cloud_sum[:,0,zone_idx,:])
 
-    ftau_ray = kappa_Ray[:,0,zone_idx,:]/(kappa_Ray[:,0,zone_idx,:] + g_cloud[:,0,zone_idx,:] * kappa_cloud[:,0,zone_idx,:])
     gcos2 = 0.5*ftau_ray
 
     # w_tot is the same as it is in emission_Toon (weighted version)
-    w_tot = (0.99999 * kappa_Ray[:,0,zone_idx,:] + (kappa_cloud[:,0,zone_idx,:] * w_cloud[:,0,zone_idx,:]))/kappa_tot
+    w_tot = ((0.99999 * kappa_Ray[:,0,zone_idx,:]) + (kappa_cloud_w_cloud_sum[:,0,zone_idx,:]))/kappa_tot
      
     # Function expects 0 index to be top of atmosphere, so flip all the axis
     P = np.flipud(P)
     dtau_tot = np.flipud(dtau_tot)
     w_tot = np.flipud(w_tot)
-    g_cloud = np.flipud(g_cloud)  
+    g_cloud_tot_weighted = np.flipud(g_cloud_tot_weighted)  
     ftau_cld = np.flipud(ftau_cld) 
     ftau_ray = np.flipud(ftau_ray)
 
     # Remake g_cloud so that its always [:,0,zone_idx,:]
-    g_cloud = g_cloud[:,0,zone_idx,:]
+    g_cloud_tot_weighted = g_cloud_tot_weighted[:,0,zone_idx,:]
     
     # tau 
     # This sums up the taus starting at the top
@@ -1092,9 +1152,9 @@ def reflection_Toon(P, wl, dtau_tot,
     # Delta Eddington Correction
     # We take the default number of streams to be 2 
     stream = 2
-    f_deltaM = g_cloud**stream
+    f_deltaM = g_cloud_tot_weighted**stream
     w_dedd=w_tot*(1.-f_deltaM)/(1.0-w_tot*f_deltaM)
-    g_dedd=(g_cloud-f_deltaM)/(1.-f_deltaM)
+    g_dedd=(g_cloud_tot_weighted-f_deltaM)/(1.-f_deltaM)
     dtau_dedd=dtau_tot*(1.-w_tot*f_deltaM) 
 
     tau_dedd = np.zeros((N_layer+1, N_wl))
@@ -1122,9 +1182,7 @@ def reflection_Toon(P, wl, dtau_tot,
     f = np.sin(colatitude)                   # Define to eliminate repetition
     ubar0 = np.outer(np.cos(longitude-phase_angle) , f) #ng by nt 
     ubar1 = np.outer(np.cos(longitude), f) 
- 
-    #### No reflective surface (for now)
-    surf_reflect = np.zeros(N_wl)
+
  
     # FOPI is just an array of 1s (solar)
     F0PI = np.zeros(N_wl) + 1
@@ -1286,8 +1344,8 @@ def reflection_Toon(P, wl, dtau_tot,
             #g_forward (forward asymmetry), g_back (backward asym)
             #needed for everything except the OTHG
             # if single_phase!=1: 
-            g_forward = constant_forward*g_cloud
-            g_back = constant_back*g_cloud#-
+            g_forward = constant_forward*g_cloud_tot_weighted
+            g_back = constant_back*g_cloud_tot_weighted#-
             f = frac_a + frac_b*g_back**frac_c
 
             # NOTE ABOUT HG function: we are translating to the frame of the downward propagating beam

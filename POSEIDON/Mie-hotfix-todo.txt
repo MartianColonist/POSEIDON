@@ -5,20 +5,22 @@
 1. Make lognormal logwidth a free param option (test w/ SiO2 grid)                            - DONE
 2. Fix load aerosol grid to work with and without 1                                           - DONE
 3. Allow Mie_cloud_free() to be miepython instead of LX-MIE
-4. Either combine all precompute functions or have LX-Mie and miepython versions be seperate (with same functionalities and saving schemes)
-5. Test all functionalities 
+4. Have LX-Mie and miepython versions be seperate (with same functionalities and saving schemes)
+
 
 X. Fix all utility functions in clouds.py 
 X. Clean up core.py if-statements 
 - To clouds.py                                                                                 -DONE
 - To emission.py 
 X. Fix shared array error 
-X. Make aerosol_Mie_properties and precomputed_Mie_properties folders if they don't exist 
+X. Make aerosol_Mie_properties and precomputed_Mie_properties folders
+   if they don't exist in precompute functions
 X. Add to tutorial for multiple core production of precomputed properties
 X. Make new figures for website (of aerosol properties on opacity database)
 X. Update the txt file with new DOCDD links
 
-X. Add patchy 2D clouds
+X. Add patchy 2D clouds                                                                        - DONE
+X  Add overlapping clouds                                                                      - DONE
 X. Benchmark toon functions with picaso
 
 BENCHMARKING WITH IZZY
