@@ -2802,11 +2802,14 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
 
 
 ############################################################################################
-# Main DataBase Functions (use LX-MIE)
+# Main DataBase Functions that use LX-MIE to precompute aerosol properties
+# LX-MIE is built into POSEIDON, and therefore doesn't depend on an external package
+# However, it is much slower than miepython (below) and not parralalized 
+# However, we keep it here just in case a user wants to use it for benchmarking purposes
 ############################################################################################
 
 
-def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
+def precompute_cross_sections_one_aerosol_LXMIE(file_name, aerosol_name, saveall = False):
 
     '''
     Calculates .npy files from a refractive index txt file (lab data)
@@ -2823,6 +2826,9 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
 
     aerosol_name (txt):
         name that you want the npy file saved with
+
+    saveall (bool):
+        saves all auxiliary arrays to precomputed_Mie_properties directory 
     '''
 
     global all_etas, all_xs, all_Qexts, all_Qscats, all_Qbacks, all_gs
@@ -3069,28 +3075,49 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
 
         counter += 1
 
+    # Check and see if the Mie_properties directories exists or not 
+    if not os.path.exists(input_file_path + 'opacity/precomputed_Mie_properties/'):
+        os.makedirs(input_file_path + 'opacity/precomputed_Mie_properties/')
+        print(f"Directory '{input_file_path + 'opacity/precomputed_Mie_properties/'}' created.")
+
+    if not os.path.exists(input_file_path + 'opacity/aerosol_Mie_properties/'):
+        os.makedirs(input_file_path + 'opacity/aerosol_Mie_properties/')
+        print(f"Directory '{input_file_path + 'opacity/aerosol_Mie_properties/'}' created.")
+
     # Save each radiative property as a seperate numpy array for future 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name
-    np.save(title,ext_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,ext_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name
-    np.save(title,scat_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,scat_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name
-    np.save(title,abs_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,abs_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name
-    np.save(title,back_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,back_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name
-    np.save(title,w_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,w_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' + aerosol_name
-    np.save(title,g_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' +  aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,g_array,allow_pickle = True)
 
-    # Save all of them together as the jumpbo array
-    title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name
+    # Save all of them together as the jumbo array
     jumbo_array.append([ext_array,scat_array,abs_array,back_array,w_array,g_array])
+    if saveall == True:
+        title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+        np.save(title,jumbo_array,allow_pickle = True)
+
+    # Also save a copy in the folder that is used to generate the database 
+    # Do this always
+    title = input_file_path + "opacity/aerosol_Mie_properties/jumbo_Mie_" + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
     np.save(title,jumbo_array,allow_pickle = True)
 
     # Reset the cache arrays
@@ -3103,10 +3130,11 @@ def precompute_cross_sections_one_aerosol(file_name, aerosol_name):
     print('Remember to update aerosol_supported_species in supported_opac.py!')
 
 
-def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
+def precompute_cross_sections_one_aerosol_custom_LXMIE(file_name, aerosol_name,
                                                  r_m_std_dev = 0.5,
                                                  log_r_m_min = -3,
-                                                 log_r_m_max = 1,):
+                                                 log_r_m_max = 1,
+                                                 saveall = False):
 
     '''
     Calculates .npy files from a refractive index txt file (lab data)
@@ -3374,28 +3402,49 @@ def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
 
         counter += 1
 
+    # Check and see if the Mie_properties directories exists or not 
+    if not os.path.exists(input_file_path + 'opacity/precomputed_Mie_properties/'):
+        os.makedirs(input_file_path + 'opacity/precomputed_Mie_properties/')
+        print(f"Directory '{input_file_path + 'opacity/precomputed_Mie_properties/'}' created.")
+
+    if not os.path.exists(input_file_path + 'opacity/aerosol_Mie_properties/'):
+        os.makedirs(input_file_path + 'opacity/aerosol_Mie_properties/')
+        print(f"Directory '{input_file_path + 'opacity/aerosol_Mie_properties/'}' created.")
+
     # Save each radiative property as a seperate numpy array for future 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name
-    np.save(title,ext_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,ext_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name
-    np.save(title,scat_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_scat_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,scat_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name
-    np.save(title,abs_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_abs_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,abs_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name
-    np.save(title,back_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_back_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,back_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name
-    np.save(title,w_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_w_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,w_array,allow_pickle = True)
 
-    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' + aerosol_name
-    np.save(title,g_array,allow_pickle = True)
+    title = input_file_path + 'opacity/precomputed_Mie_properties/eff_g_Mie_' +  aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+    if saveall == True:
+        np.save(title,g_array,allow_pickle = True)
 
-    # Save all of them together as the jumpbo array
-    title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name
+    # Save all of them together as the jumbo array
     jumbo_array.append([ext_array,scat_array,abs_array,back_array,w_array,g_array])
+    if saveall == True:
+        title = input_file_path + 'opacity/precomputed_Mie_properties/jumbo_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
+        np.save(title,jumbo_array,allow_pickle = True)
+
+    # Also save a copy in the folder that is used to generate the database 
+    # Do this always
+    title = input_file_path + "opacity/aerosol_Mie_properties/jumbo_Mie_" + aerosol_name + '_lognormal_logwidth_' + str(r_m_std_dev)
     np.save(title,jumbo_array,allow_pickle = True)
 
     # Reset the cache arrays
@@ -3408,7 +3457,7 @@ def precompute_cross_sections_one_aerosol_custom(file_name, aerosol_name,
     print('Remember to update aerosol_supported_species in supported_opac.py!')
 
 
-def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indices_array, r_m):
+def precompute_cross_sections_from_indices_LXMIE(wl,real_indices_array,imaginary_indices_array, r_m):
 
     '''
     Calculates and returns the effective cross section from an input wl grid, real and imaginary indices array 
@@ -3443,7 +3492,8 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
 
     # Initialize the wl 
 
-    wavelengths = wl
+    # If you use the POSEIDON load indices function, the indices are already interpolated onto wl_Mie 
+    wavelengths = wl_grid_constant_R(wl[0], wl[-1], 1000)
     
     eta_array = real_indices_array + -1j * imaginary_indices_array
 
@@ -3545,8 +3595,10 @@ def precompute_cross_sections_from_indices(wl,real_indices_array,imaginary_indic
 
 
 ############################################################################################
-# Miepython functions 
+#  Main DataBase Functions that use Miepython to precompute aerosol properties
 # See https://miepython.readthedocs.io/en/latest/
+# Assumes Version 2.5.5
+# Unlike LX-MIE, is faster and can use multiple cores 
 ############################################################################################
 
 def compute_mie_properties(r_m, wl_Mie, eta_array, r_m_array,
@@ -3855,6 +3907,14 @@ def precompute_cross_sections_one_aerosol_miepython(file_name, aerosol_name,
     w_array = np.reshape(w_array, (len(r_m_array),5011))
     g_array = np.reshape(g_array, (len(r_m_array),5011))
 
+    # Check and see if the Mie_properties directories exists or not 
+    if not os.path.exists(input_file_path + 'opacity/precomputed_Mie_properties/'):
+        os.makedirs(input_file_path + 'opacity/precomputed_Mie_properties/')
+        print(f"Directory '{input_file_path + 'opacity/precomputed_Mie_properties/'}' created.")
+
+    if not os.path.exists(input_file_path + 'opacity/aerosol_Mie_properties/'):
+        os.makedirs(input_file_path + 'opacity/aerosol_Mie_properties/')
+        print(f"Directory '{input_file_path + 'opacity/aerosol_Mie_properties/'}' created.")
 
     # Save each radiative property as a seperate numpy array for future 
     title = input_file_path + 'opacity/precomputed_Mie_properties/eff_ext_Mie_' + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
@@ -3892,6 +3952,144 @@ def precompute_cross_sections_one_aerosol_miepython(file_name, aerosol_name,
     title = input_file_path + "opacity/aerosol_Mie_properties/jumbo_Mie_" + aerosol_name + '_lognormal_logwidth_' + str(log_r_m_std_dev)
     np.save(title,jumbo_array,allow_pickle = True)
 
+
+def precompute_cross_sections_from_indices_miepython(wl,real_indices_array,imaginary_indices_array, r_m):
+
+    '''
+    Calculates and returns the effective cross section from an input wl grid, real and imaginary indices array 
+    And the particle size in um 
+
+    Allows the user to directly quirey the miepython algorithm with their refractive index data 
+    Before running the full precompute cross sections one aerosol function
+
+    INPUTS 
+
+    wl (np.array of float):
+        Model wavelength grid (μm).
+
+    real_indices_array (np.array of float):
+        Real indices 
+    
+    imaginary_indices_array (np.array of float):
+        Imaginary indices 
+
+    r_m  (float) : 
+        Mean particle size (in um)
+    '''
+
+    # For detailed comments, see precompute_cross_sections_one_aerosol()
+
+    # Constants that for the Qext Claculation
+    r_m_std_dev = 0.5
+    z_max = 5
+    num_integral_points = 100
+
+    # Initialize the wl 
+
+    # If you use the POSEIDON load indices function, the indices are already interpolated onto wl_Mie 
+    wavelengths = wl_grid_constant_R(wl[0], wl[-1], 1000)
+    
+    eta_array = real_indices_array + -1j * imaginary_indices_array
+
+    #########################
+    # Caculate the effective cross section of the particles (as a function of wavelength)
+    #########################
+
+    z = -np.logspace(np.log10(0.1), np.log10(z_max), int(num_integral_points/2)) 
+    z = np.append(z[::-1], -z)
+
+    probs = np.exp(-z**2/2) * (1/np.sqrt(2*np.pi))
+    radii = r_m * np.exp(z * r_m_std_dev) # This takes the place of rm * exp(sigma z)
+    geometric_cross_sections = np.pi * (radii*1e-6)**2 # Needs to be in um since its geometric
+
+    Qext_intpl_array = []
+    Qscat_intpl_array = []
+    Qback_intpl_array = []
+    w_intpl_array = []
+    g_intpl_array = []
+
+    # Reset the saved arrays 
+    all_etas = []
+    all_xs = []
+    all_Qexts = []
+    all_Qscats = []
+    all_Qbacks = []
+    all_gs = []
+
+    # Loop through each wavelength 
+    for m in range(len(wavelengths)):
+        
+        # Take the dense xs, but keep wavelength constant this time around
+        dense_xs = 2*np.pi*radii / wavelengths[m]
+        dense_xs = dense_xs.flatten()
+
+        # Make xs more coarse
+        x_hist = np.histogram(dense_xs, bins='auto')[1]
+
+        # Pull the refractive index for the wavelength we are on 
+        eta = eta_array[m]
+
+        # Get the coarse Qext with the constant eta 
+        Qext_hist, Qscat_hist, Qback_hist, g_hist = miepython.mie(eta, x_hist) 
+
+        # Revert from coarse Qext back to dense Qext (/ coarse back to dense for everything)
+        spl = scipy.interpolate.splrep(x_hist, Qext_hist)
+        Qext_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+        spl = scipy.interpolate.splrep(x_hist, Qscat_hist)
+        Qscat_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+        spl = scipy.interpolate.splrep(x_hist, Qback_hist)
+        Qback_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+        spl = scipy.interpolate.splrep(x_hist, g_hist)
+        g_intpl = scipy.interpolate.splev(dense_xs, spl)
+
+        # Append it to the array that will have all the Qext
+        Qext_intpl_array.append(Qext_intpl)
+        Qscat_intpl_array.append(Qscat_intpl)
+        Qback_intpl_array.append(Qback_intpl)
+        g_intpl_array.append(g_intpl)
+
+    # Reshape the mega array so that the first index is wavelngth, second is radius 
+    Qext_intpl = np.reshape(Qext_intpl_array, (len(wavelengths), len(radii)))
+    Qscat_intpl = np.reshape(Qscat_intpl_array, (len(wavelengths), len(radii)))
+    Qback_intpl = np.reshape(Qback_intpl_array, (len(wavelengths), len(radii)))
+    g_intpl = np.reshape(g_intpl_array, (len(wavelengths), len(radii)))
+
+    # Effective Cross section is a trapezoidal integral
+    eff_ext_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+
+    # Scattering Cross section 
+    eff_scat_cross_section = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+
+    # Absorption Cross section
+    eff_abs_cross_section = eff_ext_cross_section - eff_scat_cross_section
+
+    # BackScatter Cross section 
+    eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+
+    # Effective w and g
+    # Fixed thanks to Thomas Kennedy 
+    eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+
+    eff_g = eff_g_cross_section_weighted / eff_scat_cross_section
+
+    eff_w = eff_scat_cross_section / eff_ext_cross_section
+
+    all_etas = []
+    all_xs = []
+    all_Qexts = []
+    all_Qscats = []
+    all_Qbacks = []
+    all_gs = []
+
+    return eff_ext_cross_section, eff_scat_cross_section, eff_abs_cross_section, eff_back_cross_section, eff_w, eff_g
+
+
+############################################################################################
+# Generates database from jumbo.npy files (precomputed aerosol properties)
+############################################################################################
 
 def make_aerosol_database():
 
