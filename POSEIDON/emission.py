@@ -883,7 +883,7 @@ def numba_cumsum(mat):
         new_mat[:,i] = np.cumsum(mat[:,i])
     return new_mat
 
-#@jit(nopython=True, cache=True)
+@jit(nopython=True, cache=True)
 def reflection_Toon(P, wl, dtau_tot,
                     kappa_Ray, kappa_cloud, kappa_tot,
                     w_cloud, g_cloud, zone_idx,
@@ -1089,7 +1089,8 @@ def reflection_Toon(P, wl, dtau_tot,
         g_cloud_tot_weighted[:,0,zone_idx,:] += (kappa_cloud_seperate[aerosol,:,0,zone_idx,:]/kappa_cloud[:,0,zone_idx,:]) * g_cloud[aerosol,:,0,zone_idx,:]
 
     # If nan, just replace (this only happens when kappa_cloud is 0, and the division messes it up)
-    g_cloud_tot_weighted[np.isnan(g_cloud_tot_weighted)] = 0
+    #g_cloud_tot_weighted[np.isnan(g_cloud_tot_weighted)] = 0
+    np.nan_to_num(g_cloud_tot_weighted,copy = False, nan = 0.0)
 
     # From optics.py, compute_opacity 
     # We calculate the ftaus, tau, and delta_eddington corrections 

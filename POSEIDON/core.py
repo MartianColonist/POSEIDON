@@ -1405,9 +1405,20 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # If we read in an eddysed file (from PICASO or VIRGA) that
             # contains the single scattering albedo, asymmetry parameter, or kappa_cloud
             if model['cloud_model'] == 'eddysed':
-                w_cloud = w_cloud_eddysed
-                g_cloud = g_cloud_eddysed
-                kappa_cloud = kappa_cloud_eddysed
+
+                # Shenanigans so that the eddysed/picaso arrays work with whats already in POSEIDON
+                w_cloud_array = []
+                g_cloud_array = []
+                kappa_cloud_seperate = []
+
+                w_cloud_array.append(w_cloud_eddysed)
+                g_cloud_array.append(g_cloud_eddysed)
+                kappa_cloud_seperate.append(kappa_cloud_eddysed)
+
+                w_cloud = np.array(w_cloud_array)
+                g_cloud = np.array(g_cloud_array)
+                kappa_cloud = np.array(kappa_cloud_eddysed)
+                kappa_cloud_seperate = np.array(kappa_cloud_seperate)
             
             # Else, we need w and g from the precomputed aerosol database
             # We loop over each aerosol species and reshape the w and g arrays to have the same 
@@ -1434,8 +1445,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
                 else:
                     # Just a list of 0s
-                    w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud).tolist())
-                    g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud).tolist())
+                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
                 
                 # Turn into an array so numba in toon functions is happy with indexing 
                 w_cloud = np.array(w_cloud_array)
