@@ -30,7 +30,7 @@ from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, 
                      open_pymsg_grid
 from .supported_chemicals import supported_species, supported_cia, inactive_species, \
                                  fastchem_supported_species, aerosol_supported_species, \
-                                 aerosols_lognormal_logwidth_free
+                                 aerosols_lognormal_logwidth_free, aerosol_directional_supported_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
@@ -570,8 +570,9 @@ def define_model(model_name, bulk_species, param_species,
         raise Exception("A chemical species you selected is not supported.\n")
     
     # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
-    if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True) and aerosol_species != ['free'] and aerosol_species != ['file_read']:
-        raise Exception('Please input supported aerosols (check supported_chemicals.py) or aerosol = [\'free\'] or [\'file_read\'].')
+    if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True)  and (np.any(~np.isin(aerosol_species, aerosol_directional_supported_species)) == True) :
+        if aerosol_species != ['free'] and aerosol_species != ['file_read']:
+            raise Exception('Please input supported aerosols (check supported_chemicals.py) or aerosol = [\'free\'] or [\'file_read\'].')
     
     if (lognormal_logwidth_free == True) and (np.any(~np.isin(aerosol_species, aerosols_lognormal_logwidth_free)) == True):
         raise Exception('Please input supported aerosols for lognormal_logwidth free.')
@@ -622,15 +623,19 @@ def define_model(model_name, bulk_species, param_species,
     
     # If cloud_model = Mie, load in the cross section grid
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
-        # Normal grid load in (assumes log_r_m_std_dev = 0.5)
-        if lognormal_logwidth_free == False:
-            aerosol_grid = load_aerosol_grid(aerosol_species)
-
-        # Grid with an extra dimension for log_r_m_std_dev
+        # If its a directional aerosol
+        if 'uniaxial' in cloud_type or 'biaxial' in cloud_type:
+            aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol_directional')
         else:
-            grid_name = aerosol_species[0] + '_free_logwidth'
-            aerosol_grid = load_aerosol_grid(aerosol_species, grid = grid_name,
-                                             lognormal_logwith_free = True)
+            # Normal grid load in (assumes log_r_m_std_dev = 0.5)
+            if lognormal_logwidth_free == False:
+                aerosol_grid = load_aerosol_grid(aerosol_species)
+
+            # Grid with an extra dimension for log_r_m_std_dev
+            else:
+                grid_name = aerosol_species[0] + '_free_logwidth'
+                aerosol_grid = load_aerosol_grid(aerosol_species, grid = grid_name,
+                                                lognormal_logwith_free = True)
     else:
         aerosol_grid = None
         

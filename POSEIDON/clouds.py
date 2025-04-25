@@ -1329,7 +1329,9 @@ def assign_Mie_model_assumptions(model, aerosol_species,
                                             log_r_m_std_dev=log_r_m_std_dev)
 
     # If its a slab
-    elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
+    elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab' or
+            model['cloud_type'] == 'uniaxial_slab' or model['cloud_type'] == 'uniaxial_random_slab' or
+            model['cloud_type'] == 'biaxial_slab' or model['cloud_type'] == 'biaxial_random_slab'):
 
         if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
             n_aerosol, sigma_ext_cloud, \
@@ -1470,7 +1472,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
         print("Reading in database for aerosol cross sections...")
 
     # Check that the selected aerosol grid is supported
-    if (grid not in ['aerosol','SiO2_free_logwidth']):
+    if (grid not in ['aerosol','SiO2_free_logwidth','aerosol_directional']):
         raise Exception("Error: unsupported aerosol grid")
 
     # Find the directory where the user downloaded the input grid
@@ -1928,6 +1930,26 @@ def Mie_cloud(P,wl,r, H, n,
                 
             n_aerosol = np.zeros_like(r)
             n_aerosol = (n)*np.float_power(10,log_X_Mie[q])
+            n_aerosol_array.append(n_aerosol)
+
+        elif (cloud_type == 'one_slab'):
+            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+            n_aerosol = np.zeros_like(r)
+            P_cloud_index_top = find_nearest(P,P_cloud)
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+
+            n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
+            n_aerosol_array.append(n_aerosol)
+
+        # Uniaxial or Biaxial Slabs
+        elif (cloud_type == 'unaxial_slab' or 'uniaxial_random_slab' or 'biaxial_slab' or 'biaxial_random_slab'):
+            # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
+            n_aerosol = np.zeros_like(r)
+
+            P_cloud_index_top = find_nearest(P,P_cloud)
+            P_cloud_index_bttm = find_nearest(P,P_cloud_bottom)
+
+            n_aerosol[P_cloud_index_bttm:P_cloud_index_top] = (n[P_cloud_index_bttm:P_cloud_index_top])*np.float_power(10,log_X_Mie[q])
             n_aerosol_array.append(n_aerosol)
 
         # Uniform X Model 
