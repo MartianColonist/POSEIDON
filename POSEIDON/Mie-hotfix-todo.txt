@@ -9,6 +9,7 @@
 
 
 X. Fix all utility functions in clouds.py 
+- Rerun all notebooks with scattering and reflection and clouds
 X. Clean up core.py if-statements 
 - To clouds.py                                                                                 -DONE
 - To emission.py 
@@ -16,27 +17,15 @@ X. Fix shared array error
 X. Make aerosol_Mie_properties and precomputed_Mie_properties folders                          -DONE
    if they don't exist in precompute functions
 X. Add to tutorial for multiple core production of precomputed properties
-X. Make new figures for website (of aerosol properties on opacity database)
+X. Make new figures for website (of aerosol properties on opacity database)                    -DONE
 X. Update the txt file with new DOCDD links
 
 X. Add patchy 2D clouds                                                                        - DONE
 X  Add overlapping clouds                                                                      - DONE
 X. Benchmark toon functions with picaso
 
-BENCHMARKING WITH IZZY
-1. Clear atmosphere, thermal emission and reflection 
-2. MgSiO3 cloud, thermal emission and reflection 
-3. Overlapping clouds (Fe and MgSiO3)
+X. Fix contributions.py 
+X. Import Ryan C's changes to toon functions that save memory 
+X. Make sure 2D patchy clouds work with single stream emission and transmission
 
-3/31
-Updated clouds.py with new miepython precomputation algorithm, make-database, load-database, and interpolate-database
-Integrated free log_r_m_std_dev into Mie_cloud and found it works with compute_spectrum 
--> Unfortunately, had to name the parameter log_rm_std_dev
--> Not sure if it works with multiple aerosols. 
--> Need to make a realistic grid range, and test error messages. 
-Started to remake Normal aerosol database on Hal 
-Got the directional and diamond indices renamed.
--> Will need to make sure they're edited for the algorithm. 
-
-4/21
-Clean up core.py Mie statements and moved them to clouds.py
+X. Go ahead and add directionality cloud models
