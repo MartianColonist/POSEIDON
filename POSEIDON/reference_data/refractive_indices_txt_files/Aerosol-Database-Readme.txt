@@ -139,6 +139,10 @@ This is a great resource as it compiles refractive indices of many relevant astr
 
 https://www.astro.uni-jena.de/Laboratory/OCDB/index.html
 
+Note that in early 2025 the website was moved: 
+
+https://www2.astro.uni-jena.de/Laboratory/OCDB/index.html
+
 ---------------------------------
 The Cosmic Ice Laboratory
 
@@ -349,7 +353,7 @@ Paper Info :
 Measured the optical constants via IR reflectance of crystalline, natural Hibonite crystals from Evisa and Antsirabe Madagascar. The refractive indices of the txt file are made up of the extraordinary refractive indices of the Antsirabe crystals. 
 
 Also on DOCCD (Hibonite E||c)
-https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -416,7 +420,7 @@ Paper Info :
 Amorphous alumina was produced using the sol-gel technique. It was found that amorphous alumina transforms to gamma-crystalline (cubic) around 723-873K, and alpha-crystalline (hexagonal) above 1273K. Paper has both compact and porous Al2O3 in Table 1. The porous indices were used since they go up to 500 um.
 
 Also found in DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
 --------------
 Koike (1995) (0.12-12 um)
 
@@ -458,7 +462,7 @@ Paper Info :
 Pseudocubic natural perovskite crystals for reflectance measurements. Measured two faces to check for anisotropy (Figure 9), but probably took an average of the two faces to get the refractive indices. 
 
 Also on DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -492,7 +496,7 @@ Paper Info :
 Same reference used in WS15 entry.
 
 Also on DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 Ueda (1998) (0.02-2 um)
 
@@ -538,7 +542,7 @@ Paper Info :
 Measured transmittance spectra of natural anatase for both the extraordinary and ordinary directions. KH18 took a weighted average of these directions (2/3-1/3).
 
 Also on DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 Posch (2003) (10-6e3 um)
 
@@ -551,7 +555,7 @@ Measured reflectance spectra of natural crystals that were un-annealed from Diam
 In this paper, they also measured a partially annealed anatase from Hardangervidda Norway to demonstrate how annealed anatase starts to show features of rutile. Notes that anatase is a uniaxial, optically negative crystal (resulting in an oblate spheroid crystal).
 
 Also on DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 Siefke (2016) (0.1-125 um)
 
@@ -611,7 +615,7 @@ The indices for the rutile txt file are a mesh-mash of both references listed ab
 This text file is specifically composted of the ordinary direction (E⟂c or E||a,b).
 
 Also on DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -884,7 +888,7 @@ Reflection measurements were made of FeS embedded into an epoxy resin and polish
 This paper is unclear on whether it is amorphous or crystalline, but Figure 1b has a lot of fine structure, which leads me to believe that it is crystalline. 
 
 Also on DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/sulfides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/sulfides.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -918,7 +922,7 @@ Refractive Index References:
 Unpublished, created by Amaury H.M.J. Triaud 
 
 Found on DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html
 
 The website only includes the ordinary ray (E||a,b), which matches the txt file.
 
@@ -982,7 +986,7 @@ Paper is specifically looking at crystalline olivines. Looked at the reflection 
 Hard to compare txt file directly with indices on DOCCD since KH18 average based on direction (each direction gets a 1/3 weighting). 
 
 Found on DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1082,7 +1086,7 @@ Paper Info :
 Explored many different olivine and pyroxenes. Reflectance and ellipsometric measurements measurements on polished surfaces, transmittance measurements of thin slabs. Glasses were made by quenching a melt. Their glasses required microscopic homogeneity, and any samples showing crystallization (specifically, iron-rich members of olivine) were thrown out. Preparation of samples is more detailed in paper 1 (Jager 1994, https://ui.adsabs.harvard.edu/abs/1994A%26A...292..641J/abstract). 
 
 Found on DOCCD [under, Mg(0.8)Fe(1.2)SiO4]
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1125,7 +1129,7 @@ The paper compares Fe-poor natural olivine from San Carlos to Fe-rich natural ol
 The San Carlos indices were made temperature dependent in Zeidler 2015 and updated on the website. Comparing the txt file from WS15 to the datasets on the website, it looks like E||c/x at room temperature matches the most. 
 
 Also on DOCCD [See San Carlos Olivine in the VIS-NIR and San-Carlos at 300K E||c/x]
-https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1244,7 +1248,7 @@ Presents optical constants of pure, amorphous Mg-silicates. Used sol-gel, a chem
 Figure 5 shows a comparison of sol-gel and thin-films from Scott and Duley (1996), which was used to make amorphous Mg2SiO4 from B21. Also shows in Figure 9 what assuming an iron core to the sol-gel does to spectra.
 
 Also in DOCCD (Mg(2)SiO(4) matches txt file, in wavenumber on website)
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1332,7 +1336,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 y = 0.5 entry in Table 5
 
 Found on DOCCD [MgFeSiO[4] [3.71 g/ccm]]
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1372,7 +1376,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 y = 0.4 entry in Table 5
 
 Found on DOCCD [Mg(0.8)Fe(1.2)SiO4]
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1424,7 +1428,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 x = 1 entry in Table 4
 
 Found on DOCCD [MgSiO(3) [2/71 g/ccm]]
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1542,7 +1546,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 x = 1 entry in Table 4
 
 Found on DOCCD [MgSiO(3) [2/71 g/ccm]]
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1582,7 +1586,7 @@ Paper Info :
 Presents optical constants of pure, amorphous Mg-silicates. Used sol-gel, a chemical technique based on the condensation of Mg- and Si-hydroxides in a liquid phase (crystallize at lower temperatures for some reason). They use sol gel, remove Mg-Si particles, and then densify them to remove porosity. Amorphousness is determined via Xray. For an explanation, see section 2 of this paper.
 
 Also in DOCCD (MgSiO(3) matches txt file, in wavenumber on website)
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1633,7 +1637,7 @@ Also because it was natural they found the enstatite experienced weathering whic
 Refractive indices for all three directions (figures 4A-C).
 
 Also on DOCCD (first entry, Enstatite (natural))
-https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1676,7 +1680,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 x = 0.4 entry in Table 5
 
 Found on DOCCD [Mg(0.4)Fe(0.6)SIO(3)]
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1716,7 +1720,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 x = 0.5 entry in Table 5
 
 Found on DOCCD [Mg(0.5)Fe(0.5)SIO(3) [3.2  g/ccm])]
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1756,7 +1760,7 @@ Explored many different olivine and pyroxenes. Reflectance and ellipsometric mea
 x = 0.8 entry in Table 4
 
 Found on DOCCD [Mg(0.8)Fe(0.2)SIO(3)]
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -1802,7 +1806,7 @@ The natural crystal is a dark red, octahedral crystal from Burma. Through EDX, f
 Reflectance, mid-infrared spectra of all samples. Natural spinel was annealed at 1223K for one hour in order to induce a phase transition from ordered to disordered spinel. 
 
 Also on DOCCD
-https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html
 --------------
 
 Exoplanet/Brown Dwarf Papers:
@@ -2007,7 +2011,7 @@ Explore the temperature and directional dependence of quartz's spectral properti
 The indices found from 6.66 um to 1000 um matches the indices found for the 928K beta quartz, extraordinary ray.
 
 Also on DOCCD (SiO2 at 928, Extraordinary, E||c)
-https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html
 --------------
 
 Note on wavelength coverage: 
@@ -2108,7 +2112,7 @@ Amorphous SiO2 sample for reflection is a commercial quartz glass window (Supras
 For transmission, commercially available powder of amorphous powder consisting of mono-sized spherical particles of 500 nm diameter (“Monosphere powder” M 500, MERCK, Darmstadt). 
 
 On DOCCD (Amorphous SiO2 (Low-T data), SiO2 (300K))
-https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
+https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html
 --------------
 Philipp in Palik (1985) (Volume 1, Section 34)
 

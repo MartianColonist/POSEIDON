@@ -1510,6 +1510,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         if (device == 'gpu'):
             raise Exception("GPU transmission spectra not yet supported.")
+        
+        if (cloud_dim == 2) and (len(aerosol_species) > 1):
+            raise Exception('Patchy clouds for models with two aerosol species only available for thermal scattering and reflection models.')
 
         # Call the core TRIDENT routine to compute the transmission spectrum
         spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray), 
@@ -1617,6 +1620,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         # Without scattering, compute single steam radiative transfer
         if (scattering == False):
+
+            # 2D clouds are not available for single stream emission, only thermal scattering
+            if (cloud_dim == 2):
+                raise Exception('Patchy clouds not available for single-stream emission. Set scattering=True in define_model() or reach out to developers.')
 
             # Compute planet flux (on CPU or GPU)
             if (device == 'cpu'):
