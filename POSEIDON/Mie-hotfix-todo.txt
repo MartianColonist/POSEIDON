@@ -29,10 +29,15 @@ X  Add overlapping clouds                                                       
 X. Benchmark toon functions with picaso
 
 X. Fix contributions.py 
+- Add error messages so users don't try patchy clouds                                          - DONE
+- Fix so spectral and pressure work with overlapping clouds (and total clouds = True)
+  Pray to the dark gods that this is the only thing I need to do lol 
 X. Import Ryan C's changes to toon functions that save memory 
 X. Make sure 2D patchy clouds work with single stream emission and transmission                - Added an error if a user tries to use patchy clouds in emission, and also 2D patchy clouds in transmission.
 
 X. Go ahead and add directionality cloud models                                                - DONE
+
+X. Add diamond database
 
 Website Fixes
 - Upload new pngs 

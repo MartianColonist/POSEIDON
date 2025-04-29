@@ -590,6 +590,11 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     elif (('emission' in spectrum_type) and 
          ((PT_dim or X_dim or cloud_dim) == 3)):
         raise Exception("Only 1D or 2D emission spectra currently supported.")
+    
+
+    if (cloud_dim >= 2):
+        raise Exception('Cannot do contribution functions for patchy cloud models.')
+
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
@@ -2009,6 +2014,9 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     elif (('emission' in spectrum_type) and 
          ((PT_dim or X_dim or cloud_dim) == 3)):
         raise Exception("Only 1D or 2D emission spectra currently supported.")
+    
+    if (cloud_dim >= 2):
+        raise Exception('Cannot do contribution functions for patchy cloud models.')
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
