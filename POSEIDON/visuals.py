@@ -2645,8 +2645,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             #print('in two datasets')     
 
             # Unpack offset data properties
-            offset_start_list = ['offset_1_start', 'offset_2_start', 'offset_3_start']
-            offset_end_list = ['offset_1_end', 'offset_2_end', 'offset_3_end']
+            if (offset_datasets == 'two_datasets'):
+                offset_start_list = ['offset_1_start', 'offset_2_start']
+                offset_end_list = ['offset_1_end', 'offset_2_end']
+            elif (offset_datasets == 'three_datasets'):
+                offset_start_list = ['offset_1_start', 'offset_2_start', 'offset_3_start']
+                offset_end_list = ['offset_1_end', 'offset_2_end', 'offset_3_end']
 
             offset_start_end = []
 
