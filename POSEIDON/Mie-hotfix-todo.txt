@@ -8,14 +8,9 @@
 4. Have LX-Mie and miepython versions be seperate (with same functionalities and saving schemes) - DONE
 
 
-X. Fix all utility functions in clouds.py 
-- Rerun all notebooks with scattering and reflection and clouds
-
 X. Clean up core.py if-statements 
 - To clouds.py                                                                                 -DONE
 - To emission.py                                                                               - Just clean this up for surfaces
-
-X. Fix shared array error 
 
 X. Make aerosol_Mie_properties and precomputed_Mie_properties folders                          -DONE
    if they don't exist in precompute functions
@@ -26,20 +21,29 @@ X. Update the txt file with new DOCDD links                                     
 X. Add patchy 2D clouds                                                                        - DONE
 X  Add overlapping clouds                                                                      - DONE
 
-X. Benchmark toon functions with picaso
-
 X. Fix contributions.py 
 - Add error messages so users don't try patchy clouds                                          - DONE
-- Fix so spectral and pressure work with overlapping clouds (and total clouds = True)
+- Fix so spectral and pressure work with overlapping clouds (and total clouds = True)          - DONE
   Pray to the dark gods that this is the only thing I need to do lol 
-X. Import Ryan C's changes to toon functions that save memory 
-X. Make sure 2D patchy clouds work with single stream emission and transmission                - Added an error if a user tries to use patchy clouds in emission, and also 2D patchy clouds in transmission.
+- Did a quick fix for toon functions to work, and added error message that won't Allow         - DONE? Attached a warning message for scattering and reflection with my email on it lol
+  contributions for reflection/scattering when len aerosols >= 2
+X. Make sure 2D patchy clouds work with single stream emission and transmission                - Added an error if a user tries to use patchy clouds in ss emission, and also 2D patchy clouds in transmission.
 
 X. Go ahead and add directionality cloud models                                                - DONE
 
+============================
+To DOs left 
+
+X. Fix all utility functions in clouds.py 
+- Rerun all notebooks with scattering and reflection and clouds
+
+X. Benchmark toon functions with picaso                                                        - Working on this now 
+X. Import Ryan C's changes to toon functions that save memory 
 X. Add diamond database
+X. Fix shared array error 
 
 Website Fixes
 - Upload new pngs 
 - Make extra page for diamonds and directional aerosol tabulations 
 - Fix links in opacity for new DOCCD (just change www to www2)
+- Google drive with everything. Update notebooks and zenodo 
