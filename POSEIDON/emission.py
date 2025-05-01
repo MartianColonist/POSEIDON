@@ -465,7 +465,7 @@ def tri_diag_solve(l, a, b, c, d):
         Solution, x 
     '''
 
-    AS, DS, CS, DS,XK = np.zeros(l), np.zeros(l), np.zeros(l), np.zeros(l), np.zeros(l) # copy arrays
+    AS, DS, XK = np.zeros(l), np.zeros(l), np.zeros(l) # copy arrays
 
     AS[-1] = a[-1]/b[-1]
     DS[-1] = d[-1]/b[-1]
@@ -1197,7 +1197,8 @@ def reflection_Toon(P, wl, dtau_tot,
     xint_at_top = np.zeros((Gauss_quad, numt, N_wl))
     #intensity = zeros((numg, numt, nlevel, nwno))
 
-    flux_out = np.zeros((Gauss_quad, numt, 2*N_level, N_wl))
+    # Ryan C.: this seems to store values that are never used? Commenting out
+    #flux_out = np.zeros((Gauss_quad, numt, 2*N_level, N_wl))
 
     #now define terms of Toon et al 1989 quadrature Table 1 
     #https://agupubs.onlinelibrary.wiley.com/doi/pdf/10.1029/JD094iD13p16287
@@ -1210,7 +1211,7 @@ def reflection_Toon(P, wl, dtau_tot,
 
     sq3 = np.sqrt(3.)
     if toon_coefficients == 1:#eddington
-        g1  = (7-w_dedd*(4+3*ftau_cld*g_dedd))/4 #(sq3*0.5)*(2. - w0*(1.+cosb)) #table 1 # 
+        g1  =  (7-w_dedd*(4+3*ftau_cld*g_dedd))/4 #(sq3*0.5)*(2. - w0*(1.+cosb)) #table 1 # 
         g2  = -(1-w_dedd*(4-3*ftau_cld*g_dedd))/4 #(sq3*w0*0.5)*(1.-cosb)        #table 1 # 
 
     # DEFAULT
@@ -1232,12 +1233,14 @@ def reflection_Toon(P, wl, dtau_tot,
                 g3  = 0.5*(1.-sq3*ftau_cld*g_dedd*u0) #  #table 1 #ubar has dimensions [gauss angles by tchebyshev angles ]
     
             # now calculate c_plus and c_minus (equation 23 and 24 toon)
-            g4 = 1.0 - g3
-            denominator = lamda**2 - 1.0/u0**2.0
+            #g4 = 1.0 - g3
 
             #everything but the exponential 
-            a_minus = F0PI*w_dedd* (g4*(g1 + 1.0/u0) +g2*g3 ) / denominator
-            a_plus  = F0PI*w_dedd*(g3*(g1-1.0/u0) +g2*g4) / denominator
+            # Replace g4 with 1.0 - g3 to save memory 
+            a_minus = F0PI*w_dedd* ((1.0-g3)*(g1 + 1.0/u0) +g2*g3 ) / \
+                (lamda**2 - 1.0/u0**2.0)
+            a_plus  = F0PI*w_dedd*(g3*(g1-1.0/u0) +g2*(1.0-g3)) / \
+                (lamda**2 - 1.0/u0**2.0)
 
             #add in exponential to get full eqn
             #_up is the terms evaluated at lower optical depths (higher altitudes)
@@ -1254,8 +1257,8 @@ def reflection_Toon(P, wl, dtau_tot,
             #save from overflow 
             exptrm = slice_gt(exptrm, 35.0) 
 
-            exptrm_positive =np.exp(exptrm) #EP
-            exptrm_minus = 1.0/exptrm_positive#EM
+            exptrm_positive = np.exp(exptrm) #EP
+            exptrm_minus    = 1.0/exptrm_positive#EM
 
 
             #boundary conditions 
@@ -1267,7 +1270,7 @@ def reflection_Toon(P, wl, dtau_tot,
             if tridiagonal==0:
                 A, B, C, D = setup_tri_diag(N_layer,N_wl, c_plus_up, c_minus_up, 
                                     c_plus_down, c_minus_down, b_top, b_surface, surf_reflect,
-                                     gama, dtau_dedd, 
+                                    gama, dtau_dedd, 
                                     exptrm_positive,  exptrm_minus) 
 
             #else:
@@ -1297,20 +1300,27 @@ def reflection_Toon(P, wl, dtau_tot,
 
             #========================= End loop over wavelength =========================
 
+            # Ryan C.: Don't think any of these flux arrays are used
             #use expression for bottom flux to get the flux_plus and flux_minus at last
             #bottom layer
-            flux_zero  = positive[-1,:]*exptrm_positive[-1,:] + gama[-1,:]*negative[-1,:]*exptrm_minus[-1,:] + c_plus_down[-1,:]
-            flux_minus  = gama*positive*exptrm_positive + negative*exptrm_minus + c_minus_down
-            flux_plus  = positive*exptrm_positive + gama*negative*exptrm_minus + c_plus_down
-            flux = np.zeros((2*N_level, N_wl))
-            flux[0,:] = (gama*positive + negative + a_minus)[0,:]
-            flux[1,:] = (positive + gama*negative + a_plus)[0,:]
-            flux[2::2, :] = flux_minus
-            flux[3::2, :] = flux_plus
-            flux_out[ng,nt,:,:] = flux
+            #flux_zero  = positive[-1,:]*exptrm_positive[-1,:] + gama[-1,:]*negative[-1,:]*exptrm_minus[-1,:] + c_plus_down[-1,:]
+            #flux_minus  = gama*positive*exptrm_positive + negative*exptrm_minus + c_minus_down
+            #flux_plus  = positive*exptrm_positive + gama*negative*exptrm_minus + c_plus_down
+            #flux = np.zeros((2*N_level, N_wl))
+            #flux[0,:] = (gama*positive + negative + a_minus)[0,:]
+            #flux[1,:] = (positive + gama*negative + a_plus)[0,:]
+            
+            # flux_minus
+            #flux[2::2, :] = gama*positive*exptrm_positive + negative*exptrm_minus + c_minus_down
+
+            # flux_plus
+            #flux[3::2, :] = positive*exptrm_positive + gama*negative*exptrm_minus + c_plus_down
+            #flux_out[ng,nt,:,:] = flux
 
             xint = np.zeros((N_level,N_wl))
-            xint[-1,:] = flux_zero/np.pi
+
+            # flux_zero
+            xint[-1,:] = (positive[-1,:]*exptrm_positive[-1,:] + gama[-1,:]*negative[-1,:]*exptrm_minus[-1,:] + c_plus_down[-1,:]) / np.pi
 
             ################################ BEGIN OPTIONS FOR MULTIPLE SCATTERING####################
 
@@ -1332,22 +1342,22 @@ def reflection_Toon(P, wl, dtau_tot,
 
             ################################ END OPTIONS FOR MULTIPLE SCATTERING####################
 
-            G=positive*(multi_plus+gama*multi_minus)    * w_dedd
-            H=negative*(gama*multi_plus+multi_minus)    *w_dedd
-            A=(multi_plus*c_plus_up+multi_minus*c_minus_up) *w_dedd
+            G = positive*(multi_plus+gama*multi_minus)        * w_dedd
+            H = negative*(gama*multi_plus+multi_minus)        * w_dedd
+            A = (multi_plus*c_plus_up+multi_minus*c_minus_up) * w_dedd
 
-            G=G*0.5/np.pi
-            H=H*0.5/np.pi
-            A=A*0.5/np.pi
+            G *= 0.5/np.pi
+            H *= 0.5/np.pi
+            A *= 0.5/np.pi
 
             ################################ BEGIN OPTIONS FOR DIRECT SCATTERING####################
             #define f (fraction of forward to back scattering), 
             #g_forward (forward asymmetry), g_back (backward asym)
             #needed for everything except the OTHG
             # if single_phase!=1: 
-            g_forward = constant_forward*g_cloud_tot_weighted
-            g_back = constant_back*g_cloud_tot_weighted#-
-            f = frac_a + frac_b*g_back**frac_c
+            g_forward = constant_forward * g_cloud_tot_weighted
+            g_back    = constant_back    * g_cloud_tot_weighted#-
+            #f = frac_a + frac_b * g_back**frac_c
 
             # NOTE ABOUT HG function: we are translating to the frame of the downward propagating beam
             # Therefore our HG phase function becomes:
@@ -1381,7 +1391,7 @@ def reflection_Toon(P, wl, dtau_tot,
                 #Phase function for single scattering albedo frum Solar beam
                 #uses the Two term Henyey-Greenstein function with the additiona rayleigh component 
                 #first term of TTHG: forward scattering
-            p_single=(ftau_cld*(f * (1-g_forward**2)
+            p_single=(ftau_cld*((frac_a + frac_b * g_back**frac_c) * (1-g_forward**2)
                                             /np.sqrt((1+g_forward**2+2*g_forward*cos_theta)**3) 
                                             #second term of TTHG: backward scattering
                                             +(1-f)*(1-g_back**2)
@@ -1412,7 +1422,7 @@ def reflection_Toon(P, wl, dtau_tot,
             ################################ END OPTIONS FOR DIRECT SCATTERING####################
 
             single_scat = np.zeros((N_level,N_wl))
-            multi_scat = np.zeros((N_level,N_wl))
+            multi_scat  = np.zeros((N_level,N_wl))
 
             for i in range(N_layer-1,-1,-1):
                 single_scat[i,:] = ((w_tot[i,:]*F0PI/(4.*np.pi))
