@@ -976,8 +976,9 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                     g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
 
                 # Turn into an array so numba in toon functions is happy with indexing 
-                w_cloud = np.array(w_cloud_array)
-                g_cloud = np.array(g_cloud_array)
+                # Have to name different so that w_cloud isn't propogated to future iterations
+                w_cloud_toon = np.array(w_cloud_array)
+                g_cloud_toon = np.array(g_cloud_array)
 
             # Need to make a g and w array that vary with pressure layer where aerosols actually are 
             else:
@@ -996,7 +997,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             # Compute planet flux including scattering (PICASO implementation), see emission.py for details
             F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                       kappa_Ray, kappa_cloud, kappa_tot,
-                                      w_cloud, g_cloud, zone_idx,
+                                      w_cloud_toon, g_cloud_toon, zone_idx,
                                       surf_reflect, kappa_cloud_seperate,
                                       hard_surface = 0, tridiagonal = 0, 
                                       Gauss_quad = 5, numt = 1)
@@ -1029,8 +1030,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                     g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
 
                 # Turn into an array so numba in toon functions is happy with indexing 
-                w_cloud = np.array(w_cloud_array)
-                g_cloud = np.array(g_cloud_array)
+                w_cloud_toon = np.array(w_cloud_array)
+                g_cloud_toon = np.array(g_cloud_array)
             
             # A dummy array for emission and reflection Toon, so that its easier to port over 
             # Changes to surfaces in next update
@@ -1044,7 +1045,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
             albedo = reflection_Toon(P, wl, dtau_tot,
                                      kappa_Ray, kappa_cloud, kappa_tot,
-                                     w_cloud, g_cloud, zone_idx,
+                                     w_cloud_toon, g_cloud_toon, zone_idx,
                                      surf_reflect, kappa_cloud_seperate,
                                      single_phase = 3, multi_phase = 0,
                                      frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
@@ -1189,8 +1190,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                         g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
 
                     # Turn into an array so numba in toon functions is happy with indexing 
-                    w_cloud = np.array(w_cloud_array)
-                    g_cloud = np.array(g_cloud_array)
+                    w_cloud_toon = np.array(w_cloud_array)
+                    g_cloud_toon = np.array(g_cloud_array)
                 
                 # A dummy array for emission and reflection Toon, so that its easier to port over 
                 # Changes to surfaces in next update
@@ -1205,13 +1206,15 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                 # Compute planet flux including scattering (PICASO implementation), see emission.py for details
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                           kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                          w_cloud, g_cloud, zone_idx,
+                                          w_cloud_toon, g_cloud_toon, zone_idx,
                                           surf_reflect, kappa_cloud_seperate,
                                           hard_surface = 0, tridiagonal = 0, 
                                           Gauss_quad = 5, numt = 1)
+                
             
                 
                 dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
+
 
             else:
                 raise Exception("Error: Invalid scattering option")
@@ -1239,8 +1242,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
                         g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
 
                     # Turn into an array so numba in toon functions is happy with indexing 
-                    w_cloud = np.array(w_cloud_array)
-                    g_cloud = np.array(g_cloud_array)
+                    w_cloud_toon = np.array(w_cloud_array)
+                    g_cloud_toon = np.array(g_cloud_array)
                 
                 # A dummy array for emission and reflection Toon, so that its easier to port over 
                 # Changes to surfaces in next update
@@ -1254,7 +1257,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                 albedo = reflection_Toon(P, wl, dtau_tot,
                                          kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                         w_cloud, g_cloud, zone_idx,
+                                         w_cloud_toon, g_cloud_toon, zone_idx,
                                          surf_reflect, kappa_cloud_seperate,
                                          single_phase = 3, multi_phase = 0,
                                          frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
@@ -2110,7 +2113,6 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     log_r_m_std_dev = atmosphere['log_r_m_std_dev']
 
     if (scattering == True) or (reflection == True):
-        print('Contribution functions are largely untested for scattering and reflection. Bugs ahead... reach out to Elijah Mullens if you see any that need squashed.')
         if (len(aerosol_species)>=2):
             raise Exception('Cannot do more than one aerosol species when scattering or reflection is True. If you need this, reach out to Elijah Mullens.')
 
@@ -2454,8 +2456,8 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                     g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
 
                 # Turn into an array so numba in toon functions is happy with indexing 
-                w_cloud = np.array(w_cloud_array)
-                g_cloud = np.array(g_cloud_array)
+                w_cloud_toon = np.array(w_cloud_array)
+                g_cloud_toon = np.array(g_cloud_array)
             
             # A dummy array for emission and reflection Toon, so that its easier to port over 
             # Changes to surfaces in next update
@@ -2470,7 +2472,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             # Compute planet flux including scattering (PICASO implementation), see emission.py for details
             F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                       kappa_Ray, kappa_cloud, kappa_tot,
-                                      w_cloud, g_cloud, zone_idx,
+                                      w_cloud_toon, g_cloud_toon, zone_idx,
                                       surf_reflect, kappa_cloud_seperate,
                                       hard_surface = 0, tridiagonal = 0, 
                                       Gauss_quad = 5, numt = 1)
@@ -2505,8 +2507,8 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                     g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
 
                 # Turn into an array so numba in toon functions is happy with indexing 
-                w_cloud = np.array(w_cloud_array)
-                g_cloud = np.array(g_cloud_array)
+                w_cloud_toon = np.array(w_cloud_array)
+                g_cloud_toon = np.array(g_cloud_array)
             
             # A dummy array for emission and reflection Toon, so that its easier to port over 
             # Changes to surfaces in next update
@@ -2520,7 +2522,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
             albedo = reflection_Toon(P, wl, dtau_tot,
                                      kappa_Ray, kappa_cloud, kappa_tot,
-                                     w_cloud, g_cloud, zone_idx,
+                                     w_cloud_toon, g_cloud_toon, zone_idx,
                                      surf_reflect, kappa_cloud_seperate,
                                      single_phase = 3, multi_phase = 0,
                                      frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
@@ -2666,8 +2668,8 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                         g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
 
                     # Turn into an array so numba in toon functions is happy with indexing 
-                    w_cloud = np.array(w_cloud_array)
-                    g_cloud = np.array(g_cloud_array)
+                    w_cloud_toon = np.array(w_cloud_array)
+                    g_cloud_toon = np.array(g_cloud_array)
 
                 # Need to make a g and w array that vary with pressure layer where aerosols actually are 
                 else:
@@ -2686,7 +2688,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                 # Compute planet flux including scattering (PICASO implementation), see emission.py for details
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                           kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                          w_cloud, g_cloud, zone_idx,
+                                          w_cloud_toon, g_cloud_toon, zone_idx,
                                           surf_reflect, kappa_cloud_seperate,
                                           hard_surface = 0, tridiagonal = 0, 
                                           Gauss_quad = 5, numt = 1)
@@ -2720,8 +2722,8 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                         g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
 
                     # Turn into an array so numba in toon functions is happy with indexing 
-                    w_cloud = np.array(w_cloud_array)
-                    g_cloud = np.array(g_cloud_array)
+                    w_cloud_toon = np.array(w_cloud_array)
+                    g_cloud_toon = np.array(g_cloud_array)
 
                 # Need to make a g and w array that vary with pressure layer where aerosols actually are 
                 else:
@@ -2739,7 +2741,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
                 albedo = reflection_Toon(P, wl, dtau_tot,
                                          kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                         w_cloud, g_cloud, zone_idx,
+                                         w_cloud_toon, g_cloud_toon, zone_idx,
                                          surf_reflect, kappa_cloud_seperate,
                                          single_phase = 3, multi_phase = 0,
                                          frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
@@ -2922,6 +2924,10 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
             Array used for plotting (contains names and order of spectral contribution spectra)
     '''
 
+    # Warning statement 
+    if (model['scattering'] == True) or (model['reflection'] == True):
+        print('Contribution functions are largely untested for scattering and reflection. Bugs ahead... reach out to Elijah Mullens if you see any that need squashed.')
+        
     # Load in the pressure object
     P = atmosphere['P']
 

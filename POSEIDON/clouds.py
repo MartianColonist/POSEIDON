@@ -3153,7 +3153,7 @@ def precompute_cross_sections_one_aerosol_LXMIE(file_name, aerosol_name, saveall
 
 
 def precompute_cross_sections_one_aerosol_custom_LXMIE(file_name, aerosol_name,
-                                                 r_m_std_dev = 0.5,
+                                                 log_r_m_std_dev = 0.5,
                                                  log_r_m_min = -3,
                                                  log_r_m_max = 1,
                                                  saveall = False):
@@ -3186,6 +3186,9 @@ def precompute_cross_sections_one_aerosol_custom_LXMIE(file_name, aerosol_name,
     '''
 
     global all_etas, all_xs, all_Qexts, all_Qscats, all_Qbacks, all_gs
+
+    # In the code, log_r_m_std_dev = r_m_std_dev
+    r_m_std_dev = log_r_m_std_dev
 
     # Constants for the Qext Calculation
     z_max = 5
