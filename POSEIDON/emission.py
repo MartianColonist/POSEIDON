@@ -1394,7 +1394,7 @@ def reflection_Toon(P, wl, dtau_tot,
             p_single=(ftau_cld*((frac_a + frac_b * g_back**frac_c) * (1-g_forward**2)
                                             /np.sqrt((1+g_forward**2+2*g_forward*cos_theta)**3) 
                                             #second term of TTHG: backward scattering
-                                            +(1-f)*(1-g_back**2)
+                                            +(1-(frac_a + frac_b * g_back**frac_c))*(1-g_back**2)
                                             /np.sqrt((1+g_back**2+2*g_back*cos_theta)**3))+            
                                             #rayleigh phase function
                                             ftau_ray*(0.75*(1+cos_theta**2.0)))
