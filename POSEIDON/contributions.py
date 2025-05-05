@@ -693,10 +693,15 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
     # Unpack lists of chemical species in this model
     chemical_species = model['chemical_species'] 
+    bulk_species_list = model['bulk_species']
     active_species = model['active_species']
     CIA_pairs = model['CIA_pairs']
     ff_pairs = model['ff_pairs']
     bf_species = model['bf_species']
+
+    for bulk_gas in bulk_species_list:
+        if (bulk_gas in active_species):
+            raise Exception('Spectral contributions are not configured for models where bulk species is also a spectrally active species. Reach out to Elijah Mullens if you need this feature.')
             
     # If computing line-by-line radiative transfer, use lbl optimised functions 
     if (opac['opacity_treatment'] == 'line_by_line'):
@@ -2927,7 +2932,14 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     # Warning statement 
     if (model['scattering'] == True) or (model['reflection'] == True):
         print('Contribution functions are largely untested for scattering and reflection. Bugs ahead... reach out to Elijah Mullens if you see any that need squashed.')
-        
+
+    bulk_species_list = model['bulk_species']
+    active_species_list = model['active_species']
+
+    for bulk_gas in bulk_species_list:
+        if (bulk_gas in active_species_list):
+            raise Exception('Pressure contributions are not configured for models where bulk species is also a spectrally active species. Reach out to Elijah Mullens if you need this feature.')
+            
     # Load in the pressure object
     P = atmosphere['P']
 
