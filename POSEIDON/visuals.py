@@ -2645,23 +2645,33 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             #print('in two datasets')     
 
             # Unpack offset data properties
-            if (offset_datasets == 'two_datasets'):
+            if ((offset_datasets == 'two_datasets') and (data_properties['offset_1_start'] != 0)):
                 offset_start_list = ['offset_1_start', 'offset_2_start']
                 offset_end_list = ['offset_1_end', 'offset_2_end']
-            elif (offset_datasets == 'three_datasets'):
+            elif ((offset_datasets == 'three_datasets') and (data_properties['offset_1_start'] != 0)):
                 offset_start_list = ['offset_1_start', 'offset_2_start', 'offset_3_start']
                 offset_end_list = ['offset_1_end', 'offset_2_end', 'offset_3_end']
 
             offset_start_end = []
 
-            for start_name, end_name in zip(offset_start_list, offset_end_list):
-                offset_start, offset_end = data_properties[start_name], data_properties[end_name]
+            if (data_properties['offset_1_start'] != 0):
+                for start_name, end_name in zip(offset_start_list, offset_end_list):
+                    offset_start, offset_end = data_properties[start_name], data_properties[end_name]
 
-                # Catch zero offsets, not defined as arrays
-                if isinstance(offset_start, np.int64):
-                    offset_start, offset_end = np.array([offset_start]), np.array([offset_end])
-                
-                offset_start_end.append((offset_start[0], offset_end[-1]))
+                    print(offset_start, offset_end)
+
+                    # Catch zero offsets, not defined as arrays
+                    if isinstance(offset_start, np.int64):
+                        offset_start, offset_end = np.array([offset_start]), np.array([offset_end])
+                    
+                #    if(len(offset_start) == 0):
+                    offset_start_end.append((offset_start[0], offset_end[-1]))
+            
+            else:
+                for i in range(len(data_properties['offset_start'])):
+                    offset_start, offset_end = data_properties['offset_start'][i], data_properties['offset_end'][i]
+
+                    offset_start_end.append((offset_start, offset_end))
 
             # Retrieve offset value from results file
             results_dir = './POSEIDON_output/' + planet_name + '/retrievals/results/'
