@@ -31,6 +31,7 @@ X. Make sure 2D patchy clouds work with single stream emission and transmission 
 
 X. Go ahead and add directionality cloud models                                                - DONE
 
+X. Import Ryan C's changes to toon functions that save memory                                  - DONE
 ============================
 To DOs left 
 
@@ -38,7 +39,6 @@ X. Fix all utility functions in clouds.py
 - Rerun all notebooks with scattering and reflection and clouds
 
 X. Benchmark toon functions with picaso                                                        - Working on this now 
-X. Import Ryan C's changes to toon functions that save memory 
 X. Add diamond database
 X. Fix shared array error 
 
