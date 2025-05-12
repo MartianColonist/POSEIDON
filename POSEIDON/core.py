@@ -30,7 +30,8 @@ from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, 
                      open_pymsg_grid
 from .supported_chemicals import supported_species, supported_cia, inactive_species, \
                                  fastchem_supported_species, aerosol_supported_species, \
-                                 aerosols_lognormal_logwidth_free, aerosol_directional_supported_species
+                                 aerosols_lognormal_logwidth_free, aerosol_directional_supported_species, \
+                                 diamond_supported_species
 from .parameters import assign_free_params, generate_state, \
                         unpack_geometry_params, unpack_cloud_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
@@ -570,13 +571,21 @@ def define_model(model_name, bulk_species, param_species,
         raise Exception("A chemical species you selected is not supported.\n")
     
     # Check to make sure an aerosol is inputted if cloud_type = specific_aerosol
-    if (np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True)  and (np.any(~np.isin(aerosol_species, aerosol_directional_supported_species)) == True) :
+    if ((np.any(~np.isin(aerosol_species, aerosol_supported_species)) == True)  and 
+        (np.any(~np.isin(aerosol_species, aerosol_directional_supported_species)) == True) and
+        (np.any(~np.isin(aerosol_species, diamond_supported_species)) == True)):
         if aerosol_species != ['free'] and aerosol_species != ['file_read']:
             raise Exception('Please input supported aerosols (check supported_chemicals.py) or aerosol = [\'free\'] or [\'file_read\'].')
     
+    # See if its an aerosol with lognormal logwidth free 
     if (lognormal_logwidth_free == True) and (np.any(~np.isin(aerosol_species, aerosols_lognormal_logwidth_free)) == True):
         raise Exception('Please input supported aerosols for lognormal_logwidth free.')
 
+    # Make sure they aren't pulling aerosols from two databases
+    if ((np.any(np.isin(aerosol_species, aerosol_supported_species)) == True)  and 
+        (np.any(np.isin(aerosol_species, aerosol_directional_supported_species)) == True)):
+        raise Exception('Cannot have aerosols from normal database and directional databse mixed in same forward model.')
+    
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
     for pair in supported_cia:
@@ -624,8 +633,12 @@ def define_model(model_name, bulk_species, param_species,
     # If cloud_model = Mie, load in the cross section grid
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
         # If its a directional aerosol
-        if 'uniaxial' in cloud_type or 'biaxial' in cloud_type:
+        if (np.any(np.isin(aerosol_species, aerosol_directional_supported_species)) == True):
             aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol_directional')
+        # If its a diamond aerosol
+        elif (np.any(np.isin(aerosol_species, diamond_supported_species)) == True):
+            aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol_diamonds')
+        # Else its in the normal grid
         else:
             # Normal grid load in (assumes log_r_m_std_dev = 0.5)
             if lognormal_logwidth_free == False:

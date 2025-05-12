@@ -37,7 +37,7 @@ supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2',
 # Species treated as spectrally inactive (in standard cross section treatment)
 inactive_species = np.array(['H2', 'He', 'e-', 'H-', 'N2'])  # H- handled separately
 
-# Aerosol Supported Species
+# Aerosol Supported Species for normal aerosol database
 aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4_liquid', 'CH4_solid', 'CaTiO3', 'CaTiO3_KH', 'Cr', 'ExoHaze_1000xSolar_300K', 
                                       'ExoHaze_1000xSolar_400K','Fe', 'Fe2O3', 'Fe2SiO4_KH', 'FeO', 'FeS',
                                       'FeSiO3', 'H2O', 'H2O_ice', 'H2SO4', 'Hexene', 'Hibonite', 'IceTholin', 'KCl', 'Mg2SiO4_amorph_sol_gel', 'Mg2SiO4_amorph',
@@ -48,6 +48,7 @@ aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4_liqu
                                       'Saturn-Phosphorus-Haze', 'SiC', 'SiO', 'SiO2', 'SiO2_amorph','SiO2_crystalline_2023', 'SiO2_alpha_palik', 'SiO2_glass_palik', 'Soot', 'Soot_6mm', 'Tholin', 'Tholin-CO-0625', 'Tholin-CO-1',
                                       'TiC', 'TiO2_anatase', 'TiO2_rutile', 'VO', 'ZnS',])
 
+# Directional and temperature specific aerosols 
 aerosol_directional_supported_species=  np.array(['SiO2_alpha_crystal_A2_295K', 'SiO2_alpha_crystal_E_295K', 'SiO2_alpha_crystal_E_346K', 'SiO2_alpha_crystal_E_480K', 'SiO2_alpha_crystal_E_600K', 'SiO2_alpha_crystal_E_705K', 'SiO2_alpha_crystal_E_790K',
                                     'SiO2_beta_crystal_E_1010K', 'SiO2_beta_crystal_E_1125K', 'SiO2_beta_crystal_E_1170K', 'SiO2_beta_crystal_E_1310K', 'SiO2_beta_crystal_E_1394K', 'SiO2_beta_crystal_E_1520K', 'SiO2_beta_crystal_E_1590K',
                                     'SiO2_beta_crystal_E_1646K',
@@ -84,6 +85,15 @@ aerosol_directional_supported_species=  np.array(['SiO2_alpha_crystal_A2_295K', 
                                     'Mg092Fe009SiO3_crystal_300K_averaged','Mg092Fe009SiO3_crystal_928K_averaged',
                                     'SiO2_alpha_cristobalite_295K',
                                     ])
+
+# Diamonds added to POSEIDON 
+diamond_supported_species = np.array(['NanoDiamonds','Diamond_palik',
+                                    'Hydrogentated_Diamond_fH0_N0_irradiated',
+                                    'Hydrogentated_Diamond_fH0_N0_not_irradiated',
+                                    'Hydrogentated_Diamond_fH025_N0_irradiated',
+                                    'Hydrogentated_Diamond_fH025_N0_not_irradiated',
+                                    'Hydrogentated_Diamond_fH1_N0_irradiated',
+                                    'Hydrogentated_Diamond_fH1_N0_not_irradiated'])
 
 # Aerosols with precomputed grids that have free lognormal logwidths
 aerosols_lognormal_logwidth_free = np.array(['SiO2'])
