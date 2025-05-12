@@ -1334,9 +1334,9 @@ Mullens et al. (2024).
 
      - `Mutschke (2002) <https://ui.adsabs.harvard.edu/abs/2002A%26A...392.1047M/abstract>`_
        
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
-       :math:`\hspace{1.0em}` `(Hibonite E||c) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+       :math:`\hspace{1.0em}` `(Hibonite E||c) <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
      - 2–30 μm
 
@@ -1390,9 +1390,9 @@ Mullens et al. (2024).
 
        `Koike et al (1995) <https://ui.adsabs.harvard.edu/abs/1995Icar..114..203K/abstract>`_
      
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
-       :math:`\hspace{1.0em}` `(Porous) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+       :math:`\hspace{1.0em}` `(Porous) <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
      - 0.2–30 μm
 
@@ -1418,9 +1418,9 @@ Mullens et al. (2024).
 
      - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
      
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
-       :math:`\hspace{1.0em}` `(CaTiO3) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hspace{1.0em}` `(CaTiO3) <https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
      - 2–30 μm
 
@@ -1448,9 +1448,9 @@ Mullens et al. (2024).
 
        `Ueda (1998) <https://ui.adsabs.harvard.edu/abs/1998JPCM...10.3669U/abstract>`_
      
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
-       :math:`\hspace{1.0em}` `(CaTiO3) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hspace{1.0em}` `(CaTiO3) <https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
      - 0.2–30 μm
 
@@ -1488,9 +1488,9 @@ Mullens et al. (2024).
 
        `Siefke (2016) <https://ui.adsabs.harvard.edu/abs/2016arXiv160704866S/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
-       :math:`\hspace{1.0em}` `(Anatase) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hspace{1.0em}` `(Anatase) <https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
      - 0.2–30 μm
 
@@ -1520,9 +1520,9 @@ Mullens et al. (2024).
 
        `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
-       :math:`\hspace{1.0em}` `(Rutile, E||a,b) <https://www.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+       :math:`\hspace{1.0em}` `(Rutile, E||a,b) <https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
 
      - 0.47–30 μm
 
@@ -1592,7 +1592,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -1680,9 +1680,9 @@ Mullens et al. (2024).
 
        `Henning & Mutschke (1997) <https://ui.adsabs.harvard.edu/abs/1997A%26A...327..743H/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/sulfides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/sulfides.html>`_
 
-       :math:`\hspace{1.0em}` `(FeS) <https://www.astro.uni-jena.de/Laboratory/OCDB/sulfides.html>`_
+       :math:`\hspace{1.0em}` `(FeS) <https://www2.astro.uni-jena.de/Laboratory/OCDB/sulfides.html>`_
 
      - 0.2–30 μm
 
@@ -1708,9 +1708,9 @@ Mullens et al. (2024).
 
      - Unpublished, Triaud in DOCCD
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html>`_
 
-       :math:`\hspace{1.0em}` `(Fe2O3 E||a,b) <https://www.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html>`_
+       :math:`\hspace{1.0em}` `(Fe2O3 E||a,b) <https://www2.astro.uni-jena.de/Laboratory/OCDB/mgfeoxides.html>`_
 
      - 0.2–30 μm
 
@@ -1760,9 +1760,9 @@ Mullens et al. (2024).
 
      - `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...378..228F/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(Fayalite (synthetic)) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hspace{1.0em}` `(Fayalite (synthetic)) <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
      - 0.40–30 μm
 
@@ -1828,9 +1828,9 @@ Mullens et al. (2024).
 
        `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(Mg(0.8)Fe(1.2)SiO4) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hspace{1.0em}` `(Mg(0.8)Fe(1.2)SiO4) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.21–30 μm
 
@@ -1858,9 +1858,9 @@ Mullens et al. (2024).
 
      - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(San Carlos Olivine) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hspace{1.0em}` `(San Carlos Olivine) <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -1922,9 +1922,9 @@ Mullens et al. (2024).
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(Mg(2)SiO(4)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hspace{1.0em}` `(Mg(2)SiO(4)) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -1974,9 +1974,9 @@ Mullens et al. (2024).
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(MgFeSiO[4] [3.71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hspace{1.0em}` `(MgFeSiO[4] [3.71 g/ccm]) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2002,9 +2002,9 @@ Mullens et al. (2024).
 
      - `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(Mg(0.8)Fe(1.2)SiO4) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hspace{1.0em}` `(Mg(0.8)Fe(1.2)SiO4) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2032,9 +2032,9 @@ Mullens et al. (2024).
      
        `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(MgSiO(3) [2/71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hspace{1.0em}` `(MgSiO(3) [2/71 g/ccm]) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2094,9 +2094,9 @@ Mullens et al. (2024).
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-        :math:`\hspace{1.0em}` `(MgSiO(3) [2/71 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hspace{1.0em}` `(MgSiO(3) [2/71 g/ccm]) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2124,9 +2124,9 @@ Mullens et al. (2024).
 
      - `Jager (2003) <https://ui.adsabs.harvard.edu/abs/2003A%26A...408..193J/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(MgSiO(3)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hspace{1.0em}` `(MgSiO(3)) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2150,9 +2150,9 @@ Mullens et al. (2024).
 
      - `Jager (1998) <https://ui.adsabs.harvard.edu/abs/1998A%26A...339..904J/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(Enstatite (natural)) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hspace{1.0em}` `(Enstatite (natural)) <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
      - 0.27–30 μm
 
@@ -2185,9 +2185,9 @@ Mullens et al. (2024).
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-        :math:`\hspace{1.0em}` `(Mg(0.4)Fe(0.6)SIO(3)) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hspace{1.0em}` `(Mg(0.4)Fe(0.6)SIO(3)) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2215,9 +2215,9 @@ Mullens et al. (2024).
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-        :math:`\hspace{1.0em}` `(Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hspace{1.0em}` `(Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2245,9 +2245,9 @@ Mullens et al. (2024).
 
      -  `Dorschner (1995) <https://ui.adsabs.harvard.edu/abs/1995A%26A...300..503D/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-        :math:`\hspace{1.0em}` `(Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+        :math:`\hspace{1.0em}` `(Mg(0.5)Fe(0.5)SIO(3) [3.2 g/ccm]) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2275,9 +2275,9 @@ Mullens et al. (2024).
 
      -  `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...373.1125F/abstract>`_
 
-        :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+        :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
-        :math:`\hspace{1.0em}` `(Natural Mg-spinel) <https://www.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+        :math:`\hspace{1.0em}` `(Natural Mg-spinel) <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
 
      - 1.69–30 μm
 
@@ -2381,9 +2381,9 @@ Mullens et al. (2024).
 
        `Zeidler (2013) <https://ui.adsabs.harvard.edu/abs/2013A%26A...553A..81Z/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(SiO2 at 928K, E||c) <https://www.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+       :math:`\hspace{1.0em}` `(SiO2 at 928K, E||c) <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2403,7 +2403,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -2425,7 +2425,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -2467,9 +2467,9 @@ Mullens et al. (2024).
 
        `Palik (1985) (Vol 1, Sec 34) (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
-       :math:`\hookrightarrow` `DOCCD Link <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
-       :math:`\hspace{1.0em}` `(Amorphous SiO2, 300K) <https://www.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
+       :math:`\hspace{1.0em}` `(Amorphous SiO2, 300K) <https://www2.astro.uni-jena.de/Laboratory/OCDB/amsilicates.html>`_
 
      - 0.2–30 μm
 
@@ -2487,7 +2487,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -2600,7 +2600,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -2747,7 +2747,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -2819,7 +2819,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -2917,7 +2917,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -2976,7 +2976,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -3000,7 +3000,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -3066,7 +3066,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -3120,7 +3120,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -3151,7 +3151,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -3211,7 +3211,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
@@ -3237,7 +3237,7 @@ Mullens et al. (2024).
           :width: 50
           :align: center
 
-     - `Mullens et al. (2024) <>`_
+     - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
        :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
 
