@@ -3273,5 +3273,871 @@ are listed in `aerosol_database_readme.txt <../_static/Aerosol-Database-Readme.t
 
 Please address any request for new aerosols to: eem85@cornell.edu.
 
+Aerosol Directionality + Temperature Dependence Database
+________________
+
+POSEIDON v1.3.1 includes a database of Mie scattering properties for minerals with their
+directionality and temperature dependent properties.
+
+The database and its computation are detailed in full in
+Mullens et al. (2025) [submitted].
+
+Note that the species in this table cannot be used in conjunction with the nominal aerosol database in a forward model. 
+
+The below compared sub-micron (0.01 um) effective, extinction cross sections of the drectional/temperature
+dependent aerosols to their counterparts in the normal aerosol database. 
+
+For full previews of extinction cross sections and scattering properties of each aerosol, see
+`"Directional Opacity Previews" <../_static/opacity_previews/aerosols_directional/aerosol_database_directional.pdf>`_ 
+
+For a detailed table, see
+`"Directional LaTeX Table" <../_static/opacity_previews/aerosols_directional/Directionality_Table.pdf>`_ 
+
+All refractive index txt files can be found
+`"Directional Refractive Indices" <https://github.com/MartianColonist/POSEIDON/tree/Mie-HotFix/POSEIDON/reference_data/refractive_indices_txt_files/aerosol_directional_database/File-names-corresponding-to-supported-species>`_ 
+
+Also see new tutorial (as of V1.3.1): 
+`"Aerosols Advanced: Directionality" <notebooks/aerosol_advanced_directionality.html>`_
+
+.. list-table::
+   :widths: 20 20 20 20 20 20
+   :header-rows: 1
+
+   * - Species 
+     - Name in POSEIDON
+     - Plot
+
+       (Click)
+     - Refractive Index 
+     
+       References
+     - Wavelength
+     
+       Range
+     - Notes
+
+   * - :math:`\mathrm{CaAl_{12}O_{19}}`
+
+       Directional Properties 
+       
+       (Uniaxial)
+     -  
+        CaAl12O19_crystal_natural_extraordinary (E :math:`\parallel` c)
+
+        CaAl12O19_crystal_natural_ordinary (E :math:`\perp` c)
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Mutschke (2002) <https://ui.adsabs.harvard.edu/abs/2002A%26A...392.1047M/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - 2–30 μm
+
+     - Crystalline (hexagonal, uniaxial)
+
+       Natural Crystal (:math:`\mathrm{Ca_{0.85}Al_{11.37}Ti_{0.26}Fe_{0.38}O_{19}}`)
 
 
+   * - :math:`\mathrm{Al_{2}O_{3}}`
+
+       Porous vs Compact
+     -  
+        Al2O3_amorph_compact
+
+        Al2O3_amorph_porous
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Begemann (1997) <https://ui.adsabs.harvard.edu/abs/1997ApJ...476..199B/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - 7.81–30 μm
+
+     - Amorphous (isotropic).
+
+
+   * - :math:`\mathrm{Al_{2}O_{3}}`
+
+       Directional
+       
+       and Temperature Properties
+
+       (Uniaxial)
+     -  
+      Al2O3_alpha_crystal_300K_extraordinary (E :math:`\parallel` c)
+
+      Al2O3_alpha_crystal_551K_extraordinary (E :math:`\parallel` c)
+
+      Al2O3_alpha_crystal_738K_extraordinary (E :math:`\parallel` c)
+
+      Al2O3_alpha_crystal_928K_extraordinary (E :math:`\parallel` c)
+
+      |
+  
+      Al2O3_alpha_crystal_300K_ordinary (E :math:`\perp` c) 
+
+      Al2O3_alpha_crystal_551K_ordinary (E :math:`\perp` c) 
+
+      Al2O3_alpha_crystal_738K_ordinary (E :math:`\perp` c) 
+
+      Al2O3_alpha_crystal_928K_ordinary (E :math:`\perp` c)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Zeidler (2013) <https://ui.adsabs.harvard.edu/abs/2013arXiv1304.1717Z/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - 6.67–30 μm
+
+     - Crystalline (trigonal, uniaxial)
+
+       Synthetic Crystal
+
+   * - :math:`\mathrm{MgAl_{2}O_{4}}`
+
+       Annealed
+     -  
+        MgAl2O4_crystalline_natural
+
+        MgAl2O4_crystalline_natural_annealed_1223K
+      
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Fabian 2001 <https://ui.adsabs.harvard.edu/abs/2001A%26A...373.1125F/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - 2–30 μm 
+       
+       (1.67–30 μm for annealed)
+
+     - Crystalline (cubic, isotropic)
+
+       Natural crystal
+
+   * - :math:`\mathrm{MgAl_{2}O_{4}}`
+
+       Temperature Properties
+     -  
+        MgAl2O4_synthetic_10K
+
+        MgAl2O4_synthetic_100K
+
+        MgAl2O4_synthetic_300K
+
+        MgAl2O4_synthetic_551K
+
+        MgAl2O4_synthetic_738K
+
+        MgAl2O4_synthetic_928K
+      
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Zeidler (2013) <https://ui.adsabs.harvard.edu/abs/2013arXiv1304.1717Z/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - 6.71–30 μm 
+     
+       (7.70–30 μm for 10K, 100K)
+
+     - Crystalline (cubic, isotropic)
+
+       Natural crystal
+
+   * - :math:`\mathrm{MgAl_{2}O_{4}}`
+
+       Temperature Properties
+     -  
+        MgAl2O4_synthetic_10K
+
+        MgAl2O4_synthetic_100K
+
+        MgAl2O4_synthetic_300K
+
+        MgAl2O4_synthetic_551K
+
+        MgAl2O4_synthetic_738K
+
+        MgAl2O4_synthetic_928K
+      
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Zeidler (2013) <https://ui.adsabs.harvard.edu/abs/2013arXiv1304.1717Z/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
+
+     - 6.71–30 μm 
+     
+       (7.70–30 μm for 10K, 100K)
+
+     - Crystalline (cubic, isotropic)
+
+       Natural crystal
+
+   * - :math:`\mathrm{Fe_{2}SiO_{4}}`
+
+       Directional Properties
+
+       (Biaxial)
+     -  
+        Fe2SiO4_crystal_synthetic_Ez (E :math:`\parallel` c)
+
+        Fe2SiO4_crystal_synthetic_Ey (E :math:`\parallel` b)
+
+        Fe2SiO4_crystal_synthetic_Ex (E :math:`\parallel` a) 
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Fe-Ti-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Fabian (2001) <https://ui.adsabs.harvard.edu/abs/2001A%26A...378..228F/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 2–30 μm 
+
+     - Crystalline (orthorhomboc, biaxial)
+
+       Synthetic crystal
+
+       Orthorhombic means the optical axes align with the crystallographic axes
+
+       Original text does not specify how x,y,z correspond to a,b,c so we assume
+
+       it follows the D2H symmetry group (Ez = B1U = Ec, Ey = B2U = Eb, Ex = B3U = Ea)
+
+   * - :math:`\mathrm{TiO_{2}}`
+      
+       Polymorphs and 
+
+       Directional Properties
+
+       (Uniaxial/Biaxial)
+     -  
+      TiO2_anatase_extraordinary (E :math:`\parallel` c)
+
+      TiO2_anatase_ordinary (E :math:`\perp` c)
+
+      |
+
+      TiO2_rutile_extraordinary (E :math:`\parallel` c)
+
+      TiO2_rutile_ordinary (E :math:`\perp` c)
+
+      |
+
+      TiO2_brookite_Ez (E :math:`\parallel` c)
+
+      TiO2_brookite_Ey (E :math:`\parallel` b)
+
+      TiO2_brookite_Ex (E :math:`\parallel` a)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Fe-Ti-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Posch (2003) <https://ui.adsabs.harvard.edu/abs/2003ApJS..149..437P/abstract>`_
+
+       `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/tioxides.html>`_
+
+     - 2–30 μm 
+
+       (0.47–30 μm for rutile)
+
+     - Anatase (tetragonal, uniaxial, stable at room temperature)
+
+       Rutile (tetragonal, uniaxial, stable at high temperatures)
+
+       Brookite (orthorhombic, biaxial, rare polymorph at room temperatures)
+
+       Orthorhombic means the optical axes align with the crystallographic axes
+
+       Original text does not specify how x,y,z correspond to a,b,c so we assume
+
+       it follows the D2H symmetry group (Ez = B1U = Ec, Ey = B2U = Eb, Ex = B3U = Ea)
+
+   * - :math:`\mathrm{SiO_{2}}`
+      
+       Polymorphs, 
+
+       Directional,
+       
+       and Temperature Properties
+
+       (Uniaxial)
+     -  
+
+        SiO2_alpha_crystal_300K_extraordinary (E :math:`\parallel` c)
+
+        SiO2_alpha_crystal_551K_extraordinary (E :math:`\parallel` c)
+
+        SiO2_alpha_crystal_738K_extraordinary (E :math:`\parallel` c)
+
+        SiO2_alpha_crystal_833K_extraordinary (E :math:`\parallel` c)
+
+        SiO2_beta_crystal_928K_extraordinary  (E :math:`\parallel` c)
+
+
+        |
+
+        SiO2_alpha_crystal_300K_ordinary (E :math:`\perp` c)
+
+        SiO2_alpha_crystal_551K_ordinary (E :math:`\perp` c)
+
+        SiO2_alpha_crystal_738K_ordinary (E :math:`\perp` c)
+
+        SiO2_alpha_crystal_833K_ordinary (E :math:`\perp` c)
+
+        SiO2_beta_crystal_928K_ordinary  (E :math:`\perp` c)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Zeidler (2013) <https://ui.adsabs.harvard.edu/abs/2013arXiv1304.1717Z/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 6.26–30 μm 
+
+     - :math:`\alpha` Quartz (trigonal, uniaxial, room temperature polymorph) 
+
+       :math:`\beta` Quartz (trigonal, uniaxial, transforms from :math:`\alpha` quartz at ~850K) 
+
+       Natural crystal from Brazil.
+
+   * - :math:`\mathrm{SiO_{2}}`
+      
+       Polymorphs, 
+       
+       and Temperature Properties
+     -  
+        SiO2_alpha_crystal_A2_295K (E :math:`\parallel` c)
+
+        SiO2_alpha_crystal_E_295K (E :math:`\perp` c) 
+
+        SiO2_alpha_crystal_E_346K (E :math:`\perp` c) 
+
+        SiO2_alpha_crystal_E_480K (E :math:`\perp` c) 
+
+        SiO2_alpha_crystal_E_600K (E :math:`\perp` c) 
+
+        SiO2_alpha_crystal_E_705K (E :math:`\perp` c) 
+
+        SiO2_alpha_crystal_E_790K (E :math:`\perp` c)
+
+
+        |
+
+        SiO2_beta_crystal_E_1010K (E :math:`\perp` c)
+
+        SiO2_beta_crystal_E_1125K (E :math:`\perp` c)
+
+        SiO2_beta_crystal_E_1170K (E :math:`\perp` c)
+
+        SiO2_beta_crystal_E_1310K (E :math:`\perp` c)
+
+        SiO2_beta_crystal_E_1394K (E :math:`\perp` c)
+
+        SiO2_beta_crystal_E_1520K (E :math:`\perp` c)
+
+        SiO2_beta_crystal_E_1590K (E :math:`\perp` c)
+
+        SiO2_beta_crystal_E_1646K (E :math:`\perp` c)
+
+
+        |
+
+        SiO2_beta_cristobalite_E_1810K
+
+        SiO2_beta_cristobalite_E_1880K
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Meneses (2014) <https://iopscience.iop.org/article/10.1088/0953-8984/26/25/255402>`_
+       
+
+     - 6.67–30 μm 
+
+     - :math:`\alpha` Quartz (trigonal, uniaxial, room temperature polymorph) 
+
+       :math:`\beta` Quartz (trigonal, uniaxial, transforms from :math:`\alpha` quartz at ~850K) 
+
+       :math:`\beta` Cristobalite (cubic, isotropic, transforms from :math:`\beta` quartz at ~1750K)
+
+       Cut crystal. 
+
+       Note that these indices were only measured for the ordinary ray (E), with the exception of the single
+
+       extraordinary measurement (A2). Also note that cristobalite is isotropic while the other polymorphs are uniaxial.
+
+   * - :math:`\mathrm{SiO_{2}}`
+      
+       Polymorphs, 
+       
+       and Temperature Properties
+     -  
+        SiO2_alpha_cristobalite_295K
+
+        SiO2_beta_tridymite_295K
+
+        SiO2_beta_tridymite_500K
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Moran (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...973L...3M/abstract>`_
+
+     - 0.30–15 μm 
+
+     - :math:`\alpha` Cristobalite (tetragonal, uniaxial, transforms from :math:`\beta` cristobalite that has been rapidly quenched) 
+     
+       :math:`\beta` Tridymite (hexagonal, uniaxial, transforms from :math:`\beta` quartz (w/ impuritied) at ~1150K) 
+
+       Wavelengths for some indices were extrapolated from other datasets. 
+
+       See original paper for details.
+
+   * - :math:`\mathrm{Mg_{2}SiO_{4}}`
+      
+       Directional
+       
+       and Temperature Properties
+
+       (Biaxial)
+     -  
+        Mg2SiO4_295K_B1U  (E :math:`\parallel` c)
+
+        Mg2SiO4_546K_B1U  (E :math:`\parallel` c)
+
+        Mg2SiO4_950K_B1U  (E :math:`\parallel` c)
+
+        Mg2SiO4_1102K_B1U (E :math:`\parallel` c)
+
+        Mg2SiO4_1147K_B1U (E :math:`\parallel` c)
+
+        Mg2SiO4_1431K_B1U (E :math:`\parallel` c)
+
+        Mg2SiO4_1518K_B1U (E :math:`\parallel` c)
+
+        Mg2SiO4_1648K_B1U (E :math:`\parallel` c)
+
+        Mg2SiO4_1742K_B1U (E :math:`\parallel` c)
+
+        Mg2SiO4_1809K_B1U (E :math:`\parallel` c)
+
+        |
+
+        Mg2SiO4_295K_B2U  (E :math:`\parallel` b)
+
+        Mg2SiO4_547K_B2U  (E :math:`\parallel` b)
+
+        Mg2SiO4_720K_B2U  (E :math:`\parallel` b)
+
+        Mg2SiO4_946K_B2U  (E :math:`\parallel` b)
+
+        Mg2SiO4_1122K_B2U (E :math:`\parallel` b)
+
+        Mg2SiO4_1303K_B2U (E :math:`\parallel` b)
+
+        Mg2SiO4_1417K_B2U (E :math:`\parallel` b)
+
+        Mg2SiO4_1535K_B2U (E :math:`\parallel` b)
+
+        Mg2SiO4_1617K_B2U (E :math:`\parallel` b)
+
+        Mg2SiO4_1818K_B2U (E :math:`\parallel` b)
+
+        |
+
+        Mg2SiO4_295K_B3U  (E :math:`\parallel` a)
+
+        Mg2SiO4_602K_B3U  (E :math:`\parallel` a)
+
+        Mg2SiO4_757K_B3U  (E :math:`\parallel` a)
+
+        Mg2SiO4_918K_B3U  (E :math:`\parallel` a)
+
+        Mg2SiO4_1055K_B3U (E :math:`\parallel` a)
+
+        Mg2SiO4_1131K_B3U (E :math:`\parallel` a)
+
+        Mg2SiO4_1256K_B3U (E :math:`\parallel` a)
+
+        Mg2SiO4_1503K_B3U (E :math:`\parallel` a)
+
+        Mg2SiO4_1793K_B3U (E :math:`\parallel` a)
+
+        Mg2SiO4_1948K_B3U (E :math:`\parallel` a)
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Mg2SiO4-Aerosols-1.pdf
+          :width: 50
+          :align: center
+
+     - `Eckes (2013) <https://ui.adsabs.harvard.edu/abs/2013PCM....40..287E/abstract>`_
+
+     - 2.5–30 μm 
+
+     - Crystal (orthorhombic, biaxial)
+     
+       Synthetic 
+
+       Orthorhombic means the optical axes align with the crystallographic axes
+
+       It is defined that B1U = Ec, B2U = Eb, B3U = Ea (pers. comm)
+
+   * - :math:`\mathrm{Mg_{1.9}Fe_{0.1}SiO_{4}}`
+
+       Directional Properties
+
+       (Biaxial)
+     -  
+      Mg19Fe01SiO4_crystal_natural_Ex (E :math:`\parallel` c)
+
+      Mg19Fe01SiO4_crystal_natural_Ey (E :math:`\parallel` b)
+
+      Mg19Fe01SiO4_crystal_natural_Ez (E :math:`\parallel` a)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Mg2SiO4-Aerosols-2.pdf
+          :width: 50
+          :align: center
+
+     - `Zeidler (2011) <https://ui.adsabs.harvard.edu/abs/2011A%26A...526A..68Z/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 2–30 μm
+
+     - Crystalline (orthorhombic, biaxial)
+
+       Natural Crystal (Stubachtal)
+
+       Orthorhombic means the optical axes align with the crystallographic axes
+
+       While DOCCD does not explictly label their axes, 
+
+       we assume its the same as Mg172Fe021SiO4: Ex = Ec, Ey = Eb, and Ez = Ea.
+
+   * - :math:`\mathrm{Mg_{1.72}Fe_{0.21}SiO_{4}}`
+
+       Directional Properties
+
+       VIS/NIR Wavelengths
+
+       (Biaxial)
+     -  
+
+      Mg172Fe021SiO4_crystal_visnir_Ex (E :math:`\parallel` c)
+
+      Mg172Fe021SiO4_crystal_visnir_Ey (E :math:`\parallel` b)
+
+      Mg172Fe021SiO4_crystal_visnir_Ez (E :math:`\parallel` a)
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Mg2SiO4-Aerosols-2.pdf
+          :width: 50
+          :align: center
+
+     - `Zeidler (2015) <https://ui.adsabs.harvard.edu/abs/2015ApJ...798..125Z/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 0.32–6.99 μm
+
+     - Crystalline (orthorhombic, biaxial)
+
+       Natural Crystal (San Carlos)
+
+       Orthorhombic means the optical axes align with the crystallographic axes
+
+       As stated on DOCCD, 
+
+       we assume: Ex = Ec, Ey = Eb, and Ez = Ea.
+
+   * - :math:`\mathrm{Mg_{1.72}Fe_{0.21}SiO_{4}}`
+
+       Directional 
+
+       and Temperature Properties
+
+       (Biaxial)
+     -  
+        Mg172Fe021SiO4_crystal_10K_Ex  (E :math:`\parallel` c)
+
+        Mg172Fe021SiO4_crystal_100K_Ex (E :math:`\parallel` c)
+
+        Mg172Fe021SiO4_crystal_200K_Ex (E :math:`\parallel` c)
+
+        Mg172Fe021SiO4_crystal_300K_Ex (E :math:`\parallel` c)
+
+        Mg172Fe021SiO4_crystal_551K_Ex (E :math:`\parallel` c)
+
+        Mg172Fe021SiO4_crystal_738K_Ex (E :math:`\parallel` c)
+
+        Mg172Fe021SiO4_crystal_928K_Ex (E :math:`\parallel` c) 
+
+        |
+
+        Mg172Fe021SiO4_crystal_10K_Ey  (E :math:`\parallel` b)
+
+        Mg172Fe021SiO4_crystal_100K_Ey (E :math:`\parallel` b)
+
+        Mg172Fe021SiO4_crystal_200K_Ey (E :math:`\parallel` b)
+
+        Mg172Fe021SiO4_crystal_300K_Ey (E :math:`\parallel` b)
+
+        Mg172Fe021SiO4_crystal_551K_Ey (E :math:`\parallel` b)
+
+        Mg172Fe021SiO4_crystal_738K_Ey (E :math:`\parallel` b)
+
+        Mg172Fe021SiO4_crystal_928K_Ey (E :math:`\parallel` b)
+
+        |
+
+        Mg172Fe021SiO4_crystal_10K_Ez   (E :math:`\parallel` a)
+
+        Mg172Fe021SiO4_crystal_100K_Ez  (E :math:`\parallel` a)
+
+        Mg172Fe021SiO4_crystal_200K_Ez  (E :math:`\parallel` a)
+
+        Mg172Fe021SiO4_crystal_300K_Ez  (E :math:`\parallel` a)
+
+        Mg172Fe021SiO4_crystal_551K_Ez  (E :math:`\parallel` a)
+
+        Mg172Fe021SiO4_crystal_738K_Ez  (E :math:`\parallel` a)
+
+        Mg172Fe021SiO4_crystal_928K_Ez  (E :math:`\parallel` a)
+      
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Mg2SiO4-Aerosols-2.pdf
+          :width: 50
+          :align: center
+
+     - `Zeidler (2015) <https://ui.adsabs.harvard.edu/abs/2015ApJ...798..125Z/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 6.71–30 μm
+
+     - Crystalline (orthorhombic, biaxial)
+
+       Natural Crystal (San Carlos)
+
+       Orthorhombic means the optical axes align with the crystallographic axes
+
+       As stated on DOCCD, 
+
+       we assume: Ex = Ec, Ey = Eb, and Ez = Ea.
+
+   * - :math:`\mathrm{Mg_{0.92}Fe_{0.09}SiO_{3}}`
+
+       Directional 
+
+       and Temperature Properties
+
+       (Biaxial)
+     -  
+        Mg092Fe009SiO3_crystal_10K_Ez  (E :math:`\parallel` c)
+
+        Mg092Fe009SiO3_crystal_100K_Ez (E :math:`\parallel` c)
+
+        Mg092Fe009SiO3_crystal_200K_Ez (E :math:`\parallel` c)
+
+        Mg092Fe009SiO3_crystal_300K_Ez (E :math:`\parallel` c)
+
+        Mg092Fe009SiO3_crystal_551K_Ez (E :math:`\parallel` c)
+
+        Mg092Fe009SiO3_crystal_738K_Ez (E :math:`\parallel` c)
+
+        Mg092Fe009SiO3_crystal_928K_Ez (E :math:`\parallel` c) 
+
+        |
+
+        Mg092Fe009SiO3_crystal_10K_Ex  (E :math:`\parallel` b)
+
+        Mg092Fe009SiO3_crystal_100K_Ex (E :math:`\parallel` b)
+
+        Mg092Fe009SiO3_crystal_200K_Ex (E :math:`\parallel` b)
+
+        Mg092Fe009SiO3_crystal_300K_Ex (E :math:`\parallel` b)
+
+        Mg092Fe009SiO3_crystal_551K_Ex (E :math:`\parallel` b)
+
+        Mg092Fe009SiO3_crystal_738K_Ex (E :math:`\parallel` b)
+
+        Mg092Fe009SiO3_crystal_928K_Ex (E :math:`\parallel` b)
+
+        |
+
+        Mg092Fe009SiO3_crystal_10K_Ey  (E :math:`\parallel` a)
+
+        Mg092Fe009SiO3_crystal_100K_Ey (E :math:`\parallel` a)
+
+        Mg092Fe009SiO3_crystal_200K_Ey (E :math:`\parallel` a)
+
+        Mg092Fe009SiO3_crystal_300K_Ey (E :math:`\parallel` a)
+
+        Mg092Fe009SiO3_crystal_551K_Ey (E :math:`\parallel` a)
+
+        Mg092Fe009SiO3_crystal_738K_Ey (E :math:`\parallel` a)
+
+        Mg092Fe009SiO3_crystal_928K_Ey (E :math:`\parallel` a)
+
+      
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/MgSiO3-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Zeidler (2015) <https://ui.adsabs.harvard.edu/abs/2015ApJ...798..125Z/abstract>`_
+       
+       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/crsilicates.html>`_
+
+     - 6.71–30 μm
+
+     - Crystalline (orthorhombic, biaxial)
+
+       Natural Crystal (Burma)
+
+       Orthorhombic means the optical axes align with the crystallographic axes
+
+       As stated on DOCCD, 
+
+       we assume: Ex = Eb, Ey = Ea, and Ez = Ec.
+
+Diamond Database
+________________
+
+POSEIDON v1.3.1 includes a database of Mie scattering properties for diamonds.
+
+For full previews of extinction cross sections and scattering properties of each aerosol, see
+`"Diamond Opacity Previews" <../_static/opacity_previews/aerosols_directional/aerosol_database_diamond.pdf>`_ 
+
+All refractive index txt files can be found
+`"Diamond Refractive Indices" <https://github.com/MartianColonist/POSEIDON/tree/Mie-HotFix/POSEIDON/reference_data/refractive_indices_txt_files/diamonds/File-names-corresponding-to-supported-species>`_ 
+
+Note that the entry 'NanoDiamonds' (meteoric diamonds, detailed above in the normal aerosol database) is also included in this database, for convenience. 
+
+.. list-table::
+   :widths: 20 20 20 20 20 20
+   :header-rows: 1
+
+   * - Name in POSEIDON
+     - Plot
+
+       (Click)
+     - Database 
+     
+       Reference
+     - Refractive Index 
+     
+       References
+     - Wavelength
+     
+       Range
+     - Notes
+
+
+   * - Diamond_palik
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Diamond-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Ohno (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..188O/abstract>`_
+
+     - `Palik (1985) [Vol 1] (C) <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
+
+     - 0.2-6.5 μm
+
+     - Crystalline (cubic, isotropic)
+
+       Pure Diamond
+
+   * - Hydrogentated_Diamond_fH0_N0_irradiated
+
+       Hydrogentated_Diamond_fH0_N0_not_irradiated
+
+       Hydrogentated_Diamond_fH025_N0_irradiated
+
+       Hydrogentated_Diamond_fH025_N0_not_irradiated
+
+       Hydrogentated_Diamond_fH1_N0_irradiated
+
+       Hydrogentated_Diamond_fH1_N0_not_irradiated
+
+     - 
+       .. image:: ../_static/opacity_previews/aerosols_directional/Diamond-Aerosols.pdf
+          :width: 50
+          :align: center
+
+     - `Ohno (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..188O/abstract>`_
+
+     - `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...1J>`_
+
+       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...2J>`_
+
+       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...2J>`_
+
+       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...542A..98J>`_
+
+       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...3J>`_
+
+       `Jones (2022) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.128J>`_
+
+       `Jones (2022) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.127J>`_
+
+     - 0.2-30 μm
+
+     - Crystalline (cubic, isotropic)
+
+       6 samples of hydrogenated diamonds
+
+       f_H = fraction of hydrogenation (0, 0.25, and 1)
+
+       Irradiated and non-irradiated by cosmic-rays
+
+
+SiO2 Free Lognormal Logwidth Database
+________________
+
+POSEIDON v1.3.1 includes a database of Mie scattering properties for SiO2 where 
+the lognormal logwidth (used in the lognormal distribution) is a free parameter.
+
+Also see updated tutorial (as of V1.3.1) to see how to make and use this database: 
+`"Making an Aerosol Database" <notebooks/aerosol_database.html>`_ 
+
+.. image:: ../_static/opacity_previews/aerosols_directional/temp_sio2.png
+  :width: 50
+  :align: center
