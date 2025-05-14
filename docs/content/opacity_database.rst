@@ -3326,7 +3326,7 @@ Also see new tutorial (as of V1.3.1):
 
         CaAl12O19_crystal_natural_ordinary (E :math:`\perp` c)
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Hibonite-Mutschke.png
           :width: 50
           :align: center
 
@@ -3349,7 +3349,7 @@ Also see new tutorial (as of V1.3.1):
 
         Al2O3_amorph_porous
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Corundum-Begemann.png
           :width: 50
           :align: center
 
@@ -3389,7 +3389,7 @@ Also see new tutorial (as of V1.3.1):
       Al2O3_alpha_crystal_928K_extraordinary (E :math:`\parallel` c)
 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Corundum-Zeidler.png
           :width: 50
           :align: center
 
@@ -3412,7 +3412,7 @@ Also see new tutorial (as of V1.3.1):
         MgAl2O4_crystalline_natural_annealed_1223K
       
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Spinel-Fabian.png
           :width: 50
           :align: center
 
@@ -3445,40 +3445,7 @@ Also see new tutorial (as of V1.3.1):
         MgAl2O4_synthetic_928K
       
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
-          :width: 50
-          :align: center
-
-     - `Zeidler (2013) <https://ui.adsabs.harvard.edu/abs/2013arXiv1304.1717Z/abstract>`_
-       
-       :math:`\hookrightarrow` `DOCCD Link <https://www2.astro.uni-jena.de/Laboratory/OCDB/aloxides.html>`_
-
-     - 6.71–30 μm 
-     
-       (7.70–30 μm for 10K, 100K)
-
-     - Crystalline (cubic, isotropic)
-
-       Natural crystal
-
-   * - :math:`\mathrm{MgAl_{2}O_{4}}`
-
-       Temperature Properties
-     -  
-        MgAl2O4_synthetic_10K
-
-        MgAl2O4_synthetic_100K
-
-        MgAl2O4_synthetic_300K
-
-        MgAl2O4_synthetic_551K
-
-        MgAl2O4_synthetic_738K
-
-        MgAl2O4_synthetic_928K
-      
-     - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Spinel-Zeidler.png
           :width: 50
           :align: center
 
@@ -3506,7 +3473,7 @@ Also see new tutorial (as of V1.3.1):
 
         Fe2SiO4_crystal_synthetic_Ex (E :math:`\parallel` a) 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Fe-Ti-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Fayalite-Fabian.png
           :width: 50
           :align: center
 
@@ -3553,7 +3520,7 @@ Also see new tutorial (as of V1.3.1):
       TiO2_brookite_Ex (E :math:`\parallel` a)
 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Fe-Ti-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/TiO2-Posch-Zeidler.png
           :width: 50
           :align: center
 
@@ -3612,9 +3579,19 @@ Also see new tutorial (as of V1.3.1):
 
         SiO2_beta_crystal_928K_extraordinary  (E :math:`\parallel` c)
 
+        |
+
+        SiO2_alpha_crystal_300K_averaged (2/3 E :math:`\perp` c + 1/3 E :math:`\parallel` c)
+
+        SiO2_beta_crystal_928K_averaged (2/3 E :math:`\perp` c + 1/3 E :math:`\parallel` c)
+
 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Zeidler.png
+          :width: 50
+          :align: center
+
+       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Zoom-Zeidler.png
           :width: 50
           :align: center
 
@@ -3629,6 +3606,12 @@ Also see new tutorial (as of V1.3.1):
        :math:`\beta` Quartz (trigonal, uniaxial, transforms from :math:`\alpha` quartz at ~850K) 
 
        Natural crystal from Brazil.
+
+       We include opacities for when refractive indices are averaged before Mie calculations
+
+       WARNING: We reccomend using opacities seperate, than these averaged opacities, as
+
+       averaging refractive indices before precomputation can shift absorption features.
 
    * - :math:`\mathrm{SiO_{2}}`
       
@@ -3677,7 +3660,11 @@ Also see new tutorial (as of V1.3.1):
         SiO2_beta_cristobalite_E_1880K
 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Meneses.png
+          :width: 50
+          :align: center
+
+       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Zoom-Meneses.png
           :width: 50
           :align: center
 
@@ -3711,7 +3698,11 @@ Also see new tutorial (as of V1.3.1):
         SiO2_beta_tridymite_500K
 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Moran.png
+          :width: 50
+          :align: center
+
+       .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Zoom-Moran.png
           :width: 50
           :align: center
 
@@ -3798,8 +3789,18 @@ Also see new tutorial (as of V1.3.1):
         Mg2SiO4_1793K_B3U (E :math:`\parallel` a)
 
         Mg2SiO4_1948K_B3U (E :math:`\parallel` a)
+
+        |
+
+        Mg2SiO4_295K_averaged (1/3 E :math:`\parallel` a,b,c)
+        
+        Mg2SiO4_1000K_averaged (1/3 E :math:`\parallel` a,b,c)
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Mg2SiO4-Aerosols-1.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Olivine-Eckes.png
+          :width: 50
+          :align: center
+
+       .. image:: ../_static/opacity_previews/aerosols_directional/Olivine-Zoom-Eckes.png
           :width: 50
           :align: center
 
@@ -3815,6 +3816,12 @@ Also see new tutorial (as of V1.3.1):
 
        It is defined that B1U = Ec, B2U = Eb, B3U = Ea (pers. comm)
 
+        We include opacities for when refractive indices are averaged before Mie calculations
+
+       WARNING: We reccomend using opacities seperate, than these averaged opacities, as
+
+       averaging refractive indices before precomputation can shift absorption features.
+
    * - :math:`\mathrm{Mg_{1.9}Fe_{0.1}SiO_{4}}`
 
        Directional Properties
@@ -3828,7 +3835,7 @@ Also see new tutorial (as of V1.3.1):
       Mg19Fe01SiO4_crystal_natural_Ez (E :math:`\parallel` a)
 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Mg2SiO4-Aerosols-2.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Olivine-Stubachtal-Zeidler.png
           :width: 50
           :align: center
 
@@ -3864,7 +3871,7 @@ Also see new tutorial (as of V1.3.1):
       Mg172Fe021SiO4_crystal_visnir_Ez (E :math:`\parallel` a)
 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Mg2SiO4-Aerosols-2.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Olivine-SanCarlos-Visnir-Zeidler.png
           :width: 50
           :align: center
 
@@ -3939,7 +3946,7 @@ Also see new tutorial (as of V1.3.1):
         Mg172Fe021SiO4_crystal_928K_Ez  (E :math:`\parallel` a)
       
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Mg2SiO4-Aerosols-2.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Olivine-SanCarlos-Zeidler.png
           :width: 50
           :align: center
 
@@ -4013,9 +4020,18 @@ Also see new tutorial (as of V1.3.1):
 
         Mg092Fe009SiO3_crystal_928K_Ey (E :math:`\parallel` a)
 
+        |
+
+        Mg092Fe009SiO3_crystal_300K_averaged (1/3 E :math:`\parallel` c,b,a)
+
+        Mg092Fe009SiO3_crystal_928K_averaged (1/3 E :math:`\parallel` c,b,a)
       
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/MgSiO3-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Orthoenstatite-Zeidler.png
+          :width: 50
+          :align: center
+
+       .. image:: ../_static/opacity_previews/aerosols_directional/Orthoenstatite-Zoom-Zeidler.png
           :width: 50
           :align: center
 
@@ -4071,7 +4087,7 @@ Note that the entry 'NanoDiamonds' (meteoric diamonds, detailed above in the nor
    * - Diamond_palik
 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Diamond-Aerosols.pdf
+       .. image:: ../_static/opacity_previews/aerosols_directional/Diamonds-Palik-Jones.png
           :width: 50
           :align: center
 
@@ -4098,7 +4114,7 @@ Note that the entry 'NanoDiamonds' (meteoric diamonds, detailed above in the nor
        Hydrogentated_Diamond_fH1_N0_not_irradiated
 
      - 
-       .. image:: ../_static/opacity_previews/aerosols_directional/Diamond-Aerosols.pdf
+        .. image:: ../_static/opacity_previews/aerosols_directional/Diamonds-Palik-Jones.png
           :width: 50
           :align: center
 
