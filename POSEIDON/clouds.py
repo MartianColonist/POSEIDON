@@ -1472,7 +1472,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
         print("Reading in database for aerosol cross sections...")
 
     # Check that the selected aerosol grid is supported
-    if (grid not in ['aerosol','SiO2_free_logwidth','aerosol_directional']):
+    if (grid not in ['aerosol','SiO2_free_logwidth','aerosol_directional','aerosol_diamonds']):
         raise Exception("Error: unsupported aerosol grid")
 
     # Find the directory where the user downloaded the input grid
