@@ -1770,7 +1770,7 @@ Mullens et al. (2024).
      
        Synthetic Single Crystal
        
-       Each polarization (E||a,b,c) averaged
+       Each polarization (E||c,b,a) averaged
 
    *  - :math:`\mathrm{\textbf{Magnesium}}`
       - 
@@ -2160,7 +2160,7 @@ Mullens et al. (2024).
      
        Natural crystal with some talc formations
        
-       Each polarization (E||a,b,c) averaged
+       Each polarization (E||c,b,a) averaged
        
        Refractive indices from 2-99 μm, interpolated to fit EGP grid (0.26-227 μm)
        
@@ -3489,7 +3489,7 @@ Also see new tutorial (as of V1.3.1):
 
        Orthorhombic means the optical axes align with the crystallographic axes
 
-       Original text does not specify how x,y,z correspond to a,b,c so we assume
+       Original text does not specify how x,y,z correspond to c,b,a so we assume
 
        it follows the D2H symmetry group (Ez = B1U = Ec, Ey = B2U = Eb, Ex = B3U = Ea)
 
@@ -3542,7 +3542,7 @@ Also see new tutorial (as of V1.3.1):
 
        Orthorhombic means the optical axes align with the crystallographic axes
 
-       Original text does not specify how x,y,z correspond to a,b,c so we assume
+       Original text does not specify how x,y,z correspond to c,b,a so we assume
 
        it follows the D2H symmetry group (Ez = B1U = Ec, Ey = B2U = Eb, Ex = B3U = Ea)
 
@@ -3792,9 +3792,9 @@ Also see new tutorial (as of V1.3.1):
 
         |
 
-        Mg2SiO4_295K_averaged (1/3 E :math:`\parallel` a,b,c)
+        Mg2SiO4_295K_averaged (1/3 E :math:`\parallel` c,b,a)
         
-        Mg2SiO4_1000K_averaged (1/3 E :math:`\parallel` a,b,c)
+        Mg2SiO4_1000K_averaged (1/3 E :math:`\parallel` c,b,a)
      - 
        .. image:: ../_static/opacity_previews/aerosols_directional/Olivine-Eckes.png
           :width: 50
