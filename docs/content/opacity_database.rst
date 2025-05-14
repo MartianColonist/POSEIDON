@@ -3370,16 +3370,6 @@ Also see new tutorial (as of V1.3.1):
 
        (Uniaxial)
      -  
-      Al2O3_alpha_crystal_300K_extraordinary (E :math:`\parallel` c)
-
-      Al2O3_alpha_crystal_551K_extraordinary (E :math:`\parallel` c)
-
-      Al2O3_alpha_crystal_738K_extraordinary (E :math:`\parallel` c)
-
-      Al2O3_alpha_crystal_928K_extraordinary (E :math:`\parallel` c)
-
-      |
-  
       Al2O3_alpha_crystal_300K_ordinary (E :math:`\perp` c) 
 
       Al2O3_alpha_crystal_551K_ordinary (E :math:`\perp` c) 
@@ -3387,6 +3377,16 @@ Also see new tutorial (as of V1.3.1):
       Al2O3_alpha_crystal_738K_ordinary (E :math:`\perp` c) 
 
       Al2O3_alpha_crystal_928K_ordinary (E :math:`\perp` c)
+
+      |
+
+      Al2O3_alpha_crystal_300K_extraordinary (E :math:`\parallel` c)
+
+      Al2O3_alpha_crystal_551K_extraordinary (E :math:`\parallel` c)
+
+      Al2O3_alpha_crystal_738K_extraordinary (E :math:`\parallel` c)
+
+      Al2O3_alpha_crystal_928K_extraordinary (E :math:`\parallel` c)
 
      - 
        .. image:: ../_static/opacity_previews/aerosols_directional/Aluminum-Aerosols.pdf
@@ -3534,15 +3534,15 @@ Also see new tutorial (as of V1.3.1):
 
        (Uniaxial/Biaxial)
      -  
-      TiO2_anatase_extraordinary (E :math:`\parallel` c)
-
       TiO2_anatase_ordinary (E :math:`\perp` c)
+
+      TiO2_anatase_extraordinary (E :math:`\parallel` c)
 
       |
 
-      TiO2_rutile_extraordinary (E :math:`\parallel` c)
-
       TiO2_rutile_ordinary (E :math:`\perp` c)
+
+      TiO2_rutile_extraordinary (E :math:`\parallel` c)
 
       |
 
@@ -3590,6 +3590,18 @@ Also see new tutorial (as of V1.3.1):
        (Uniaxial)
      -  
 
+        SiO2_alpha_crystal_300K_ordinary (E :math:`\perp` c)
+
+        SiO2_alpha_crystal_551K_ordinary (E :math:`\perp` c)
+
+        SiO2_alpha_crystal_738K_ordinary (E :math:`\perp` c)
+
+        SiO2_alpha_crystal_833K_ordinary (E :math:`\perp` c)
+
+        SiO2_beta_crystal_928K_ordinary  (E :math:`\perp` c)
+
+        |
+
         SiO2_alpha_crystal_300K_extraordinary (E :math:`\parallel` c)
 
         SiO2_alpha_crystal_551K_extraordinary (E :math:`\parallel` c)
@@ -3600,18 +3612,6 @@ Also see new tutorial (as of V1.3.1):
 
         SiO2_beta_crystal_928K_extraordinary  (E :math:`\parallel` c)
 
-
-        |
-
-        SiO2_alpha_crystal_300K_ordinary (E :math:`\perp` c)
-
-        SiO2_alpha_crystal_551K_ordinary (E :math:`\perp` c)
-
-        SiO2_alpha_crystal_738K_ordinary (E :math:`\perp` c)
-
-        SiO2_alpha_crystal_833K_ordinary (E :math:`\perp` c)
-
-        SiO2_beta_crystal_928K_ordinary  (E :math:`\perp` c)
 
      - 
        .. image:: ../_static/opacity_previews/aerosols_directional/SiO2-Aerosols.pdf
