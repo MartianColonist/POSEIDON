@@ -1730,15 +1730,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 kappa_Ray_cut = kappa_Ray[:,:,:,:index_5um]
                 kappa_cloud_cut = kappa_cloud[:,:,:,:index_5um]
                 kappa_tot_cut = kappa_tot[:,:index_5um]
-                w_cloud_cut = w_cloud[:,:,:,:index_5um]
-                g_cloud_cut = g_cloud[:,:,:,:index_5um]
-                kappa_cloud_seperate_cut = kappa_cloud_seperate[:,:,:,:,::index_5um]
+                w_cloud_cut = w_cloud[:,:,:,:,:index_5um]
+                g_cloud_cut = g_cloud[:,:,:,:,:index_5um]
+                kappa_cloud_seperate_cut = kappa_cloud_seperate[:,:,:,:,:index_5um]
+                surf_reflect_cut = surf_reflect[:index_5um]
 
                 # Compute the albedo using PICASO's implementation (see emission.py for details)
                 albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
                                             kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
                                             w_cloud_cut, g_cloud_cut, zone_idx,
-                                            surf_reflect,
+                                            surf_reflect_cut,
                                             kappa_cloud_seperate_cut,
                                             single_phase = 3, multi_phase = 0,
                                             frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
@@ -1764,7 +1765,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
                                                         kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
                                                         w_cloud_cut, g_cloud_cut, zone_idx,
-                                                        surf_reflect,
+                                                        surf_reflect_cut,
                                                         kappa_cloud_seperate_clear_cut,
                                                         single_phase = 3, multi_phase = 0,
                                                         frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
@@ -1788,7 +1789,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
                                                         kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
                                                         w_cloud_cut, g_cloud_cut, zone_idx,
-                                                        surf_reflect,
+                                                        surf_reflect_cut,
                                                         kappa_cloud_seperate_clear_cut,
                                                         single_phase = 3, multi_phase = 0,
                                                         frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
@@ -1805,7 +1806,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         albedo_aerosol_1_cut = reflection_Toon(P, wl, dtau_tot_aerosol_1_cut,
                                                 kappa_Ray_cut, kappa_cloud_aerosol_1_cut, kappa_tot_aerosol_1_cut,
                                                 w_cloud_cut, g_cloud_cut, zone_idx,
-                                                surf_reflect,
+                                                surf_reflect_cut,
                                                 kappa_cloud_seperate_aerosol_1_cut,
                                                 single_phase = 3, multi_phase = 0,
                                                 frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
@@ -1822,7 +1823,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                         albedo_aerosol_2_cut = reflection_Toon(P, wl, dtau_tot_aerosol_2_cut,
                                                 kappa_Ray_cut, kappa_cloud_aerosol_2_cut, kappa_tot_aerosol_2_cut,
                                                 w_cloud, g_cloud, zone_idx,
-                                                surf_reflect,
+                                                surf_reflect_cut,
                                                 kappa_cloud_seperate_aerosol_2_cut,
                                                 single_phase = 3, multi_phase = 0,
                                                 frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
