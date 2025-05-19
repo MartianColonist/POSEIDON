@@ -348,7 +348,7 @@ def refractive_index(wl, n_ref, species):
             w_perp_sq = 0.29486069 
             
         elif (species == 'O2'):
-                
+            
             f_par = 2.74876
             w_par_sq = 0.18095751 
             f_perp = 4.86007 
@@ -411,7 +411,13 @@ def refractive_index(wl, n_ref, species):
                 
     else:   # For all other species, use the static polarisability to derive a representative refractive index
         
-        alpha = polarisabilities[species] * nu**0   # nu^0 is to make this an array with same size as nu
+        # Load polarisability of each species
+        if (species == 'ghost'):
+            polarisability = 0.0   # For a ghost can pass through everything
+        else:
+            polarisability = polarisabilities[species]
+
+        alpha = polarisability * nu**0   # nu^0 is to make this an array with same size as nu
         eta = np.sqrt((1.0 + (8.0*np.pi*n_ref*alpha/3.0))/(1.0 - (4.0*np.pi*n_ref*alpha/3.0)))  # Lorentz-Lorenz relation
     
     # Finally, scale to 0 C and 1 atm (1.01325 bar), for refractive indices defined at 15 C and 1013 hPa - Sneep & Ubachs, 2005         
