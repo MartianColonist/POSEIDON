@@ -1697,7 +1697,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              He_fraction, T_input, X_input, P_param_set, 
              log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio,
              constant_gravity = False, chemistry_grid = None,
-             PT_penalty = False, T_eq = None):
+             PT_penalty = False, T_eq = None, mu_back = None):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1786,6 +1786,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         T_eq (float):
             Equilibrium temperature of planet. For the Line PT profile.
             Note: not the same as T_equ, the free parameter in Guillot profile.
+        mu_back (float):
+            Mean molecular mass of background gas, if bulk_species = ['ghost'] (AMU).
     
     Returns:
         T (3D np.array of float):
@@ -2086,8 +2088,16 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
     
     # Load masses of each species from dictionary in species_data.py
     for q in range(N_species):
+
         species = included_species[q]
-        masses_all[q] = masses[species]
+
+        # If background gas is the free mmw 'ghost' species
+        if (species == 'ghost'):
+            masses_all[q] = mu_back
+
+        # All other masses loaded from the dictionary in species_data.py
+        else:
+            masses_all[q] = masses[species]
     
     # Calculate mean molecular mass
     mu = compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all)
