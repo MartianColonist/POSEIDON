@@ -1,11 +1,11 @@
-''' 
-Functions to generate corner plots
+'''
+Functions to generate corner plots.
 
 Contributions from:
     
 Johannes Buchner [PyMultiNest] (C) 2013-2019
 Josh Speagle [Dynesty] (MIT licensed)
-Ryan MacDonald [POSEIDON modifications] (2021-2022)
+Ryan MacDonald [POSEIDON modifications] (2021-2025)
 
 '''
 
@@ -15,9 +15,11 @@ import numpy
 import logging
 import types
 import math
+import colorsys
 import pymultinest
 import numpy as np
 from mpi4py import MPI
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator, NullLocator
 from matplotlib.colors import LinearSegmentedColormap, colorConverter
@@ -43,6 +45,33 @@ rank = comm.Get_rank()
 
 # Global dictionary to store maximum histogram values for each parameter
 global_max_hist_values = {}
+
+
+def scale_lightness(colour_name, scale):
+    ''' 
+    Scale the lightness of a colour by the given factor.
+    
+    Args:
+        colour_name (str): 
+            The name of the colour to be scaled, in matplotlib colour format.
+        scale (float): 
+            The factor by which to scale the lightness of the colour (< 1 makes
+            the colour darker).
+    
+    Returns:
+        tuple: 
+            A tuple containing the RGB values of the scaled colour.
+    '''
+    
+    # Convert colour name to RBG value
+    rgb = matplotlib.colors.ColorConverter.to_rgb(colour_name)
+    
+    # Convert RGB to HLS
+    h, l, s = colorsys.rgb_to_hls(*rgb)
+    
+    # Manipulate h, l, s values and return as RGB
+    return colorsys.hls_to_rgb(h, min(1, l * scale), s = s)
+
 
 def _quantile(x, q, weights=None):
     '''
@@ -349,23 +378,24 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                colour_plt='purple', colour_quantile='blue', smooth_hist=30, 
                smooth_corr=0.02, hist_kwargs=None, hist2d_kwargs=None, 
                labels=None, param_names=None, label_kwargs=None,
-               show_titles=True, title_kwargs=None, truths=None, 
-               truth_colour='red', truth_kwargs=None, max_n_ticks=5, 
-               top_ticks=False, use_math_text=False, verbose=False, 
-               fig=None, model_i = None, 
-               two_sigma_upper_limits = [], two_sigma_lower_limits = []):
+               show_titles=True, title_kwargs=None, title_fontsize = 12,
+               truths=None, truth_colour='red', truth_kwargs=None, 
+               max_n_ticks=5, top_ticks=False, use_math_text=False, 
+               verbose=False, fig=None, model_idx = None, 
+               two_sigma_upper_limits = [], two_sigma_lower_limits = [],
+               title_vertical_padding = 0.1):
     '''
     Generate a corner plot of the 1D and 2D marginalised posteriors.
 
     Args:
         results (dict):
-            Results dictionary containing the samples and weights from a 
+            Results dictionary containing the samples and weights from a
             nested sampling retrieval.
         span (list of tuples or float):
             A list where each element is either a length-2 tuple containing
             lower and upper bounds or a float from `(0., 1.]` giving the
             fraction of (weighted) samples to include. If a fraction is provided,
-            the bounds are chosen to be equal-tailed. If not specified, defaults 
+            the bounds are chosen to be equal-tailed. If not specified, defaults
             to +/- 5σ range. Example: span = [(0., 10.), 0.95, (5., 6.)].
         quantiles (np.array of float):
             A list of fractional quantiles to overplot on the 1D marginalised
@@ -378,7 +408,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         smooth_hist (float or int):
             The standard deviation for the Gaussian kernel used to smooth the 1D
             histograms, expressed as a fraction of the span, if a float provided.
-            If an integer is provided instead, this will instead default to a 
+            If an integer is provided instead, this will instead default to a
             simple (weighted) histogram with 'bins=smooth'. Default is 30 bins.
         smooth_corr (float):
             The standard deviation for the Gaussian kernel used to smooth the 2D
@@ -389,7 +419,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         hist2d_kwargs (dict):
             Extra keyword arguments to send to the 2D contours.
         labels (np.array of str):
-            A list of names for each parameter. If not provided, the default 
+            A list of names for each parameter. If not provided, the default
             name used when plotting will follow the math module 'x_i' style.
         param_names (np.array of str):
             List of parameter names used by POSEIDON for this retrieval.
@@ -401,10 +431,10 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             showing the median along with the upper/lower bounds associated
             with the 1σ confidence interval. Default is True.
         title_kwargs (dict):
-            Extra keyword arguments that will be sent to the matplotlib axes 
+            Extra keyword arguments that will be sent to the matplotlib axes
             'set_title' command.
         truths (list of float):
-            A list of reference values that will be overplotted on the traces 
+            A list of reference values that will be overplotted on the traces
             and marginalised 1D histograms as solid horizontal/vertical lines.
             Individual values can be exempt using 'None'. Default is 'None'.
         truth_colour (str or list of str):
@@ -425,17 +455,19 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             each parameter. Default is False.
         fig (matplotlib figure object):
             If provided, overplot the traces and marginalised 1D histograms
-            onto the provided figure. Otherwise, by default an internal figure 
+            onto the provided figure. Otherwise, by default an internal figure
             is generated.
-        two_sigma_upper_limits (list of bool):
-            If True for any parameter, the 2σ upper limit will be plotted instead of the 1σ range.
-        two_sigma_lower_limits (list of bool):
-            If True for any parameter, the 2σ lower limit will be plotted instead of the 1σ range.
-
+        two_sigma_upper_limits (list of str):
+            List of parameters for which the 2σ upper limit will be plotted instead of the 1σ range.
+        two_sigma_lower_limits (list of str):
+            List of parameters for which the 2σ lower limit will be plotted instead of the 1σ range.
+        title_vertical_padding (float):
+            Vertical padding for the titles for multiple overlapping corner plots.
+    
     Returns:
         cornerplot (matplotlib figure, matplotlib axes objects):
             Output corner plot.
-    
+
     '''
 
     # Initialise values
@@ -453,7 +485,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         hist2d_kwargs = dict()
 
     # Set defaults
-    hist_kwargs['alpha'] = hist_kwargs.get('alpha', 0.6)
+  #  hist_kwargs['alpha'] = hist_kwargs.get('alpha', 0.6)
     hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.6)
     truth_kwargs['linestyle'] = truth_kwargs.get('linestyle', 'solid')
     truth_kwargs['linewidth'] = truth_kwargs.get('linewidth', 2)
@@ -518,9 +550,9 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
     dim = lbdim + plotdim + trdim  # total size
         
     # Initialize figure.
-    if (fig is None and model_i is None) or (fig is None and model_i == 0):
+    if (fig is None and model_idx is None) or (fig is None and model_idx == 0):
         fig, axes = plt.subplots(ndim, ndim, figsize=(dim, dim))
-    elif fig is not None and model_i is not None:
+    elif fig is not None and model_idx is not None:
         try:
             fig, axes = fig
             axes = np.array(axes).reshape((ndim, ndim))
@@ -550,7 +582,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             n = norm_kde(n, 10.)
         
         # Update the global maximum histogram value for this parameter
-        if model_i is not None:
+        if model_idx is not None:
             if param_name not in global_max_hist_values:
                 global_max_hist_values[param_name] = max(n)
             else:
@@ -610,7 +642,14 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             # If `sx` is an integer, plot a weighted histogram with
             # `sx` bins within the provided bounds.
             n, b, _ = ax.hist(x, bins=sx_hist, weights=weights, color=colour_plt,
-                              range=np.sort(span[i]), **hist_kwargs)
+                              edgecolor='black', lw = 0.8,
+                              range=np.sort(span[i]), alpha = 0.6,
+                              **hist_kwargs)
+            # Add border
+         #   n, b, _ = ax.hist(x, bins=sx_hist, weights=weights, edgecolor='black',
+         #                     range=np.sort(span[i]), facecolor='None', lw = 0.8, 
+         #                     alpha = 1.0,
+         #                     **hist_kwargs)
         else:
             # If `sx` is a float, oversample the data relative to the
             # smoothing filter by a factor of 10, then use a Gaussian
@@ -622,10 +661,16 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             b0 = 0.5 * (b[1:] + b[:-1])
             n, b, _ = ax.hist(b0, bins=b, weights=n,
                               range=np.sort(span[i]), color=colour_plt,
+                              edgecolor='None', alpha = 0.6,
                               **hist_kwargs)
+            # Add border
+          #  n, b, _ = ax.hist(b0, bins=b, weights=n,
+          #                    range=np.sort(span[i]), color='black',
+          #                    facecolor='None', lw = 0.8,
+          #                    **hist_kwargs)
             
         # Set the y-axis limit based on the global maximum value
-        if model_i is not None:
+        if model_idx is not None:
             ax.set_ylim([0., global_max_hist_values[param_name] * 1.05])
         else:
             ax.set_ylim([0., max_hist_values[i] * 1.05])
@@ -634,13 +679,15 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         if quantiles is not None and len(quantiles) > 0:
             qs = _quantile(x, quantiles, weights=weights)
 
+            colour_quantile_plt = scale_lightness(colour_quantile, 0.85)  # Make darker than histogram
+
             # Plot median and one sigma limits by default
             if ((len(two_sigma_upper_limits) == 0) and (len(two_sigma_lower_limits) == 0)):
                 for i_q, q in enumerate(qs):
                     if (quantiles[i_q] == 0.5):   # For median
-                        ax.axvline(q, lw=2, ls="-", alpha=0.7, color=colour_quantile)
+                        ax.axvline(q, lw=2, ls="-", alpha=0.7, color=colour_quantile_plt)
                     else:
-                        ax.axvline(q, lw=1, ls="dashed", color=colour_quantile)
+                        ax.axvline(q, lw=1, ls="dashed", color=colour_quantile_plt)
                 if verbose:
                     print("Quantiles:")
                     print(labels[i], [blob for blob in zip(quantiles, qs)])
@@ -649,16 +696,16 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                     qh = _quantile(x, [0.95], weights=weights)[0]
                     
                     # Plot arrow for upper limit
-                    if model_i is not None:
-                        arrow_y_pos = 0.9 - 0.05 * model_i
+                    if model_idx is not None:
+                        arrow_y_pos = 0.9 - 0.05 * model_idx
                     else:
                         arrow_y_pos = 0.9
-                    ax.axvline(qh, lw=2, ls="-", color=colour_quantile)
+                    ax.axvline(qh, lw=2, ls="-", color=colour_quantile_plt)
                     ax.annotate('', xy=(qh, arrow_y_pos), 
                                 xytext=((qh - (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0]))), arrow_y_pos), 
                                 xycoords=('data', 'axes fraction'), textcoords=('data', 'axes fraction'),
-                                arrowprops=dict(facecolor=colour_quantile, color = colour_quantile, 
-                                                edgecolor=colour_quantile, arrowstyle='<|-', lw=2, ls='-',
+                                arrowprops=dict(facecolor=colour_quantile_plt, color = colour_quantile_plt, 
+                                                edgecolor=colour_quantile_plt, arrowstyle='<|-', lw=2, ls='-',
                                                 shrinkA=0, shrinkB=0))
                     if verbose:
                         print("Quantiles:")
@@ -667,16 +714,16 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                     ql = _quantile(x, [0.05], weights=weights)[0]
 
                     # Plot arrow for lower limit
-                    if model_i is not None:
-                        arrow_y_pos = 0.9 - 0.05 * model_i
+                    if model_idx is not None:
+                        arrow_y_pos = 0.9 - 0.05 * model_idx
                     else:
                         arrow_y_pos = 0.9
-                    ax.axvline(ql, lw=2, ls="-", color=colour_quantile)
+                    ax.axvline(ql, lw=2, ls="-", color=colour_quantile_plt)
                     ax.annotate('', xy=(ql + (0.2 * (ax.get_xlim()[1] - ax.get_xlim()[0])), arrow_y_pos), 
                                 xytext=(ql, arrow_y_pos), 
                                 xycoords=('data', 'axes fraction'), textcoords=('data', 'axes fraction'),
-                                arrowprops=dict(facecolor=colour_quantile, color = colour_quantile, 
-                                                edgecolor=colour_quantile, arrowstyle='-|>', lw=2, ls='-',
+                                arrowprops=dict(facecolor=colour_quantile_plt, color = colour_quantile_plt, 
+                                                edgecolor=colour_quantile_plt, arrowstyle='-|>', lw=2, ls='-',
                                                 shrinkA=0, shrinkB=0))
                     if verbose:
                         print("Quantiles:")
@@ -684,9 +731,9 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                 else:
                     for i_q, q in enumerate(qs):
                         if (quantiles[i_q] == 0.5):   # For median
-                            ax.axvline(q, lw=2, ls="-", alpha=0.7, color=colour_quantile)
+                            ax.axvline(q, lw=2, ls="-", alpha=0.7, color=colour_quantile_plt)
                         else:
-                            ax.axvline(q, lw=1, ls="dashed", color=colour_quantile)
+                            ax.axvline(q, lw=1, ls="dashed", color=colour_quantile_plt)
                     if verbose:
                         print("Quantiles:")
                         print(labels[i], [blob for blob in zip(quantiles, qs)])
@@ -762,17 +809,18 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                     title = title.format(fmt(qm), fmt(q_minus), fmt(q_plus))
                     title = "{0} = {1}".format(labels[i], title)
 
-            if model_i is not None:
-                ax.text(0.5, 1 + model_i * 0.1,
+            if model_idx is not None:
+                ax.text(0.5, 1 + model_idx * title_vertical_padding,
                         title,
                         horizontalalignment="center",
                         verticalalignment="bottom",
                         color=colour_plt,
                         transform=ax.transAxes,
+                        fontsize=title_fontsize,
                         **title_kwargs,
                        )
             else:
-                ax.set_title(title, **title_kwargs)
+                ax.set_title(title, fontsize=title_fontsize, **title_kwargs)
         else:
             ax.set_title(None)
 
@@ -860,6 +908,7 @@ def generate_cornerplot(planet, model, params_to_plot = None,
                         retrieval_name = None, true_vals = None,
                         colour_scheme = '#984ea3', span = None, corner_name = None,
                         two_sigma_upper_limits = [], two_sigma_lower_limits = [],
+                        N_bins = 30,
                         ):
     '''
     Generate giant triangle plot of doom to visualise the results of a 
@@ -884,6 +933,8 @@ def generate_cornerplot(planet, model, params_to_plot = None,
             List of parameters for which the 2σ upper limit will be plotted instead of the 1σ range.
         two_sigma_lower_limits (list of str):
             List of parameters for which the 2σ lower limit will be plotted instead of the 1σ range.
+        N_bins (int):
+            Number of bins to use for the histograms.
     
     Returns:
         fig (matplotlib figure object):
@@ -957,7 +1008,7 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         # Generate corner plot
         fig, axes = cornerplot(results, 
                                quantiles=[0.1587, 0.5, 0.8413],  
-                               smooth_hist=30, 
+                               smooth_hist=N_bins, 
                                smooth_corr=0.02, 
                                colour_plt=colour_scheme,
                                colour_quantile='royalblue',
@@ -968,7 +1019,7 @@ def generate_cornerplot(planet, model, params_to_plot = None,
                                span=span,
                                truth_colour='green',
                                label_kwargs={'fontsize': 18}, 
-                               hist_kwargs={'histtype':'stepfilled','edgecolor': None},
+                               hist_kwargs={'histtype':'stepfilled'},
                                hist2d_kwargs={'plot_contours': True,
                                               'fill_contours': True,
                                               'levels': levels,
@@ -989,11 +1040,15 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         return (fig, axes)
 
 
-def generate_overplot(planet, models, params_to_plot = [], 
+def generate_overplot(planet, models, params_to_plot = None, 
                       model_display_names = None, true_vals = None,
-                      truth_colour = 'green', colour_schemes = ['purple', 'green'], 
-                      span = None, overplot_name = None,
-                      two_sigma_upper_limits = [], two_sigma_lower_limits = []):
+                      truth_colour = 'green', colour_schemes = ['royalblue', 'orangered'], 
+                      span = None, overplot_name = None, 
+                      annotation_text_size = 20, title_font_size = 12,
+                      two_sigma_upper_limits = [], two_sigma_lower_limits = [],
+                      external_samples = [], external_param_names = [],
+                      title_vertical_padding = 0.1, N_bins = 30,
+                      ):
     '''
     Generate overplotted giant triangle plot of doom to visualise the results 
     of multiple POSEIDON retrievals.
@@ -1017,6 +1072,16 @@ def generate_overplot(planet, models, params_to_plot = [],
             List of parameters for which the 2σ upper limit will be plotted instead of the 1σ range.
         two_sigma_lower_limits (list of str):
             List of parameters for which the 2σ lower limit will be plotted instead of the 1σ range.
+        external_samples (list of np.array):
+            List of external samples to overplot. Each element should be a 2D
+            array of shape (N_samples, N_params).
+        external_param_names (list of np.array):
+            List of parameter names for each external sample. Each element
+            should be a 1D array of shape (N_params,).
+        title_vertical_padding (float):
+            Vertical padding for the titles for multiple overlapping corner plots.
+        N_bins (int):
+            Number of bins to use for the histograms.
 
     Returns:
         fig (matplotlib figure object):
@@ -1027,8 +1092,10 @@ def generate_overplot(planet, models, params_to_plot = [],
     # Only generate a cornerplot using the first core
     if rank == 0:
 
+        N_models = len(models)
+
         # Check for correct settings
-        if ((len(colour_schemes) != len(models))):
+        if ((len(colour_schemes) != N_models)):
             raise Exception("Number of colours does not match number of models.")
         if (len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != 0):
             for param in two_sigma_upper_limits:
@@ -1043,86 +1110,113 @@ def generate_overplot(planet, models, params_to_plot = [],
         if model_display_names is None:
             model_display_names = [model["model_name"] for model in models]
 
-        # Loop over each retrieval model
-        for model_i, model in enumerate(models):
+        # Calculate 2D levels for 1, 2, 3 sigma contours
+        levels = 1.0 - np.exp(-0.5 * np.array([1.0, 2.0, 3.0]) ** 2)
 
-            # Unpack model properties
-            model_name = model["model_name"]
-            param_names = model["param_names"]
-            n_params = len(param_names)
-
-            # Identify output directory location
-            output_dir = "./POSEIDON_output/" + planet_name + "/retrievals/"
-
-            # Load relevant output directory
-
-            output_prefix = output_dir + "MultiNest_raw/" + model_name + "-"
-
-            # Run PyMultiNest analyser to extract posterior samples and model evidence
-            a = pymultinest.Analyzer(
-                n_params, outputfiles_basename=output_prefix, verbose=False
-            )
-            s = a.get_stats()
-
-            print(f"Generating corner plot {model_i+1}...")
-
-            # Extract quantities needed to use the Dynesty corner plotting script
-            data = a.get_data()
-            i = data[:, 1].argsort()[::-1]
-            if params_to_plot is not None:
-                indices_to_plot = [
-                    list(param_names).index(param) for param in params_to_plot
-                ]
-                samples = data[i][:, [2 + index for index in indices_to_plot]]
-            else:
-                params_to_plot = param_names
-                samples = data[i, 2:]
-            weights = data[i, 0]
-            loglike = data[i, 1]
-            Z = s["global evidence"]
-            logvol = np.log(weights) + 0.5 * loglike + Z
-            logvol = logvol - logvol.max()
-
-            # Package results dictionary expected by the cornerplot function
-            results = dict(samples=samples, weights=weights, logvol=logvol)
-
-            # Calculate 2D levels for 1, 2, 3 sigma contours
-            levels = 1.0 - np.exp(-0.5 * np.array([1.0, 2.0, 3.0]) ** 2)
-
-            # Generate LaTeX names for each parameter for plot axes
+        # Generate LaTeX names for each parameter for plot axes
+        if (params_to_plot is not None):
             params_latex = generate_latex_param_names(params_to_plot)
+        else:
+            params_latex = generate_latex_param_names(models[0]['param_names'])
+
+        # Identify output directory location
+        output_dir = "./POSEIDON_output/" + planet_name + "/retrievals/"
+
+        # Loop over each retrieval model
+        for m in range(N_models):
+
+            model = models[m]
+
+            # For POSEIDON retrieval samples
+            if (len(external_samples) == 0):
+
+                # Unpack model properties
+                model_name = model["model_name"]
+                param_names = model["param_names"]
+                n_params = len(param_names)
+
+                # Load relevant output directory
+
+                output_prefix = output_dir + "MultiNest_raw/" + model_name + "-"
+
+                # Run PyMultiNest analyser to extract posterior samples and model evidence
+                a = pymultinest.Analyzer(
+                    n_params, outputfiles_basename=output_prefix, verbose=False
+                )
+                s = a.get_stats()
+
+                print(f"Generating corner plot {m+1}...")
+
+                # Extract quantities needed to use the Dynesty corner plotting script
+                data = a.get_data()
+                i = data[:, 1].argsort()[::-1]
+                if params_to_plot is not None:
+                    indices_to_plot = [
+                        list(param_names).index(param) for param in params_to_plot
+                    ]
+                    samples = data[i][:, [2 + index for index in indices_to_plot]]
+                else:
+                    params_to_plot = param_names
+                    samples = data[i, 2:]
+                weights = data[i, 0]
+                loglike = data[i, 1]
+                Z = s["global evidence"]
+                logvol = np.log(weights) + 0.5 * loglike + Z
+                logvol = logvol - logvol.max()
+
+                # Package results dictionary expected by the cornerplot function
+                results = dict(samples=samples, weights=weights, logvol=logvol)
+
+            # When using external samples
+            else:
+                param_names = np.array(external_param_names[m])
+
+                samples = external_samples[m]
+
+                # Extract samples only for parameters in params_to_plot
+                indices_to_plot = [list(param_names).index(param) for param in params_to_plot]
+                samples = samples[:,indices_to_plot]
+
+                N_samples = len(samples[:,0])  
+
+                weights = np.ones(N_samples) / N_samples   # Assume equally weighted!
+
+                # Package results dictionary expected by the cornerplot function
+                results = dict(samples=samples, weights=weights, logvol=None)
 
             # Generate corner plot
             existing_fig = cornerplot(results,
                                       quantiles=[0.1587, 0.5, 0.8413],
-                                      smooth_hist=30,
+                                      smooth_hist=N_bins,
                                       smooth_corr=0.02,
-                                      colour_plt=colour_schemes[model_i],
-                                      colour_quantile=colour_schemes[model_i],
+                                      colour_plt=colour_schemes[m],
+                                      colour_quantile=colour_schemes[m],
                                       show_titles=True,
+                                      title_fontsize=title_font_size,
                                       labels=params_latex,
                                       param_names=params_to_plot,
                                       truths=true_vals,
                                       span=span,
                                       truth_colour=truth_colour,
-                                      label_kwargs={"fontsize": 18},
-                                      hist_kwargs={"histtype": "stepfilled", "edgecolor": None},
-                                      hist2d_kwargs={"plot_contours": True,
-                                                    "fill_contours": True,
-                                                    "levels": levels,
-                                                    "plot_datapoints": False,
+                                      label_kwargs={'fontsize': 18},
+                                      hist_kwargs={'histtype': 'stepfilled'},
+                                      hist2d_kwargs={'plot_contours': True,
+                                                    'fill_contours': True,
+                                                    'levels': levels,
+                                                    'plot_datapoints': False,
                                                     },
                                       fig=existing_fig,
-                                      model_i=model_i,
+                                      model_idx=m,
                                       two_sigma_upper_limits=two_sigma_upper_limits,
                                       two_sigma_lower_limits=two_sigma_lower_limits,
+                                      title_vertical_padding=title_vertical_padding,
                                      )
 
-            existing_fig[0].text(0.7, (0.75 + 0.05 * model_i),
-                                 model_display_names[model_i],
-                                 horizontalalignment="left",
-                                 fontsize=20,
-                                 color=colour_schemes[model_i],
+            existing_fig[0].text(0.7, (0.75 + 0.05 * m),
+                                 model_display_names[m],
+                                 horizontalalignment='left',
+                                 fontsize=annotation_text_size,
+                                 color=colour_schemes[m],
                                  )
 
         # Save corner plot in results directory
@@ -1130,11 +1224,10 @@ def generate_overplot(planet, models, params_to_plot = [],
             overplot_name = ''
             for model_display_name in model_display_names:
                 overplot_name += model_display_name + '_'
-            results_prefix = output_dir + "results/" + overplot_name
+            results_prefix = output_dir + 'results/' + overplot_name
         else:
-            results_prefix = output_dir + "results/" + overplot_name + '_'
+            results_prefix = output_dir + 'results/' + overplot_name + '_'
 
-        plt.savefig(results_prefix + "corner_overplot.pdf", bbox_inches="tight")
+        plt.savefig(results_prefix + 'corner_overplot.pdf', bbox_inches='tight')
 
         return existing_fig
-
