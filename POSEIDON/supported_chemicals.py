@@ -14,7 +14,8 @@ supported_species = np.array(['H2O', 'CO2', 'CH4', 'CO', 'Na', 'K', 'NH3', 'HCN'
                               'OH', 'OH+', 'CH', 'NH', 'SH', 'PN', 'PS', 'CS',
                               'C2', 'CH3', 'H3+', 'N2O', 'NO2', 'C2H4', 'C2H6', 
                               'CH3CN', 'CH3OH', 'CH3Cl', 'GeH4', 'CS2', 'O2', 
-                              'O3', 'C2H6S', 'Al', 'Ba', 'Ba+', 'Ca', 'Ca+', 
+                              'O3', 'C2H6S', 'C2H6S2', 'CH3SH', 'C3H4', 
+                              'Al', 'Ba', 'Ba+', 'Ca', 'Ca+', 
                               'Cr', 'Cs', 'Fe', 'Fe+', 'Li', 'Mg', 'Mg+', 'Mn', 
                               'Ni', 'O', 'Rb', 'Sc', 'Ti', 'Ti+', 'V', 'V+',
                               '12C-16O', '13C-16O', '12C-18O', '12C-17O', 
@@ -35,7 +36,7 @@ supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2',
                           'O2-CO2', 'O2-N2'])
 
 # Species treated as spectrally inactive (in standard cross section treatment)
-inactive_species = np.array(['H2', 'He', 'e-', 'H-', 'N2'])  # H- handled separately
+inactive_species = np.array(['H2', 'He', 'e-', 'H-', 'N2', 'ghost'])  # H- handled separately
 
 # Aerosol Supported Species for normal aerosol database
 aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4_liquid', 'CH4_solid', 'CaTiO3', 'CaTiO3_KH', 'Cr', 'ExoHaze_1000xSolar_300K', 
