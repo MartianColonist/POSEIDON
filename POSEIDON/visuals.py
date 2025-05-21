@@ -2398,6 +2398,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                            y_tick_fontsize = 12, y_label_fontsize = 16,
                            legend_fontsize = 10, plt_label_fontsize = 14,
                            planet_name_fontsize = 16, plot_style = 'standard',
+                           legend_line_size = [], err_colour_array = [],
+                           show_legend = True
                            ):
     ''' 
     Plot a collection of individual model spectra. This function can plot
@@ -2527,6 +2529,12 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
             Font size for the planet name.
         plot_style (str, optional):
             (Experimental!) plot style ('standard' or 'fancy').
+        legend_line_size (list of float, optional):
+            Size of lines in the legend. Put 1 for data points
+        err_colour_array (list of string, optional):
+            Color of data error bars
+        show_legend (bool, optional):
+            If False, will not plot legend
      
     Returns:
         fig (matplotlib figure object):
@@ -2633,6 +2641,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         raise Exception("Number of error bar line widths does not match number of spectra.")
     if ((len(text_annotations) != 0) and (len(text_annotations) != len(annotation_pos))):
         raise Exception("Number of annotation labels does not match provided positions.")
+    if ((len(err_colour_array) != 0) and (len(err_colour_array) != N_datasets)):
+        raise Exception("Number of error bar colours must match number of datasets.")
 
     # Define colours for plotted spectra (default or user choice)
     if (len(data_colour_list) == 0):   # If user did not specify a custom colour list
@@ -3128,16 +3138,28 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         else:
             x_bin_size = None
 
-        markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
-                                           xerr = x_bin_size, marker = data_markers[i], 
-                                           markersize = data_markers_size[i], 
-                                           capsize = capsize, ls='none',
-                                           elinewidth = data_eline_widths[i], 
-                                           color = data_colours[i], 
-                                           alpha = data_eline_alphas[i],
-                                           ecolor = err_colour, label=label_i,
-                                           markeredgewidth = data_edge_widths[i],
-                                           zorder = 100)
+        if (len(err_colour_array) == 0):
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                            xerr = x_bin_size, marker = data_markers[i], 
+                                            markersize = data_markers_size[i], 
+                                            capsize = capsize, ls='none',
+                                            elinewidth = data_eline_widths[i], 
+                                            color = data_colours[i], 
+                                            alpha = data_eline_alphas[i],
+                                            ecolor = err_colour, label=label_i,
+                                            markeredgewidth = data_edge_widths[i],
+                                            zorder = 100)
+        else:
+            markers, caps, bars = ax1.errorbar(wl_data_i, ydata_i, yerr = err_data_i, 
+                                            xerr = x_bin_size, marker = data_markers[i], 
+                                            markersize = data_markers_size[i], 
+                                            capsize = capsize, ls='none', 
+                                            elinewidth = data_eline_widths[i], 
+                                            color = data_colours[i], 
+                                            alpha = data_eline_alphas[i],
+                                            ecolor = err_colour_array[i], label=label_i,
+                                            markeredgewidth = data_edge_widths[i],
+                                            zorder = 100)
 
         [markers.set_alpha(data_alphas[i])]
 
@@ -3247,6 +3269,24 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
    #                         ncol = n_columns, frameon = False)    # Legend settings
             
     legend.set_zorder(200)   # Make legend always appear in front of everything
+
+    if len(legend_line_size) != 0:
+        # Check legend line size length
+        try:
+            if (len(legend_line_size) != len(legend.legend_handles)):
+                raise Exception("Make sure legend_line_size length is equal to number of handles.")
+        except:
+            # weird attribute error
+            if (len(legend_line_size) != len(legend.legendHandles)):
+                raise Exception("Make sure legend_line_size length is equal to number of handles.")
+        try:
+            for i in range(len(legend.legend_handles)):
+                legline = legend.legend_handles[i]
+                legline.set_linewidth(legend_line_size[i])
+        except AttributeError:
+            for i in range(len(legend.legendHandles)):
+                legline = legend.legendHandles[i]
+                legline.set_linewidth(legend_line_size[i])
 
     plt.tight_layout()
 
@@ -3957,9 +3997,9 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             Alpha value for histogram bars. Default is 0.4.
         show_title (bool, optional):
             Whether to show titles on the plots. Default is True.
-        two_sigma_upper_limits_full (2D list of bools, optional):
+        two_sigma_upper_limits_full (1D or 2D list of str, optional):
             Upper limits for two sigma confidence intervals. Default is empty list.
-        two_sigma_lower_limits_full (2D list of bools, optional):
+        two_sigma_lower_limits_full (1D or 2D list of str, optional):
             Lower limits for two sigma confidence intervals. Default is empty list.
 
     Returns:
@@ -4127,17 +4167,17 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                     # model options in the loop
                     # otherwise it uses the 1D array for all the models
 
-                    if (len(np.shape(two_sigma_upper_limits_full)) > 1):
+                    if (len(two_sigma_upper_limits_full) > 1):
                         two_sigma_upper_limits = two_sigma_upper_limits_full[m]
                     else:
                         two_sigma_upper_limits = two_sigma_upper_limits_full
 
-                    if (len(np.shape(two_sigma_lower_limits_full)) > 1):
+                    if (len(two_sigma_lower_limits_full) > 1):
                         two_sigma_lower_limits = two_sigma_lower_limits_full[m]
                     else:
                         two_sigma_lower_limits = two_sigma_lower_limits_full
-
-                    if (two_sigma_upper_limits[q] == True):
+                    
+                    if (param in two_sigma_upper_limits):
 
                         # Find 95th percentile
                         qh = _quantile(param_vals_m[:,q], [0.95])[0]
@@ -4157,7 +4197,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                                                     lw=2, ls='-', shrinkA=0, shrinkB=0),
                                     alpha=0.8)
 
-                    elif (two_sigma_lower_limits[q] == True):
+                    elif (param in two_sigma_lower_limits):
 
                         # Find 5th percentile
                         ql = _quantile(param_vals_m[:,q], [0.05])[0]
@@ -4190,7 +4230,16 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                         ax.axvline(high1, lw=1, ls="dashed", color=constraint_colour)
 
                 # Plot title
-                ax.text(0.5, 1.05 + (m * title_vert_spacing),
+                
+                # I prefer it flipped so that its in the order as plot_retrieved_spectra (EM)
+                top_y = 1.05 + ((N_models-1)*0.2)
+
+                #ax.text(0.5, 1.05 + (m * 0.2),
+                #        title, horizontalalignment = "center", verticalalignment = "bottom",
+                #        color = title_colour, transform = ax.transAxes, fontsize = title_fontsize,
+                #       )
+
+                ax.text(0.5, top_y - (m * 0.2),
                         title, horizontalalignment = "center", verticalalignment = "bottom",
                         color = title_colour, transform = ax.transAxes, fontsize = title_fontsize,
                        )
@@ -4406,12 +4455,14 @@ def plot_histograms(planet, models, plot_parameters,
             Custom ticks for the x-axis. Default is empty list.
         alpha_hist (float, optional):
             Transparency for the histograms. Default is 0.4.
-        two_sigma_upper_limits (list of bool, optional):
+        two_sigma_upper_limits (1D or 2D list of str, optional):
             List of parameters with two sigma upper limits. Default is empty list.
-            Can be 1 or 2D (2D is a list of list of bools, one list for each retrieval)
-        two_sigma_lower_limits (list of bool, optional):
+            If 1D, will apply two_sigma_upper_limit to all models. If 2D, will 
+            only do it for specific models. 
+        two_sigma_lower_limits (1D or 2D list of str, optional):
             List of parameters with two sigma lower limits. Default is empty list.
-            Can be 1 or 2D (2D is a list of list of bools, one list for each retrieval)
+            If 1D, will apply two_sigma_lower_limit to all models. If 2D, will 
+            only do it for specific models. 
 
     '''
 
@@ -4435,18 +4486,10 @@ def plot_histograms(planet, models, plot_parameters,
         if (len(retrieval_colour_list) != N_models):
             raise Exception("Number of retrieval colours does not match the " +
                             "number of retrieval models.")
-    
-    # If its not multidimensional 
-    if ((len(np.shape(two_sigma_upper_limits)) < 2) and (len(np.shape(two_sigma_lower_limits)) < 2)):
-        if ((len(two_sigma_upper_limits) != 0) and (len(two_sigma_upper_limits) != N_params_to_plot)):
-            raise Exception("Number of two sigma upper limits does not match number of parameters.")
-        if ((len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != N_params_to_plot)):
-            raise Exception("Number of two sigma lower limits does not match number of parameters.")
-        if (len(two_sigma_upper_limits) != 0) and (len(two_sigma_lower_limits) != 0):
-            if (np.any(np.array(two_sigma_upper_limits)*np.array(two_sigma_lower_limits)) == True):
-                raise Exception("Cannot have both a two sigma lower and upper limit.")
-    else:
-        pass # need to write errors for when it is multidimensional
+    if (len(two_sigma_lower_limits) != 0) and (len(two_sigma_lower_limits) != 0):
+        for param in two_sigma_upper_limits:
+            if (param in two_sigma_lower_limits):
+                raise Exception("Cannot have both a two sigma lower and upper limit for a given parameter.")
 
     
     param_vals = []    # List to store parameter values for all models, samples, and parameters
@@ -4511,8 +4554,8 @@ def plot_histograms(planet, models, plot_parameters,
                 
                 # Only generates atmospheres, which is very slow, if its
                 # mu, mmw, or a elemental ratio
-                if ('mu' in plot_parameters) or ('mmw' in plot_parameters) or ('/' in param for param in plot_parameters):
-
+                if ('mu' in plot_parameters) or ('mmw' in plot_parameters) or ('/' in str(plot_parameters)):
+                        
                     # Load mixing ratios and mean molecular weight samples
                     for i in range(N_samples):
 
