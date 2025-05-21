@@ -329,7 +329,7 @@ def compute_and_plot_aerosol_cross_section_from_file(wl, r_m, file_name, species
     # Compute cross sections directly from LX-Mie
     eff_ext_cross_section, eff_scat_cross_section, \
     eff_abs_cross_section, eff_back_cross_section, \
-    eff_w, eff_g = precompute_cross_sections_from_indices(wl_Mie,r_i_real,r_i_complex, r_m)
+    eff_w, eff_g = precompute_cross_sections_from_indices_miepython(wl_Mie,r_i_real,r_i_complex, r_m)
 
     # Plot cross sections
     plt.figure(figsize=(10,6))
@@ -1942,7 +1942,7 @@ def Mie_cloud(P,wl,r, H, n,
             n_aerosol_array.append(n_aerosol)
 
         # Uniaxial or Biaxial Slabs
-        elif (cloud_type == 'unaxial_slab' or 'uniaxial_random_slab' or 'biaxial_slab' or 'biaxial_random_slab'):
+        elif (cloud_type == 'unaxial_slab' or cloud_type == 'uniaxial_random_slab' or cloud_type == 'biaxial_slab' or cloud_type == 'biaxial_random_slab'):
             # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
             n_aerosol = np.zeros_like(r)
 
