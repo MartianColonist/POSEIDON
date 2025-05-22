@@ -21,7 +21,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                        high_res_method, alpha_high_res_option, 
                        fix_alpha_high_res, fix_W_conv_high_res, 
                        fix_beta_high_res, fix_Delta_phi_high_res,
-                       lognormal_logwidth_free):
+                       lognormal_logwidth_free,
+                       surface_components, surface_model, surface_temp, surface_percentage_option):
     '''
     From the user's chosen model settings, determine which free parameters
     define this POSEIDON model. The different types of free parameters are
@@ -144,6 +145,14 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
         lognormal_logwidth_free (bool):
             If True, has log_r_m_std_dev be a free parameter for aerosols. 
             Only applicable for certain aerosols with precomputed grids. 
+        surface_components (list of strings):
+            List of surface components (if surface_model = 'Lab_data')
+        surface_model (string):
+            Surface model definition 
+            (Options: gray, constant_albedo, lab_data)
+        surface_percentage_option (string):
+            Will make surface percentages log or linear (log is reccomended for CLR retrievals)
+            (Options: linear, log)
 
     Returns:
         params (np.array of str):
@@ -176,6 +185,7 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
     geometry_params = []  # Geometry parameters
     stellar_params = []   # Stellar parameters
     high_res_params = []  # High resolution retrieval parameters
+    surface_params = []   # Surface parameters 
 
     # ***** Physical property parameters *****#
 
@@ -190,7 +200,41 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
         N_cloud_params = 0
         N_geometry_params = 0
 
-        params += physical_params  # Add physical parameter names to combined list
+        params += physical_params         # Add physical parameter names to combined list
+
+        #***** Surface parameters *****#
+    
+        if (surface == True):
+
+            # For bare rocks, always have surface temperature as a free parameter
+            surface_params += ['T_surf']
+
+            # Surface Models 
+            if (surface_model == 'constant'):
+                surface_params += ['albedo_surf']
+
+            elif (surface_model == 'lab_data'):
+
+                if len(surface_components) > 1:
+                    for n in range(len(surface_components)):
+                            if (surface_percentage_option == 'linear'):
+                                surface_params += [surface_components[n] + '_percentage']
+                            elif (surface_percentage_option == 'log'):
+                                surface_params += ['log_' + surface_components[n] + '_percentage']
+                                
+            elif (surface_model == 'gray'):
+                pass
+            else:
+                raise Exception('Only suface models are gray, constant, and lab_data.')
+        
+
+            N_surface_params = len(surface_params)   # Store number of physical parameters
+
+            # The params are added at the end, after the offset parameters, so that order is mantained
+            #params += surface_params  
+        
+        else:
+            N_surface_params = 0
 
     # Models including atmospheres
     else:
@@ -590,13 +634,16 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                 
             if ('deck' in cloud_type):
                 cloud_params += ['log_P_cloud']
+            
+            if ('shiny' in cloud_type):
+                cloud_params += ['albedo_deck']
                 
             # If working with a 2D patchy cloud model
             if (cloud_dim == 2):
                 cloud_params += ['phi_cloud']
                 
-            if (cloud_type not in ['deck', 'haze', 'deck_haze']):
-                raise Exception("Error: unsupported cloud model.")
+            if (cloud_type not in ['deck', 'haze', 'deck_haze', 'shiny_deck']):
+                raise Exception("Error: unsupported cloud model (deck, haze, deck_haze, shiny_deck).")
 
             if (cloud_dim not in [1, 2]):
                 raise Exception("The MacDonald & Madhusudhan (2017) cloud model " +
@@ -629,9 +676,23 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                 
             if ('haze' not in cloud_type) and ('deck' not in cloud_type):
                 raise Exception("Error: unsupported cloud model.")
+            
+            if ('shiny' in cloud_type):
+                raise Exception("Shiny deck not supported with Iceberg")
 
         # Mie scattering     
         elif (cloud_model == 'Mie'):
+
+            # Allow opaque decks to be shiny 
+            if ('shiny' in cloud_type):
+                if ('deck' not in cloud_type):
+                    raise Exception('Shiny is only available for Mie models with opaque decks (shiny_fuzzy_deck, shiny_opaque_deck_plus_slab, shiny_fuzzy_deck_plus_slab, shiny_opaque_deck_plus_uniform_X).')
+                else:
+                    cloud_params += ['albedo_deck']
+
+                    # Need to remove 'shiny' from the cloud type, just so I don't have to rewrite code
+                    cloud_type = cloud_type.split('shiny_')[1]
+                    print('Warning: Removing `shiny` string from cloud_type (can effect things like contributions if you use the same model.)')
 
             # Patchy Clouds
             if (cloud_dim == 2): 
@@ -934,6 +995,45 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
     N_high_res_params = len(high_res_params)    # Store number of high-res parameters
     params += high_res_params                   # Add high-res parameter names to combined list
 
+    #***** Surface parameters *****#
+
+    # In assign_free_params the order parameters are added to 'params'
+    # must equal the order of split_params()
+    # therefore surface parameters are added after offset, since they are the newest 'group' 
+
+    # Only do the following this if disable atmosphere is false
+    # Otherwise, the surface parameters are defined earlier (see above, large if/else statement if disable_atmosphere == True)
+    if disable_atmosphere == False:
+
+        if (surface == True):
+            surface_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
+
+        # Surface Models 
+        if (surface_model == 'constant'):
+            surface_params += ['albedo_surf']
+
+        elif (surface_model == 'lab_data'):
+            # If there is more than one surface component, apply percentages
+            if len(surface_components) > 1:
+                for n in range(len(surface_components)):
+                    if (surface_percentage_option == 'linear'):
+                        surface_params += [surface_components[n] + '_percentage']
+                    elif (surface_percentage_option == 'log'):
+                        surface_params += ['log_' + surface_components[n] + '_percentage']
+        elif (surface_model == 'gray'):
+            pass
+        else:
+            raise Exception('Only suface models are gray, constant, and lab_data.')
+        
+        N_surface_params = len(surface_params)   # Store number of physical parameters
+        params += surface_params                  # Add physical parameter names to combined list  
+
+    # Due to the ordering of params, need to add the surface params
+    # after offsets are added. 
+    # This is when disable atmopshere is True (scroll up)
+    else:
+        params += surface_params 
+    
     #***** Final recasting of parameter arrays *****#
 
     # Convert parameter lists to numpy arrays
@@ -945,16 +1045,18 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
     geometry_params = np.array(geometry_params)
     stellar_params = np.array(stellar_params)
     high_res_params = np.array(high_res_params)
+    surface_params = np.array(surface_params)
 
     # The cumulative sum of the number of each type of parameter saves time indexing later 
     N_params_cumulative = np.cumsum([N_physical_params, N_PT_params, 
                                      N_species_params, N_cloud_params,
                                      N_geometry_params, N_stellar_params, 
                                      N_offset_params, N_error_params, 
-                                     N_high_res_params])
+                                     N_high_res_params, N_surface_params])
 
     return params, physical_params, PT_params, X_params, cloud_params, \
-           geometry_params, stellar_params, high_res_params, N_params_cumulative
+           geometry_params, stellar_params, high_res_params, surface_params, \
+           N_params_cumulative
 
 
 def split_params(params_drawn, N_params_cumulative):
@@ -987,6 +1089,8 @@ def split_params(params_drawn, N_params_cumulative):
             Drawn values of the error inflation parameters.
         high_res_drawn (list of float | np.array of float):
             Drawn values of the high-resolution retrieval parameters.
+        surface_drawn (list of float | np.array of float):
+            Drawn values of the surface parameters
 
     '''
 
@@ -1017,8 +1121,12 @@ def split_params(params_drawn, N_params_cumulative):
     # Extract high res parameters
     high_res_drawn = params_drawn[N_params_cumulative[7]:N_params_cumulative[8]]
 
+    # Extract surface adjustment parameters      
+    surface_drawn = params_drawn[N_params_cumulative[8]:N_params_cumulative[9]]
+
     return physical_drawn, PT_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
-           stellar_drawn, offsets_drawn, err_inflation_drawn, high_res_drawn
+           stellar_drawn, offsets_drawn, err_inflation_drawn, high_res_drawn, \
+           surface_drawn
 
 
 def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
@@ -1722,6 +1830,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
     else:
         enable_deck = 0
 
+    # Check if the model is a shiny deck
+    if ('albedo_deck' in cloud_param_names):
+        enable_shiny_deck = 1
+    else:
+        enable_shiny_deck = 0
+
     # Clear atmosphere
     if (cloud_model == 'cloud-free'):
         
@@ -1741,6 +1855,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
         log_r_m_std_dev = 0.5
+        albedo_deck = -1
 
         # Set eddysed values to dummy values 
         kappa_cloud_eddysed = 0
@@ -1764,6 +1879,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
         else:
             P_cloud = 100.0   # Set to 100 bar for models without a cloud deck
+
+        # If it is a shiny deck
+        if (enable_shiny_deck == 1):
+            albedo_deck = clouds_in[np.where(cloud_param_names == 'albedo_deck')[0][0]]
+        else:
+            albedo_deck = -1
 
         P_slab_bottom = 100.0  # Not used for this model
             
@@ -1852,6 +1973,8 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         g_cloud_eddysed = 0
         w_cloud_eddysed = 0
 
+        # Set albedo deck to a dummy value 
+        albedo_deck = -1 
 
         # Set fractional clouds for two aerosol species to dummy variables 
         f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
@@ -2163,6 +2286,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                 r_i_real = 0
                 r_i_complex = 0
 
+        # See if there is a shiny deck
+        if (enable_shiny_deck == 1):
+            albedo_deck = clouds_in[np.where(cloud_param_names == 'albedo_deck')[0][0]]
+        else:
+            albedo_deck = -1
+
     # This cloud model is to specifically take in kappa_cloud, g_cloud, and w_cloud from eddysed calculations
     # i.e from PICASO, VIRGA
     elif (cloud_model =='eddysed'):
@@ -2195,12 +2324,13 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
         log_r_m_std_dev = 0.5
+        albedo_deck = -1
         f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
     
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
            fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom, \
            kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed, log_r_m_std_dev, \
-            f_both, f_aerosol_1, f_aerosol_2, f_clear
+            f_both, f_aerosol_1, f_aerosol_2, f_clear, albedo_deck
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):
@@ -2347,3 +2477,76 @@ def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
 
     return f_het, f_spot, f_fac, T_het, T_spot, T_fac, T_phot, log_g_het, \
            log_g_spot, log_g_fac, log_g_phot
+
+def unpack_surface_params(param_names, surface_in,
+                          surface, surface_model,
+                          N_params_cumulative):
+    '''
+    Extract the surface property values
+    from the drawn surface parameters, according to the model
+    specified by the user.
+    
+    Args:
+        param_names (np.array of str):
+            Free parameters defining this POSEIDON model.
+        surface_in (list of float | np.array of float):
+            Drawn values of the surface parameters.
+       surface (bool):
+            If True, model a surface via an opaque cloud deck.
+        surface_model (string):
+            Surface model definition 
+            (Options: gray, constant, lab_data)
+        N_params_cumulative (np.array of int):
+            Cumulative sum of number of parameters (used for indexing).
+
+    Returns:
+        P_surf, T_surf, albedo_surf, surface_component_percentages 
+
+    '''
+    
+    # Unpack names of geometry parameters
+    surface_param_names = param_names[N_params_cumulative[7]:N_params_cumulative[8]]
+
+    if ('log_P_surf' in surface_param_names):
+        P_surf = np.power(10.0, surface_in[np.where(surface_param_names == 'log_P_surf')[0][0]])
+    else:
+        P_surf = 1000
+    
+    if ('T_surf' in surface_param_names):
+        T_surf = surface_in[np.where(surface_param_names == 'T_surf')[0][0]]
+    else:
+        T_surf = 0
+    
+    if ('albedo_surf' in surface_param_names):
+        albedo_surf = surface_in[np.where(surface_param_names == 'albedo_surf')[0][0]]
+    else:
+        albedo_surf = 0
+    
+    if any("percentage" in s for s in surface_param_names):
+        # If they are log percentages, take 10** 
+        if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
+
+            try:
+                surface_component_percentages = np.power(10.0,surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]])
+            except:
+                # In retrievals, surface_in is not an array so the above statement doesn't work
+                surface_in = np.array(surface_in)
+                surface_component_percentages = np.power(10.0,surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]])
+
+        # else, assume they are linear 
+        else:
+            try:
+                surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+            except:
+                # In retrievals, surface_in is not an array so the above statement doesn't work
+                surface_in = np.array(surface_in)
+                surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+                
+    else:
+        surface_component_percentages = [1]
+
+    # Note that surface_component_percentages are later to be ensured to add to one in core.py, compute_spectrum
+    # The reason they aren't here is because 
+    # they can be normalized to one before they go to CLR_Surface in retrieval.py which is not good and biases the retrieval
+    
+    return P_surf, T_surf, albedo_surf, surface_component_percentages

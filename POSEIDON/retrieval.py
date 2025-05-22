@@ -79,8 +79,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
     if ((reference_parameter == 'P_ref') and (R_p_ref is None)):
         raise Exception("Error: Must provide R_p_ref when P_ref is a free parameter.")
     
-    if ((disable_atmosphere == True) and ('transmission' not in spectrum_type)):
-        raise Exception("Error: An atmosphere can only be disabled for transmission spectra.")
+    #if ((disable_atmosphere == True) and ('transmission' not in spectrum_type)):
+    #    raise Exception("Error: An atmosphere can only be disabled for transmission spectra ")
 
     N_params = len(param_names)
 
@@ -140,7 +140,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
         # Stellar flux not needed for transmission spectra
         F_s_obs = None
 
-    if rank == 0:
+    if (rank == 0):
         print("POSEIDON now running '" + retrieval_name + "'")
 
     # Run POSEIDON retrieval using PyMultiNest
@@ -248,6 +248,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     # Unpack number of free parameters
     param_names = model['param_names']
     physical_param_names = model['physical_param_names']
+    surface_param_names = model['surface_param_names']
 
     # Unpack model properties
     radius_unit = model['radius_unit']
@@ -278,7 +279,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     log_X_params, cloud_params, \
     geometry_params, stellar_params, \
     offset_params, err_inflation_params, \
-    high_res_params = split_params(param_vector, N_params_cum)
+    high_res_params, surface_params = split_params(param_vector, N_params_cum)
 
     # If the atmosphere is disabled
     if ((disable_atmosphere == True) and ('transmission' in spectrum_type)):
@@ -366,8 +367,8 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             d_sampled = planet['system_distance']
 
         # Unpack surface pressure if set as a free parameter
-        if (surface == True):
-            P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
+        if (surface == True) and (disable_atmosphere != True):
+            P_surf = np.power(10.0, surface_params[np.where(surface_param_names == 'log_P_surf')[0][0]])
         else:
             P_surf = None
 
@@ -380,7 +381,8 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         #***** Step 2: generate atmosphere corresponding to parameter draw *****#
 
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
-                                     log_X_params, cloud_params, geometry_params, 
+                                     log_X_params, cloud_params, geometry_params,
+                                     surface_params,  
                                      log_g, M_p, T_input, X_input, P_surf, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN, 
                                      constant_gravity, chemistry_grid, mu_back)
@@ -606,6 +608,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     param_species = model['param_species']
     X_params = model['X_param_names']
     cloud_param_names = model['cloud_param_names']
+    surface_param_names = model['surface_param_names']
     N_params_cum = model['N_params_cum']
     Atmosphere_dimension = model['Atmosphere_dimension']
     species_EM_gradient = model['species_EM_gradient']
@@ -637,7 +640,8 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     global allowed_simplex    # Needs to be global, as prior function has no return
 
     allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
-
+    allowed_simplex_surfaces = 1
+    
     # Define the prior transformation function
     def Prior(cube, ndim, nparams):
         ''' 
@@ -877,6 +881,100 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 
                 cube[i_prime] = log_X[(1+i)]   # log_X[0] is not a free parameter
 
+        # If surface percentages have centred-log ratio prior, treat separately 
+        if ('CLR_surface' in prior_types.values()):
+
+            # cube is not an array, and has to be turned into an array for the next line
+            # here we are drawing the drawn parameters that correspond to surface params
+            surface_drawn = np.array(cube[N_params_cum[7]:N_params_cum[8]])
+
+            # then we only pull the ones that are specifically for the percentages (since that is what can be an input to CLR)
+            surface_percentage_indices = np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]
+            surface_percentage_drawn = surface_drawn[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+
+            # This is just a quick fix right now, but the first parameter isn't consider free 
+            # Since the clr prior makes sure it adds to one 
+            surface_percentage_drawn_CLR = surface_percentage_drawn[1:]
+
+            # Load Lower limit on log mixing ratios specified by user
+            # The limit is the lower range of the prior ranges for the surface percentages
+            # This line of code finds the first instance of a parameter name with 'percentage' in it 
+            # Then it pulls the prior range of that variable from the prior ranges dictionary and takes the lower limit
+            limit = prior_ranges[param_names[np.where(np.char.find(param_names,'percentage')!= -1)[0]][0]][0]
+            
+            # Map random numbers to CLR variables, than transform to mixing ratios
+            # CLR_Prior only works when the number of free params > 2 (so 3 surface components)
+            if len(surface_percentage_drawn_CLR) > 1:
+                
+                #print('OG percentages:', surface_percentage_drawn)
+                #print('Sum to 1: ',surface_percentage_drawn/np.sum(surface_percentage_drawn))
+                log_X = CLR_Prior(surface_percentage_drawn_CLR, limit = limit)
+                #print('log_X: ', log_X)
+                #print('10**log_X: ',10**log_X)
+                
+                surface_percentages_CLR = log_X
+            else:
+                # For n = 2, you just take the average
+                surface_percentages_CLR = surface_percentage_drawn/np.sum(surface_percentage_drawn)
+                
+                # For the global variable, this must be defined
+                log_X = np.log10(surface_percentages_CLR)
+
+                surface_percentages_CLR = log_X
+
+            # Check if this random parameter draw lies in the allowed simplex space (X_i > 10^-12 and sum to 1)
+            global allowed_simplex_surfaces     # Needs a global, as prior function has no return
+
+            if (log_X[1] == -50.0): 
+                allowed_simplex_surfaces = 0       # Mixing ratios outside allowed simplex space -> model rejected by likelihood
+            elif (log_X[1] != -50.0): 
+                allowed_simplex_surfaces = 1       # Likelihood will be computed for this parameter combination
+
+            # adds number of params before surface_percentage_indices to get right index in cube
+            surface_percentage_indices = N_params_cum[7]+surface_percentage_indices
+            
+            # I couldn't get the CLR prior to work, but this just replaces things in the cube... which should work
+            counter = 0
+            for n in surface_percentage_indices:
+                cube[n] = surface_percentages_CLR[counter]
+                counter += 1
+
+        # If the surface percentages are uniform, need to make sure they are normalized to 1 
+        # Note that this step occurs later in core.py in compute_spectrum()
+        # But it also needs to happen here for retrievals so that cube is updated with correct values
+        if any('percentage' in s for s in surface_param_names) and ('CLR_surface' not in prior_types.values()):
+
+            # cube is not an array, and has to be turned into an array for the next line
+            # here we are drawing the drawn parameters that correspond to surface params
+            surface_drawn = np.array(cube[N_params_cum[7]:N_params_cum[8]])
+
+            # then we only pull the ones that are specifically for the percentages 
+            surface_percentage_indices = np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]
+            surface_percentage_drawn = surface_drawn[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+
+            # if they are log, will need to take 10** before normalizing 
+            if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
+                surface_percentage_drawn = np.power(10,surface_percentage_drawn)
+
+            # Normalize the percentages so they add up to one 
+            surface_percentages_normalized = surface_percentage_drawn/np.sum(surface_percentage_drawn)
+
+            
+            # If they are log, take the log again after normalizing 
+            if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
+                surface_percentages_normalized = np.log10(surface_percentages_normalized)
+
+            # Redefine cube with those percentages 
+            # adds number of params before surface_percentage_indices to get right index in cube
+            surface_percentage_indices = N_params_cum[7]+surface_percentage_indices
+            
+            # I couldn't get the CLR prior to work, but this just replaces things in the cube... which should work
+            counter = 0
+            #print('before cube',cube[N_params_cum[7]:N_params_cum[8]])
+            for n in surface_percentage_indices:
+                cube[n] = surface_percentages_normalized[counter]
+                counter += 1
+
         # If there are patchy multiple clouds (f_both, f_aerosol_1, and f_aerosol_2)
         # The parameters need to be normalized to 1 in the cube
         # This step also occurs in core.py in compute_spectrum()
@@ -927,10 +1025,15 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         if (allowed_simplex == 0):
             loglikelihood = -1.0e100   
             return loglikelihood
-
+        
+        global allowed_simplex_surfaces
+        if (allowed_simplex_surfaces == 0):
+            loglikelihood = -1.0e100   
+            return loglikelihood
+        
         # Unpack stellar parameters
         _, _, _, _, _, \
-        stellar_params, _, _, _ = split_params(cube, N_params_cum)
+        stellar_params, _, _, _, _ = split_params(cube, N_params_cum)
 
         # Reject models with spots hotter than faculae (by definition)
         if ((stellar_contam != None) and ('two_spots' in stellar_contam)):
@@ -1349,8 +1452,11 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
 
 
     # split parameters into each atmosphere category
-    physical_params, PT_params, log_X_params, \
-    cloud_params, geometry_params, _, _, _, _ = split_params(param_values, N_params_cum)
+    physical_params, PT_params, \
+    log_X_params, cloud_params, \
+    geometry_params, stellar_params, \
+    offset_params, err_inflation_params, \
+    highres_params, surface_params = split_params(param_values, N_params_cum)
     
     # Unpack reference pressure if set as a free parameter
     if ('log_P_ref' in physical_param_names):
@@ -1407,10 +1513,12 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
         print('log_X_params = np.array(', log_X_params,')')
         print('cloud_params = np.array(', cloud_params,')')
         print('geometry_params = np.array(', geometry_params,')')
+        print('surface_params = np.array(', surface_params,')')
     
     # make atmosphere 
     atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                  log_X_params, cloud_params, geometry_params,
+                                 surface_params,
                                  log_g = log_g, M_p = M_p, T_input = T_input,
                                  X_input = X_input, P_surf = P_surf,
                                  P_param_set = P_param_set, He_fraction = He_fraction, 

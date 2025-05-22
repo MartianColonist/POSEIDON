@@ -10,6 +10,8 @@ import math
 import os
 
 from .utility import mock_missing, interp_GPU
+from .surfaces import find_nearest_less_than
+
 
 try:
     import cupy as cp
@@ -19,6 +21,10 @@ except ImportError:
 block = int(os.environ['block'])
 thread = int(os.environ['thread'])
 
+def find_nearest(array, value):
+    array = np.asarray(array)
+    idx = (np.abs(array - value)).argmin()
+    return idx
 
 @jit(nopython = True)
 def planck_lambda_arr(T, wl):
@@ -137,6 +143,89 @@ def emission_single_stream(T, dz, wl, kappa, Gauss_quad = 2):
     
     # Calculate Planck function in each layer and each wavelength
     B = planck_lambda_arr(T, wl)
+    
+    # Initial intensity at the base of the atmosphere is a Planck function 
+    I = np.ones(shape=(len(mu),len(wl))) * B[0,:]
+    
+    # Initialise surface flux array
+    F = np.zeros(len(wl))
+
+    # Initialise differential optical depth array
+    dtau = np.zeros(shape=(len(T), len(wl)))
+    
+    # For each wavelength
+    for k in range(len(wl)):
+    
+        # For each ray travelling at mu = cos(theta)
+        for j in range(len(mu)):
+
+            # For each atmospheric layer
+            for i in range(len(T)):
+    
+                # Compute vertical optical depth across the layer
+                dtau_vert = kappa[i,k] * dz[i]
+                dtau[i,k] = dtau_vert
+                
+                # Compute transmissivity of the layer
+                Trans = np.exp((-1.0 * dtau_vert)/mu[j])
+                
+                # Solve for emergent intensity from the layer top
+                I[j,k] = Trans * I[j,k] + (1.0 - Trans) * B[i,k]
+                
+            # Add contribution of this ray/angle to the surface flux
+            F[k] += 2.0 * np.pi * mu[j] * I[j,k] * W[j]
+    
+    return F, dtau
+
+@jit(nopython = True)
+def emission_single_stream_w_albedo(T, dz, wl, kappa, Gauss_quad = 2, 
+                                    surf_reflect = [], index_below_P_surf = 0):
+    '''
+    Compute the emergent top-of-atmosphere flux from a planet or brown dwarf.
+
+    This function  considers only pure thermal emission (i.e. no scattering).
+
+    Args:
+        T (np.array of float):
+            Temperatures in each atmospheric layer (K).
+        dz (np.array of float):
+            Vertical extent of each atmospheric layer (m).
+        wl (np.array of float): 
+            Wavelength grid (μm).
+        kappa (2D np.array of float):
+            Extinction coefficient in each layer as a function of wavelength (m^-1).
+        Gauss_quad (int):
+            Gaussian quadrature order for integration over emitting surface
+            (Options: 2 / 3).
+        surf_reflect : numpy.ndarray    
+            Surface reflectivity as a function of wavelength.
+        index_below_P_surf : int
+            Index below P_surf, so that the blackbody can be computed. 
+            (Note that P_surf can be between two pressure levels, we take the lower one)
+    
+    Returns:
+        F (np.array of float):
+            Spectral surface flux in SI units (W/m^2/sr/m).
+
+    '''
+    
+    # Load weights and cos(theta) values for desired Gaussian quadrature scheme
+    if (Gauss_quad == 2):
+        W = np.array([0.5, 0.5])
+        mu = np.array([0.5 - 0.5*np.sqrt(1.0/3.0), 0.5 + 0.5*np.sqrt(1.0/3.0)])
+    elif (Gauss_quad == 3):
+        W = np.array([5.0/18.0, 4.0/9.0, 5.0/18.0])
+        mu = np.array([0.5 - 0.5*np.sqrt(3.0/5.0), 0.5, 0.5 + 0.5*np.sqrt(3.0/5.0)])
+
+    # Surface Emissivity 
+    emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
+
+    # Calculate Planck function in each layer and each wavelength
+    B = planck_lambda_arr(T, wl)
+
+    # The blackbody at the hard surface/top of the cloud deck is 
+    # emissivity * blackbody 
+    B[index_below_P_surf,:] = B[index_below_P_surf,:]*emissivity 
     
     # Initial intensity at the base of the atmosphere is a Planck function 
     I = np.ones(shape=(len(mu),len(wl))) * B[0,:]
@@ -1481,4 +1570,1152 @@ def reflection_Toon(P, wl, dtau_tot,
             albedo = albedo + xint_at_top[ig,it,:] * gweight[ig] * tweight[it]
     albedo = sym_fac * 0.5 * albedo /F0PI * (cos_theta + 1.0)
 
+    return albedo
+
+#@jit(nopython = True)
+def emission_bare_surface(T_surf, wl, surf_reflect):
+    '''
+    Compute the emergent top-of-atmosphere flux from a bare rock 
+
+    This function  considers only pure thermal emission (i.e. no scattering).
+    Uses gauss weights of 5 to stay consistent with emission_Toon
+
+    Args:
+        T (np.array of float):
+            Temperatures in each atmospheric layer (K).
+        wl (np.array of float): 
+            Wavelength grid (μm).
+        surf_reflect : numpy.ndarray    
+            Surface reflectivity as a function of wavelength. 
+    
+    Returns:
+        F (np.array of float):
+            Spectral surface flux in SI units (W/m^2/sr/m).
+
+    '''
+    
+    # Calculate Planck function in each layer and each wavelength
+    T = np.array([T_surf])
+    B = planck_lambda_arr(T, wl)
+
+    # Need emissivity 
+    emissivity = 1.0 - surf_reflect #Emissivity is 1 - surface reflectivity
+
+    # For a bare body rock, F = pi * I * emissivity
+    # Instead of 2 pi you need pi so that its just hemisphere 
+    # The weights, gauss weights, just end up being 0.5 which goes down to pi * I
+    F = B[0,:] * emissivity * np.pi
+    
+    return F
+
+#@jit(nopython = True)
+def reflection_bare_surface(wl, surf_reflect, Gauss_quad = 5):
+    '''
+    Compute the emergent top-of-atmosphere flux from a bare rock 
+
+    This function  considers only pure thermal emission (i.e. no scattering).
+    Uses gauss weights of 5 to stay consistent with emission_Toon
+
+    Args:
+        wl (np.array of float): 
+            Wavelength grid (μm).
+        surf_reflect : numpy.ndarray    
+            Surface reflectivity as a function of wavelength. 
+        Gauss_quad (int):
+            Gaussian quadrature order for integration over emitting surface
+            (Options: 2 / 3).
+    
+    Returns:
+        F (np.array of float):
+            Spectral surface flux in SI units (W/m^2/sr/m).
+
+    '''
+    
+    N_wl = len(wl)
+
+    if (Gauss_quad == 5):
+        gangle = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
+        gweight = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])
+
+    # Only 5th order Gaussian quadrature is currently supported
+    else:
+        gangle = np.array([0.0985350858, 0.3045357266, 0.5620251898, 0.8019865821, 0.9601901429])
+        gweight = np.array([0.0157479145, 0.0739088701, 0.1463869871, 0.1671746381, 0.0967815902])  
+
+    # Default tangle and tweight
+    tangle,tweight = np.array([0]), np.array([1])
+
+    cos_theta = 1.0     #cos(phase_angle)
+
+    # FOPI is just an array of 1s (solar)
+    F0PI = np.zeros(N_wl) + 1
+
+    ng = len(gweight)
+    nt = len(tweight)
+    if nt==1 : sym_fac = 2*np.pi #azimuthal symmetry  
+    else: sym_fac = 1
+    albedo=np.zeros(N_wl)
+
+    phase_angle = 0
+    cos_theta = 1.0     #cos(phase_angle)
+    longitude = np.arcsin((gangle-(cos_theta-1.0)/(cos_theta+1.0))/(2.0/(cos_theta+1)))
+    colatitude = np.arccos(0.0)              # Colatitude = 90-latitude, 0 at equator 
+    f = np.sin(colatitude)                   # Define to eliminate repetition
+    ubar0 = np.outer(np.cos(longitude-phase_angle) , f) #ng by nt 
+
+    for ig in range(ng): 
+        for it in range(nt): 
+            u0 = ubar0[ig,it]
+            surf_reflect_weighted = surf_reflect*u0*F0PI
+            albedo = albedo + surf_reflect_weighted * gweight[ig] * tweight[it]
+            
+    albedo = sym_fac * 0.5 * albedo /F0PI * (cos_theta + 1.0)
+
+    # Since this is geometric albedo, we should divide it by pi (?)
+    # (Equation 3.19 in Exoplanet Atmospheres, Sara Seager has A_g = (1/pi) * a complicated integral)
+    # Maybe this 1/pi is baked into toon reflection
+    albedo = albedo/np.pi
+    
+    return albedo
+
+def assign_assumptions_and_compute_single_stream_emission(P, T, dz, wl, kappa_tot, dtau_tot,
+                                                          kappa_gas, kappa_Ray,
+                                                          kappa_cloud, kappa_cloud_seperate, 
+                                                          zone_idx, Gauss_quad, device, 
+                                                          # Cloud things
+                                                          P_cloud, cloud_dim, aerosol_species, 
+                                                          f_cloud, albedo_deck,
+                                                          # Surfaces
+                                                          disable_atmosphere,
+                                                          surface, surface_model, P_surf, T_surf,
+                                                          surf_reflect, surf_reflect_array, 
+                                                          surface_component_percentages,
+                                                          surface_percentage_apply_to
+                                                          ):
+    '''
+    Assigns assumptions (surfaces, clouds) and computes single-stream emission
+
+    Maximum complexity allowed: patchy 2D clouds (1 aerosol max), surfaces (and decks) with albedos
+
+    Args:
+        TO DO 
+    
+    Returns:
+        F (np.array of float):
+            Spectral surface flux in SI units (W/m^2/sr/m).
+
+    '''
+
+    # If there are patchy clouds
+    if cloud_dim == 2:
+
+        # If there is only one cloud species there are two models: cloudy and clear
+        # NOTE: In single stream, only 1 aerosol species can be patchy
+        if (len(aerosol_species) == 1):
+
+            # Clear Model 
+            kappa_cloud_clear = np.zeros_like(kappa_cloud)
+            kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+            kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_clear[:,0,zone_idx,:])
+            dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+        else:
+            raise Exception('In single stream emission, only one aerosol species can be patchy. For two, use thermal_scattering = True.')
+
+    # This is to find the index of either the surface or a shiny deck 
+    if surface == True or albedo_deck != -1:
+
+        # If there is an atmosphere 
+        if disable_atmosphere != True:
+            
+            # If its a hard surface (terresterial)
+            if surface == True:
+                # Need to find where P_surf is to cut all the arrays above 
+                index_below_P_surf = find_nearest_less_than(P_surf,P)
+
+                # This is to fix an error that occurs when P_Surf is top of atmosphere
+                if index_below_P_surf + 1 != len(P):
+                    index_below_P_surf -= 1
+
+            # Else, it is a cloud (shiny deck model)
+            else:
+                # Need to find where P_cloud is to cut all the arrays above 
+                # We still call it index_below_P_surf since its all the same code after this
+                try:
+                    index_below_P_surf = find_nearest_less_than(P_cloud,P)
+                # except just in case P-cloud is an array (i.e. deck + slab)
+                except:
+                    index_below_P_surf = find_nearest_less_than(P_cloud[0],P)
+
+                # This is to fix an error that occurs when P_Surf is top of atmosphere
+                if index_below_P_surf + 1 != len(P):
+                    index_below_P_surf -= 1
+        
+        # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
+        if (surface_model == 'gray') or (surface_model == 'constant') or (albedo_deck != -1):
+
+            # If there is an atmosphere, use single stream emission (radiative transfer through an atmosphere)
+            if disable_atmosphere != True:
+                
+                # Compute planet flux (on CPU or GPU)
+                if (device == 'cpu'):
+                    F_p, dtau = emission_single_stream_w_albedo(T, dz, wl, kappa_tot, Gauss_quad, surf_reflect, index_below_P_surf) 
+                elif (device == 'gpu'):
+                    raise Exception('With surface or deck albedo, only cpu allowed.')
+
+                # For 1 + 1D fractional clouds
+                if cloud_dim == 2:
+
+                    # Compute planet flux (on CPU or GPU)
+                    if (device == 'cpu'):
+                        F_p_clear, dtau_clear = emission_single_stream_w_albedo(T, dz, wl, kappa_tot_clear, Gauss_quad, surf_reflect, index_below_P_surf) 
+                    elif (device == 'gpu'):
+                        raise Exception('With surface or deck albedo, only cpu allowed.')
+                    
+                    F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+            
+            else:
+                F_p = emission_bare_surface(T_surf, wl, surf_reflect)
+
+        # If we are using data, but averaged the components already, we don't need loop over each component
+        # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
+        # Note this is the same as the if statement above, I just am bad at writing if-statements and did this
+        # for safety
+        elif (surface_model == 'lab_data') and (surface_percentage_apply_to == 'albedos'):
+
+            # If there is an atmosphere, use single stream emission (radiative transfer through an atmosphere)
+            if disable_atmosphere != True:
+                
+                # Compute planet flux (on CPU or GPU)
+                if (device == 'cpu'):
+                    F_p, dtau = emission_single_stream_w_albedo(T, dz, wl, kappa_tot, Gauss_quad, surf_reflect, index_below_P_surf) 
+                elif (device == 'gpu'):
+                    raise Exception('With surface or deck albedo, only cpu allowed.')
+
+                # For 1 + 1D fractional clouds
+                if cloud_dim == 2:
+
+                    # Compute planet flux (on CPU or GPU)
+                    if (device == 'cpu'):
+                        F_p_clear, dtau_clear = emission_single_stream_w_albedo(T, dz, wl, kappa_tot_clear, Gauss_quad, surf_reflect, index_below_P_surf) 
+                    elif (device == 'gpu'):
+                        raise Exception('With surface or deck albedo, only cpu allowed.')
+                    
+                    F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+            
+            else:
+                F_p = emission_bare_surface(T_surf, wl, surf_reflect)
+        
+        # If we are using lab data, we need to loop over each component 
+        elif (surface_model == 'lab_data') and (surface_percentage_apply_to == 'models'):
+            
+            F_p_array = []
+
+            for surf_reflect in surf_reflect_array:
+
+                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                # For surfaces, we cut everything below P_surf [which also makes things run faster! :) ]
+
+                if disable_atmosphere != True:
+
+                    # Compute planet flux (on CPU or GPU)
+                    if (device == 'cpu'):
+                        F_p_temp, dtau = emission_single_stream_w_albedo(T, dz, wl, kappa_tot, Gauss_quad, surf_reflect, index_below_P_surf) 
+                    elif (device == 'gpu'):
+                        raise Exception('With surface or deck albedo, only cpu allowed.')
+
+                    # For 1 + 1D fractional clouds
+                    if cloud_dim == 2:
+                        
+                        # Compute planet flux (on CPU or GPU)
+                        if (device == 'cpu'):
+                            F_p_clear, dtau_clear = emission_single_stream_w_albedo(T, dz, wl, kappa_tot_clear, Gauss_quad, surf_reflect, index_below_P_surf) 
+                        elif (device == 'gpu'):
+                            raise Exception('With surface or deck albedo, only cpu allowed.')
+                        
+                        F_p_temp = (f_cloud*F_p_temp) + ((1-f_cloud)*F_p_clear)
+                    
+                else:
+                    F_p_temp = emission_bare_surface(T_surf, wl, surf_reflect)
+
+                F_p_array.append(F_p_temp)
+            
+            # Need to take the weighted averaged 
+            F_p = np.zeros_like(wl)
+            for n in range(len(surface_component_percentages)):
+                F_p += surface_component_percentages[n]*F_p_array[n]
+        
+        # Reset the dtau used in photosphere measurements back to dtau_tot (the non cut version)
+        # If there is no atmosphere, there is no tau
+        if disable_atmosphere != True:
+            dtau = dtau_tot 
+        else:
+            dtau = 0
+
+    # Else, its a gas giant or brown dwarf or something similar (no hard surface) 
+    # This is the 'normal' option. 
+    else:
+        
+        # Compute planet flux (on CPU or GPU)
+        if (device == 'cpu'):
+            F_p, dtau = emission_single_stream(T, dz, wl, kappa_tot, Gauss_quad)
+        elif (device == 'gpu'):
+            F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
+
+        dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
+
+        # For 1 + 1D fractional clouds
+        if cloud_dim == 2:
+            
+            # Compute planet flux (on CPU or GPU)
+            if (device == 'cpu'):
+                F_p_clear, dtau = emission_single_stream(T, dz, wl, kappa_tot_clear, Gauss_quad)
+            elif (device == 'gpu'):
+                F_p_clear, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot_clear, Gauss_quad)
+            
+            F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+
+    
+    return F_p, dtau
+
+
+def assign_assumptions_and_compute_thermal_scattering_emission(P, T, dz, wl, kappa_tot, dtau_tot,
+                                                          kappa_gas, kappa_Ray,
+                                                          kappa_cloud, kappa_cloud_seperate, 
+                                                          zone_idx, Gauss_quad, device, 
+                                                          # Cloud things
+                                                          P_cloud, cloud_dim, aerosol_species, 
+                                                          w_cloud, g_cloud,
+                                                          f_cloud, 
+                                                          f_both, f_aerosol_1, f_aerosol_2, f_clear,
+                                                          albedo_deck,
+                                                          # Surfaces
+                                                          disable_atmosphere,
+                                                          surface, surface_model, P_surf, T_surf,
+                                                          surf_reflect, surf_reflect_array, 
+                                                          surface_component_percentages,
+                                                          surface_percentage_apply_to
+                                                          ):
+    '''
+    Assigns assumptions (surfaces, clouds) and computes thermal scattering emission
+
+    Maximum complexity allowed: patchy 2D clouds (2 aerosols max), surfaces (and decks) with albedos
+
+    Args:
+        TO DO 
+    
+    Returns:
+        F (np.array of float):
+            Spectral surface flux in SI units (W/m^2/sr/m).
+
+    '''
+
+    # If there are patchy clouds
+    if cloud_dim == 2:
+
+        # If there is only one cloud species there are two models: cloudy and clear
+        if (len(aerosol_species) == 1):
+
+            # Clear Model 
+            kappa_cloud_clear = np.zeros_like(kappa_cloud)
+            kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+            kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_clear[:,0,zone_idx,:])
+            dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+        
+        # If there are two cloud species there are four models: cloudy (both species, which is default)
+        # the first aerosol alone, the second aerosol alone, and clear 
+        elif (len(aerosol_species) == 2):
+
+            if (albedo_deck != -1) or (surface == True):
+                raise Exception('Cannot have a shiny deck or surface and patchy clouds with more than 1 aerosol')
+            
+            # Clear Model 
+            kappa_cloud_clear = np.zeros_like(kappa_cloud)
+            kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+            kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_clear[:,0,zone_idx,:])
+            dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+
+            # Aerosol 1
+            kappa_cloud_aerosol_1 = kappa_cloud_seperate[0]
+            kappa_cloud_seperate_aerosol_1 = np.array([kappa_cloud_seperate[0],np.zeros_like(kappa_cloud)])
+            kappa_tot_aerosol_1 = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_aerosol_1[:,0,zone_idx,:])
+            dtau_tot_aerosol_1 = np.ascontiguousarray(kappa_tot_aerosol_1 * dz.reshape((len(P), 1)))
+
+            # Aerosol 2
+            kappa_cloud_aerosol_2 = kappa_cloud_seperate[1]
+            kappa_cloud_seperate_aerosol_2 = np.array([np.zeros_like(kappa_cloud),kappa_cloud_seperate[1]])
+            kappa_tot_aerosol_2 = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_aerosol_2[:,0,zone_idx,:])
+            dtau_tot_aerosol_2 = np.ascontiguousarray(kappa_tot_aerosol_2 * dz.reshape((len(P), 1)))
+
+
+    # If there is a surface, or a shiny deck
+    if surface == True or albedo_deck != -1:
+
+        # If there is an atmosphere
+        if disable_atmosphere != True:
+            
+            if surface == True:
+                # Need to find where P_surf is to cut all the arrays above 
+                index_below_P_surf = find_nearest_less_than(P_surf,P)
+
+                # This is to fix an error that occurs when P_Surf is top of atmosphere
+                if index_below_P_surf + 1 != len(P):
+                    index_below_P_surf -= 1
+
+            # Else, it is a cloud
+            else:
+                # Need to find where P_cloud is to cut all the arrays above 
+                # We still call it index_below_P_surf since its all the same code after this
+                # If you want to have shiny deck + albedo surface, need to call this something new
+                # But at the moment, you can't have both a shiny deck and a surface with an albedo
+                try:
+                    index_below_P_surf = find_nearest_less_than(P_cloud,P)
+                # except just in case P-cloud is an array (i.e. deck + slab)
+                except:
+                    index_below_P_surf = find_nearest_less_than(P_cloud[0],P)
+
+                # This is to fix an error that occurs when P_Surf is top of atmosphere
+                if index_below_P_surf + 1 != len(P):
+                    index_below_P_surf -= 1
+        
+        # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
+        # or if the there is a shiny cloud deck 
+        if (surface_model == 'gray') or (surface_model == 'constant') or (albedo_deck != -1):
+
+            # If there is an atmosphere, use Toon scattering
+            if disable_atmosphere != True:
+                
+                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                # For surfaces with atmospheres, we cut everything below P_surf [which also makes things run faster! :) ]
+                # Note that the index_below_P_surf also defines the index where a shiny deck cloud would be.
+
+                F_p, dtau = emission_Toon(P[index_below_P_surf+1:], 
+                                        T[index_below_P_surf+1:], 
+                                        wl, 
+                                        dtau_tot[index_below_P_surf+1:,:], 
+                                        kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                        kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                        kappa_tot[index_below_P_surf+1:,:],
+                                        w_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                        g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                        zone_idx,
+                                        surf_reflect,
+                                        kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                        hard_surface = 1, tridiagonal = 0, 
+                                        Gauss_quad = 5, numt = 1,
+                                        T_surf = T_surf)
+                
+
+                # For 1 + 1D fractional clouds
+                if cloud_dim == 2:
+
+                    # Ok this is a bit confusing so I am going to write more clear comments here 
+                    # There are two possibilities in this section if there are patchy clouds
+                    #
+                    # This first is that its a patchy shiny deck model with no surface 
+                    # In this case you don't cut off the arrays at P_surf (which is the deck pressure layer)
+                    # since you want to compute the part of the atmosphere without the cloud 
+                    #
+                    # The second is you have patchy Mie or gray clouds with a surface
+                    # Then you need to cut the arrays at P_surf since the clear atmospehre is stil cut off there
+                    # 
+                    # The third case is not permitted in POSEIDON yet (see exception in define_model)
+                    # IE you cannot have both a patchy shiny deck cloud model + a reflecting surface
+                    # If you do need this capability for some reason, you need to code in a new 
+                    # variable to replace 'index_below_P_surf' above, since shiny decks and reflecting surfaces
+                    # share this variable right now.
+                    # - Elijah Mullens
+                    
+                    # If its a patchy shiny deck, we need to compute the deep atmosphere below the deck 
+                    if albedo_deck != -1:
+                        F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                            kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                            w_cloud, g_cloud, zone_idx,surf_reflect,
+                                                            kappa_cloud_seperate,
+                                                            hard_surface = 1, tridiagonal = 0, 
+                                                            Gauss_quad = 5, numt = 1,
+                                                            T_surf = T_surf)
+                    
+                    # If its a rocky planet, the surface is not the part that is patchy
+                    # IE we still need to cut the kappa arrays at P_surf so emission_Toon 
+                    # has the surface at the bottom
+                    else:
+                        F_p_clear, dtau_clear = emission_Toon(P[index_below_P_surf+1:], 
+                                                            T[index_below_P_surf+1:], 
+                                                            wl, 
+                                                            dtau_tot_clear[index_below_P_surf+1:,:], 
+                                                            kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                            kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                            kappa_tot_clear[index_below_P_surf+1:,:],
+                                                            w_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                            g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                            zone_idx,
+                                                            surf_reflect,
+                                                            kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                                            hard_surface = 1, tridiagonal = 0, 
+                                                            Gauss_quad = 5, numt = 1,
+                                                            T_surf = T_surf)
+                    
+                    F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+            
+            else:
+                F_p = emission_bare_surface(T_surf, wl, surf_reflect)
+        
+        # If we are using lab data
+        elif (surface_model == 'lab_data'):
+            
+            # If the percentages have already been applied to the albedos 
+            # This is the same as the code in the if-statement block above, I'm just bad 
+            # at writing if-statements 
+            if surface_percentage_apply_to == 'albedos':
+
+                # If there is an atmosphere, use Toon scattering
+                if disable_atmosphere != True:
+                    
+                    # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                    # For surfaces with atmospheres, we cut everything below P_surf [which also makes things run faster! :) ]
+                    # Note that the index_below_P_surf also defines the index where a shiny deck cloud would be.
+
+                    F_p, dtau = emission_Toon(P[index_below_P_surf+1:], 
+                                            T[index_below_P_surf+1:], 
+                                            wl, 
+                                            dtau_tot[index_below_P_surf+1:,:], 
+                                            kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                            kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                            kappa_tot[index_below_P_surf+1:,:],
+                                            w_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                            g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                            zone_idx,
+                                            surf_reflect,
+                                            kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                            hard_surface = 1, tridiagonal = 0, 
+                                            Gauss_quad = 5, numt = 1,
+                                            T_surf = T_surf)
+                    
+
+                    # For 1 + 1D fractional clouds
+                    if cloud_dim == 2:
+
+                        F_p_clear, dtau_clear = emission_Toon(P[index_below_P_surf+1:], 
+                                                            T[index_below_P_surf+1:], 
+                                                            wl, 
+                                                            dtau_tot_clear[index_below_P_surf+1:,:], 
+                                                            kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                            kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                            kappa_tot_clear[index_below_P_surf+1:,:],
+                                                            w_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                            g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                            zone_idx,
+                                                            surf_reflect,
+                                                            kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                                            hard_surface = 1, tridiagonal = 0, 
+                                                            Gauss_quad = 5, numt = 1,
+                                                            T_surf = T_surf)
+                        
+                        F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+                
+                else:
+                    F_p = emission_bare_surface(T_surf, wl, surf_reflect)
+
+            # Compute each thermal emission model seperatly if percentages are applied to models
+            elif surface_percentage_apply_to == 'models':
+            
+                F_p_array = []
+
+                for surf_reflect in surf_reflect_array:
+
+                    # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+                    # For surfaces, we cut everything below P_surf [which also makes things run faster! :) ]
+
+                    if disable_atmosphere != True:
+
+                        F_p_temp, dtau = emission_Toon(P[index_below_P_surf+1:], 
+                                                T[index_below_P_surf+1:], 
+                                                wl, 
+                                                dtau_tot[index_below_P_surf+1:,:], 
+                                                kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                                kappa_tot[index_below_P_surf+1:,:],
+                                                w_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                zone_idx,
+                                                surf_reflect,
+                                                kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                                hard_surface = 1, tridiagonal = 0, 
+                                                Gauss_quad = 5, numt = 1,
+                                                T_surf = T_surf)
+                        
+
+                        # For 1 + 1D fractional clouds
+                        if cloud_dim == 2:
+                            
+                            # Since you cannot have a shiny surface and a shiny deck cloud
+                            # You don't need the same statement here as above 
+                            # (since this section assumes a reflecting surface with different components)
+                            
+                            F_p_clear, dtau_clear = emission_Toon(P[index_below_P_surf+1:], 
+                                                                T[index_below_P_surf+1:], 
+                                                                wl, 
+                                                                dtau_tot_clear[index_below_P_surf+1:,:], 
+                                                                kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                                kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                                kappa_tot_clear[index_below_P_surf+1:,:],
+                                                                w_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                                g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                                zone_idx,
+                                                                surf_reflect,
+                                                                kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                                                hard_surface = 1, tridiagonal = 0, 
+                                                                Gauss_quad = 5, numt = 1,
+                                                                T_surf = T_surf)
+                            
+                            F_p_temp = (f_cloud*F_p_temp) + ((1-f_cloud)*F_p_clear)
+                        
+                    else:
+                        F_p_temp = emission_bare_surface(T_surf, wl, surf_reflect)
+
+                    F_p_array.append(F_p_temp)
+                
+                # Need to take the weighted averaged 
+                F_p = np.zeros_like(wl)
+                for n in range(len(surface_component_percentages)):
+                    F_p += surface_component_percentages[n]*F_p_array[n]
+        
+        # Reset the dtau used in photosphere measurements back to dtau_tot (the non cut version)
+        # If there is no atmosphere, there is no tau
+        if disable_atmosphere != True:
+            dtau = dtau_tot 
+        else:
+            dtau = 0
+
+    # Else, its a gas giant or brown dwarf or something similar  (no hard surface) 
+    else:
+
+        # Compute planet flux including scattering (PICASO implementation), see emission.py for details
+        # This includes all clouds combined when there is fractional clouds 
+        F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
+                                    kappa_Ray, kappa_cloud, kappa_tot,
+                                    w_cloud, g_cloud, zone_idx,
+                                    surf_reflect,
+                                    kappa_cloud_seperate,
+                                    hard_surface = 0, tridiagonal = 0, 
+                                    Gauss_quad = 5, numt = 1)
+        
+        dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
+
+        if cloud_dim == 2:
+            
+            # 1D + 1D is clear + cloudy, so need to compute clear model here 
+            if (len(aerosol_species) == 1):
+
+                F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                        kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                        w_cloud, g_cloud, zone_idx,
+                                                        surf_reflect,
+                                                        kappa_cloud_seperate_clear,
+                                                        hard_surface = 0, tridiagonal = 0, 
+                                                        Gauss_quad = 5, numt = 1)
+            
+                F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
+
+            # 1D + 1D + 1D + 1D is clear + cloudy (both) + cloudy (aerosol 1) + cloudy (aerosol 2)
+            # So need to compute three additional models 
+            if (len(aerosol_species) == 2):
+
+                F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
+                                                        kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                        w_cloud, g_cloud, zone_idx,
+                                                        surf_reflect,
+                                                        kappa_cloud_seperate_clear,
+                                                        hard_surface = 0, tridiagonal = 0, 
+                                                        Gauss_quad = 5, numt = 1)
+
+                F_p_aerosol_1, dtau_aerosol_1 = emission_Toon(P, T, wl, dtau_tot_aerosol_1, 
+                                                        kappa_Ray, kappa_cloud_aerosol_1, kappa_tot_aerosol_1,
+                                                        w_cloud, g_cloud, zone_idx,
+                                                        surf_reflect,
+                                                        kappa_cloud_seperate_aerosol_1,
+                                                        hard_surface = 0, tridiagonal = 0, 
+                                                        Gauss_quad = 5, numt = 1)
+                
+                F_p_aerosol_2, dtau_aerosol_2 = emission_Toon(P, T, wl, dtau_tot_aerosol_2, 
+                                                        kappa_Ray, kappa_cloud_aerosol_2, kappa_tot_aerosol_2,
+                                                        w_cloud, g_cloud, zone_idx,
+                                                        surf_reflect,
+                                                        kappa_cloud_seperate_aerosol_2,
+                                                        hard_surface = 0, tridiagonal = 0, 
+                                                        Gauss_quad = 5, numt = 1)
+            
+                F_p = ((f_both*F_p) + 
+                        (f_aerosol_1 * F_p_aerosol_1) + 
+                        (f_aerosol_2 * F_p_aerosol_2) + 
+                        (f_clear*F_p_clear))
+    
+
+    return F_p, dtau 
+
+def assign_assumptions_and_compute_reflection(P, T, dz, wl, kappa_tot, dtau_tot,
+                                              kappa_gas, kappa_Ray,
+                                              kappa_cloud, kappa_cloud_seperate, 
+                                              zone_idx, reflection_up_to_5um,
+                                              # Cloud things
+                                              P_cloud, cloud_dim, aerosol_species, 
+                                              w_cloud, g_cloud,
+                                              f_cloud, 
+                                              f_both, f_aerosol_1, f_aerosol_2, f_clear,
+                                              albedo_deck,
+                                              # Surfaces
+                                              disable_atmosphere,
+                                              surface, surface_model, P_surf, T_surf,
+                                              surf_reflect, surf_reflect_array, 
+                                              surface_component_percentages,
+                                              surface_percentage_apply_to
+                                              ):
+    '''
+    Assigns assumptions (surfaces, clouds) and computes reflection
+
+    Maximum complexity allowed: patchy 2D clouds (2 aerosols max), surfaces (and decks) with albedos
+                                2 aerosols max for patchy 2d clouds available for gas giants (no surface or shiny deck)
+                                1 aerosol max for patchy 2d clouds available for all models 
+
+    Args:
+        TO DO 
+    
+    Returns:
+        albedo (np.array of float)
+
+    '''
+
+    # If there are patchy clouds
+    if cloud_dim == 2:
+
+        # If there is only one cloud species there are two models: cloudy and clear
+        if (len(aerosol_species) == 1):
+
+            # Clear Model 
+            kappa_cloud_clear = np.zeros_like(kappa_cloud)
+            kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+            kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_clear[:,0,zone_idx,:])
+            dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+        
+        # If there are two cloud species there are four models: cloudy (both species, which is default)
+        # the first aerosol alone, the second aerosol alone, and clear 
+        elif (len(aerosol_species) == 2):
+
+            if (albedo_deck != -1) or (surface == True):
+                raise Exception('Cannot have a shiny deck or surface and patchy clouds with more than 1 aerosol')
+            
+            # Clear Model 
+            kappa_cloud_clear = np.zeros_like(kappa_cloud)
+            kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+            kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_clear[:,0,zone_idx,:])
+            dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+
+            # Aerosol 1
+            kappa_cloud_aerosol_1 = kappa_cloud_seperate[0]
+            kappa_cloud_seperate_aerosol_1 = np.array([kappa_cloud_seperate[0],np.zeros_like(kappa_cloud)])
+            kappa_tot_aerosol_1 = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_aerosol_1[:,0,zone_idx,:])
+            dtau_tot_aerosol_1 = np.ascontiguousarray(kappa_tot_aerosol_1 * dz.reshape((len(P), 1)))
+
+            # Aerosol 2
+            kappa_cloud_aerosol_2 = kappa_cloud_seperate[1]
+            kappa_cloud_seperate_aerosol_2 = np.array([np.zeros_like(kappa_cloud),kappa_cloud_seperate[1]])
+            kappa_tot_aerosol_2 = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                                kappa_cloud_aerosol_2[:,0,zone_idx,:])
+            dtau_tot_aerosol_2 = np.ascontiguousarray(kappa_tot_aerosol_2 * dz.reshape((len(P), 1)))
+
+    if surface == True or albedo_deck != -1:
+
+        if disable_atmosphere != True:
+
+            if surface == True:
+                    # Need to find where P_surf is to cut all the arrays above 
+                    index_below_P_surf = find_nearest_less_than(P_surf,P)
+
+                    # This is to fix an error that occurs when P_Surf is top of atmosphere
+                    if index_below_P_surf + 1 != len(P):
+                        index_below_P_surf -= 1
+
+            # Else, it is a cloud
+            else:
+                # Need to find where P_cloud is to cut all the arrays above 
+                # We still call it index_below_P_surf since its all the same code after this
+                try:
+                    index_below_P_surf = find_nearest_less_than(P_cloud,P)
+                # except just in case P-cloud is an array (i.e. deck + slab)
+                except:
+                    index_below_P_surf = find_nearest_less_than(P_cloud[0],P)
+
+                # This is to fix an error that occurs when P_Surf is top of atmosphere
+                if index_below_P_surf + 1 != len(P):
+                    index_below_P_surf -= 1
+
+        # If the surface is gray or constant, we don't have to loop over surfaces (only one surf_reflect)
+        if (surface_model == 'gray') or (surface_model == 'constant') or (albedo_deck != -1):
+
+            # If there is an atmosphere
+            if disable_atmosphere != True:
+            
+                albedo = reflection_Toon(P[index_below_P_surf+1:], 
+                                        wl, 
+                                        dtau_tot[index_below_P_surf+1:,:],
+                                        kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                        kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                        kappa_tot[index_below_P_surf+1:,:],
+                                        w_cloud[:,index_below_P_surf+1:,:,:,:],
+                                        g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                        zone_idx, 
+                                        surf_reflect,
+                                        kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                        single_phase = 3, multi_phase = 0,
+                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                        Gauss_quad = 5, numt = 1,
+                                        toon_coefficients=0, tridiagonal=0, b_top=0)
+                
+                if cloud_dim == 2:
+                    
+                    # If its a shiny deck, then the clear atmosphere needs to be computed all the way to the bottom
+                    if (albedo_deck != -1):
+                            albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
+                                                            kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                                            w_cloud, g_cloud, zone_idx, surf_reflect,
+                                                            kappa_cloud_seperate_clear,
+                                                            single_phase = 3, multi_phase = 0,
+                                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                            Gauss_quad = 5, numt = 1,
+                                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+
+                    # Otherwise, we are dealing with a rocky surface (which isn't the patchy component)
+                    else:
+                        albedo_clear = reflection_Toon(P[index_below_P_surf+1:], 
+                                                    wl, 
+                                                    dtau_tot_clear[index_below_P_surf+1:,:],
+                                                    kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                    kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                    kappa_tot_clear[index_below_P_surf+1:,:],
+                                                    w_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                    g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                    zone_idx, 
+                                                    surf_reflect,
+                                                    kappa_cloud_seperate_clear[:,index_below_P_surf+1:,:,:,:],
+                                                    single_phase = 3, multi_phase = 0,
+                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                    Gauss_quad = 5, numt = 1,
+                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+
+                    albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+            
+            else:
+
+                albedo = reflection_bare_surface(wl, surf_reflect, Gauss_quad = 5)
+
+        # If we are using lab data, we need to loop over each component 
+        elif (surface_model == 'lab_data'):
+
+            # Percentages have been applied to albedos already
+            # This code is the same as the if block above, I'm just bad at writing if-statements 
+            if (surface_percentage_apply_to == 'abedos'):
+
+                # If there is an atmosphere
+                if disable_atmosphere != True:
+                
+                    albedo = reflection_Toon(P[index_below_P_surf+1:], 
+                                            wl, 
+                                            dtau_tot[index_below_P_surf+1:,:],
+                                            kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                            kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                            kappa_tot[index_below_P_surf+1:,:],
+                                            w_cloud[:,index_below_P_surf+1:,:,:,:],
+                                            g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                            zone_idx, 
+                                            surf_reflect,
+                                            kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                            single_phase = 3, multi_phase = 0,
+                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                            Gauss_quad = 5, numt = 1,
+                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    if cloud_dim == 2:
+                        
+                        albedo_clear = reflection_Toon(P[index_below_P_surf+1:], 
+                                                    wl, 
+                                                    dtau_tot_clear[index_below_P_surf+1:,:],
+                                                    kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                    kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                    kappa_tot_clear[index_below_P_surf+1:,:],
+                                                    w_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                    g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                    zone_idx, 
+                                                    surf_reflect,
+                                                    kappa_cloud_seperate_clear[:,index_below_P_surf+1:,:,:,:],
+                                                    single_phase = 3, multi_phase = 0,
+                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                    Gauss_quad = 5, numt = 1,
+                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                        
+
+                        albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+                
+                else:
+
+                    albedo = reflection_bare_surface(wl, surf_reflect, Gauss_quad = 5)
+            
+            # Apply the surface percentages to the models
+            elif (surface_percentage_apply_to == 'models'):
+            
+                albedo_array = []
+
+                for surf_reflect in surf_reflect_array:
+
+                    if disable_atmosphere != True:
+
+                        albedo_temp = reflection_Toon(P[index_below_P_surf+1:], 
+                                                wl, 
+                                                dtau_tot[index_below_P_surf+1:,:],
+                                                kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                kappa_cloud[index_below_P_surf+1:,:,:,:], 
+                                                kappa_tot[index_below_P_surf+1:,:],
+                                                w_cloud[:,index_below_P_surf+1:,:,:,:],
+                                                g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                zone_idx, 
+                                                surf_reflect,
+                                                kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                                single_phase = 3, multi_phase = 0,
+                                                frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                Gauss_quad = 5, numt = 1,
+                                                toon_coefficients=0, tridiagonal=0, b_top=0)
+                        
+                        if cloud_dim == 2:
+
+                            albedo_clear = reflection_Toon(P[index_below_P_surf+1:], 
+                                                        wl, 
+                                                        dtau_tot_clear[index_below_P_surf+1:,:],
+                                                        kappa_Ray[index_below_P_surf+1:,:,:,:], 
+                                                        kappa_cloud_clear[index_below_P_surf+1:,:,:,:], 
+                                                        kappa_tot_clear[index_below_P_surf+1:,:],
+                                                        w_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                        g_cloud[:,index_below_P_surf+1:,:,:,:], 
+                                                        zone_idx, 
+                                                        surf_reflect,
+                                                        kappa_cloud_seperate_clear[:,index_below_P_surf+1:,:,:,:],
+                                                        single_phase = 3, multi_phase = 0,
+                                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                        Gauss_quad = 5, numt = 1,
+                                                        toon_coefficients=0, tridiagonal=0, b_top=0)
+                            
+
+                            albedo_temp = (f_cloud*albedo_temp) + ((1-f_cloud)*albedo_clear)
+                    
+                    else:
+                        albedo_temp = reflection_bare_surface(wl, surf_reflect, Gauss_quad = 5)
+
+                    albedo_array.append(albedo_temp)
+                
+                # Need to take the weighted averaged 
+                albedo = np.zeros_like(wl)
+                for n in range(len(surface_component_percentages)):
+                    albedo += surface_component_percentages[n]*albedo_array[n]
+
+    # Gas Giants
+    else:
+
+        # This option will only compute reflection up to 5 um 
+        # to speed up retrievals 
+        if reflection_up_to_5um == True:
+            
+            # Make sure the wavelength grid actually goes up to 5 um
+            try:
+                index_5um = find_nearest(wl,5)
+            except:
+                raise Exception('Does the wavelength object go up to 5um? (reflection_up_to_5um = True)')
+            
+            # Make new, temporary arrays of inputs only up to 5 um
+            wl_cut = wl[:index_5um]
+            dtau_tot_cut = dtau_tot[:,:index_5um]
+            kappa_Ray_cut = kappa_Ray[:,:,:,:index_5um]
+            kappa_cloud_cut = kappa_cloud[:,:,:,:index_5um]
+            kappa_tot_cut = kappa_tot[:,:index_5um]
+            w_cloud_cut = w_cloud[:,:,:,:,:index_5um]
+            g_cloud_cut = g_cloud[:,:,:,:,:index_5um]
+            kappa_cloud_seperate_cut = kappa_cloud_seperate[:,:,:,:,:index_5um]
+            surf_reflect_cut = surf_reflect[:index_5um]
+
+            # Compute the albedo using PICASO's implementation (see emission.py for details)
+            albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
+                                        kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
+                                        w_cloud_cut, g_cloud_cut, zone_idx,
+                                        surf_reflect,
+                                        kappa_cloud_seperate_cut,
+                                        single_phase = 3, multi_phase = 0,
+                                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                        Gauss_quad = 5, numt = 1,
+                                        toon_coefficients=0, tridiagonal=0, b_top=0)
+            
+            # Create an albedo of 0's from 5um onwards
+            albedo_zeros = np.zeros(len(wl[index_5um:]))
+
+            # Join both arrays together
+            albedo = np.concatenate((albedo_cut, albedo_zeros))
+
+            # For 1 + 1D patchy clouds
+            if cloud_dim == 2:
+
+                if (len(aerosol_species) == 1):
+
+                    dtau_tot_clear_cut = dtau_tot_clear[:,:index_5um]
+                    kappa_cloud_clear_cut = kappa_cloud_clear[:,:,:,:index_5um]
+                    kappa_tot_clear_cut = kappa_tot_clear[:,:index_5um]
+                    kappa_cloud_seperate_clear_cut = kappa_cloud_seperate_clear[:,:,:,:,:index_5um]
+
+                    albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
+                                                    kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
+                                                    w_cloud_cut, g_cloud_cut, zone_idx,
+                                                    surf_reflect,
+                                                    single_phase = 3, multi_phase = 0,
+                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                    Gauss_quad = 5, numt = 1,
+                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+
+                    albedo_clear = np.concatenate((albedo_clear_cut, albedo_zeros))
+                    
+                    albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+
+                # 1D + 1D + 1D + 1D is clear + cloudy (both) + cloudy (aerosol 1) + cloudy (aerosol 2)
+                # So need to compute three additional models 
+                if (len(aerosol_species) == 2):
+
+                    dtau_tot_clear_cut = dtau_tot_clear[:,:index_5um]
+                    kappa_cloud_clear_cut = kappa_cloud_clear[:,:,:,:index_5um]
+                    kappa_tot_clear_cut = kappa_tot_clear[:,:index_5um]
+                    kappa_cloud_seperate_clear_cut = kappa_cloud_seperate_clear[:,:,:,:,:index_5um]
+
+                    albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
+                                                    kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
+                                                    w_cloud_cut, g_cloud_cut, zone_idx,
+                                                    surf_reflect_cut,
+                                                    kappa_cloud_seperate_clear_cut,
+                                                    single_phase = 3, multi_phase = 0,
+                                                    frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                                    Gauss_quad = 5, numt = 1,
+                                                    toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    albedo_clear = np.concatenate((albedo_clear_cut, albedo_zeros))
+                    
+                    dtau_tot_aerosol_1_cut = dtau_tot_aerosol_1[:,:index_5um]
+                    kappa_cloud_aerosol_1_cut = kappa_cloud_aerosol_1[:,:,:,:index_5um]
+                    kappa_tot_aerosol_1_cut = kappa_tot_aerosol_1[:,:index_5um]
+                    kappa_cloud_seperate_aerosol_1_cut = kappa_cloud_seperate_aerosol_1[:,:,:,:,:index_5um]
+
+                    albedo_aerosol_1_cut = reflection_Toon(P, wl, dtau_tot_aerosol_1_cut,
+                                            kappa_Ray_cut, kappa_cloud_aerosol_1_cut, kappa_tot_aerosol_1_cut,
+                                            w_cloud_cut, g_cloud_cut, zone_idx,
+                                            surf_reflect_cut,
+                                            kappa_cloud_seperate_aerosol_1_cut,
+                                            single_phase = 3, multi_phase = 0,
+                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                            Gauss_quad = 5, numt = 1,
+                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    albedo_aerosol_1 = np.concatenate((albedo_aerosol_1_cut, albedo_zeros))
+
+                    dtau_tot_aerosol_2_cut = dtau_tot_aerosol_2[:,:index_5um]
+                    kappa_cloud_aerosol_2_cut = kappa_cloud_aerosol_2[:,:,:,:index_5um]
+                    kappa_tot_aerosol_2_cut = kappa_tot_aerosol_2[:,:index_5um]
+                    kappa_cloud_seperate_aerosol_2_cut = kappa_cloud_seperate_aerosol_2[:,:,:,:,:index_5um]
+                    
+                    albedo_aerosol_2_cut = reflection_Toon(P, wl, dtau_tot_aerosol_2_cut,
+                                            kappa_Ray_cut, kappa_cloud_aerosol_2_cut, kappa_tot_aerosol_2_cut,
+                                            w_cloud, g_cloud, zone_idx,
+                                            surf_reflect_cut,
+                                            kappa_cloud_seperate_aerosol_2_cut,
+                                            single_phase = 3, multi_phase = 0,
+                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                            Gauss_quad = 5, numt = 1,
+                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    albedo_aerosol_2 = np.concatenate((albedo_aerosol_2_cut, albedo_zeros))
+                    
+                    albedo = ((f_both*albedo) + 
+                        (f_aerosol_1 * albedo_aerosol_1) + 
+                        (f_aerosol_2 * albedo_aerosol_2) + 
+                        (f_clear*albedo_clear))
+
+
+        # Else, just use the default arrays
+        else:
+            
+            albedo = reflection_Toon(P, wl, dtau_tot,
+                        kappa_Ray, kappa_cloud, kappa_tot,
+                        w_cloud, g_cloud, zone_idx,
+                        surf_reflect,
+                        kappa_cloud_seperate,
+                        single_phase = 3, multi_phase = 0,
+                        frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                        Gauss_quad = 5, numt = 1,
+                        toon_coefficients=0, tridiagonal=0, b_top=0)
+            
+            if cloud_dim == 2:
+                # 1D + 1D is clear + cloudy, so need to compute clear model here 
+                if (len(aerosol_species) == 1):
+                    albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
+                                            kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                            w_cloud, g_cloud, zone_idx,
+                                            surf_reflect,
+                                            kappa_cloud_seperate_clear,
+                                            single_phase = 3, multi_phase = 0,
+                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                            Gauss_quad = 5, numt = 1,
+                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+
+                    albedo = (f_cloud*albedo) + ((1-f_cloud)*albedo_clear)
+
+                # 1D + 1D + 1D + 1D is clear + cloudy (both) + cloudy (aerosol 1) + cloudy (aerosol 2)
+                # So need to compute three additional models 
+                if (len(aerosol_species) == 2):
+
+                    albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
+                                            kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
+                                            w_cloud, g_cloud, zone_idx,
+                                            surf_reflect,
+                                            kappa_cloud_seperate_clear,
+                                            single_phase = 3, multi_phase = 0,
+                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                            Gauss_quad = 5, numt = 1,
+                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    albedo_aerosol_1 = reflection_Toon(P, wl, dtau_tot_aerosol_1,
+                                            kappa_Ray, kappa_cloud_aerosol_1, kappa_tot_aerosol_1,
+                                            w_cloud, g_cloud, zone_idx,
+                                            surf_reflect,
+                                            kappa_cloud_seperate_aerosol_1,
+                                            single_phase = 3, multi_phase = 0,
+                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                            Gauss_quad = 5, numt = 1,
+                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    albedo_aerosol_2 = reflection_Toon(P, wl, dtau_tot_aerosol_2,
+                                            kappa_Ray, kappa_cloud_aerosol_2, kappa_tot_aerosol_2,
+                                            w_cloud, g_cloud, zone_idx,
+                                            surf_reflect,
+                                            kappa_cloud_seperate_aerosol_2,
+                                            single_phase = 3, multi_phase = 0,
+                                            frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
+                                            Gauss_quad = 5, numt = 1,
+                                            toon_coefficients=0, tridiagonal=0, b_top=0)
+                    
+                    albedo = ((f_both*albedo) + 
+                        (f_aerosol_1 * albedo_aerosol_1) + 
+                        (f_aerosol_2 * albedo_aerosol_2) + 
+                        (f_clear*albedo_clear))
+                    
     return albedo
