@@ -602,6 +602,7 @@ def define_model(model_name, bulk_species, param_species,
     # If the surface_components is non zero, the surface_model must be 'Lab_data' 
     if len(surface_components) != 0 and surface_model != 'lab_data':
         raise Exception('For specific surface components, surface model = lab_data')
+    
     # Combine bulk species with parametrised species
     chemical_species = np.append(bulk_species, param_species)
 
@@ -1159,7 +1160,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            beta, phi, theta, species_vert_gradient, He_fraction,
                            T_input, X_input, P_param_set, log_P_slope_phot,
                            log_P_slope_arr, Na_K_fixed_ratio, constant_gravity,
-                           chemistry_grid, PT_penalty, T_eq)
+                           chemistry_grid, PT_penalty, T_eq, mu_back, disable_atmosphere)
 
     #***** Store cloud / haze / aerosol properties *****#
 
@@ -1600,11 +1601,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     w_cloud_array = []
                     g_cloud_array = []
 
-                    if (model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
-                        if (model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
-                            #Adds a fake layer of w and g which, when multiplied by kappa_deck, will give 0 opacity anyways
-                            w_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
-                            g_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
+                    if ((model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X')
+                        or (model['cloud_type'] == 'shiny_opaque_deck_plus_slab') or (model['cloud_type'] == 'shiny_opaque_deck_plus_uniform_X')):
+                        #Adds a fake layer of w and g which, when multiplied by kappa_deck, will give 0 opacity anyways
+                        w_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
+                        g_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
 
                     if len(aerosol_species) != 0:
                         for aerosol in range(len(w_cloud)):
@@ -1632,9 +1633,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     if surface == True:
                         if surface_model == 'gray':
                             surf_reflect = np.zeros_like(wl)
+                            surf_reflect_array = []
                         
                         elif surface_model == 'constant':
                             surf_reflect = np.full_like(wl, albedo_surf)
+                            surf_reflect_array = []
 
                         elif surface_model == 'lab_data':
                             surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos)
@@ -1644,12 +1647,16 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                 surf_reflect = np.zeros_like(wl)
                                 for n in range(len(surface_component_percentages)):
                                     surf_reflect += surface_component_percentages[n]*surf_reflect_array[n]
+
+                            else:
+                                surf_reflect = np.full_like(wl, -1)  
                     else:
                         surf_reflect = np.full_like(wl, albedo_deck)
+                        surf_reflect_array = []
 
                 # Make a dummy surf_reflect array so that the numba gods are happy in the toon functions 
                 else:
-                    surf_reflect = np.full_like(wl, -1)  
+                    surf_reflect = np.full_like(wl, -1) 
             
 
             # Running POSEIDON on the GPU
@@ -1692,12 +1699,23 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
 
         if surface_model == 'gray':
             surf_reflect = np.zeros_like(wl)
+            surf_reflect_array = []
         
         elif surface_model == 'constant':
             surf_reflect = np.full_like(wl, albedo_surf)
+            surf_reflect_array = []
 
         elif surface_model == 'lab_data':
-            surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos,)
+            surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos)
+
+            # If we are to apply surface percentages to the albedos (not the models)
+            if surface_percentage_apply_to == 'albedos':
+                surf_reflect = np.zeros_like(wl)
+                for n in range(len(surface_component_percentages)):
+                    surf_reflect += surface_component_percentages[n]*surf_reflect_array[n]
+
+            else:
+                surf_reflect = np.full_like(wl, -1)  
 
     # Generate transmission spectrum        
     if (spectrum_type == 'transmission'):
@@ -1751,24 +1769,40 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     # Generate emission spectrum
     elif ('emission' in spectrum_type):
 
-        # Find zone index for the emission spectrum atmospheric region
-        if ('dayside' in spectrum_type):
-            zone_idx = 0
-        elif ('nightside' in spectrum_type):
-            zone_idx = -1
+        if disable_atmosphere != True:
+
+            # Find zone index for the emission spectrum atmospheric region
+            if ('dayside' in spectrum_type):
+                zone_idx = 0
+            elif ('nightside' in spectrum_type):
+                zone_idx = -1
+            else:
+                zone_idx = 0
+
+            # Use atmospheric properties from dayside/nightside (only consider one region for 1D emission models)
+            dz = dr[:,0,zone_idx]
+            T = T[:,0,zone_idx]
+
+            # Compute total extinction (all absorption + scattering sources)
+            kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                        kappa_cloud[:,0,zone_idx,:])
+
+            # Store differential extinction optical depth across each layer
+            dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
+        
+        # Planets without atmospheres don't have these arrays defined, but its just for the functions below
         else:
             zone_idx = 0
-
-        # Use atmospheric properties from dayside/nightside (only consider one region for 1D emission models)
-        dz = dr[:,0,zone_idx]
-        T = T[:,0,zone_idx]
-
-        # Compute total extinction (all absorption + scattering sources)
-        kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                     kappa_cloud[:,0,zone_idx,:])
-
-        # Store differential extinction optical depth across each layer
-        dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
+            dz = []
+            T = []
+            kappa_tot = []
+            dtau_tot = []
+            kappa_gas = []
+            kappa_Ray = []
+            kappa_cloud = []
+            kappa_cloud_seperate = []
+            w_cloud = []
+            g_cloud = []
 
         # Without scattering, compute single steam radiative transfer
         if (thermal == True) and (thermal_scattering == False):

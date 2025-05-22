@@ -1303,6 +1303,13 @@ def assign_Mie_model_assumptions(model, aerosol_species,
     # refractive indices
     wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
 
+    # Remove shiny from the cloud type, temporarily
+    if ('shiny' in model['cloud_type']):
+        original_cloud_type = model['cloud_type']
+        model['cloud_type'] = model['cloud_type'].split('shiny_')[1]
+    else:
+        original_cloud_type = model['cloud_type']
+
     # If its a fuzzy deck cloud type
     if (model['cloud_type'] == 'fuzzy_deck'):
         
@@ -1433,6 +1440,8 @@ def assign_Mie_model_assumptions(model, aerosol_species,
                                             lognormal_logwidth_free=lognormal_logwidth_free,
                                             log_r_m_std_dev=log_r_m_std_dev)
 
+    # if shiny was removed, put it back
+    model['cloud_type'] = original_cloud_type
 
     return n_aerosol, sigma_ext_cloud, g_cloud, w_cloud
 

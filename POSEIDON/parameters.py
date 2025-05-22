@@ -22,7 +22,7 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                        fix_alpha_high_res, fix_W_conv_high_res, 
                        fix_beta_high_res, fix_Delta_phi_high_res,
                        lognormal_logwidth_free,
-                       surface_components, surface_model, surface_temp, surface_percentage_option):
+                       surface_components, surface_model, surface_percentage_option):
     '''
     From the user's chosen model settings, determine which free parameters
     define this POSEIDON model. The different types of free parameters are
@@ -264,9 +264,6 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
 
         if (object_type == 'directly_imaged'):
             physical_params += ['d']             # Distance to system (pc)
-
-        if (surface == True):
-            physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
 
         if ('ghost' in bulk_species):
             physical_params += ['mu_back']    # Background molecular weight (AMU)
@@ -690,9 +687,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                 else:
                     cloud_params += ['albedo_deck']
 
-                    # Need to remove 'shiny' from the cloud type, just so I don't have to rewrite code
+                    # Need to remove 'shiny' from the cloud type, just so I don't have to rewrite code below
                     cloud_type = cloud_type.split('shiny_')[1]
-                    print('Warning: Removing `shiny` string from cloud_type (can effect things like contributions if you use the same model.)')
 
             # Patchy Clouds
             if (cloud_dim == 2): 
@@ -2505,7 +2501,7 @@ def unpack_surface_params(param_names, surface_in,
     '''
     
     # Unpack names of geometry parameters
-    surface_param_names = param_names[N_params_cumulative[7]:N_params_cumulative[8]]
+    surface_param_names = param_names[N_params_cumulative[8]:N_params_cumulative[9]]
 
     if ('log_P_surf' in surface_param_names):
         P_surf = np.power(10.0, surface_in[np.where(surface_param_names == 'log_P_surf')[0][0]])

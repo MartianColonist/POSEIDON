@@ -1552,7 +1552,7 @@ def reflection_Toon(P, wl, dtau_tot,
     # It first uses the gauss weights that go with correlated k
     # So we don't use these weights
 
-    # Now we want to get the abedo 
+    # Now we want to get the albedo 
     # This is taken from the compress_disco functions 
 
     # Default tangle and tweight
@@ -1710,16 +1710,15 @@ def assign_assumptions_and_compute_single_stream_emission(P, T, dz, wl, kappa_to
     if cloud_dim == 2:
 
         # If there is only one cloud species there are two models: cloudy and clear
-        # NOTE: In single stream, only 1 aerosol species can be patchy
-        if (len(aerosol_species) == 1):
 
-            # Clear Model 
-            kappa_cloud_clear = np.zeros_like(kappa_cloud)
-            kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
-            kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                                kappa_cloud_clear[:,0,zone_idx,:])
-            dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
-        else:
+        # Clear Model 
+        kappa_cloud_clear = np.zeros_like(kappa_cloud)
+        kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+        kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                            kappa_cloud_clear[:,0,zone_idx,:])
+        dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+        
+        if (len(aerosol_species) >= 2):
             raise Exception('In single stream emission, only one aerosol species can be patchy. For two, use thermal_scattering = True.')
 
     # This is to find the index of either the surface or a shiny deck 
@@ -1913,19 +1912,16 @@ def assign_assumptions_and_compute_thermal_scattering_emission(P, T, dz, wl, kap
     # If there are patchy clouds
     if cloud_dim == 2:
 
-        # If there is only one cloud species there are two models: cloudy and clear
-        if (len(aerosol_species) == 1):
-
-            # Clear Model 
-            kappa_cloud_clear = np.zeros_like(kappa_cloud)
-            kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
-            kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                                kappa_cloud_clear[:,0,zone_idx,:])
-            dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+        # Clear Model 
+        kappa_cloud_clear = np.zeros_like(kappa_cloud)
+        kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+        kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                            kappa_cloud_clear[:,0,zone_idx,:])
+        dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
         
         # If there are two cloud species there are four models: cloudy (both species, which is default)
         # the first aerosol alone, the second aerosol alone, and clear 
-        elif (len(aerosol_species) == 2):
+        if (len(aerosol_species) == 2):
 
             if (albedo_deck != -1) or (surface == True):
                 raise Exception('Cannot have a shiny deck or surface and patchy clouds with more than 1 aerosol')
@@ -2293,19 +2289,16 @@ def assign_assumptions_and_compute_reflection(P, T, dz, wl, kappa_tot, dtau_tot,
     # If there are patchy clouds
     if cloud_dim == 2:
 
-        # If there is only one cloud species there are two models: cloudy and clear
-        if (len(aerosol_species) == 1):
-
-            # Clear Model 
-            kappa_cloud_clear = np.zeros_like(kappa_cloud)
-            kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
-            kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                                kappa_cloud_clear[:,0,zone_idx,:])
-            dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
+        # Clear Model 
+        kappa_cloud_clear = np.zeros_like(kappa_cloud)
+        kappa_cloud_seperate_clear = np.zeros_like(kappa_cloud_seperate)
+        kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                            kappa_cloud_clear[:,0,zone_idx,:])
+        dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
         
         # If there are two cloud species there are four models: cloudy (both species, which is default)
         # the first aerosol alone, the second aerosol alone, and clear 
-        elif (len(aerosol_species) == 2):
+        if (len(aerosol_species) == 2):
 
             if (albedo_deck != -1) or (surface == True):
                 raise Exception('Cannot have a shiny deck or surface and patchy clouds with more than 1 aerosol')
@@ -2422,7 +2415,7 @@ def assign_assumptions_and_compute_reflection(P, T, dz, wl, kappa_tot, dtau_tot,
 
             # Percentages have been applied to albedos already
             # This code is the same as the if block above, I'm just bad at writing if-statements 
-            if (surface_percentage_apply_to == 'abedos'):
+            if (surface_percentage_apply_to == 'albedos'):
 
                 # If there is an atmosphere
                 if disable_atmosphere != True:
