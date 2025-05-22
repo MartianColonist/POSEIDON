@@ -50,8 +50,11 @@ def load_surface_components(surface_components):
     surface_components = np.array(surface_components)
 
     for component in surface_components:
-        file_path = input_file_path + 'surface_reflectivities/' + component + '.txt'
-        data = np.loadtxt(file_path).T
+        try:
+            file_path = input_file_path + 'surface_reflectivities/' + component + '.txt'
+            data = np.loadtxt(file_path).T
+        except:
+            raise Exception('Cannot load: ', file_path, '\nMake sure the txt file matches the surface components and is in the right folder!')
         surface_component_albedos.append(data)
 
     return surface_component_albedos
