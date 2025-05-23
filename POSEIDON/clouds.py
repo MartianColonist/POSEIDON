@@ -14,6 +14,8 @@ import os
 import glob
 import miepython
 import multiprocessing as mp
+from .supported_chemicals import aerosol_supported_species, aerosol_directional_supported_species, \
+                                 diamond_supported_species, aerosols_lognormal_logwidth_free
 
 from .utility import shared_memory_array
 from .supported_chemicals import aerosol_supported_species
@@ -1282,7 +1284,6 @@ def vary_one_parameter(model, planet, star, param_name, vary_list, wl, opac,
                        y_unit = y_unit,
                        y_min = y_min, y_max = y_max,
                        )
-
 
 ##############################
 # Stuff that was originally in core.py that gets things for extinction()
@@ -4285,3 +4286,45 @@ def make_aerosol_database():
     print('---------------------')
 
     database.close()
+
+# New utility function, put here to avoid circular import 
+def switch_aerosol_in_opac(model,opac):
+
+    # Function used in forwad models to switch aerosols loaded into 
+    # opac object without having to remake the opac object
+
+    cloud_model = model['cloud_model']
+    aerosol_species = model['aerosol_species']
+    lognormal_logwidth_free = model['lognormal_logwidth_free']
+
+    #***** Process Aerosol properties *****#
+    if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
+        # If its a directional aerosol
+        if (np.any(np.isin(aerosol_species, aerosol_directional_supported_species)) == True):
+            aerosol_stored = load_aerosol_grid(aerosol_species, grid = 'aerosol_directional')
+        # If its a diamond aerosol, and not only nanodiamonds
+        elif (np.any(np.isin(aerosol_species, diamond_supported_species)) == True) and (aerosol_species != ['NanoDiamonds']):
+            aerosol_stored = load_aerosol_grid(aerosol_species, grid = 'aerosol_diamonds')
+        # Else its in the normal grid
+        else:
+            # Normal grid load in (assumes log_r_m_std_dev = 0.5)
+            if lognormal_logwidth_free == False:
+                aerosol_stored = load_aerosol_grid(aerosol_species)
+
+            # Grid with an extra dimension for log_r_m_std_dev
+            else:
+                grid_name = aerosol_species[0] + '_free_logwidth'
+                aerosol_stored = load_aerosol_grid(aerosol_species, grid = grid_name,
+                                                lognormal_logwith_free = True)
+    else:
+        aerosol_stored = None
+
+    opac_new = {'opacity_database': opac['opacity_database'], 
+            'opacity_treatment': opac['opacity_treatment'], 'sigma_stored': opac['sigma_stored'], 
+            'CIA_stored': opac['CIA_stored'], 'Rayleigh_stored': opac['Rayleigh_stored'], 
+            'eta_stored': opac['eta_stored'], 'ff_stored': opac['ff_stored'], 
+            'bf_stored': opac['bf_stored'], 'T_fine': opac['T_fine'], 'log_P_fine': opac['log_P_fine'],
+            'database_version': opac['database_version'], 'aerosol_stored': aerosol_stored,
+           }
+    
+    return opac_new

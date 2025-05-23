@@ -976,21 +976,25 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
         if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
             # If its a directional aerosol
             if (np.any(np.isin(aerosol_species, aerosol_directional_supported_species)) == True):
-                aerosol_stored = load_aerosol_grid(aerosol_species, grid = 'aerosol_directional')
+                aerosol_stored = load_aerosol_grid(aerosol_species, grid = 'aerosol_directional',
+                                                   sigma_Mie_grid=sigma_Mie_grid)
             # If its a diamond aerosol, and not only nanodiamonds
             elif (np.any(np.isin(aerosol_species, diamond_supported_species)) == True) and (aerosol_species != ['NanoDiamonds']):
-                aerosol_stored = load_aerosol_grid(aerosol_species, grid = 'aerosol_diamonds')
+                aerosol_stored = load_aerosol_grid(aerosol_species, grid = 'aerosol_diamonds',
+                                                   sigma_Mie_grid=sigma_Mie_grid)
             # Else its in the normal grid
             else:
                 # Normal grid load in (assumes log_r_m_std_dev = 0.5)
                 if lognormal_logwidth_free == False:
-                    aerosol_stored = load_aerosol_grid(aerosol_species)
+                    aerosol_stored = load_aerosol_grid(aerosol_species,
+                                                       sigma_Mie_grid=sigma_Mie_grid)
 
                 # Grid with an extra dimension for log_r_m_std_dev
                 else:
                     grid_name = aerosol_species[0] + '_free_logwidth'
                     aerosol_stored = load_aerosol_grid(aerosol_species, grid = grid_name,
-                                                    lognormal_logwith_free = True)
+                                                    lognormal_logwith_free = True,
+                                                    sigma_Mie_grid=sigma_Mie_grid)
         else:
             aerosol_stored = None
 
