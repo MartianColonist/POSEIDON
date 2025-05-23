@@ -33,7 +33,7 @@ rank = comm.Get_rank()
 
 # Create global variable needed for centred log-ratio prior function
 allowed_simplex = 1
-
+allowed_simplex_surfaces = 1
 
 def run_retrieval(planet, star, model, opac, data, priors, wl, P, 
                   P_ref = None, R_p_ref = None, P_param_set = 1.0e-2, 
@@ -1071,7 +1071,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
             # Unpack high-resolution retrieval parameters
             _, _, _, _, _, \
-            _, _, _, high_res_params = split_params(cube, N_params_cum)
+            _, _, _, high_res_params, _ = split_params(cube, N_params_cum)
 
             # Compute the log-likelihood relevant for high-resolution retrievals
             loglikelihood = loglikelihood_high_res(wl, spectrum, F_s_obs, data,
@@ -1084,7 +1084,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         # Unpack offset and error inflation parameters
         _, _, _, _, _, _, \
-        offset_params, err_inflation_params, _ = split_params(cube, N_params_cum)
+        offset_params, err_inflation_params, _, _ = split_params(cube, N_params_cum)
         
         # Load error bars specified in data files
         err_data = data['err_data']

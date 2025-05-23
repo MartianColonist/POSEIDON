@@ -2005,6 +2005,7 @@ def assign_assumptions_and_compute_thermal_scattering_emission(P, T, dz, wl, kap
                                         Gauss_quad = 5, numt = 1,
                                         T_surf = T_surf)
                 
+                
 
                 # For 1 + 1D fractional clouds
                 if cloud_dim == 2:
@@ -2031,7 +2032,7 @@ def assign_assumptions_and_compute_thermal_scattering_emission(P, T, dz, wl, kap
                         F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
                                                             kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
                                                             w_cloud, g_cloud, zone_idx,surf_reflect,
-                                                            kappa_cloud_seperate,
+                                                            kappa_cloud_seperate_clear,
                                                             hard_surface = 1, tridiagonal = 0, 
                                                             Gauss_quad = 5, numt = 1,
                                                             T_surf = T_surf)
@@ -2051,10 +2052,11 @@ def assign_assumptions_and_compute_thermal_scattering_emission(P, T, dz, wl, kap
                                                             g_cloud[:,index_below_P_surf+1:,:,:,:], 
                                                             zone_idx,
                                                             surf_reflect,
-                                                            kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                                            kappa_cloud_seperate_clear[:,index_below_P_surf+1:,:,:,:],
                                                             hard_surface = 1, tridiagonal = 0, 
                                                             Gauss_quad = 5, numt = 1,
                                                             T_surf = T_surf)
+                        
                     
                     F_p = (f_cloud*F_p) + ((1-f_cloud)*F_p_clear)
             
@@ -2107,7 +2109,7 @@ def assign_assumptions_and_compute_thermal_scattering_emission(P, T, dz, wl, kap
                                                             g_cloud[:,index_below_P_surf+1:,:,:,:], 
                                                             zone_idx,
                                                             surf_reflect,
-                                                            kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                                            kappa_cloud_seperate_clear[:,index_below_P_surf+1:,:,:,:],
                                                             hard_surface = 1, tridiagonal = 0, 
                                                             Gauss_quad = 5, numt = 1,
                                                             T_surf = T_surf)
@@ -2164,7 +2166,7 @@ def assign_assumptions_and_compute_thermal_scattering_emission(P, T, dz, wl, kap
                                                                 g_cloud[:,index_below_P_surf+1:,:,:,:], 
                                                                 zone_idx,
                                                                 surf_reflect,
-                                                                kappa_cloud_seperate[:,index_below_P_surf+1:,:,:,:],
+                                                                kappa_cloud_seperate_clear[:,index_below_P_surf+1:,:,:,:],
                                                                 hard_surface = 1, tridiagonal = 0, 
                                                                 Gauss_quad = 5, numt = 1,
                                                                 T_surf = T_surf)
@@ -2572,6 +2574,7 @@ def assign_assumptions_and_compute_reflection(P, T, dz, wl, kappa_tot, dtau_tot,
                                                     kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
                                                     w_cloud_cut, g_cloud_cut, zone_idx,
                                                     surf_reflect,
+                                                    kappa_cloud_seperate_clear_cut,
                                                     single_phase = 3, multi_phase = 0,
                                                     frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                                     Gauss_quad = 5, numt = 1,
