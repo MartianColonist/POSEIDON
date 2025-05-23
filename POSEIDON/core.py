@@ -671,8 +671,8 @@ def define_model(model_name, bulk_species, param_species,
         # If its a directional aerosol
         if (np.any(np.isin(aerosol_species, aerosol_directional_supported_species)) == True):
             aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol_directional')
-        # If its a diamond aerosol
-        elif (np.any(np.isin(aerosol_species, diamond_supported_species)) == True):
+        # If its a diamond aerosol, and not only nanodiamonds
+        elif (np.any(np.isin(aerosol_species, diamond_supported_species)) == True) and (aerosol_species != ['NanoDiamonds']):
             aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol_diamonds')
         # Else its in the normal grid
         else:
