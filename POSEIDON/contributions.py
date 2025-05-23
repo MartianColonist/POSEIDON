@@ -32,7 +32,7 @@ from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon, reflection_Toon
 
-from .clouds import Mie_cloud, Mie_cloud_free, assign_Mie_model_assumptions
+from .clouds import compute_relevant_Mie_properties
 
 from .utility import mock_missing
 
@@ -732,6 +732,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         Rayleigh_stored = opac['Rayleigh_stored']
         ff_stored = opac['ff_stored']
         bf_stored = opac['bf_stored']
+        aerosol_stored = opac['aerosol_stored']
 
         # Also unpack fine temperature and pressure grids from pre-interpolation
         T_fine = opac['T_fine']
@@ -746,13 +747,13 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             # aerosol grid is being used or not 
             if (model['cloud_model'] == 'Mie'):
 
-                n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = assign_Mie_model_assumptions(model, aerosol_species,
-                                                                                            P, wl, r, H, n,
-                                                                                            r_m, r_i_real, r_i_complex,
-                                                                                            P_cloud, P_cloud_bottom, log_X_Mie,
-                                                                                            log_n_max, fractional_scale_height,
-                                                                                            lognormal_logwidth_free, log_r_m_std_dev,
-                                                                                            )
+                n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
+                                                                                                P, wl, r, H, n,
+                                                                                                r_m, r_i_real, r_i_complex,
+                                                                                                P_cloud, P_cloud_bottom, log_X_Mie,
+                                                                                                log_n_max, fractional_scale_height,
+                                                                                                lognormal_logwidth_free, log_r_m_std_dev,
+                                                                                                )
 
             else:
 
@@ -2184,6 +2185,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         Rayleigh_stored = opac['Rayleigh_stored']
         ff_stored = opac['ff_stored']
         bf_stored = opac['bf_stored']
+        aerosol_stored = opac['aerosol_stored']
 
         # Also unpack fine temperature and pressure grids from pre-interpolation
         T_fine = opac['T_fine']
@@ -2197,13 +2199,13 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             # aerosol grid is being used or not 
             if (model['cloud_model'] == 'Mie'):
 
-                n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = assign_Mie_model_assumptions(model, aerosol_species,
-                                                                                            P, wl, r, H, n,
-                                                                                            r_m, r_i_real, r_i_complex,
-                                                                                            P_cloud, P_cloud_bottom, log_X_Mie,
-                                                                                            log_n_max, fractional_scale_height,
-                                                                                            lognormal_logwidth_free, log_r_m_std_dev,
-                                                                                            )
+                n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
+                                                                                                P, wl, r, H, n,
+                                                                                                r_m, r_i_real, r_i_complex,
+                                                                                                P_cloud, P_cloud_bottom, log_X_Mie,
+                                                                                                log_n_max, fractional_scale_height,
+                                                                                                lognormal_logwidth_free, log_r_m_std_dev,
+                                                                                                )
 
             else:
 

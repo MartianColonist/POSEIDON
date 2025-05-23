@@ -45,7 +45,7 @@ from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon, reflection_Toon
 
-from .clouds import Mie_cloud, Mie_cloud_free, load_aerosol_grid, assign_Mie_model_assumptions
+from .clouds import compute_relevant_Mie_properties
 
 from .utility import mock_missing
 
@@ -665,28 +665,6 @@ def define_model(model_name, bulk_species, param_species,
                                       fix_alpha_high_res, fix_W_conv_high_res, 
                                       fix_beta_high_res, fix_Delta_phi_high_res,
                                       lognormal_logwidth_free)
-    
-    # If cloud_model = Mie, load in the cross section grid
-    if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
-        # If its a directional aerosol
-        if (np.any(np.isin(aerosol_species, aerosol_directional_supported_species)) == True):
-            aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol_directional')
-        # If its a diamond aerosol, and not only nanodiamonds
-        elif (np.any(np.isin(aerosol_species, diamond_supported_species)) == True) and (aerosol_species != ['NanoDiamonds']):
-            aerosol_grid = load_aerosol_grid(aerosol_species, grid = 'aerosol_diamonds')
-        # Else its in the normal grid
-        else:
-            # Normal grid load in (assumes log_r_m_std_dev = 0.5)
-            if lognormal_logwidth_free == False:
-                aerosol_grid = load_aerosol_grid(aerosol_species)
-
-            # Grid with an extra dimension for log_r_m_std_dev
-            else:
-                grid_name = aerosol_species[0] + '_free_logwidth'
-                aerosol_grid = load_aerosol_grid(aerosol_species, grid = grid_name,
-                                                lognormal_logwith_free = True)
-    else:
-        aerosol_grid = None
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -718,7 +696,6 @@ def define_model(model_name, bulk_species, param_species,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
              'aerosol_species': aerosol_species,
-             'aerosol_grid': aerosol_grid,
              'scattering' : scattering,
              'reflection' : reflection,
              'log_P_slope_phot': log_P_slope_phot,
@@ -858,6 +835,9 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
     CIA_pairs = model['CIA_pairs']
     ff_pairs = model['ff_pairs']
     bf_species = model['bf_species']
+    aerosol_species = model['aerosol_species']
+    cloud_model = model['cloud_model']
+    lognormal_logwidth_free = model['lognormal_logwidth_free']
     
     # For opacity sampling, pre-compute opacities
     if (opacity_treatment == 'opacity_sampling'):
@@ -870,11 +850,14 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         # Read and interpolate cross sections in pressure, temperature and wavelength
         sigma_stored, CIA_stored, \
         Rayleigh_stored, eta_stored, \
-        ff_stored, bf_stored = opacity_tables(rank, comm, wl, chemical_species, 
+        ff_stored, bf_stored, \
+        aerosol_stored  = opacity_tables(rank, comm, wl, chemical_species, 
                                               active_species, CIA_pairs, 
-                                              ff_pairs, bf_species, T_fine,
-                                              log_P_fine, opacity_database, 
-                                              wl_interp, testing, database_version)
+                                              ff_pairs, bf_species, 
+                                              aerosol_species, cloud_model,
+                                              T_fine, log_P_fine, opacity_database, 
+                                              wl_interp, testing, database_version,
+                                              lognormal_logwidth_free,)
                     
     elif (opacity_treatment == 'line_by_line'):   
         
@@ -883,7 +866,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         
         # No need for pre-computed arrays for line-by-line, so keep empty arrays
         sigma_stored, CIA_stored, \
-        ff_stored, bf_stored = (np.array([]) for _ in range(4))
+        ff_stored, bf_stored, aerosol_stored = (np.array([]) for _ in range(5))
 
     # Move cross sections to GPU memory to speed up later computations
     if (device == 'gpu'):
@@ -893,6 +876,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         eta_stored = cp.asarray(eta_stored)
         ff_stored = cp.asarray(ff_stored)
         bf_stored = cp.asarray(bf_stored)
+        aerosol_stored = cp.asarray(aerosol_stored)
 
     # Package opacity data required by our model in memory
     opac = {'opacity_database': opacity_database, 
@@ -900,7 +884,7 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
             'CIA_stored': CIA_stored, 'Rayleigh_stored': Rayleigh_stored, 
             'eta_stored': eta_stored, 'ff_stored': ff_stored, 
             'bf_stored': bf_stored, 'T_fine': T_fine, 'log_P_fine': log_P_fine,
-            'database_version': database_version,
+            'database_version': database_version, 'aerosol_stored': aerosol_stored,
            }
 
     return opac
@@ -1409,6 +1393,9 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
         Rayleigh_stored = opac['Rayleigh_stored']
         ff_stored = opac['ff_stored']
         bf_stored = opac['bf_stored']
+        aerosol_stored = opac['aerosol_stored']
+
+        # aerosol_grid = opac['aerosol_grid']
 
         # Also unpack fine temperature and pressure grids from pre-interpolation
         T_fine = opac['T_fine']
@@ -1421,14 +1408,15 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             # How the cloud type is defined and whether or not 
             # aerosol grid is being used or not 
             if (model['cloud_model'] == 'Mie'):
+                
 
-                n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = assign_Mie_model_assumptions(model, aerosol_species,
-                                                                                            P, wl, r, H, n,
-                                                                                            r_m, r_i_real, r_i_complex,
-                                                                                            P_cloud, P_cloud_bottom, log_X_Mie,
-                                                                                            log_n_max, fractional_scale_height,
-                                                                                            lognormal_logwidth_free, log_r_m_std_dev,
-                                                                                            )
+                n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
+                                                                                                P, wl, r, H, n,
+                                                                                                r_m, r_i_real, r_i_complex,
+                                                                                                P_cloud, P_cloud_bottom, log_X_Mie,
+                                                                                                log_n_max, fractional_scale_height,
+                                                                                                lognormal_logwidth_free, log_r_m_std_dev,
+                                                                                                )
 
             else:
 

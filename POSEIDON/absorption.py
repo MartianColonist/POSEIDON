@@ -14,6 +14,11 @@ from .species_data import polarisabilities
 from .utility import prior_index, prior_index_V2, closest_index, closest_index_GPU, \
                      shared_memory_array, mock_missing
 
+from .clouds import load_aerosol_grid
+
+from .supported_chemicals import aerosol_supported_species, aerosol_directional_supported_species, \
+                                 diamond_supported_species, aerosols_lognormal_logwidth_free
+
 try:
     import cupy as cp
 except ImportError:
@@ -687,9 +692,9 @@ def H_minus_free_free(wl_um, T_arr):
 
 
 def opacity_tables(rank, comm, wl_model, chemical_species, active_species, 
-                   cia_pairs, ff_pairs, bf_species, T_fine, log_P_fine,
-                   opacity_database = 'High-T', wl_interp = 'sample', 
-                   testing = False, database_version = '1.2'):
+                   cia_pairs, ff_pairs, bf_species, aerosol_species, cloud_model, 
+                   T_fine, log_P_fine, opacity_database = 'High-T', wl_interp = 'sample', 
+                   testing = False, database_version = '1.2', lognormal_logwidth_free = False,):
     ''' 
     Initialisation function to read in and pre-interpolate all opacities.
         
@@ -733,6 +738,17 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
     sigma_stored, _ = shared_memory_array(node_rank, node_comm, (N_species_active, N_P_fine, N_T_fine, N_wl))     # Molecular and atomic opacities
     Rayleigh_stored, _ = shared_memory_array(node_rank, node_comm, (N_species, N_wl))                             # Rayleigh scattering
     eta_stored, _ = shared_memory_array(node_rank, node_comm, (N_species, N_wl))                                  # Refractive indices
+
+    # Number of grid spacing in aerosol grid
+    wl_num = 5011
+    r_m_num = 1000
+    log_r_m_std_dev_num = 48
+
+    # Create shared memory array for aerosol grid 
+    if lognormal_logwidth_free == True:
+        sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species,log_r_m_std_dev_num, 3, r_m_num, wl_num))
+    else:
+        sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species, 3, r_m_num, wl_num))
     
     # When using multiple cores, only the first core needs to handle interpolation
     if (node_rank == 0):
@@ -955,14 +971,37 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
 
         if (testing == False):
             opac_file.close()
+
+        #***** Process Aerosol properties *****#
+        if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
+            # If its a directional aerosol
+            if (np.any(np.isin(aerosol_species, aerosol_directional_supported_species)) == True):
+                aerosol_stored = load_aerosol_grid(aerosol_species, grid = 'aerosol_directional')
+            # If its a diamond aerosol, and not only nanodiamonds
+            elif (np.any(np.isin(aerosol_species, diamond_supported_species)) == True) and (aerosol_species != ['NanoDiamonds']):
+                aerosol_stored = load_aerosol_grid(aerosol_species, grid = 'aerosol_diamonds')
+            # Else its in the normal grid
+            else:
+                # Normal grid load in (assumes log_r_m_std_dev = 0.5)
+                if lognormal_logwidth_free == False:
+                    aerosol_stored = load_aerosol_grid(aerosol_species)
+
+                # Grid with an extra dimension for log_r_m_std_dev
+                else:
+                    grid_name = aerosol_species[0] + '_free_logwidth'
+                    aerosol_stored = load_aerosol_grid(aerosol_species, grid = grid_name,
+                                                    lognormal_logwith_free = True)
+        else:
+            aerosol_stored = None
+
         
     # Force secondary processors to wait for the primary to finish interpolating cross sections
     node_comm.Barrier()
 
     if (rank == 0): 
         print("Opacity pre-interpolation complete.")
-            
-    return sigma_stored, cia_stored, Rayleigh_stored, eta_stored, ff_stored, bf_stored
+    
+    return sigma_stored, cia_stored, Rayleigh_stored, eta_stored, ff_stored, bf_stored, aerosol_stored
 
 
 @jit(nopython = True)

@@ -1288,7 +1288,7 @@ def vary_one_parameter(model, planet, star, param_name, vary_list, wl, opac,
 # Stuff that was originally in core.py that gets things for extinction()
 ##############################
 
-def assign_Mie_model_assumptions(model, aerosol_species,
+def compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
                                  P, wl, r, H, n,
                                  r_m, r_i_real, r_i_complex,
                                  P_cloud, P_cloud_bottom, log_X_Mie,
@@ -1297,7 +1297,9 @@ def assign_Mie_model_assumptions(model, aerosol_species,
                                  ):
 
     # Load in the aerosol grid for compositionally specific aerosols
-    aerosol_grid = model['aerosol_grid']
+
+    # Renamed for convenience, so I don't have to rewrite all the code below
+    aerosol_grid = aerosol_stored
 
     # Create a wl_Mie array (which is at R = 1000) for file_read or constant
     # refractive indices
@@ -1443,7 +1445,8 @@ def assign_Mie_model_assumptions(model, aerosol_species,
 
 def load_aerosol_grid(aerosol_species, grid = 'aerosol', 
                         comm = MPI.COMM_WORLD, rank = 0,
-                        lognormal_logwith_free = False):
+                        lognormal_logwith_free = False,
+                        sigma_Mie_grid = []):
     '''
     Load a aerosol cross section grid (similar to load_chemistry_grid in chemistry.py)
 
@@ -1461,9 +1464,13 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
             Communicator used to allocate shared memory on multiple cores.
         rank (MPI rank):
             Rank used to allocate shared memory on multiple cores.
+        lognormal_logwidth_free (bool):
+            If log_r_m_std_dev is a free parameter in the grid being used
+        sigme_Mie_grid (array):
+            Array to store aerosol properties. Is empty in forward models, or passed by opacity_tables
     Returns:
-        chemistry_grid (dict):
-            Dictionary containing the chemical abundance database.
+        aerosol_grid (dict):
+            Dictionary containing the loaded in aerosol properties.
     
     '''
 
@@ -1518,7 +1525,8 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     # If false, just assume log_r_m_std_dev = 0.5
     if lognormal_logwith_free == False:
 
-        sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species, 3, r_m_num, wl_num))
+        if (len(sigma_Mie_grid) == 0):
+            sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species, 3, r_m_num, wl_num))
         
         # Only first core needs to load the aerosols into shared memory
         if (rank == 0):
@@ -1544,7 +1552,8 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     # Else, the width is a free param, and its about to get crazy 
     else:
         
-        sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species,log_r_m_std_dev_num, 3, r_m_num, wl_num))
+        if (len(sigma_Mie_grid == 0)):
+            sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species,log_r_m_std_dev_num, 3, r_m_num, wl_num))
         
         # Only first core needs to load the aerosols into shared memory
         if (rank == 0):
