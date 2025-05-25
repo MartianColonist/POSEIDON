@@ -638,6 +638,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     # Create variable governing if a mixing ratio parameter combination lies in 
     # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
     global allowed_simplex    # Needs to be global, as prior function has no return
+    global allowed_simplex_surfaces
 
     allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
     allowed_simplex_surfaces = 1

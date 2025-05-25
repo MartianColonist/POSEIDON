@@ -1297,9 +1297,7 @@ def compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
                                  lognormal_logwidth_free, log_r_m_std_dev,
                                  ):
 
-    # Load in the aerosol grid for compositionally specific aerosols
-
-    # Renamed for convenience, so I don't have to rewrite all the code below
+    # Renaming just so I don't have to rewrite code below
     aerosol_grid = aerosol_stored
 
     # Create a wl_Mie array (which is at R = 1000) for file_read or constant
@@ -1456,7 +1454,11 @@ def compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
 def load_aerosol_grid(aerosol_species, grid = 'aerosol', 
                         comm = MPI.COMM_WORLD, rank = 0,
                         lognormal_logwith_free = False,
-                        sigma_Mie_grid = []):
+                        sigma_Mie_grid = [],
+                        wl_grid = [],
+                        r_m_grid = [],
+                        log_r_m_std_dev_array = [],
+                        loading_opac = False):
     '''
     Load a aerosol cross section grid (similar to load_chemistry_grid in chemistry.py)
 
@@ -1478,15 +1480,21 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
             If log_r_m_std_dev is a free parameter in the grid being used
         sigme_Mie_grid (array):
             Array to store aerosol properties. Is empty in forward models, or passed by opacity_tables
+        wl_grid (array):
+            Array to store aerosol wavelength grid. Is empty in forward models, or passed by opacity_tables
+        rm_grid (array):
+            Array to store aerosol radii grid. Is empty in forward models, or passed by opacity_tables
+        log_r_m_std_dev_array (array):
+            Array to store aerosol log width grid.  Is empty in forward models, or passed by opacity_tables
+        loading_opac (bool):
+            If true, is being called in opacity_tables and is just loading in sigma_Mie_grid
     Returns:
         aerosol_grid (dict):
             Dictionary containing the loaded in aerosol properties.
     
     '''
 
-    # Reads in the database if more than one core is being used
-    if (rank == 0):
-        print("Reading in database for aerosol cross sections...")
+    print("Reading in database for aerosol cross sections...")
 
     # Check that the selected aerosol grid is supported
     if (grid not in ['aerosol','SiO2_free_logwidth','aerosol_directional','aerosol_diamonds']):
@@ -1511,11 +1519,29 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
         raise Exception('POSEIDON could not find ', input_file_path + 'opacity/'  + grid + '_database.hdf5. Is it downloaded and in the opacity folder?')
 
     # Load the dimensions of the grid
-    wl_grid = np.array(database['Info/Wavelength grid'])
-    r_m_grid = np.array(database['Info/Particle Size grid'])
+
+    # If its loading opac, the wl grid is a shared memory array 
+    # And same for r_m and log_r_m grids
+    if (len(wl_grid) != 0):
+        wl_grid[:] = np.array(database['Info/Wavelength grid'])[:]
+    else:
+        wl_grid = np.array(database['Info/Wavelength grid'])
+    
+    if (len(r_m_grid) != 0):
+        r_m_grid[:] = np.array(database['Info/Particle Size grid'])
+    else:
+        r_m_grid = np.array(database['Info/Particle Size grid'])
 
     # If lognormal logwith is a free parameter, things will be a bit different 
-    if lognormal_logwith_free == True:
+    
+    if (len(log_r_m_std_dev_array) != 0):
+        log_r_m_std_dev_temp = np.linspace(0.01,1.5,50)
+        log_r_m_std_dev_temp[16] = 0.5
+        # I quit the program a bit early, so it only goes from 0.01 to 1.43
+        log_r_m_std_dev_temp = log_r_m_std_dev_temp[:-2]
+        log_r_m_std_dev_array[:] = log_r_m_std_dev_temp
+
+    else:
         log_r_m_std_dev_array = np.linspace(0.01,1.5,50)
         log_r_m_std_dev_array[16] = 0.5
         # I quit the program a bit early, so it only goes from 0.01 to 1.43
@@ -1537,71 +1563,64 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
 
         if (len(sigma_Mie_grid) == 0):
             sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species, 3, r_m_num, wl_num))
-        
-        # Only first core needs to load the aerosols into shared memory
-        if (rank == 0):
 
-            # Add each aerosol species to mixing ratio array
-            for q, species in enumerate(aerosol_species):
+        # Add each aerosol species to mixing ratio array
+        for q, species in enumerate(aerosol_species):
 
-                # Load grid for species q, then reshape into a 2D numpy array
-                ext_array = np.array(database[species]['0.5']['eff_ext'])
-                ext_array = ext_array.reshape(r_m_num, wl_num)
+            # Load grid for species q, then reshape into a 2D numpy array
+            ext_array = np.array(database[species]['0.5']['eff_ext'])
+            ext_array = ext_array.reshape(r_m_num, wl_num)
 
-                g_array = np.array(database[species]['0.5']['eff_g'])
-                g_array = g_array.reshape(r_m_num, wl_num)
+            g_array = np.array(database[species]['0.5']['eff_g'])
+            g_array = g_array.reshape(r_m_num, wl_num)
 
-                w_array = np.array(database[species]['0.5']['eff_w'])
-                w_array = w_array.reshape(r_m_num, wl_num)
+            w_array = np.array(database[species]['0.5']['eff_w'])
+            w_array = w_array.reshape(r_m_num, wl_num)
 
-                # Package grid for species q into combined array
-                sigma_Mie_grid[q,0,:,:] = ext_array
-                sigma_Mie_grid[q,1,:,:] = g_array
-                sigma_Mie_grid[q,2,:,:] = w_array
+            # Package grid for species q into combined array
+            sigma_Mie_grid[q,0,:,:] = ext_array
+            sigma_Mie_grid[q,1,:,:] = g_array
+            sigma_Mie_grid[q,2,:,:] = w_array
     
     # Else, the width is a free param, and its about to get crazy 
     else:
         
         if (len(sigma_Mie_grid == 0)):
             sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species,log_r_m_std_dev_num, 3, r_m_num, wl_num))
-        
-        # Only first core needs to load the aerosols into shared memory
-        if (rank == 0):
 
-            for s, species in enumerate(aerosol_species):
+        for s, species in enumerate(aerosol_species):
 
-                # Add each aerosol species to mixing ratio array
-                for q,log_rm_std_dev in enumerate(log_r_m_std_dev_array):
+            # Add each aerosol species to mixing ratio array
+            for q,log_rm_std_dev in enumerate(log_r_m_std_dev_array):
 
-                    # Load grid for species q, then reshape into a 2D numpy array
-                    ext_array = np.array(database[species][str(log_rm_std_dev)]['eff_ext'])
-                    ext_array = ext_array.reshape(r_m_num, wl_num)
+                # Load grid for species q, then reshape into a 2D numpy array
+                ext_array = np.array(database[species][str(log_rm_std_dev)]['eff_ext'])
+                ext_array = ext_array.reshape(r_m_num, wl_num)
 
-                    g_array = np.array(database[species][str(log_rm_std_dev)]['eff_g'])
-                    g_array = g_array.reshape(r_m_num, wl_num)
+                g_array = np.array(database[species][str(log_rm_std_dev)]['eff_g'])
+                g_array = g_array.reshape(r_m_num, wl_num)
 
-                    w_array = np.array(database[species][str(log_rm_std_dev)]['eff_w'])
-                    w_array = w_array.reshape(r_m_num, wl_num)
+                w_array = np.array(database[species][str(log_rm_std_dev)]['eff_w'])
+                w_array = w_array.reshape(r_m_num, wl_num)
 
-                    # Package grid for species q into combined array
-                    sigma_Mie_grid[s,q,0,:,:] = ext_array
-                    sigma_Mie_grid[s,q,1,:,:] = g_array
-                    sigma_Mie_grid[s,q,2,:,:] = w_array
+                # Package grid for species q into combined array
+                sigma_Mie_grid[s,q,0,:,:] = ext_array
+                sigma_Mie_grid[s,q,1,:,:] = g_array
+                sigma_Mie_grid[s,q,2,:,:] = w_array
 
     # Close HDF5 file
     database.close()
-        
-    # Force secondary processors to wait for the primary to finish
-    comm.Barrier()
 
-    # Package atmosphere properties
-    if lognormal_logwith_free == False:
-        aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid, 'wl_grid': wl_grid, 'r_m_grid' : r_m_grid}
-    else:
-        aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid,
-                        'wl_grid': wl_grid, 'r_m_grid' : r_m_grid, 'log_r_m_std_dev_grid' : log_r_m_std_dev_array}
+    # Package atmosphere properties if you aren't loading opac
+    # If you are, this aerosol_grid dictionary is made later
+    if loading_opac == False:
+        if lognormal_logwith_free == False:
+            aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid, 'wl_grid': wl_grid, 'r_m_grid' : r_m_grid}
+        else:
+            aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid,
+                            'wl_grid': wl_grid, 'r_m_grid' : r_m_grid, 'log_r_m_std_dev_grid' : log_r_m_std_dev_array}
 
-    return aerosol_grid
+        return aerosol_grid
 
 
 def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array, 

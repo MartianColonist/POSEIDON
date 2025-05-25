@@ -913,13 +913,14 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         sigma_stored, CIA_stored, \
         Rayleigh_stored, eta_stored, \
         ff_stored, bf_stored, \
-        aerosol_stored  = opacity_tables(rank, comm, wl, chemical_species, 
-                                              active_species, CIA_pairs, 
-                                              ff_pairs, bf_species, 
-                                              aerosol_species, cloud_model,
-                                              T_fine, log_P_fine, opacity_database, 
-                                              wl_interp, testing, database_version,
-                                              lognormal_logwidth_free,)
+        sigma_Mie_stored, aerosol_wl_grid, \
+        aerosol_r_m_grid, aerosol_log_r_m_std_dev_grid  = opacity_tables(rank, comm, wl, chemical_species, 
+                                                                        active_species, CIA_pairs, 
+                                                                        ff_pairs, bf_species, 
+                                                                        aerosol_species, cloud_model,
+                                                                        T_fine, log_P_fine, opacity_database, 
+                                                                        wl_interp, testing, database_version,
+                                                                        lognormal_logwidth_free,)
                     
     elif (opacity_treatment == 'line_by_line'):   
         
@@ -928,7 +929,9 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         
         # No need for pre-computed arrays for line-by-line, so keep empty arrays
         sigma_stored, CIA_stored, \
-        ff_stored, bf_stored, aerosol_stored = (np.array([]) for _ in range(5))
+        ff_stored, bf_stored, sigma_Mie_stored, 
+        aerosol_wl_grid, aerosol_r_m_grid, \
+        aerosol_log_r_m_std_dev_grid = (np.array([]) for _ in range(8))
 
     # Move cross sections to GPU memory to speed up later computations
     if (device == 'gpu'):
@@ -938,7 +941,34 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
         eta_stored = cp.asarray(eta_stored)
         ff_stored = cp.asarray(ff_stored)
         bf_stored = cp.asarray(bf_stored)
-        aerosol_stored = cp.asarray(aerosol_stored)
+        sigma_Mie_stored = cp.asarray(sigma_Mie_stored)
+        aerosol_wl_grid = cp.asarray(aerosol_wl_grid)
+        aerosol_r_m_grid = cp.asarray(aerosol_r_m_grid)
+        aerosol_log_r_m_std_dev_grid = cp.asarray(aerosol_log_r_m_std_dev_grid)
+
+    # Getting grid name for aerosol_stored dictionary 
+    if model['cloud_model'] == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
+        # If its a directional aerosol
+        if (np.any(np.isin(aerosol_species, aerosol_directional_supported_species)) == True):
+            grid = 'aerosol_directional'
+        # If its a diamond aerosol, and not only nanodiamonds
+        elif (np.any(np.isin(aerosol_species, diamond_supported_species)) == True) and (aerosol_species != ['NanoDiamonds']):
+            grid = 'aerosol_diamonds'
+        # Else its in the normal grid
+        else:
+            # Normal grid load in (assumes log_r_m_std_dev = 0.5)
+            if lognormal_logwidth_free == False:
+                grid = 'aerosol'
+            # Grid with an extra dimension for log_r_m_std_dev
+            else:
+                grid = aerosol_species[0] + '_free_logwidth'
+    else:
+        grid = 'None'
+
+    aerosol_stored = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_stored,
+                    'wl_grid': aerosol_wl_grid, 
+                    'r_m_grid' : aerosol_r_m_grid, 
+                    'log_r_m_std_dev_grid' : aerosol_log_r_m_std_dev_grid}
 
     # Package opacity data required by our model in memory
     opac = {'opacity_database': opacity_database, 
