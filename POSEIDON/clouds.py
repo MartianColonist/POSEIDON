@@ -1578,7 +1578,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     # Else, the width is a free param, and its about to get crazy 
     else:
         
-        if (len(sigma_Mie_grid == 0)):
+        if (len(sigma_Mie_grid) == 0):
             sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species,log_r_m_std_dev_num, 3, r_m_num, wl_num))
 
         for s, species in enumerate(aerosol_species):
