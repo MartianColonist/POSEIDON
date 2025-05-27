@@ -1974,7 +1974,8 @@ def Mie_cloud(P,wl,r, H, n,
             n_aerosol_array.append(n_aerosol)
 
         # Uniaxial or Biaxial Slabs
-        elif (cloud_type == 'unaxial_slab' or cloud_type == 'uniaxial_random_slab' or cloud_type == 'biaxial_slab' or cloud_type == 'biaxial_random_slab'):
+        elif (cloud_type == 'uniaxial_slab' or cloud_type == 'uniaxial_random_slab' or cloud_type == 'biaxial_slab' or cloud_type == 'biaxial_random_slab'):
+            
             # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
             n_aerosol = np.zeros_like(r)
 
