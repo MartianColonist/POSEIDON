@@ -1585,7 +1585,7 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     # Else, the width is a free param, and its about to get crazy 
     else:
         
-        if (len(sigma_Mie_grid == 0)):
+        if (len(sigma_Mie_grid) == 0):
             sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species,log_r_m_std_dev_num, 3, r_m_num, wl_num))
 
         for s, species in enumerate(aerosol_species):
@@ -1980,7 +1980,7 @@ def Mie_cloud(P,wl,r, H, n,
             n_aerosol_array.append(n_aerosol)
 
         # Uniaxial or Biaxial Slabs
-        elif (cloud_type == 'unaxial_slab' or cloud_type == 'uniaxial_random_slab' or cloud_type == 'biaxial_slab' or cloud_type == 'biaxial_random_slab'):
+        elif (cloud_type == 'uniaxial_slab' or cloud_type == 'uniaxial_random_slab' or cloud_type == 'biaxial_slab' or cloud_type == 'biaxial_random_slab'):
             # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
             n_aerosol = np.zeros_like(r)
 
