@@ -4103,7 +4103,13 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             
             # Better axis label spacing for temperatures
             if ('T' in param):
-                if ((param_max - param_min) < 400):
+                if ((param_max - param_min) < 100):
+                    xmajor_interval = 20
+                    xminor_interval = 10
+                elif (((param_max - param_min) >= 100) and ((param_max - param_min) < 200)):
+                    xmajor_interval = 50
+                    xminor_interval = 10
+                elif (((param_max - param_min) >= 200) and ((param_max - param_min) < 400)):
                     xmajor_interval = 100
                     xminor_interval = 50
                 elif (((param_max - param_min) >= 400) and ((param_max - param_min) < 800)):
