@@ -1,4 +1,4 @@
-""" 
+"""  
 Dictionaries with various properties of atoms and molecules used by POSEIDON.
 
 """

@@ -32,7 +32,7 @@ from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
                       emission_Toon, reflection_Toon
 
-from .clouds import Mie_cloud, Mie_cloud_free
+from .clouds import compute_relevant_Mie_properties
 
 from .utility import mock_missing
 
@@ -239,6 +239,10 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
     kappa_gas = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     kappa_Ray = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+
+    # kappa_cloud is a total cloud opacity. This array instead splits it up so we can multiple clouds 
+    # in a scattering scenario
+    #kappa_cloud_seperate = np.zeros(shape=(len(n_aerosol_array),N_layers, N_sectors, N_zones, N_wl))
     
     # Fine temperature grid (for pre-interpolating opacities)    
     N_T_fine = len(T_fine)
@@ -441,6 +445,7 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
 
                                     if aerosol == aerosol_species_index:
                                         kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][l]
+                                        #kappa_cloud_seperate[aerosol,i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][l]
 
                                     else:
                                         kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
@@ -448,6 +453,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                                 # If we want the total cloud contribution 
                                 elif cloud_total_contribution == True:
                                     kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][l]
+                                    #kappa_cloud_seperate[aerosol,i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][l]
+
                         
 
                 # Opaque Deck is the first element in n_aerosol_array
@@ -469,12 +476,14 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
 
                             if aerosol == 0:
                                 kappa_cloud[(P > P_cloud[0]),j,k,:] += 0.0
+                                #kappa_cloud_seperate[aerosol,(P > P_cloud[0]),j,k,:] += 1.0e250
 
                             else:
                                 for i in range(i_bot,N_layers):
                                     for l in range(len(wl)):
                                         if aerosol-1 == aerosol_species_index:
                                             kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
+                                            #kappa_cloud_seperate[aerosol,i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
                                         else:
                                             kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * 0.0
 
@@ -487,6 +496,8 @@ def extinction_spectral_contribution(chemical_species, active_species, cia_pairs
                                 for i in range(i_bot,N_layers):
                                     for l in range(len(wl)):
                                             kappa_cloud[i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
+                                            #kappa_cloud_seperate[aerosol,i,j,k,l] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][l]
+    
 
     return kappa_gas, kappa_Ray, kappa_cloud
 
@@ -580,6 +591,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     cloud_dim = model['cloud_dim']
     scattering = model['scattering']
     reflection = model['reflection']
+    lognormal_logwidth_free = model['lognormal_logwidth_free']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -590,6 +602,11 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     elif (('emission' in spectrum_type) and 
          ((PT_dim or X_dim or cloud_dim) == 3)):
         raise Exception("Only 1D or 2D emission spectra currently supported.")
+    
+
+    if (cloud_dim >= 2):
+        raise Exception('Cannot do contribution functions for patchy cloud models.')
+
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
@@ -640,6 +657,12 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     r_i_complex = atmosphere['r_i_complex']
     log_X_Mie = atmosphere['log_X_Mie']
     P_cloud_bottom = atmosphere['P_cloud_bottom']
+    log_r_m_std_dev = atmosphere['log_r_m_std_dev']
+
+    if (scattering == True) or (reflection == True):
+        print('Contribution functions are largely untested for scattering and reflection. Bugs ahead... reach out to Elijah Mullens if you see any that need squashed.')
+        if (len(aerosol_species)>=2):
+            raise Exception('Cannot do more than one aerosol species when scattering or reflection is True. If you need this, reach out to Elijah Mullens.')
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -670,10 +693,15 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
     # Unpack lists of chemical species in this model
     chemical_species = model['chemical_species'] 
+    bulk_species_list = model['bulk_species']
     active_species = model['active_species']
     CIA_pairs = model['CIA_pairs']
     ff_pairs = model['ff_pairs']
     bf_species = model['bf_species']
+
+    for bulk_gas in bulk_species_list:
+        if (bulk_gas in active_species):
+            raise Exception('Spectral contributions are not configured for models where bulk species is also a spectrally active species. Reach out to Elijah Mullens if you need this feature.')
             
     # If computing line-by-line radiative transfer, use lbl optimised functions 
     if (opac['opacity_treatment'] == 'line_by_line'):
@@ -704,118 +732,29 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         Rayleigh_stored = opac['Rayleigh_stored']
         ff_stored = opac['ff_stored']
         bf_stored = opac['bf_stored']
+        aerosol_stored = opac['aerosol_stored']
 
         # Also unpack fine temperature and pressure grids from pre-interpolation
         T_fine = opac['T_fine']
         log_P_fine = opac['log_P_fine']
 
         # Running POSEIDON on the CPU
+        # Running POSEIDON on the CPU
         if (device == 'cpu'):
-
+            
+            # If the cloud model is Mie, need to parse out 
+            # How the cloud type is defined and whether or not 
+            # aerosol grid is being used or not 
             if (model['cloud_model'] == 'Mie'):
 
-                aerosol_grid = model['aerosol_grid']
+                n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
+                                                                                                P, wl, r, H, n,
+                                                                                                r_m, r_i_real, r_i_complex,
+                                                                                                P_cloud, P_cloud_bottom, log_X_Mie,
+                                                                                                log_n_max, fractional_scale_height,
+                                                                                                lognormal_logwidth_free, log_r_m_std_dev,
+                                                                                                )
 
-                wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
-
-                # If its a fuzzy deck run
-                if (model['cloud_type'] == 'fuzzy_deck'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                          P_cloud = P_cloud,
-                                                          log_n_max = log_n_max, 
-                                                          fractional_scale_height = fractional_scale_height)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     P_cloud = P_cloud,
-                                                     log_n_max = log_n_max, 
-                                                     fractional_scale_height = fractional_scale_height)
-
-                # If its a slab
-                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                        log_X_Mie = log_X_Mie,
-                                                        P_cloud = P_cloud,
-                                                        P_cloud_bottom = P_cloud_bottom)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                    r_m, aerosol_species,
-                                                    cloud_type = model['cloud_type'],
-                                                    aerosol_grid = aerosol_grid,
-                                                    log_X_Mie = log_X_Mie,
-                                                    P_cloud = P_cloud,
-                                                    P_cloud_bottom = P_cloud_bottom)
-                            
-                          
-                # If its a uniform X run
-                elif (model['cloud_type'] == 'uniform_X'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                          log_X_Mie = log_X_Mie)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     log_X_Mie = log_X_Mie)
-
-                # If its a opaque_deck_plus_slab run 
-                elif (model['cloud_type'] == 'opaque_deck_plus_slab'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                        log_X_Mie = log_X_Mie,
-                                                        P_cloud = P_cloud,
-                                                        P_cloud_bottom = P_cloud_bottom)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                    r_m, aerosol_species,
-                                                    cloud_type = model['cloud_type'],
-                                                    aerosol_grid = aerosol_grid,
-                                                    log_X_Mie = log_X_Mie,
-                                                    P_cloud = P_cloud,
-                                                    P_cloud_bottom = P_cloud_bottom)
-
-
-                        
-                # If its a fuzzy_deck_plus_slab run 
-                elif (model['cloud_type'] == 'fuzzy_deck_plus_slab'):
-
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     P_cloud = P_cloud,
-                                                     log_n_max = log_n_max, 
-                                                     fractional_scale_height = fractional_scale_height,
-                                                     log_X_Mie = log_X_Mie,
-                                                     P_cloud_bottom = P_cloud_bottom)
-
-            
             else:
 
                 # Generate empty arrays so the dark god numba is satisfied
@@ -840,17 +779,17 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             if isinstance(P_cloud, np.ndarray) == False:
                 P_cloud = np.array([P_cloud])
 
-            kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
-                                                           CIA_pairs, ff_pairs, bf_species,
-                                                           n, T, P, wl, X, X_active, X_CIA, 
-                                                           X_ff, X_bf, a, gamma, P_cloud, 
-                                                           kappa_cloud_0, sigma_stored, 
-                                                           CIA_stored, Rayleigh_stored, 
-                                                           ff_stored, bf_stored, enable_haze, 
-                                                           enable_deck, enable_surface,
-                                                           N_sectors, N_zones, T_fine, 
-                                                           log_P_fine, P_surf, enable_Mie, 
-                                                           n_aerosol, sigma_ext_cloud)
+            kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate = extinction(chemical_species, active_species,
+                                                                                CIA_pairs, ff_pairs, bf_species,
+                                                                                n, T, P, wl, X, X_active, X_CIA, 
+                                                                                X_ff, X_bf, a, gamma, P_cloud, 
+                                                                                kappa_cloud_0, sigma_stored, 
+                                                                                CIA_stored, Rayleigh_stored, 
+                                                                                ff_stored, bf_stored, enable_haze, 
+                                                                                enable_deck, enable_surface,
+                                                                                N_sectors, N_zones, T_fine, 
+                                                                                log_P_fine, P_surf, enable_Mie, 
+                                                                                n_aerosol, sigma_ext_cloud)
             
             
             # This is to store the contribution kappas
@@ -863,17 +802,17 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     
                 kappa_gas_temp, kappa_Ray_temp, \
                 kappa_cloud_temp = extinction_spectral_contribution(chemical_species, active_species,
-                                                                    CIA_pairs, ff_pairs, bf_species, aerosol_species,
-                                                                    n, T, P, wl, X, X_active, X_CIA, 
-                                                                    X_ff, X_bf, a, gamma, P_cloud, 
-                                                                    kappa_cloud_0, sigma_stored, 
-                                                                    CIA_stored, Rayleigh_stored, 
-                                                                    ff_stored, bf_stored, enable_haze, 
-                                                                    enable_deck, enable_surface,
-                                                                    N_sectors, N_zones, T_fine, 
-                                                                    log_P_fine, P_surf, enable_Mie, 
-                                                                    n_aerosol, sigma_ext_cloud,
-                                                                    bulk_species = True)
+                                                                                                CIA_pairs, ff_pairs, bf_species, aerosol_species,
+                                                                                                n, T, P, wl, X, X_active, X_CIA, 
+                                                                                                X_ff, X_bf, a, gamma, P_cloud, 
+                                                                                                kappa_cloud_0, sigma_stored, 
+                                                                                                CIA_stored, Rayleigh_stored, 
+                                                                                                ff_stored, bf_stored, enable_haze, 
+                                                                                                enable_deck, enable_surface,
+                                                                                                N_sectors, N_zones, T_fine, 
+                                                                                                log_P_fine, P_surf, enable_Mie, 
+                                                                                                n_aerosol, sigma_ext_cloud,
+                                                                                                bulk_species = True)
 
                 kappa_gas_contribution_array.append(kappa_gas_temp)
                 kappa_cloud_contribution_array.append(kappa_cloud_temp)
@@ -903,7 +842,6 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                     kappa_gas_contribution_array.append(kappa_gas_temp)
                     kappa_cloud_contribution_array.append(kappa_cloud_temp)
-
                     spectrum_contribution_list_names.append(contribution_species_list[i])
 
             # Cloud contribution 
@@ -930,7 +868,6 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                     kappa_gas_contribution_array.append(kappa_gas_temp)
                     kappa_cloud_contribution_array.append(kappa_cloud_temp)
-
                     spectrum_contribution_list_names.append('Total Clouds')
                 
                 # If you have cloud species, run this 
@@ -957,7 +894,6 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
                         kappa_gas_contribution_array.append(kappa_gas_temp)
                         kappa_cloud_contribution_array.append(kappa_cloud_temp)
-
                         spectrum_contribution_list_names.append(cloud_species_list[i])
 
 
@@ -1026,23 +962,49 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
         elif (scattering == True):
             
-            # Else, we need to restructure w_cloud and g_cloud to span by layer 
-            # For Mie models with 1 species, the g and w can be help constant with each layer since
-            # Kappa cloud will encode where clouds are
-            # For models that are cloud free, you still need a g and w that's just an array of 0s
-            # For Mie models with more than one species, we need to be more careful with the g and w array
+            # Quick Fix for POSEIDON V1.3.1. new toon functions
             if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                w_cloud = np.ones_like(kappa_cloud)*w_cloud
-                g_cloud = np.ones_like(kappa_cloud)*g_cloud
+                # Intialize w_cloud and g_cloud arrays
+                # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                w_cloud_array = []
+                g_cloud_array = []
+
+                if len(aerosol_species) != 0:
+                    for aerosol in range(len(w_cloud)):
+                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                        # turn into a list so it doesn't end up being an array of arrays 
+                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+
+                else:
+                    # Just a list of 0s
+                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+
+                # Turn into an array so numba in toon functions is happy with indexing 
+                # Have to name different so that w_cloud isn't propogated to future iterations
+                w_cloud_toon = np.array(w_cloud_array)
+                g_cloud_toon = np.array(g_cloud_array)
 
             # Need to make a g and w array that vary with pressure layer where aerosols actually are 
             else:
-                raise Exception('Only 1 aerosol species supported for scattering')
+                raise Exception('Only 1 aerosol species supported for scattering in contributions')
+            
+            # A dummy array for emission and reflection Toon, so that its easier to port over 
+            # Changes to surfaces in next update
+            # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
+            surf_reflect = np.full_like(wl, -1) 
+
+            # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
+            kappa_cloud_seperate_toon = []
+            kappa_cloud_seperate_toon.append(kappa_cloud)
+            kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
 
             # Compute planet flux including scattering (PICASO implementation), see emission.py for details
             F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                       kappa_Ray, kappa_cloud, kappa_tot,
-                                      w_cloud, g_cloud, zone_idx,
+                                      w_cloud_toon, g_cloud_toon, zone_idx,
+                                      surf_reflect, kappa_cloud_seperate,
                                       hard_surface = 0, tridiagonal = 0, 
                                       Gauss_quad = 5, numt = 1)
             
@@ -1054,9 +1016,43 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         # Add in the separate reflection  
         if (reflection == True):
 
+            # Quick Fix for POSEIDON V1.3.1. new toon functions
+            if len(aerosol_species) == 1 or len(aerosol_species) == 0:
+                # Intialize w_cloud and g_cloud arrays
+                # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                w_cloud_array = []
+                g_cloud_array = []
+
+                if len(aerosol_species) != 0:
+                    for aerosol in range(len(w_cloud)):
+                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                        # turn into a list so it doesn't end up being an array of arrays 
+                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+
+                else:
+                    # Just a list of 0s
+                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+
+                # Turn into an array so numba in toon functions is happy with indexing 
+                w_cloud_toon = np.array(w_cloud_array)
+                g_cloud_toon = np.array(g_cloud_array)
+            
+            # A dummy array for emission and reflection Toon, so that its easier to port over 
+            # Changes to surfaces in next update
+            # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
+            surf_reflect = np.full_like(wl, -1) 
+
+            # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
+            kappa_cloud_seperate_toon = []
+            kappa_cloud_seperate_toon.append(kappa_cloud)
+            kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
+
             albedo = reflection_Toon(P, wl, dtau_tot,
                                      kappa_Ray, kappa_cloud, kappa_tot,
-                                     w_cloud, g_cloud, zone_idx,
+                                     w_cloud_toon, g_cloud_toon, zone_idx,
+                                     surf_reflect, kappa_cloud_seperate,
                                      single_phase = 3, multi_phase = 0,
                                      frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                      Gauss_quad = 5, numt = 1,
@@ -1180,28 +1176,51 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
 
             elif (scattering == True):
 
-                # Else, we need to restructure w_cloud and g_cloud to span by layer 
-                # For Mie models with 1 species, the g and w can be help constant with each layer since
-                # Kappa cloud will encode where clouds are
-                # For models that are cloud free, you still need a g and w that's just an array of 0s
-                # For Mie models with more than one species, we need to be more careful with the g and w array
+                # Quick Fix for POSEIDON V1.3.1. new toon functions
                 if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                    w_cloud = np.ones_like(kappa_cloud)*w_cloud
-                    g_cloud = np.ones_like(kappa_cloud)*g_cloud
+                    # Intialize w_cloud and g_cloud arrays
+                    # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                    w_cloud_array = []
+                    g_cloud_array = []
 
-                # Need to make a g and w array that vary with pressure layer where aerosols actually are 
-                else:
-                    raise Exception('Only 1 aerosol species supported for scattering')
+                    if len(aerosol_species) != 0:
+                        for aerosol in range(len(w_cloud)):
+                            # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                            # turn into a list so it doesn't end up being an array of arrays 
+                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+
+                    else:
+                        # Just a list of 0s
+                        w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+
+                    # Turn into an array so numba in toon functions is happy with indexing 
+                    w_cloud_toon = np.array(w_cloud_array)
+                    g_cloud_toon = np.array(g_cloud_array)
+                
+                # A dummy array for emission and reflection Toon, so that its easier to port over 
+                # Changes to surfaces in next update
+                # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
+                surf_reflect = np.full_like(wl, -1) 
+
+                # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
+                kappa_cloud_seperate_toon = []
+                kappa_cloud_seperate_toon.append(kappa_cloud_temp)
+                kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
 
                 # Compute planet flux including scattering (PICASO implementation), see emission.py for details
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                           kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                          w_cloud, g_cloud, zone_idx,
+                                          w_cloud_toon, g_cloud_toon, zone_idx,
+                                          surf_reflect, kappa_cloud_seperate,
                                           hard_surface = 0, tridiagonal = 0, 
                                           Gauss_quad = 5, numt = 1)
+                
             
                 
                 dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
+
 
             else:
                 raise Exception("Error: Invalid scattering option")
@@ -1209,9 +1228,43 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             # Add in the separate reflection  
             if (reflection == True):
 
+                # Quick Fix for POSEIDON V1.3.1. new toon functions
+                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
+                    # Intialize w_cloud and g_cloud arrays
+                    # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                    w_cloud_array = []
+                    g_cloud_array = []
+
+                    if len(aerosol_species) != 0:
+                        for aerosol in range(len(w_cloud)):
+                            # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                            # turn into a list so it doesn't end up being an array of arrays 
+                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+
+                    else:
+                        # Just a list of 0s
+                        w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+
+                    # Turn into an array so numba in toon functions is happy with indexing 
+                    w_cloud_toon = np.array(w_cloud_array)
+                    g_cloud_toon = np.array(g_cloud_array)
+                
+                # A dummy array for emission and reflection Toon, so that its easier to port over 
+                # Changes to surfaces in next update
+                # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
+                surf_reflect = np.full_like(wl, -1) 
+
+                # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
+                kappa_cloud_seperate_toon = []
+                kappa_cloud_seperate_toon.append(kappa_cloud_temp)
+                kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
+
                 albedo = reflection_Toon(P, wl, dtau_tot,
                                          kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                         w_cloud, g_cloud, zone_idx,
+                                         w_cloud_toon, g_cloud_toon, zone_idx,
+                                         surf_reflect, kappa_cloud_seperate,
                                          single_phase = 3, multi_phase = 0,
                                          frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                          Gauss_quad = 5, numt = 1,
@@ -1999,6 +2052,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     cloud_dim = model['cloud_dim']
     scattering = model['scattering']
     reflection = model['reflection']
+    lognormal_logwidth_free = model['lognormal_logwidth_free']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -2009,6 +2063,9 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     elif (('emission' in spectrum_type) and 
          ((PT_dim or X_dim or cloud_dim) == 3)):
         raise Exception("Only 1D or 2D emission spectra currently supported.")
+    
+    if (cloud_dim >= 2):
+        raise Exception('Cannot do contribution functions for patchy cloud models.')
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
@@ -2059,6 +2116,11 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     r_i_complex = atmosphere['r_i_complex']
     log_X_Mie = atmosphere['log_X_Mie']
     P_cloud_bottom = atmosphere['P_cloud_bottom']
+    log_r_m_std_dev = atmosphere['log_r_m_std_dev']
+
+    if (scattering == True) or (reflection == True):
+        if (len(aerosol_species)>=2):
+            raise Exception('Cannot do more than one aerosol species when scattering or reflection is True. If you need this, reach out to Elijah Mullens.')
 
     # Check if haze enabled in the cloud model
     if ('haze' in model['cloud_type']):
@@ -2123,6 +2185,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         Rayleigh_stored = opac['Rayleigh_stored']
         ff_stored = opac['ff_stored']
         bf_stored = opac['bf_stored']
+        aerosol_stored = opac['aerosol_stored']
 
         # Also unpack fine temperature and pressure grids from pre-interpolation
         T_fine = opac['T_fine']
@@ -2131,108 +2194,19 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
 
+            # If the cloud model is Mie, need to parse out 
+            # How the cloud type is defined and whether or not 
+            # aerosol grid is being used or not 
             if (model['cloud_model'] == 'Mie'):
 
-                aerosol_grid = model['aerosol_grid']
+                n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
+                                                                                                P, wl, r, H, n,
+                                                                                                r_m, r_i_real, r_i_complex,
+                                                                                                P_cloud, P_cloud_bottom, log_X_Mie,
+                                                                                                log_n_max, fractional_scale_height,
+                                                                                                lognormal_logwidth_free, log_r_m_std_dev,
+                                                                                                )
 
-                wl_Mie = wl_grid_constant_R(wl[0], wl[-1], 1000)
-
-                # If its a fuzzy deck run
-                if (model['cloud_type'] == 'fuzzy_deck'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                          P_cloud = P_cloud,
-                                                          log_n_max = log_n_max, 
-                                                          fractional_scale_height = fractional_scale_height)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     P_cloud = P_cloud,
-                                                     log_n_max = log_n_max, 
-                                                     fractional_scale_height = fractional_scale_height)
-
-                # If its a slab
-                elif (model['cloud_type'] == 'slab' or model['cloud_type'] == 'one_slab'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                        log_X_Mie = log_X_Mie,
-                                                        P_cloud = P_cloud,
-                                                        P_cloud_bottom = P_cloud_bottom)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                    r_m, aerosol_species,
-                                                    cloud_type = model['cloud_type'],
-                                                    aerosol_grid = aerosol_grid,
-                                                    log_X_Mie = log_X_Mie,
-                                                    P_cloud = P_cloud,
-                                                    P_cloud_bottom = P_cloud_bottom)
-                            
-                          
-                # If its a uniform X run
-                elif (model['cloud_type'] == 'uniform_X'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                          r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                          log_X_Mie = log_X_Mie)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     log_X_Mie = log_X_Mie)
-
-                # If its a opaque_deck_plus_slab run 
-                elif (model['cloud_type'] == 'opaque_deck_plus_slab'):
-
-                    if ((aerosol_species == ['free']) or (aerosol_species == ['file_read'])):
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud_free(P, wl, wl_Mie, r, H, n,
-                                                        r_m, r_i_real, r_i_complex, model['cloud_type'],
-                                                        log_X_Mie = log_X_Mie,
-                                                        P_cloud = P_cloud,
-                                                        P_cloud_bottom = P_cloud_bottom)
-
-                    else: 
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                    r_m, aerosol_species,
-                                                    cloud_type = model['cloud_type'],
-                                                    aerosol_grid = aerosol_grid,
-                                                    log_X_Mie = log_X_Mie,
-                                                    P_cloud = P_cloud,
-                                                    P_cloud_bottom = P_cloud_bottom)
-                        
-                # If its a fuzzy_deck_plus_slab run 
-                elif (model['cloud_type'] == 'fuzzy_deck_plus_slab'):
-
-                        n_aerosol, sigma_ext_cloud, \
-                        g_cloud, w_cloud = Mie_cloud(P, wl, r, H, n,
-                                                     r_m, aerosol_species,
-                                                     cloud_type = model['cloud_type'],
-                                                     aerosol_grid = aerosol_grid,
-                                                     P_cloud = P_cloud,
-                                                     log_n_max = log_n_max, 
-                                                     fractional_scale_height = fractional_scale_height,
-                                                     log_X_Mie = log_X_Mie,
-                                                     P_cloud_bottom = P_cloud_bottom)
-
-            
             else:
 
                 # Generate empty arrays so the dark god numba is satisfied
@@ -2257,17 +2231,17 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
             if isinstance(P_cloud, np.ndarray) == False:
                 P_cloud = np.array([P_cloud])
 
-            kappa_gas, kappa_Ray, kappa_cloud = extinction(chemical_species, active_species,
-                                                           CIA_pairs, ff_pairs, bf_species,
-                                                           n, T, P, wl, X, X_active, X_CIA, 
-                                                           X_ff, X_bf, a, gamma, P_cloud, 
-                                                           kappa_cloud_0, sigma_stored, 
-                                                           CIA_stored, Rayleigh_stored, 
-                                                           ff_stored, bf_stored, enable_haze, 
-                                                           enable_deck, enable_surface,
-                                                           N_sectors, N_zones, T_fine, 
-                                                           log_P_fine, P_surf, enable_Mie, 
-                                                           n_aerosol, sigma_ext_cloud)
+            kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate = extinction(chemical_species, active_species,
+                                                                                CIA_pairs, ff_pairs, bf_species,
+                                                                                n, T, P, wl, X, X_active, X_CIA, 
+                                                                                X_ff, X_bf, a, gamma, P_cloud, 
+                                                                                kappa_cloud_0, sigma_stored, 
+                                                                                CIA_stored, Rayleigh_stored, 
+                                                                                ff_stored, bf_stored, enable_haze, 
+                                                                                enable_deck, enable_surface,
+                                                                                N_sectors, N_zones, T_fine, 
+                                                                                log_P_fine, P_surf, enable_Mie, 
+                                                                                n_aerosol, sigma_ext_cloud)
             
             
             # This is to store the contribution kappas
@@ -2469,23 +2443,44 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
         elif (scattering == True):
 
-            # Else, we need to restructure w_cloud and g_cloud to span by layer 
-            # For Mie models with 1 species, the g and w can be help constant with each layer since
-            # Kappa cloud will encode where clouds are
-            # For models that are cloud free, you still need a g and w that's just an array of 0s
-            # For Mie models with more than one species, we need to be more careful with the g and w array
+            # Quick Fix for POSEIDON V1.3.1. new toon functions
             if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                w_cloud = np.ones_like(kappa_cloud)*w_cloud
-                g_cloud = np.ones_like(kappa_cloud)*g_cloud
+                # Intialize w_cloud and g_cloud arrays
+                # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                w_cloud_array = []
+                g_cloud_array = []
 
-            # Need to make a g and w array that vary with pressure layer where aerosols actually are 
-            else:
-                raise Exception('Only 1 aerosol species supported for scattering')
+                if len(aerosol_species) != 0:
+                    for aerosol in range(len(w_cloud)):
+                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                        # turn into a list so it doesn't end up being an array of arrays 
+                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+
+                else:
+                    # Just a list of 0s
+                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+
+                # Turn into an array so numba in toon functions is happy with indexing 
+                w_cloud_toon = np.array(w_cloud_array)
+                g_cloud_toon = np.array(g_cloud_array)
+            
+            # A dummy array for emission and reflection Toon, so that its easier to port over 
+            # Changes to surfaces in next update
+            # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
+            surf_reflect = np.full_like(wl, -1) 
+
+            # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
+            kappa_cloud_seperate_toon = []
+            kappa_cloud_seperate_toon.append(kappa_cloud)
+            kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
 
             # Compute planet flux including scattering (PICASO implementation), see emission.py for details
             F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                       kappa_Ray, kappa_cloud, kappa_tot,
-                                      w_cloud, g_cloud, zone_idx,
+                                      w_cloud_toon, g_cloud_toon, zone_idx,
+                                      surf_reflect, kappa_cloud_seperate,
                                       hard_surface = 0, tridiagonal = 0, 
                                       Gauss_quad = 5, numt = 1)
         
@@ -2499,12 +2494,45 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         # Add in the separate reflection  
         if (reflection == True):
 
+            # Quick Fix for POSEIDON V1.3.1. new toon functions
+            if len(aerosol_species) == 1 or len(aerosol_species) == 0:
+                # Intialize w_cloud and g_cloud arrays
+                # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                w_cloud_array = []
+                g_cloud_array = []
+
+                if len(aerosol_species) != 0:
+                    for aerosol in range(len(w_cloud)):
+                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                        # turn into a list so it doesn't end up being an array of arrays 
+                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+
+                else:
+                    # Just a list of 0s
+                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+
+                # Turn into an array so numba in toon functions is happy with indexing 
+                w_cloud_toon = np.array(w_cloud_array)
+                g_cloud_toon = np.array(g_cloud_array)
+            
+            # A dummy array for emission and reflection Toon, so that its easier to port over 
+            # Changes to surfaces in next update
+            # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
+            surf_reflect = np.full_like(wl, -1) 
+
+            # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
+            kappa_cloud_seperate_toon = []
+            kappa_cloud_seperate_toon.append(kappa_cloud)
+            kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
+
             albedo = reflection_Toon(P, wl, dtau_tot,
                                      kappa_Ray, kappa_cloud, kappa_tot,
-                                     w_cloud, g_cloud, zone_idx,
+                                     w_cloud_toon, g_cloud_toon, zone_idx,
+                                     surf_reflect, kappa_cloud_seperate,
                                      single_phase = 3, multi_phase = 0,
-                                     frac_a = 1, frac_b = -1, frac_c = 2, 
-                                     constant_back = -0.5, constant_forward = 1,
+                                     frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                      Gauss_quad = 5, numt = 1,
                                      toon_coefficients=0, tridiagonal=0, b_top=0)
 
@@ -2627,23 +2655,48 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
 
             elif (scattering == True):
 
-                # Else, we need to restructure w_cloud and g_cloud to span by layer 
-                # For Mie models with 1 species, the g and w can be help constant with each layer since
-                # Kappa cloud will encode where clouds are
-                # For models that are cloud free, you still need a g and w that's just an array of 0s
-                # For Mie models with more than one species, we need to be more careful with the g and w array
+                # Quick Fix for POSEIDON V1.3.1. new toon functions
                 if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                    w_cloud = np.ones_like(kappa_cloud_temp)*w_cloud
-                    g_cloud = np.ones_like(kappa_cloud_temp)*g_cloud
+                    # Intialize w_cloud and g_cloud arrays
+                    # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                    w_cloud_array = []
+                    g_cloud_array = []
+
+                    if len(aerosol_species) != 0:
+                        for aerosol in range(len(w_cloud)):
+                            # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                            # turn into a list so it doesn't end up being an array of arrays 
+                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+
+                    else:
+                        # Just a list of 0s
+                        w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+
+                    # Turn into an array so numba in toon functions is happy with indexing 
+                    w_cloud_toon = np.array(w_cloud_array)
+                    g_cloud_toon = np.array(g_cloud_array)
 
                 # Need to make a g and w array that vary with pressure layer where aerosols actually are 
                 else:
-                    raise Exception('Only 1 aerosol species supported for scattering')
+                    raise Exception('Only 1 aerosol species supported for scattering in contributions')
+                
+                # A dummy array for emission and reflection Toon, so that its easier to port over 
+                # Changes to surfaces in next update
+                # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
+                surf_reflect = np.full_like(wl, -1) 
+
+                # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
+                kappa_cloud_seperate_toon = []
+                kappa_cloud_seperate_toon.append(kappa_cloud_temp)
+                kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
 
                 # Compute planet flux including scattering (PICASO implementation), see emission.py for details
                 F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
                                           kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                          w_cloud, g_cloud, zone_idx,
+                                          w_cloud_toon, g_cloud_toon, zone_idx,
+                                          surf_reflect, kappa_cloud_seperate,
                                           hard_surface = 0, tridiagonal = 0, 
                                           Gauss_quad = 5, numt = 1)
             
@@ -2656,9 +2709,47 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
                     # Add in the separate reflection  
             if (reflection == True):
 
+                # Quick Fix for POSEIDON V1.3.1. new toon functions
+                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
+                    # Intialize w_cloud and g_cloud arrays
+                    # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                    w_cloud_array = []
+                    g_cloud_array = []
+
+                    if len(aerosol_species) != 0:
+                        for aerosol in range(len(w_cloud)):
+                            # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                            # turn into a list so it doesn't end up being an array of arrays 
+                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+
+                    else:
+                        # Just a list of 0s
+                        w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                        g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+
+                    # Turn into an array so numba in toon functions is happy with indexing 
+                    w_cloud_toon = np.array(w_cloud_array)
+                    g_cloud_toon = np.array(g_cloud_array)
+
+                # Need to make a g and w array that vary with pressure layer where aerosols actually are 
+                else:
+                    raise Exception('Only 1 aerosol species supported for scattering in contributions')
+                
+                # A dummy array for emission and reflection Toon, so that its easier to port over 
+                # Changes to surfaces in next update
+                # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
+                surf_reflect = np.full_like(wl, -1) 
+
+                # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
+                kappa_cloud_seperate_toon = []
+                kappa_cloud_seperate_toon.append(kappa_cloud_temp)
+                kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
+
                 albedo = reflection_Toon(P, wl, dtau_tot,
                                          kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                         w_cloud, g_cloud, zone_idx,
+                                         w_cloud_toon, g_cloud_toon, zone_idx,
+                                         surf_reflect, kappa_cloud_seperate,
                                          single_phase = 3, multi_phase = 0,
                                          frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
                                          Gauss_quad = 5, numt = 1,
@@ -2840,6 +2931,17 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
             Array used for plotting (contains names and order of spectral contribution spectra)
     '''
 
+    # Warning statement 
+    if (model['scattering'] == True) or (model['reflection'] == True):
+        print('Contribution functions are largely untested for scattering and reflection. Bugs ahead... reach out to Elijah Mullens if you see any that need squashed.')
+
+    bulk_species_list = model['bulk_species']
+    active_species_list = model['active_species']
+
+    for bulk_gas in bulk_species_list:
+        if (bulk_gas in active_species_list):
+            raise Exception('Pressure contributions are not configured for models where bulk species is also a spectrally active species. Reach out to Elijah Mullens if you need this feature.')
+            
     # Load in the pressure object
     P = atmosphere['P']
 
