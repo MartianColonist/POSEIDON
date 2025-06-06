@@ -32,7 +32,7 @@ setup(
         "cmasher",
         "batman-package",
         "scikit-learn",
-        "miepython=2.5.5",
+        "miepython==2.5.5",
     ],
     zip_safe=False,
 )
