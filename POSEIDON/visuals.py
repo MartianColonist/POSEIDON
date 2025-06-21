@@ -3241,52 +3241,53 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
     else:
         n_columns = legend_n_columns
 
-    # Assign legend box settings
-    if (legend_box == True):
-        frameon = True
-        framefacecolour = '0.9'
-    else:
-        frameon = False
-        framefacecolour = None
+    if show_legend == True:
+        # Assign legend box settings
+        if (legend_box == True):
+            frameon = True
+            framefacecolour = '0.9'
+        else:
+            frameon = False
+            framefacecolour = None
 
-    # Add legend
-    if isinstance(legend_location, tuple):
-        legend = ax1.legend(loc = 'center', shadow = True, prop = {'size': legend_fontsize},
-                            ncol = n_columns, frameon = frameon, bbox_to_anchor = legend_location)
-    elif legend_location == 'outside right':
-        legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = n_columns, frameon = frameon, bbox_to_anchor = (1, 0.5))
-    else:
-        legend = ax1.legend(loc = legend_location, shadow = True, prop={'size': legend_fontsize},
-                            ncol = n_columns, frameon = frameon)  # Legend settings
+        # Add legend
+        if isinstance(legend_location, tuple):
+            legend = ax1.legend(loc = 'center', shadow = True, prop = {'size': legend_fontsize},
+                                ncol = n_columns, frameon = frameon, bbox_to_anchor = legend_location)
+        elif legend_location == 'outside right':
+            legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
+                                ncol = n_columns, frameon = frameon, bbox_to_anchor = (1, 0.5))
+        else:
+            legend = ax1.legend(loc = legend_location, shadow = True, prop={'size': legend_fontsize},
+                                ncol = n_columns, frameon = frameon)  # Legend settings
 
-    frame = legend.get_frame()
-    frame.set_facecolor(framefacecolour)
+        frame = legend.get_frame()
+        frame.set_facecolor(framefacecolour)
 
 
-   # else:
-   #     legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
-   #                         ncol = n_columns, frameon = False)    # Legend settings
-            
-    legend.set_zorder(200)   # Make legend always appear in front of everything
+    # else:
+    #     legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
+    #                         ncol = n_columns, frameon = False)    # Legend settings
+                
+        legend.set_zorder(200)   # Make legend always appear in front of everything
 
-    if len(legend_line_size) != 0:
-        # Check legend line size length
-        try:
-            if (len(legend_line_size) != len(legend.legend_handles)):
-                raise Exception("Make sure legend_line_size length is equal to number of handles.")
-        except:
-            # weird attribute error
-            if (len(legend_line_size) != len(legend.legendHandles)):
-                raise Exception("Make sure legend_line_size length is equal to number of handles.")
-        try:
-            for i in range(len(legend.legend_handles)):
-                legline = legend.legend_handles[i]
-                legline.set_linewidth(legend_line_size[i])
-        except AttributeError:
-            for i in range(len(legend.legendHandles)):
-                legline = legend.legendHandles[i]
-                legline.set_linewidth(legend_line_size[i])
+        if len(legend_line_size) != 0:
+            # Check legend line size length
+            try:
+                if (len(legend_line_size) != len(legend.legend_handles)):
+                    raise Exception("Make sure legend_line_size length is equal to number of handles.")
+            except:
+                # weird attribute error
+                if (len(legend_line_size) != len(legend.legendHandles)):
+                    raise Exception("Make sure legend_line_size length is equal to number of handles.")
+            try:
+                for i in range(len(legend.legend_handles)):
+                    legline = legend.legend_handles[i]
+                    legline.set_linewidth(legend_line_size[i])
+            except AttributeError:
+                for i in range(len(legend.legendHandles)):
+                    legline = legend.legendHandles[i]
+                    legline.set_linewidth(legend_line_size[i])
 
     plt.tight_layout()
 
@@ -3307,8 +3308,15 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
                       TwoD_type = None, plt_label = None, show_profiles = [],
                       PT_labels = [], colour_list = [], log_P_min = None,
                       log_P_max = None, T_min = None, T_max = None,
-                      legend_location = 'lower left', ax = None, 
-                      save_fig = True, sigma_to_plot = 2):
+                      legend_location = 'lower left',
+                      ax = None, save_fig = True,
+                      sigma_to_plot = 2,
+                      show_legend = True,
+                      custom_ticks = [],
+                      ylabels = True,
+                      retrieved_log_P_surf = [],
+                      log_P_surf_sigma_upper_lower = 'upper',
+                      log_P_surf_histogram_list = []):
     '''
     Plot retrieved Pressure-Temperature (P-T) profiles.
     
@@ -3355,6 +3363,16 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
             Maximum temperature to plot.
 		legend_location (str, optional):
             Location of the legend. Default is 'lower left'.
+		show_legend (bool, optional):
+            If False, will not show legend.
+        custom_ticks (list, optional): 
+            Major and minor ticks
+        ylabels (bool, optional):
+            If False, will not plot y ticks
+        retrieved_log_P_surf (list, optional):
+            Will overplot 1 sigma P_surf (Retrieved log_P_surf, one_sigma_positive, one_sigma_negative)
+        log_P_surf_sigma_upper_lower (str, optional):
+            Will set things depending on if its an upper or lower limit or unconstrained
 	
     Returns:
 		fig (matplotlib figure object):
@@ -3373,13 +3391,13 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
         raise Exception("Must provide at least one P-T profile to plot!")
     if (N_PT > 4):
         raise Exception("Max number of concurrent retrieved P-T profiles to plot is 4.")
-    if ((len(colour_list) != 0) and (N_PT != len(colour_list))):
+    if ((colour_list != []) and (N_PT != len(colour_list))):
         raise Exception("Number of colours does not match number of P-T profiles.")
-    if ((len(PT_labels) != 0) and (N_PT != len(PT_labels))):
+    if ((PT_labels != []) and (N_PT != len(PT_labels))):
         raise Exception("Number of model labels does not match number of P-T profiles.")
 
     # Define colours for plotted spectra (default or user choice)
-    if (len(colour_list) == 0):   # If user did not specify a custom colour list
+    if (colour_list == []):   # If user did not specify a custom colour list
         colours = ['purple', 'darkorange', 'green']
     else:
         colours = colour_list
@@ -3414,12 +3432,16 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
     T_range = T_max - T_min
     
     # Calculate appropriate axis spacing
-    if (T_range >= 500.0):
-        major_spacing = max(np.around((T_range/10), -2), 100.0)
-    elif (T_range < 500.0):
-        major_spacing = max(np.around((T_range/10), -1), 10.0)
-        
-    minor_spacing = major_spacing/10
+    if (len(custom_ticks) == 0):
+        if (T_range >= 500.0):
+            major_spacing = max(np.around((T_range/10), -2), 100.0)
+        elif (T_range < 500.0):
+            major_spacing = max(np.around((T_range/10), -1), 10.0)
+            
+        minor_spacing = major_spacing/10
+    else:
+        major_spacing = custom_ticks[0]
+        minor_spacing = custom_ticks[1]
 
     # Load pressure grid
     P = PT_median[0][1]
@@ -3464,7 +3486,7 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
             (T_high2, P) = PT_high2[i]
             
             # If user did not specify a model label, just call them "Model 1, 2" etc.
-            if (len(PT_labels) == 0):
+            if (PT_labels == []):
                 if (N_PT == 1):
                     label_i = r'Retrieved P-T Profile'
                 else:
@@ -3500,18 +3522,105 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
         if (T_true != None):
             ax1.semilogy(T_true, P, lw = 1.5, color = 'crimson', label = 'True')
 
+    # Plot the retrieved surface pressure
+    # This assumes the distribution is a tailed distribution (rn)
+    if (len(retrieved_log_P_surf) != 0):
+
+        median_P_surf = 10**retrieved_log_P_surf[0]
+
+        # Note this is before things are flipped, so in order to keep it less confusing its top and bottom in traditional sense
+        # So this is actually the higher pressure, and will be bottom once axis if flipped
+
+        P_surf_high = 10**(retrieved_log_P_surf[0] + retrieved_log_P_surf[1])
+        P_surf_low = 10**(retrieved_log_P_surf[0] + retrieved_log_P_surf[2])
+
+        # If the arrow is up, it will point from the highest pressure to the lowest
+        # If the arrow is down, it will point from the lowest pressure to the highest 
+
+        if log_P_surf_sigma_upper_lower == 'upper':
+            #ax1.axhspan(P_surf_low,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray')
+            ax1.axhline(P_surf_low, lw = 3.0, color = scale_lightness(colours[i], 1.0), label = 'Surface Pressure ($1 \sigma$ upper)')
+            ax1.axhspan(P_surf_low,median_P_surf, lw = 0.0, alpha = 0.5, color = colours[i],  hatch = 'xx')
+            ax1.axhspan(median_P_surf,P_surf_high, lw = 0.0, alpha = 0.25, color = colours[i],  hatch = 'x')
+            #ax1.axhspan(P_surf_low,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray')
+            ax1.axhspan(P_surf_high,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray', hatch = '+++')
+
+        elif log_P_surf_sigma_upper_lower == 'lower':
+            ax1.axhspan(median_P_surf,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray')
+            ax1.axhline(P_surf_high, lw = 3.0, color = scale_lightness(colours[i], 1.0), label = 'Surface Pressure ($1 \sigma$ lower)')
+            ax1.axhspan(P_surf_high,median_P_surf, lw = 0.0, alpha = 0.5, color = colours[i],  hatch = 'xx')
+            ax1.axhspan(median_P_surf,P_surf_low, lw = 0.0, alpha = 0.25, color = colours[i],  hatch = 'x')
+            ax1.axhspan(P_surf_high,np.max(P), lw = 0.0, alpha = 0.5, color = 'darkgray', hatch = '+++')
+
+        ax1.axhline(median_P_surf, lw = 1.0, color = scale_lightness(colours[i], 1.0), label = 'Surface Pressure (Median)')
+
+        # Draw arrow (either up or down to P_surf_low)
+        #if arrow_P_surf == 'up':
+        #    x = arrow_x
+        #    y = median_P_surf
+        #    dx = 0
+        #    dy = -(median_P_surf - P_surf_low)
+        #    ax1.arrow(x,y,dx,dy, color = colours[i],length_includes_head = True,
+        #  head_width=50, head_length=0.1*np.abs(dy))
+        #elif arrow_P_surf == 'down':
+        #    x = arrow_x
+        #    dy = median_P_surf - P_surf_low
+        #    dx = 0
+        #    y = P_surf_low
+        #    ax1.arrow(x,y,dx,dy, color = colours[i],length_includes_head = True,
+        #  head_width=50, head_length=0.1*np.abs(dy))
+
+    if len(log_P_surf_histogram_list) != 0:
+        log_P_surf_histogram_bool = log_P_surf_histogram_list[0]
+        if log_P_surf_histogram_bool == True:
+            planet = log_P_surf_histogram_list[1]
+            model =  log_P_surf_histogram_list[2]
+            log_P_surf_title = log_P_surf_histogram_list[3]
+
+            ax_histy = ax1.inset_axes([0.85, 0, 0.15, 1])
+
+            _ = plot_histograms(planet, [model], plot_parameters = ['log_P_surf'], 
+                                span = ((-6,2)),
+                                N_bins = [50],
+                                parameter_colour_list = colour_list,
+                                axes = [ax_histy], save_fig = False,
+                                tick_labelsize = 14,               
+                                title_fontsize = 16,                        
+                                alpha_hist = 0.7,
+                                show_title = True,
+                                orientation = 'horizontal',
+                                custom_labels = ['']
+                                )
+            
+            ax_histy.set_ylim(ax_histy.get_ylim()[::-1])
+
+            ax_histy.set_xticks([])
+            ax_histy.yaxis.set_label_position("right")
+            if log_P_surf_title == True:
+                ax_histy.set_ylabel('log P$_{\mathrm{surf}}$', rotation = 270, labelpad = 20, fontsize = 15)
+
+
+
+
     # Common plot settings for all profiles
     ax1.invert_yaxis()            
     ax1.set_xlabel(r'Temperature (K)', fontsize = 16)
     ax1.set_xlim(T_min, T_max)
-    ax1.set_ylabel(r'Pressure (bar)', fontsize = 16)
     ax1.set_ylim(np.power(10.0, log_P_max), np.power(10.0, log_P_min))
+
+    # If ylabels = False, don't show the ticks
+    if ylabels == False:
+        ax1.tick_params(labelleft=False) 
+    # Else, set the ylabel 
+    else:
+        ax1.set_ylabel(r'Pressure (bar)', fontsize = 16)
 
     ax1.tick_params(labelsize=12)
     
     # Add legend
-    legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, ncol=1, 
-                       frameon=False, columnspacing=1.0)
+    if show_legend == True:
+        legend = ax1.legend(loc=legend_location, shadow=True, prop={'size':10}, ncol=1, 
+                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
 
@@ -3850,7 +3959,7 @@ def plot_stellar_flux(flux, wl, wl_min = None, wl_max = None, flux_min = None,
     return fig
 
 
-def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array, alpha_hist):
+def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array, alpha_hist, orientation):
     '''
     Function to plot a histogram of parameter values.
 
@@ -3881,15 +3990,23 @@ def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array, alpha_hi
     
     # Plot histogram
     x,w,patches = ax.hist(vals, bins=nbins, color=colour, histtype='stepfilled', 
-                          alpha=alpha_hist, edgecolor='None', density=True, stacked=True)
+                          alpha=alpha_hist, edgecolor='None', density=True, stacked=True,
+                          orientation = orientation)
 
     # Plot histogram border
     x,w,patches = ax.hist(vals, bins=nbins, histtype='stepfilled', lw = 0.8, 
-                          facecolor='None', density=True, stacked=True)
+                          facecolor='None', density=True, stacked=True,
+                          orientation = orientation)
     
-    x_max = np.max(x_max_array)
-        
-    ax.set_ylim(0, (1.1+shrink_factor)*x_max)
+    if orientation == 'vertical':
+        x_max = np.max(x_max_array)
+            
+        ax.set_ylim(0, (1.1+shrink_factor)*x_max)
+    
+    else:
+        x_max = np.max(x_max_array)
+            
+        ax.set_xlim(0, (1.1+shrink_factor)*x_max)
     
     low3, low2, low1, median, high1, high2, high3 = confidence_intervals(len(vals), vals, 0)
     
@@ -3897,7 +4014,7 @@ def plot_histogram(nbins, vals, colour, ax, shrink_factor, x_max_array, alpha_hi
 
 
 def plot_parameter_panel(ax, param_vals, N_bins, param_min, param_max, 
-                         colour, x_max_array, alpha_hist):
+                         colour, x_max_array, alpha_hist, orientation):
     '''
     Setup function to plot the histogram panel for a given parameter.
 
@@ -3930,10 +4047,13 @@ def plot_parameter_panel(ax, param_vals, N_bins, param_min, param_max,
     
     
     # Plot histogram
-    _, low2, low1, median, high1, high2, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array, alpha_hist)
+    _, low2, low1, median, high1, high2, _ = plot_histogram(N_bins, param_vals, colour, ax, 0.0, x_max_array, alpha_hist, orientation)
 
     # Adjust x-axis extent
-    ax.set_xlim(param_min, param_max)
+    if orientation == 'vertical':
+        ax.set_xlim(param_min, param_max)
+    else:
+        ax.set_ylim(param_min, param_max)
 
     ax.tick_params(axis='both', which='major', labelsize=8)
 
@@ -3952,6 +4072,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                               # i.e. you can have multiple retrievals, and pick which ones are two sigma
                               # versus which ones aren't
                               two_sigma_upper_limits_full = [], two_sigma_lower_limits_full = [],
+                              orientation = 'vertical'
                               ):
     '''
     Plot retrieved parameters as histograms.
@@ -4085,17 +4206,31 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 colour = retrieval_colour_list[m]   # Each retrieval has a different colour
 
             # Set minimum and maximum mixing ratio plot limits
-            # FIX : This throws up an error when you're only plotting one parameter...
             try:
-                param_min, param_max = span[q]
+                # If there is only one plot parameters, this doesn't work since the list isn't a list of lists 
+                # i.e. if len (plot_parameters = 1) then span = (-5,-1) and if >2 ((-5,-1), (-5,-1)) etc
+                if (len(plot_parameters) == 1):
+                    param_min, param_max = span[0], span[1]
+                else:
+                    param_min, param_max = span[q]
+            
+            # Lij: I'm not sure what this code does (why is there a try except here?) but I tried to fix 
+            #      for len(plot_parameters) == 1
             except:
-                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
-                span[q] = _quantile(param_vals_m[:,q], quant)
-                param_min = span[q][0]
-                param_max = span[q][1]
+                if (len(plot_parameters) == 1):
+                    quant = [0.5 - 0.5 * span, 0.5 + 0.5 * span]
+                    span = _quantile(param_vals_m[:], quant)
+                    param_min = span[0]
+                    param_max = span[1]
+                else:
+                    quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+                    span[q] = _quantile(param_vals_m[:,q], quant)
+                    param_min = span[q][0]
+                    param_max = span[q][1]
 
             x,w,patches = ax.hist(param_vals_m[:,q], bins=N_bins[q], color=colour, histtype='stepfilled', 
-                                  alpha=0.0, edgecolor='None', density=True, stacked=True)
+                                  alpha=0.0, edgecolor='None', density=True, stacked=True,
+                                  orientation = 'vertical')
             
             x_max_array.append(x.max())
 
@@ -4118,17 +4253,31 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Set minimum and maximum mixing ratio plot limits
             try:
-                param_min, param_max = span[q]
+                # If there is only one plot parameters, this doesn't work since the list isn't a list of lists 
+                # i.e. if len (plot_parameters = 1) then span = (-5,-1) and if >2 ((-5,-1), (-5,-1)) etc
+                if (len(plot_parameters) == 1):
+                    param_min, param_max = span[0], span[1]
+                else:
+                    param_min, param_max = span[q]
+            
+            # Lij: I'm not sure what this code does (why is there a try except here?) but I tried to fix 
+            #      for len(plot_parameters) == 1
             except:
-                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
-                span[q] = _quantile(param_vals_m[:,q], quant)
-                param_min = span[q][0]
-                param_max = span[q][1]
+                if (len(plot_parameters) == 1):
+                    quant = [0.5 - 0.5 * span, 0.5 + 0.5 * span]
+                    span = _quantile(param_vals_m[:], quant)
+                    param_min = span[0]
+                    param_max = span[1]
+                else:
+                    quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+                    span[q] = _quantile(param_vals_m[:,q], quant)
+                    param_min = span[q][0]
+                    param_max = span[q][1]
 
             # Plot histogram
             low1, median, high1 = plot_parameter_panel(ax, param_vals_m[:,q], N_bins[q],
                                                        param_min, param_max, colour, x_max_array = x_max_array,
-                                                       alpha_hist = alpha_hist)
+                                                       alpha_hist = alpha_hist, orientation = orientation)
 
             # Add retrieval model labels to top left panel
             if ((row_idx == 0) and (column_idx == 0) and (len(retrieval_labels) != 0)):
@@ -4154,9 +4303,14 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                   #  ax.set_title(title, fontsize = title_fontsize)
 
                     # Plot median and +/- 1σ confidence intervals
-                    ax.axvline(median, lw=2, ls="-", alpha=0.7, color=constraint_colour)
-                    ax.axvline(low1, lw=1, ls="dashed", color=constraint_colour)
-                    ax.axvline(high1, lw=1, ls="dashed", color=constraint_colour)
+                    if orientation == 'vertical':
+                        ax.axvline(median, lw=2, ls="-", alpha=0.7, color=constraint_colour)
+                        ax.axvline(low1, lw=1, ls="dashed", color=constraint_colour)
+                        ax.axvline(high1, lw=1, ls="dashed", color=constraint_colour)
+                    else:
+                        ax.axhline(median, lw=2, ls="-", alpha=0.7, color=parameter_colour_list[q])
+                        ax.axhline(low1, lw=1, ls="dashed", color=parameter_colour_list[q])
+                        ax.axhline(high1, lw=1, ls="dashed", color=parameter_colour_list[q])  
 
                 # Title has 2 sigma upper/lower limits where user flags the given parameter
                 else:
@@ -4225,9 +4379,14 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                         title = "{0} = {1}".format(param_label, title)
 
                         # Plot median and +/- 1σ confidence intervals
-                        ax.axvline(median, lw=2, ls="-", alpha=0.7, color=constraint_colour)
-                        ax.axvline(low1, lw=1, ls="dashed", color=constraint_colour)
-                        ax.axvline(high1, lw=1, ls="dashed", color=constraint_colour)
+                        if orientation == 'vertical':
+                            ax.axvline(median, lw=2, ls="-", alpha=0.7, color=constraint_colour)
+                            ax.axvline(low1, lw=1, ls="dashed", color=constraint_colour)
+                            ax.axvline(high1, lw=1, ls="dashed", color=constraint_colour)
+                        else:
+                            ax.axhline(median, lw=2, ls="-", alpha=0.7, color=constraint_colour)
+                            ax.axhline(low1, lw=1, ls="dashed", color=constraint_colour)
+                            ax.axhline(high1, lw=1, ls="dashed", color=constraint_colour)                     
 
                 # Plot title
                 
@@ -4238,11 +4397,12 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 #        title, horizontalalignment = "center", verticalalignment = "bottom",
                 #        color = title_colour, transform = ax.transAxes, fontsize = title_fontsize,
                 #       )
-
-                ax.text(0.5, top_y - (m * 0.2),
-                        title, horizontalalignment = "center", verticalalignment = "bottom",
-                        color = title_colour, transform = ax.transAxes, fontsize = title_fontsize,
-                       )
+                
+                if orientation == 'vertical':
+                    ax.text(0.5, top_y - (m * 0.2),
+                            title, horizontalalignment = "center", verticalalignment = "bottom",
+                            color = title_colour, transform = ax.transAxes, fontsize = title_fontsize,
+                        )
 
             else:
 
@@ -4398,7 +4558,8 @@ def plot_histograms(planet, models, plot_parameters,
                     title_fontsize = 12, title_vert_spacing = 0.2,
                     custom_labels = [], custom_ticks = [],
                     alpha_hist = 0.4, 
-                    two_sigma_upper_limits = [], two_sigma_lower_limits = []):
+                    two_sigma_upper_limits = [], two_sigma_lower_limits = [],
+                    orientation = 'vertical'):
     '''
     Plot a set of histograms from one or more retrievals.
 
@@ -4665,6 +4826,7 @@ def plot_histograms(planet, models, plot_parameters,
                                     show_title = show_title,
                                     two_sigma_upper_limits_full = two_sigma_upper_limits,
                                     two_sigma_lower_limits_full = two_sigma_lower_limits,
+                                    orientation = orientation
                                     )
     
     # Save figure to file
