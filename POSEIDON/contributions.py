@@ -1372,8 +1372,9 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                                y_unit = 'transit_depth', brightness_temperature = False, 
                                star = None, y_min = None, y_max = None,
                                figure_shape = 'wide', save_fig = False,
-                               line_widths = [], colour_list = [],
+                               line_width_list = [], colour_list = [],
                                return_fig = False, ax = None, file_label = None,
+                               fill_between = [], fill_between_alpha = 0.5, fill_to_spectrum = [],
                                ):
     
     '''
@@ -1409,7 +1410,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
             The shape of the figure ('default' or 'wide' - the latter is 16:9).
         save_fig (bool, optional):
             If True, saves a PDF in the POSEIDON output folder.
-        line_widths (array of floats, optional):
+        line_width_list (array of floats, optional):
             Optional line widths. We recommend the full spectra be larger than the contributing ones
         colour_list (list, optional):
             A list of colours for the model spectra
@@ -1514,8 +1515,11 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                        y_min = y_min,
                        y_max = y_max,
                        figure_shape = figure_shape,
-                       line_widths = line_widths,
+                       line_width_list = line_width_list,
                        ax = ax,
+                       fill_between = fill_between, 
+                       fill_between_alpha = fill_between_alpha, 
+                       fill_to_spectrum = fill_to_spectrum,
                        )
         
     if save_fig == True:

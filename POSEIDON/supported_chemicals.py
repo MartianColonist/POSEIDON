@@ -31,12 +31,12 @@ fastchem_supported_species = np.array(['H2O', 'CO2', 'OH', 'SO', 'C2H2',
                                        'TiH', 'TiO', 'VO'])
 
 # Collision-Induced Absorption (CIA) pairs included in opacity database
-supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'H2-CH4', 'CO2-H2', 'N2-H2', 
+supported_cia = np.array(['H2-H2', 'H2-He', 'H2-H', 'He-H', 'H2-CH4', 'CO2-H2', 'N2-H2', 
                           'CO2-CO2', 'CO2-CH4', 'N2-N2', 'N2-H2O', 'O2-O2',
                           'O2-CO2', 'O2-N2'])
 
 # Species treated as spectrally inactive (in standard cross section treatment)
-inactive_species = np.array(['H2', 'He', 'e-', 'H-', 'N2', 'ghost'])  # H- handled separately
+inactive_species = np.array(['H2', 'He', 'H', 'e-', 'H-', 'N2', 'ghost'])  # H- handled separately
 
 # Aerosol Supported Species for normal aerosol database
 aerosol_supported_species = np.array(['ADP', 'Al2O3', 'Al2O3_KH', 'C', 'CH4_liquid', 'CH4_solid', 

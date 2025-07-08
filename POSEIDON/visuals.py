@@ -4361,7 +4361,10 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 # If there is only one plot parameter, this doesn't work since the list isn't a list of lists 
                 # i.e. if len (plot_parameters = 1) then span = (-5,-1) and if >2 ((-5,-1), (-5,-1)) etc
                 if (len(plot_parameters) == 1):
-                    param_min, param_max = span[0], span[1]
+                    try:
+                        param_min, param_max = span[0], span[1]
+                    except:
+                        param_min, param_max = span[q]
                 else:
                     param_min, param_max = span[q]
             
@@ -4452,12 +4455,15 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                     # model options in the loop
                     # otherwise it uses the 1D array for all the models
 
-                    if (len(two_sigma_upper_limits_full) > 1):
+                    is_list_of_lists_upper = all(isinstance(item, list) for item in two_sigma_upper_limits_full)
+                    is_list_of_lists_lower = all(isinstance(item, list) for item in two_sigma_lower_limits_full)
+
+                    if (is_list_of_lists_upper == True) and (len(two_sigma_upper_limits_full) != 0):
                         two_sigma_upper_limits = two_sigma_upper_limits_full[m]
                     else:
                         two_sigma_upper_limits = two_sigma_upper_limits_full
 
-                    if (len(two_sigma_lower_limits_full) > 1):
+                    if (is_list_of_lists_lower == True) and (len(two_sigma_lower_limits_full) != 0):
                         two_sigma_lower_limits = two_sigma_lower_limits_full[m]
                     else:
                         two_sigma_lower_limits = two_sigma_lower_limits_full

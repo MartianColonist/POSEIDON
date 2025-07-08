@@ -3278,8 +3278,12 @@ Please address any request for new aerosols to: eem85@cornell.edu.
 Optional: Aerosol Directionality + Temperature Dependence Database
 ________________
 
-POSEIDON v1.3.1 includes a database of Mie scattering properties for minerals with their
-directionality and temperature dependent properties.
+POSEIDON v1.3.1 includes an optional database of Mie scattering properties for minerals with their
+directionality and temperature dependent properties. By default, this database is 
+not included in POSEIDON's input files. You can download it from Zenodo:
+`Optional Aerosol Files <https://doi.org/10.5281/zenodo.15711943>`_
+
+After downloading the files, please them in your inputs/opacity folder.
 
 The database and its computation are detailed in full in
 Mullens et al. (2025) [submitted].
@@ -3301,13 +3305,9 @@ All refractive index txt files can be found in
 
 `"Directional Refractive Indices" <https://github.com/MartianColonist/POSEIDON/tree/Mie-HotFix/POSEIDON/reference_data/refractive_indices_txt_files/aerosol_directional_database/File-names-corresponding-to-supported-species>`_ 
 
-Also see new tutorial (as of V1.3.1): 
+Also see the new tutorial (as of V1.3.1): 
 
 `"Aerosols Advanced: Directionality" <notebooks/aerosol_advanced_directionality.html>`_
-
-Download the database here: 
-
-(put link here)
 
 .. list-table::
    :widths: 20 20 20 20 20 20
@@ -4064,7 +4064,11 @@ Download the database here:
 Optional: Diamond Database
 ________________
 
-POSEIDON v1.3.1 includes a database of Mie scattering properties for diamonds.
+POSEIDON v1.3.1 also includes an optional database of Mie scattering properties for diamonds.
+By default, this database is not included in POSEIDON's input files. You can download it from Zenodo:
+`Optional Aerosol Files <https://doi.org/10.5281/zenodo.15711943>`_
+
+After downloading the files, please them in your inputs/opacity folder.
 
 For full previews of extinction cross sections and scattering properties of each aerosol, see
 `"Diamond Opacity Previews" <../_static/opacity_previews/aerosols_directional/aerosol_database_diamond.pdf>`_ 
@@ -4073,10 +4077,6 @@ All refractive index txt files can be found
 `"Diamond Refractive Indices" <https://github.com/MartianColonist/POSEIDON/tree/Mie-HotFix/POSEIDON/reference_data/refractive_indices_txt_files/diamonds/File-names-corresponding-to-supported-species>`_ 
 
 Note that the entry 'NanoDiamonds' (meteoric diamonds, detailed above in the normal aerosol database) is also included in this database, for convenience. 
-
-Download the database here: 
-
-Put link here
 
 .. list-table::
    :widths: 20 20 20 20 20 20
@@ -4159,18 +4159,19 @@ Put link here
        Irradiated and non-irradiated by cosmic-rays
 
 
-Optional: SiO2 Free Lognormal Logwidth Database
+Optional: :math:`\mathrm{SiO_2}` Free Lognormal Logwidth Database
 ________________
 
-POSEIDON v1.3.1 includes a database of Mie scattering properties for SiO2 where 
+POSEIDON v1.3.1 also includes a database of Mie scattering properties for :math:`\mathrm{SiO_2}` where 
 the lognormal logwidth (used in the lognormal distribution) is a free parameter.
+By default, this database is not included in POSEIDON's input files. You can download it from Zenodo:
+`Optional Aerosol Files <https://doi.org/10.5281/zenodo.15711943>`_
 
-Also see updated tutorial (as of V1.3.1) to see how to make and use this database: 
+After downloading the files, please them in your inputs/opacity folder.
+
+Also see the updated tutorial (as of V1.3.1) to see how to make and use this database: 
 `"Making an Aerosol Database" <notebooks/aerosol_database.html>`_ 
 
-Download the database here: 
-
-Put link here
 
 .. image:: ../_static/opacity_previews/aerosols_directional/temp_sio2.png
   :width: 50

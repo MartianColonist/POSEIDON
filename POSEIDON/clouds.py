@@ -1560,6 +1560,14 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
         for q, species in enumerate(aerosol_species):
 
             # Load grid for species q, then reshape into a 2D numpy array
+            try:
+                ext_array = np.array(database[species]['0.5']['eff_ext'])
+            except:
+                raise Exception('You are using the aerosol database from POSEIDON 1.2. ' +
+                                'Please download the input files for POSEIDON 1.3.1 from Zenodo (' +
+                                'https://doi.org/10.5281/zenodo.15711943) and place it in POSEIDON/inputs/opacity/.') 
+
+            # Load grid for species q, then reshape into a 2D numpy array
             ext_array = np.array(database[species]['0.5']['eff_ext'])
             ext_array = ext_array.reshape(r_m_num, wl_num)
 

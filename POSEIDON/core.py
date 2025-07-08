@@ -861,16 +861,21 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
                                                                         wl_interp, testing, database_version,
                                                                         lognormal_logwidth_free,)
                     
-    elif (opacity_treatment == 'line_by_line'):   
+    elif (opacity_treatment == 'line_by_line'):
         
         # For line-by-line case, we still compute Rayleigh scattering in advance
         Rayleigh_stored, eta_stored = store_Rayleigh_eta_LBL(wl, chemical_species)   
         
         # No need for pre-computed arrays for line-by-line, so keep empty arrays
-        sigma_stored, CIA_stored, \
-        ff_stored, bf_stored, sigma_Mie_stored, 
-        aerosol_wl_grid, aerosol_r_m_grid, \
-        aerosol_log_r_m_std_dev_grid = (np.array([]) for _ in range(8))
+        sigma_stored = np.array([])
+        CIA_stored = np.array([])
+        ff_stored = np.array([])
+        CIA_stored = np.array([])
+        bf_stored = np.array([])
+        sigma_Mie_stored = np.array([])
+        aerosol_wl_grid = np.array([])
+        aerosol_r_m_grid = np.array([])
+        aerosol_log_r_m_std_dev_grid = np.array([])
 
     # Move cross sections to GPU memory to speed up later computations
     if (device == 'gpu'):
