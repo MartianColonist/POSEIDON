@@ -47,9 +47,12 @@ POSEIDON's Mie scattering retrieval functionality was first used in
 but since a full description of the methodology is provided in 
 `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 that is the preferred paper to cite for Mie scattering retrievals with POSEIDON.
-Consider also citing the `LX-MIE algorithm <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_  
+If you are using the v1.2 version of the aerosol database, consider also citing the 
+`LX-MIE algorithm <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_  
 and `PLATON <https://ui.adsabs.harvard.edu/abs/2019PASP..131c4501Z/abstract>`_, 
 whose algorithms were adapted to precompute Mie-scattering cross sections. 
+If you are using the v1.3.1 version of the aerosol database, consider citing 
+`miepython v2.5.5 <https://github.com/scottprahl/miepython>`_.
 
 The `opacity database <opacity_database.html>`_ page provides extensive
 references for specific aerosols (e.g. refractive index sources). We also provide

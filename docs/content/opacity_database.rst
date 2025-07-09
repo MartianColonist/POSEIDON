@@ -2014,7 +2014,7 @@ atmospheric aerosols. The database and its computation are detailed in full in
      
        Synthetic
 
-   * - :math:`\mathrm{MgSiO_3}` *
+   * - :math:`\mathrm{MgSiO_3}`
      - Enstatite
      
        (MgSiO3)
@@ -3255,11 +3255,6 @@ atmospheric aerosols. The database and its computation are detailed in full in
 `(C)` refers to references that compile refractive index data (sometimes to 
 supplement their own lab data). See Aerosol-Database-Readme.txt for more details.
 
-`*` :math:`\mathrm{MgSiO_3}` has four altnernative entries that explore 
-assumptions that go into how aerosol properties are precomputed. 
-See the `"Making an Aerosol Database" <notebooks/aerosol_database.html>`_ 
-tutorial for more details.
-
 Refractive indices are room temperature unless specifically noted.
 
 Plots display refractive indices (real and imaginary) (x represents actual 
@@ -4134,19 +4129,19 @@ Note that the entry 'NanoDiamonds' (meteoric diamonds, detailed above in the nor
 
      - `Ohno (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..188O/abstract>`_
 
-     - `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...1J>`_
+     - `Jones (2012a) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...1J>`_
 
-       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...2J>`_
+       `Jones (2012b) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...2J>`_
 
-       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...2J>`_
+       `Jones (2012c) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...2J>`_
 
-       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...542A..98J>`_
+       `Jones (2012d) <https://ui.adsabs.harvard.edu/abs/2012A&A...542A..98J>`_
 
-       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...3J>`_
+       `Jones (2012e) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...3J>`_
 
-       `Jones (2022) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.128J>`_
+       `Jones (2022a) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.128J>`_
 
-       `Jones (2022) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.127J>`_
+       `Jones (2022b) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.127J>`_
 
      - 0.2-30 μm
 
