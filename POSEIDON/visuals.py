@@ -17,7 +17,7 @@ from matplotlib.colors import colorConverter
 from matplotlib.patches import Circle, Wedge
 from matplotlib.collections import PatchCollection
 from matplotlib.ticker import MultipleLocator, FormatStrFormatter, \
-                              ScalarFormatter, NullFormatter
+                              ScalarFormatter, NullFormatter, MaxNLocator
 from matplotlib import gridspec
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
@@ -4537,6 +4537,23 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             ax.set_yticks([])
             ax.tick_params(axis='both', which='major', labelsize = tick_labelsize)
             
+            # Auto-adjust tick density based on font size to prevent overlapping
+            if (len(axes_in) > 0):  # Only apply when using provided axes (constrained layouts)
+                bbox = ax.get_position()
+                subplot_width_inches = bbox.width * ax.get_figure().get_size_inches()[0]
+                
+                # Estimate space needed per character (roughly 0.6 * fontsize in points converted to inches)
+                char_width_inches = (tick_labelsize * 0.6) / 72.0
+                
+                # Estimate typical label width (assume 3-5 characters for most scientific notation)
+                typical_label_width_inches = char_width_inches * 4
+                
+                # Calculate maximum number of ticks that can fit without overlap
+                max_ticks = max(3, int(subplot_width_inches / typical_label_width_inches))
+                
+                # Set maximum number of ticks to prevent overlapping
+                ax.xaxis.set_major_locator(MaxNLocator(nbins=max_ticks, prune='both'))
+            
             if('log_r_m' in param):
                 xmajorLocator = MultipleLocator(1)
                 xminorLocator = MultipleLocator(0.5)
@@ -4685,8 +4702,8 @@ def plot_histograms(planet, models, plot_parameters,
                     external_param_names = [], plt_label = None, 
                     save_fig = True, show_title = True,
                     vertical_lines = [], vertical_line_colors = [],
-                    tick_labelsize = 12, 
-                    title_fontsize = 12, title_vert_spacing = 0.2,
+                    tick_labelsize = None, 
+                    title_fontsize = None, title_vert_spacing = None,
                     custom_labels = [], custom_ticks = [],
                     alpha_hist = 0.4, 
                     two_sigma_upper_limits = [], two_sigma_lower_limits = []):
@@ -4735,11 +4752,14 @@ def plot_histograms(planet, models, plot_parameters,
         vertical_line_colors (list of str, optional):
             List of colors for vertical lines. Default is empty list.
         tick_labelsize (int, optional):
-            Font size for tick labels. Default is 12.
+            Font size for tick labels. If None and axes provided, will auto-scale 
+            based on figure size. Default is None.
         title_fontsize (int, optional):
-            Font size for titles. Default is 12.
+            Font size for titles. If None and axes provided, will auto-scale 
+            based on figure size. Default is None.
         title_vert_spacing (float, optional):
-            Vertical spacing between titles. Default is 0.2.
+            Vertical spacing between titles. If None and axes provided, will auto-scale 
+            based on title font size. Default is None.
         custom_labels (list of str, optional):
             Custom labels for the parameters. Default is empty list.
         custom_ticks (list of list of float, optional):
@@ -4941,6 +4961,47 @@ def plot_histograms(planet, models, plot_parameters,
                             param_samples_m[:,q] = np.log10(X_stored[:,0])
 
         param_vals.append(param_samples_m)
+
+    # Auto-scale font sizes based on figure size if user provided axes but no explicit font settings
+    if (len(axes) > 0 and (title_fontsize is None or tick_labelsize is None or title_vert_spacing is None)):
+        
+        # Get the figure from the first axis
+        fig_for_scaling = axes[0].get_figure()
+        fig_width, fig_height = fig_for_scaling.get_size_inches()
+        
+        # Get actual subplot dimensions in inches
+        bbox = axes[0].get_position()  # Get position in figure coordinates (0-1)
+        subplot_height_inches = bbox.height * fig_height
+        subplot_width_inches = bbox.width * fig_width
+        
+        # Calculate font sizes based on actual subplot height
+        # Allocate space: ~15% for title, ~15% for x-axis labels, 70% for histogram
+        title_space_inches = subplot_height_inches * 0.15
+        xaxis_space_inches = subplot_height_inches * 0.15
+        histogram_space_inches = subplot_height_inches * 0.70
+        
+        if title_fontsize is None:
+            # Scale title font based on available title space
+            # 72 points per inch, aim for title to use ~60% of title space
+            title_fontsize = max(6, min(12, int(title_space_inches * 72 * 0.6)))
+            
+        if tick_labelsize is None:
+            # Scale tick labels based on available x-axis space
+            # Increase the proportion used for tick labels for better readability
+            tick_labelsize = max(7, min(12, int(xaxis_space_inches * 72 * 0.5)))
+        
+        # Set title_vert_spacing to be very small for constrained layouts
+        # Since we're in a subplot_mosaic, titles should stay close to the plot
+        if title_vert_spacing is None:
+            title_vert_spacing = 0.12  # Very conservative for subplot_mosaic
+    
+    # Set default values if still None and no axes provided
+    if title_fontsize is None:
+        title_fontsize = 12
+    if tick_labelsize is None:
+        tick_labelsize = 8
+    if title_vert_spacing is None:
+        title_vert_spacing = 0.2
 
     fig = plot_retrieved_parameters(axes, param_vals, plot_parameters, 
                                     parameter_colour_list, retrieval_colour_list, 
