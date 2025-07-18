@@ -18,3 +18,4 @@ run/
 /Aerosol-Database-Make
 *data_processed.hdf5
 POSEIDON/hierarchical.py
+inputs.zip

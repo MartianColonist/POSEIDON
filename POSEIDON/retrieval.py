@@ -605,6 +605,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
     param_names = model['param_names']
     param_species = model['param_species']
     X_params = model['X_param_names']
+    cloud_param_names = model['cloud_param_names']
     N_params_cum = model['N_params_cum']
     Atmosphere_dimension = model['Atmosphere_dimension']
     species_EM_gradient = model['species_EM_gradient']
@@ -876,7 +877,34 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
                 
                 cube[i_prime] = log_X[(1+i)]   # log_X[0] is not a free parameter
 
+        # If there are patchy multiple clouds (f_both, f_aerosol_1, and f_aerosol_2)
+        # The parameters need to be normalized to 1 in the cube
+        # This step also occurs in core.py in compute_spectrum()
+        if any('f_both' in s for s in cloud_param_names):
 
+            # cube is not an array, and has to be turned into an array for the next line
+            # here we are drawing the drawn parameters that correspond to cloud params
+            cloud_drawn = np.array(cube[N_params_cum[2]:N_params_cum[3]])
+
+            f_both = cloud_drawn[np.where(np.char.find(cloud_param_names,'f_both')!= -1)[0]]
+            f_aerosol_1 = cloud_drawn[np.where(np.char.find(cloud_param_names,'f_aerosol_1')!= -1)[0]]
+            f_aerosol_2 = cloud_drawn[np.where(np.char.find(cloud_param_names,'f_aerosol_2')!= -1)[0]]
+            f_clear = cloud_drawn[np.where(np.char.find(cloud_param_names,'f_clear')!= -1)[0]]
+
+            sum_to_normalize_to = f_both + f_aerosol_1 + f_aerosol_2 + f_clear
+            f_both = f_both/(sum_to_normalize_to)
+            f_aerosol_1 = f_aerosol_1/(sum_to_normalize_to)
+            f_aerosol_2 = f_aerosol_2/(sum_to_normalize_to)
+            f_clear = f_clear/(sum_to_normalize_to)
+
+            # Replace f values with new normalized ones
+            # np.where returns a 2d array of indices which is why you have to take two [0] [0]
+            cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_both')!= -1)[0][0]] = f_both
+            cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_aerosol_1')!= -1)[0][0]] = f_aerosol_1
+            cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_aerosol_2')!= -1)[0][0]] = f_aerosol_2
+            cube[N_params_cum[2]+np.where(np.char.find(cloud_param_names,'f_clear')!= -1)[0][0]] = f_clear
+      
+            
     # Define the log-likelihood function
     def LogLikelihood(cube, ndim, nparams):
         ''' 

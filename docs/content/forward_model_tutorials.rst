@@ -30,6 +30,7 @@ Exoplanet Eclipse Spectroscopy
    notebooks/emission_basic
    notebooks/emission_scattering
    notebooks/reflection
+   notebooks/reflection_emission_advanced_aerosols
    notebooks/emission_contributions
 
 
@@ -60,4 +61,5 @@ Miscellaneous
 
    notebooks/PT_profiles
    notebooks/aerosol_database
+   notebooks/aerosol_advanced_directionality
 
