@@ -19,8 +19,8 @@ comprehensive emission models including scattering (from POSEIDON v1.2), please
 cite `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_, 
 as described below.
 
-For high-resolution cross correlation retrievals (POSEIDON v1.3), please cite 
-Wang et al. (2025).
+For high-resolution cross correlation retrievals (POSEIDON v1.3), please cite
+`Wang et al. (2025) <https://ui.adsabs.harvard.edu/abs/2025AJ....169..328W/abstract>`_
 
 
 Cross Sections (Opacities)
