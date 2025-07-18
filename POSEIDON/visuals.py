@@ -4537,23 +4537,6 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             ax.set_yticks([])
             ax.tick_params(axis='both', which='major', labelsize = tick_labelsize)
             
-            # Auto-adjust tick density based on font size to prevent overlapping
-            if (len(axes_in) > 0):  # Only apply when using provided axes (constrained layouts)
-                bbox = ax.get_position()
-                subplot_width_inches = bbox.width * ax.get_figure().get_size_inches()[0]
-                
-                # Estimate space needed per character (roughly 0.6 * fontsize in points converted to inches)
-                char_width_inches = (tick_labelsize * 0.6) / 72.0
-                
-                # Estimate typical label width (assume 3-5 characters for most scientific notation)
-                typical_label_width_inches = char_width_inches * 4
-                
-                # Calculate maximum number of ticks that can fit without overlap
-                max_ticks = max(3, int(subplot_width_inches / typical_label_width_inches))
-                
-                # Set maximum number of ticks to prevent overlapping
-                ax.xaxis.set_major_locator(MaxNLocator(nbins=max_ticks, prune='both'))
-            
             if('log_r_m' in param):
                 xmajorLocator = MultipleLocator(1)
                 xminorLocator = MultipleLocator(0.5)
@@ -4975,25 +4958,24 @@ def plot_histograms(planet, models, plot_parameters,
         subplot_width_inches = bbox.width * fig_width
         
         # Calculate font sizes based on actual subplot height
-        # Allocate space: ~15% for title, ~15% for x-axis labels, 70% for histogram
+        # Allocate space: ~15% for title, ~15% for x-axis labels, 60% for histogram
         title_space_inches = subplot_height_inches * 0.15
         xaxis_space_inches = subplot_height_inches * 0.15
-        histogram_space_inches = subplot_height_inches * 0.70
+        histogram_space_inches = subplot_height_inches * 0.60
         
-        if title_fontsize is None:
+        if (title_fontsize is None):
+
             # Scale title font based on available title space
-            # 72 points per inch, aim for title to use ~60% of title space
-            title_fontsize = max(6, min(12, int(title_space_inches * 72 * 0.6)))
+            title_fontsize = max(6, min(14, int(title_space_inches * 72 * 0.5)))
             
-        if tick_labelsize is None:
+        if (tick_labelsize is None):
+        
             # Scale tick labels based on available x-axis space
-            # Increase the proportion used for tick labels for better readability
-            tick_labelsize = max(7, min(12, int(xaxis_space_inches * 72 * 0.5)))
+            tick_labelsize = max(7, min(14, int(xaxis_space_inches * 72 * 0.6)))
         
         # Set title_vert_spacing to be very small for constrained layouts
-        # Since we're in a subplot_mosaic, titles should stay close to the plot
-        if title_vert_spacing is None:
-            title_vert_spacing = 0.12  # Very conservative for subplot_mosaic
+        if (title_vert_spacing is None):
+            title_vert_spacing = 0.12 
     
     # Set default values if still None and no axes provided
     if title_fontsize is None:
