@@ -12,8 +12,7 @@ have been packaged for convenience as a single .zip file (67 GB):
 * `inputs.zip <https://drive.google.com/file/d/1Ojqc7u-zzdGLkI33BX63hMTtHNBsZqdw/view?usp=sharing>`_
 
 You can also find all the required input files on `Zenodo 
-<https://zenodo.org/records/13755752>`_.
-
+<https://zenodo.org/records/16107813>`_.
 
 Step 2: Install mpi4py and PyMultiNest
 ______________________________________
