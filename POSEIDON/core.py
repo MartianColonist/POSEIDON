@@ -787,7 +787,7 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
 def read_opacities(model, wl, opacity_treatment = 'opacity_sampling', 
                    T_fine = None, log_P_fine = None, opacity_database = 'High-T',
                    device = 'cpu', wl_interp = 'sample', testing = False,
-                   database_version = '1.2'):
+                   database_version = '1.3'):
     '''
     Load the various cross sections required by a given model. When using 
     opacity sampling, the native high-resolution are pre-interpolated onto 
