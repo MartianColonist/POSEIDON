@@ -604,9 +604,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         raise Exception("Only 1D or 2D emission spectra currently supported.")
     
 
-    if (cloud_dim >= 2):
+    if ((cloud_dim >= 2) and (spectrum_type != 'transmission')):
         raise Exception('Cannot do contribution functions for patchy cloud models.')
-
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
@@ -1375,6 +1374,9 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                                line_width_list = [], colour_list = [],
                                return_fig = False, ax = None, file_label = None,
                                fill_between = [], fill_between_alpha = 0.5, fill_to_spectrum = [],
+                               data = None,
+                               spectra_labels = [],
+                               **kwargs,
                                ):
     
     '''
@@ -1473,8 +1475,12 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
             colour_list = ['black', 'dimgray', 'darkturquoise', 'green', 'darkorchid', 'salmon', '#ff7f00', 'hotpink', 'red', 'orange', 'green', 'blue', 'purple']
 
         spectra = plot_collection(spectrum, wl, collection = spectra)
-        labels = spectrum_contribution_list_names.copy()
-        labels.insert(0,'Full Spectrum')
+        
+        if (len(spectra_labels) == 0):
+            labels = spectrum_contribution_list_names.copy()
+            labels.insert(0,'Full Spectrum')
+        else:
+            labels = spectra_labels
 
         # Loop through the contribution spectra 
         for s in spectrum_contribution_list:
@@ -1501,9 +1507,17 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
         colour_list = colour_list[:len(spectrum_contribution_list)]
         colour_list.append('black')
 
-        labels = spectrum_contribution_list_names.copy()
-        labels.append('Full Spectrum')
+        if (len(spectra_labels) == 0):
+            labels = spectrum_contribution_list_names.copy()
+            labels.append('Full Spectrum')
+        else:
+            labels = spectra_labels     
 
+    if (data is not None):
+        show_data = True
+    else:
+        show_data = False
+    
     # Generate plot   
     fig = plot_spectra(spectra, planet, R_to_bin = 100,
                        plt_label = 'Spectral Contribution Plot',
@@ -1520,6 +1534,9 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                        fill_between = fill_between, 
                        fill_between_alpha = fill_between_alpha, 
                        fill_to_spectrum = fill_to_spectrum,
+                       show_data = show_data,
+                       data_properties = data,
+                       **kwargs,
                        )
         
     if save_fig == True:
