@@ -847,6 +847,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
 
    *  - :math:`\mathrm{\textbf{HITRAN}}`
 
+        :math:`\mathrm{\textbf{Line-by-line}}`
+
         :math:`\mathrm{\textbf{(Low-T)}}`
       - 
       - 
@@ -965,6 +967,117 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/O3.png
+          :width: 50
+          :align: center
+
+   *  - :math:`\mathrm{\textbf{HITRAN}}`
+
+        :math:`\mathrm{\textbf{Lab xsec}}`
+
+        :math:`\mathrm{\textbf{(Room T)}}`
+      - 
+      - 
+      - 
+      -
+      - 
+
+   * - :math:`\mathrm{DMS}`
+
+       :math:`\mathrm{(C_2 H_6 S)}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?90=on>`_
+
+       Laboratory
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `Kochanov et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `Sharpe et al. <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+
+       `(2004) <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+     - Air
+     - **Added Species**
+
+       (v1.3.1)
+     - 
+       .. image:: ../_static/opacity_previews/gases/C2H6S.png
+          :width: 50
+          :align: center
+  
+   * - :math:`\mathrm{DMDS}`
+
+       :math:`\mathrm{(C_2 H_6 S_2)}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?90=on>`_
+
+       Laboratory
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `Kochanov et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `Sharpe et al. <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+
+       `(2004) <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+     - Air
+     - **Added Species**
+
+       (v1.3.1)
+     - 
+       .. image:: ../_static/opacity_previews/gases/C2H6S2.png
+          :width: 50
+          :align: center
+
+   * - :math:`\mathrm{C H_3 S H}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?90=on>`_
+
+       Laboratory
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `Kochanov et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `Sharpe et al. <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+
+       `(2004) <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+     - Air
+     - **Added Species**
+
+       (v1.3.1)
+     - 
+       .. image:: ../_static/opacity_previews/gases/CH3SH.png
+          :width: 50
+          :align: center
+
+   * - :math:`\mathrm{C_3 H_4}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?90=on>`_
+
+       Laboratory
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `Kochanov et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `Sharpe et al. <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+
+       `(2004) <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+     - Air
+     - **Added Species**
+
+       (v1.3.1)
+     - 
+       .. image:: ../_static/opacity_previews/gases/C3H4.png
           :width: 50
           :align: center
 
