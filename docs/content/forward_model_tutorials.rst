@@ -18,7 +18,6 @@ Exoplanet Transit Spectroscopy
    notebooks/transmission_equilibrium
    notebooks/transmission_terrestrial
    notebooks/transmission_2D
-   notebooks/high_res
    notebooks/transmission_contributions
 
 
@@ -31,7 +30,18 @@ Exoplanet Eclipse Spectroscopy
    notebooks/emission_basic
    notebooks/emission_scattering
    notebooks/reflection
+   notebooks/reflection_emission_advanced_aerosols
    notebooks/emission_contributions
+
+
+High-Resolution Cross-Correlation Spectroscopy (**NEW**!)
+-------------------------------
+
+.. toctree::
+   :maxdepth: 2
+
+   notebooks/transmission_high_res_cross_correlate
+   notebooks/emission_high_res_cross_correlate
 
 
 Brown Dwarf Direct Imaging Spectroscopy
@@ -51,5 +61,5 @@ Miscellaneous
 
    notebooks/PT_profiles
    notebooks/aerosol_database
-
+   notebooks/aerosol_advanced_directionality
 

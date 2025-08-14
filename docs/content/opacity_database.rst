@@ -20,6 +20,8 @@ recent theoretical and experimental advances:
 * Improved line position accuracy for high-resolution analyses (i.e. ExoMol's MARVEL procedure).
 * UV-Visible wavelength coverage (down to :math:`0.2 \, \mathrm{\mu m}`, where available).
 
+Note: POSEIDON v1.3 uses the same opacity database as v1.2.
+
 The current line-by-line opacity sources included in POSEIDON are summarised below:
 
 .. list-table::
@@ -845,6 +847,8 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
 
    *  - :math:`\mathrm{\textbf{HITRAN}}`
 
+        :math:`\mathrm{\textbf{Line-by-line}}`
+
         :math:`\mathrm{\textbf{(Low-T)}}`
       - 
       - 
@@ -963,6 +967,117 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
      - New Line List
      - 
        .. image:: ../_static/opacity_previews/gases/O3.png
+          :width: 50
+          :align: center
+
+   *  - :math:`\mathrm{\textbf{HITRAN}}`
+
+        :math:`\mathrm{\textbf{Lab xsec}}`
+
+        :math:`\mathrm{\textbf{(Room T)}}`
+      - 
+      - 
+      - 
+      -
+      - 
+
+   * - :math:`\mathrm{DMS}`
+
+       :math:`\mathrm{(C_2 H_6 S)}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?90=on>`_
+
+       Laboratory
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `Kochanov et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `Sharpe et al. <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+
+       `(2004) <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+     - Air
+     - **Added Species**
+
+       (v1.3.1)
+     - 
+       .. image:: ../_static/opacity_previews/gases/C2H6S.png
+          :width: 50
+          :align: center
+  
+   * - :math:`\mathrm{DMDS}`
+
+       :math:`\mathrm{(C_2 H_6 S_2)}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?90=on>`_
+
+       Laboratory
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `Kochanov et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `Sharpe et al. <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+
+       `(2004) <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+     - Air
+     - **Added Species**
+
+       (v1.3.1)
+     - 
+       .. image:: ../_static/opacity_previews/gases/C2H6S2.png
+          :width: 50
+          :align: center
+
+   * - :math:`\mathrm{C H_3 S H}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?90=on>`_
+
+       Laboratory
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `Kochanov et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `Sharpe et al. <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+
+       `(2004) <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+     - Air
+     - **Added Species**
+
+       (v1.3.1)
+     - 
+       .. image:: ../_static/opacity_previews/gases/CH3SH.png
+          :width: 50
+          :align: center
+
+   * - :math:`\mathrm{C_3 H_4}`
+     - `HITRAN-2020 <https://hitran.org/lbl/3?90=on>`_
+
+       Laboratory
+     - `Gordon et al. <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `(2022) <https://ui.adsabs.harvard.edu/abs/2022JQSRT.27707949G/abstract>`_
+
+       `Kochanov et al. <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `(2019) <https://ui.adsabs.harvard.edu/abs/2019JQSRT.230..172K/abstract>`_
+
+       `Sharpe et al. <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+
+       `(2004) <https://ui.adsabs.harvard.edu/abs/2004ApSpe..58.1452S/abstract>`_
+     - Air
+     - **Added Species**
+
+       (v1.3.1)
+     - 
+       .. image:: ../_static/opacity_previews/gases/C3H4.png
           :width: 50
           :align: center
 
@@ -1283,7 +1398,7 @@ ________________
 
 POSEIDON v1.2 includes an extensive database of Mie scattering properties for
 atmospheric aerosols. The database and its computation are detailed in full in
-Mullens et al. (2024).
+`Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_.
 
 .. list-table::
    :widths: 20 20 20 20 20 20 20
@@ -1594,7 +1709,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Mutschke (2004) <https://ui.adsabs.harvard.edu/abs/2004A%26A...423..983M/abstract>`_
 
@@ -2012,7 +2127,7 @@ Mullens et al. (2024).
      
        Synthetic
 
-   * - :math:`\mathrm{MgSiO_3}` *
+   * - :math:`\mathrm{MgSiO_3}`
      - Enstatite
      
        (MgSiO3)
@@ -2405,7 +2520,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      -  `Herve Herbin & Petitprez (2023) <https://www.tandfonline.com/doi/full/10.1080/02786826.2023.2165899>`_
 
@@ -2427,7 +2542,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2489,7 +2604,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Philipp in <https://ui.adsabs.harvard.edu/abs/1985hocs.book.....P/abstract>`_
 
@@ -2602,7 +2717,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Huffman & Wild (1967) <https://ui.adsabs.harvard.edu/abs/1967PhRv..156..989H/abstract>`_
 
@@ -2749,7 +2864,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Zernike (1965) <https://ui.adsabs.harvard.edu/abs/1965JOSA...55..210Z/abstract>`_
 
@@ -2821,7 +2936,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - Personal Communication
 
@@ -2919,7 +3034,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Khare (1993) <https://ui.adsabs.harvard.edu/abs/1993Icar..103..290K/abstract>`_
 
@@ -2978,7 +3093,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
@@ -3002,7 +3117,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `He et al. (2023) <https://ui.adsabs.harvard.edu/abs/2024NatAs...8..182H/abstract>`_
 
@@ -3068,7 +3183,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Palmer & Williams (1975) <https://ui.adsabs.harvard.edu/abs/1975ApOpt..14..208P/abstract>`_
 
@@ -3122,7 +3237,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Noy (1981) <https://ui.adsabs.harvard.edu/abs/1981JGR....8611985N/abstract>`_
 
@@ -3153,7 +3268,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Chang & Charalampopoulos <https://ui.adsabs.harvard.edu/abs/1990RSPSA.430..577C/abstract>`_
 
@@ -3213,7 +3328,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
 
@@ -3239,7 +3354,7 @@ Mullens et al. (2024).
 
      - `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 
-       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/dev/refractive_indices_txt_files/Misc>`_
+       :math:`\hookrightarrow` `GitHub <https://github.com/MartianColonist/POSEIDON/tree/main/POSEIDON/reference_data/refractive_indices_txt_files/Misc>`_
 
      - `Corrales (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...943L..26C/abstract>`_
 
@@ -3252,11 +3367,6 @@ Mullens et al. (2024).
 
 `(C)` refers to references that compile refractive index data (sometimes to 
 supplement their own lab data). See Aerosol-Database-Readme.txt for more details.
-
-`*` :math:`\mathrm{MgSiO_3}` has four altnernative entries that explore 
-assumptions that go into how aerosol properties are precomputed. 
-See the `"Making an Aerosol Database" <notebooks/aerosol_database.html>`_ 
-tutorial for more details.
 
 Refractive indices are room temperature unless specifically noted.
 
@@ -3276,8 +3386,12 @@ Please address any request for new aerosols to: eem85@cornell.edu.
 Optional: Aerosol Directionality + Temperature Dependence Database
 ________________
 
-POSEIDON v1.3.1 includes a database of Mie scattering properties for minerals with their
-directionality and temperature dependent properties.
+POSEIDON v1.3.1 includes an optional database of Mie scattering properties for minerals with their
+directionality and temperature dependent properties. By default, this database is 
+not included in POSEIDON's input files. You can download it from Zenodo:
+`Optional Aerosol Files <https://doi.org/10.5281/zenodo.15711943>`_.
+
+After downloading the files, please put them in your inputs/opacity folder.
 
 The database and its computation are detailed in full in
 Mullens et al. (2025) [submitted].
@@ -3299,13 +3413,9 @@ All refractive index txt files can be found in
 
 `"Directional Refractive Indices" <https://github.com/MartianColonist/POSEIDON/tree/Mie-HotFix/POSEIDON/reference_data/refractive_indices_txt_files/aerosol_directional_database/File-names-corresponding-to-supported-species>`_ 
 
-Also see new tutorial (as of V1.3.1): 
+Also see the new tutorial (as of V1.3.1): 
 
 `"Aerosols Advanced: Directionality" <notebooks/aerosol_advanced_directionality.html>`_
-
-Download the database here: 
-
-(put link here)
 
 .. list-table::
    :widths: 20 20 20 20 20 20
@@ -4062,7 +4172,11 @@ Download the database here:
 Optional: Diamond Database
 ________________
 
-POSEIDON v1.3.1 includes a database of Mie scattering properties for diamonds.
+POSEIDON v1.3.1 also includes an optional database of Mie scattering properties for diamonds.
+By default, this database is not included in POSEIDON's input files. You can download it from Zenodo:
+`Optional Aerosol Files <https://doi.org/10.5281/zenodo.15711943>`_.
+
+After downloading the files, please put them in your inputs/opacity folder.
 
 For full previews of extinction cross sections and scattering properties of each aerosol, see
 `"Diamond Opacity Previews" <../_static/opacity_previews/aerosols_directional/aerosol_database_diamond.pdf>`_ 
@@ -4071,10 +4185,6 @@ All refractive index txt files can be found
 `"Diamond Refractive Indices" <https://github.com/MartianColonist/POSEIDON/tree/Mie-HotFix/POSEIDON/reference_data/refractive_indices_txt_files/diamonds/File-names-corresponding-to-supported-species>`_ 
 
 Note that the entry 'NanoDiamonds' (meteoric diamonds, detailed above in the normal aerosol database) is also included in this database, for convenience. 
-
-Download the database here: 
-
-Put link here
 
 .. list-table::
    :widths: 20 20 20 20 20 20
@@ -4132,19 +4242,19 @@ Put link here
 
      - `Ohno (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..188O/abstract>`_
 
-     - `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...1J>`_
+     - `Jones (2012a) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...1J>`_
 
-       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...2J>`_
+       `Jones (2012b) <https://ui.adsabs.harvard.edu/abs/2012A&A...540A...2J>`_
 
-       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...2J>`_
+       `Jones (2012c) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...2J>`_
 
-       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...542A..98J>`_
+       `Jones (2012d) <https://ui.adsabs.harvard.edu/abs/2012A&A...542A..98J>`_
 
-       `Jones (2012) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...3J>`_
+       `Jones (2012e) <https://ui.adsabs.harvard.edu/abs/2012A&A...545C...3J>`_
 
-       `Jones (2022) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.128J>`_
+       `Jones (2022a) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.128J>`_
 
-       `Jones (2022) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.127J>`_
+       `Jones (2022b) <https://ui.adsabs.harvard.edu/abs/2022A&A...657A.127J>`_
 
      - 0.2-30 μm
 
@@ -4157,19 +4267,15 @@ Put link here
        Irradiated and non-irradiated by cosmic-rays
 
 
-Optional: SiO2 Free Lognormal Logwidth Database
+Optional: :math:`\mathrm{SiO_2}` Free Lognormal Logwidth Database
 ________________
 
-POSEIDON v1.3.1 includes a database of Mie scattering properties for SiO2 where 
+POSEIDON v1.3.1 also includes a database of Mie scattering properties for :math:`\mathrm{SiO_2}` where 
 the lognormal logwidth (used in the lognormal distribution) is a free parameter.
+By default, this database is not included in POSEIDON's input files. You can download it from Zenodo:
+`Optional Aerosol Files <https://doi.org/10.5281/zenodo.15711943>`_.
 
-Also see updated tutorial (as of V1.3.1) to see how to make and use this database: 
-`"Making an Aerosol Database" <notebooks/aerosol_database.html>`_ 
+After downloading the files, please put them in your inputs/opacity folder.
 
-Download the database here: 
-
-Put link here
-
-.. image:: ../_static/opacity_previews/aerosols_directional/temp_sio2.png
-  :width: 50
-  :align: center
+Also see the updated tutorial (as of V1.3.1) to see how to make and use this database: 
+`"Making an Aerosol Database" <notebooks/aerosol_database.html>`_.

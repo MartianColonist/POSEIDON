@@ -16,7 +16,11 @@ For 1D thermal emission forward model or retrievals without scattering
 (POSEIDON v1.0), please cite `Coulombe et al. (2023) 
 <https://ui.adsabs.harvard.edu/abs/2023Natur.620..292C/abstract>`_. For more 
 comprehensive emission models including scattering (from POSEIDON v1.2), please 
-cite Mullens et al. (2024), as described below.
+cite `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_, 
+as described below.
+
+For high-resolution cross correlation retrievals (POSEIDON v1.3), please cite
+`Wang et al. (2025) <https://ui.adsabs.harvard.edu/abs/2025AJ....169..328W/abstract>`_
 
 
 Cross Sections (Opacities)
@@ -37,14 +41,18 @@ Mie Scattering Aerosols
 
 POSEIDON v1.2 includes Mie scattering from compositionally-specific aerosols.
 When using any Mie scattering prescription in POSEIDON, please cite 
-Mullens et al. 2024. POSEIDON's Mie scattering retrieval functionality was 
-first used in 
+`Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_. 
+POSEIDON's Mie scattering retrieval functionality was first used in 
 `Grant et al. (2023) <https://ui.adsabs.harvard.edu/abs/2023ApJ...956L..32G/abstract>`_, 
-but since a full description of the methodology is provided in Mullens et al. 2024 
+but since a full description of the methodology is provided in 
+`Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_
 that is the preferred paper to cite for Mie scattering retrievals with POSEIDON.
-Consider also citing the `LX-MIE algorithm <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_  
+If you are using the v1.2 version of the aerosol database, consider also citing the 
+`LX-MIE algorithm <https://ui.adsabs.harvard.edu/abs/2018MNRAS.475...94K/abstract>`_  
 and `PLATON <https://ui.adsabs.harvard.edu/abs/2019PASP..131c4501Z/abstract>`_, 
 whose algorithms were adapted to precompute Mie-scattering cross sections. 
+If you are using the v1.3.1 version of the aerosol database, consider citing 
+`miepython v2.5.5 <https://github.com/scottprahl/miepython>`_.
 
 The `opacity database <opacity_database.html>`_ page provides extensive
 references for specific aerosols (e.g. refractive index sources). We also provide
@@ -56,12 +64,14 @@ Thermal Scattering and Reflection
 ---------------------------------
 
 When using POSEIDON for emission spectroscopy with scattering enabled or for 
-reflection spectroscopy, please cite Mullens et al. 2024. As described in this 
-paper, POSEIDON uses adapted forward models from PICASO, so for reflection spectra 
-please also cite `Batalha et al. (2019) <https://ui.adsabs.harvard.edu/abs/2019ApJ...878...70B/abstract>`_ 
+reflection spectroscopy, please cite `Mullens et al. (2024) 
+<https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_. 
+As described in this paper, POSEIDON uses adapted forward models from PICASO, 
+so for reflection spectra please also cite `Batalha et al. (2019) 
+<https://ui.adsabs.harvard.edu/abs/2019ApJ...878...70B/abstract>`_ 
 and for emission spectra with scattering please cite `Mukherjee et al. (2023) 
-<https://ui.adsabs.harvard.edu/abs/2023ApJ...942...71M/abstract>`_. The underlying
-multiple scattering radiative transfer technique used in all these papers is 
+<https://ui.adsabs.harvard.edu/abs/2023ApJ...942...71M/abstract>`_. 
+The underlying multiple scattering radiative transfer technique used in all these papers is 
 described in `Toon et al. (1989) <https://ui.adsabs.harvard.edu/abs/1989JGR....9416287T/abstract>`_.
 
 
@@ -81,4 +91,4 @@ Contribution Functions
 ----------------------
 
 For contribution functions (transmission or emission), added in POSEIDON v1.2, 
-please cite Mullens et al. 2024.
+please cite `Mullens et al. (2024) <https://ui.adsabs.harvard.edu/abs/2024ApJ...977..105M/abstract>`_.
