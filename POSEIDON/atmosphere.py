@@ -988,13 +988,24 @@ def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
         # Add H2 and He mixing ratios to first two elements in X state vector for this region
         X[0,:,:,:] = X_H2  
         X[1,:,:,:] = X_He
+
+    # For H+He bulk mixture
+    elif ('H' and 'He' in bulk_species):
+
+        # Compute H and He mixing ratios for a fixed H2/He fraction (defined in config.py)
+        X_H = 2.0*(1.0 - np.sum(X_param, axis=0))/(1.0 + He_fraction)   # H mixing ratio array
+        X_He = He_fraction*(X_H/2.0)                                     # He mixing ratio array
+                
+        # Add H and He mixing ratios to first two elements in X state vector for this region
+        X[0,:,:,:] = X_H  
+        X[1,:,:,:] = X_He
         
     # For any other choice of bulk species, the first mixing ratio is the bulk species
     else: 
 
         if (len(bulk_species) > 1):
             raise Exception("Only a single species can be designated as bulk " +
-                            "(besides models with H2 & He with a fixed He/H2 ratio).")
+                            "(besides models with H2 & He or H & He with a fixed He/H2 ratio).")
         
         # Calculate first mixing ratio in state vector
         X_0 = 1.0 - np.sum(X_param, axis=0)   
