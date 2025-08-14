@@ -1,8 +1,7 @@
-######################################################
-######################################################
-#  Functions that are used to incorporate aerosols into POSEIDON
-######################################################
-######################################################
+''' 
+Functions that are used to incorporate aerosols into POSEIDON
+
+'''
 
 import numpy as np
 import scipy
@@ -1297,7 +1296,9 @@ def compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
                                  lognormal_logwidth_free, log_r_m_std_dev,
                                  ):
 
-    # Renaming just so I don't have to rewrite code below
+    # Load in the aerosol grid for compositionally specific aerosols
+
+    # Renamed for convenience, so I don't have to rewrite all the code below
     aerosol_grid = aerosol_stored
 
     # Create a wl_Mie array (which is at R = 1000) for file_read or constant
@@ -1568,6 +1569,14 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
         for q, species in enumerate(aerosol_species):
 
             # Load grid for species q, then reshape into a 2D numpy array
+            try:
+                ext_array = np.array(database[species]['0.5']['eff_ext'])
+            except:
+                raise Exception('You are using the aerosol database from POSEIDON 1.2. ' +
+                                'Please download the input files for POSEIDON 1.3.1 from Zenodo (' +
+                                'https://doi.org/10.5281/zenodo.15711943) and place it in POSEIDON/inputs/opacity/.') 
+
+            # Load grid for species q, then reshape into a 2D numpy array
             ext_array = np.array(database[species]['0.5']['eff_ext'])
             ext_array = ext_array.reshape(r_m_num, wl_num)
 
@@ -1612,7 +1621,8 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     database.close()
 
     # Package atmosphere properties if you aren't loading opac
-    # If you are, this aerosol_grid dictionary is made later
+    # If you are, this aerosol_grid dictionary is made later (in reading_opacities in core)
+    # This functionality is for forward model notebooks that directly query the aerosol_grid
     if loading_opac == False:
         if lognormal_logwith_free == False:
             aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid, 'wl_grid': wl_grid, 'r_m_grid' : r_m_grid}
@@ -1981,6 +1991,7 @@ def Mie_cloud(P,wl,r, H, n,
 
         # Uniaxial or Biaxial Slabs
         elif (cloud_type == 'uniaxial_slab' or cloud_type == 'uniaxial_random_slab' or cloud_type == 'biaxial_slab' or cloud_type == 'biaxial_random_slab'):
+            
             # r is a 3d array that follows (N_layers, terminator plane sections, day-night sections)
             n_aerosol = np.zeros_like(r)
 
