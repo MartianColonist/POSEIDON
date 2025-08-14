@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.abspath('../'))
 # -- Project information -----------------------------------------------------
 
 project = 'POSEIDON'
-copyright = '2023-2024, Ryan J. MacDonald'
+copyright = '2023-2025, Ryan J. MacDonald'
 author = 'Ryan J. MacDonald'
 master_doc = 'index'
 
