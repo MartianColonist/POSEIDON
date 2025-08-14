@@ -694,7 +694,7 @@ def H_minus_free_free(wl_um, T_arr):
 def opacity_tables(rank, comm, wl_model, chemical_species, active_species, 
                    cia_pairs, ff_pairs, bf_species, aerosol_species, cloud_model, 
                    T_fine, log_P_fine, opacity_database = 'High-T', wl_interp = 'sample', 
-                   testing = False, database_version = '1.2', lognormal_logwidth_free = False,):
+                   testing = False, database_version = '1.3', lognormal_logwidth_free = False,):
     ''' 
     Initialisation function to read in and pre-interpolate all opacities.
         
@@ -783,11 +783,11 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
             # Open HDF5 files containing molecular + atomic opacities
             if (opacity_database == 'High-T'):        # High T database
 
-                # Experimental POSEIDON v1.3 database
+                # By default, use the new POSEIDON v1.3 opacity database
                 if (database_version == '1.3'):
                     opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.3.hdf5', 'r')
 
-                # By default, use the new POSEIDON v1.2 opacity database
+                # Backwards compatibility with v1.2 database
                 elif (database_version == '1.2'):
                     opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.2.hdf5', 'r')
 
@@ -1071,16 +1071,16 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
     kappa_Ray = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
     kappa_cloud = np.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
 
-    # kappa_cloud is a total cloud opacity. This array instead splits it up so we can multiple clouds 
+    # kappa_cloud is a total cloud opacity. This array instead splits it up so we can have multiple clouds 
     # in a scattering scenario
 
     # If Mie clouds are turned on
     #if (enable_Mie ==1):
-    #    kappa_cloud_seperate = np.zeros(shape=(len(n_aerosol_array),N_layers, N_sectors, N_zones, N_wl))
+    #    kappa_cloud_separate = np.zeros(shape=(len(n_aerosol_array),N_layers, N_sectors, N_zones, N_wl))
     ## Else its an empty array for numba gods 
     #else:
-    #    kappa_cloud_seperate = np.zeros(shape=(len(n_aerosol_array),N_layers, N_sectors, N_zones, N_wl))
-    kappa_cloud_seperate = np.zeros(shape=(len(n_aerosol_array),N_layers, N_sectors, N_zones, N_wl))
+    #    kappa_cloud_separate = np.zeros(shape=(len(n_aerosol_array),N_layers, N_sectors, N_zones, N_wl))
+    kappa_cloud_separate = np.zeros(shape=(len(n_aerosol_array), N_layers, N_sectors, N_zones, N_wl))
     
     # Fine temperature grid (for pre-interpolating opacities)    
     N_T_fine = len(T_fine)
@@ -1209,22 +1209,22 @@ def extinction(chemical_species, active_species, cia_pairs, ff_pairs, bf_species
                         for i in range(i_bot,N_layers):
                             for q in range(len(wl)):
                                 kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
-                                kappa_cloud_seperate[aerosol,i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
+                                kappa_cloud_separate[aerosol,i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol][q]
                     
                 # Opaque Deck is the first element in n_aerosol_array
                 else:
                     for aerosol in range(len(n_aerosol_array)):
                         if aerosol == 0:
                             kappa_cloud[(P > P_cloud[0]),j,k,:] += 1.0e250
-                            kappa_cloud_seperate[aerosol,(P > P_cloud[0]),j,k,:] += 1.0e250
+                            kappa_cloud_separate[aerosol,(P > P_cloud[0]),j,k,:] += 1.0e250
                         else:
                             for i in range(i_bot,N_layers):
                                 for q in range(len(wl)):
                                     kappa_cloud[i,j,k,q] += n_aerosol_array[aerosol][i,j,k]* sigma_Mie_array[aerosol-1][q]
-                                    kappa_cloud_seperate[aerosol,i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][q]
+                                    kappa_cloud_separate[aerosol,i,j,k,q] += n_aerosol_array[aerosol][i,j,k] * sigma_Mie_array[aerosol-1][q]
           
           
-    return kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate
+    return kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_separate
 
 
 @cuda.jit
@@ -1741,7 +1741,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
                    a, gamma, P_cloud, kappa_cloud_0, Rayleigh_stored, enable_haze, 
                    enable_deck, enable_surface, N_sectors, N_zones, P_surf,
                    opacity_database = 'High-T', disable_continuum = False,
-                   suppress_print = False, database_version = '1.2'):
+                   suppress_print = False, database_version = '1.3'):
     
     ''' Evaluate extinction coefficients for molecules / atoms, Rayleigh 
         scattering, hazes, and clouds. Special function optimised for 
@@ -1794,8 +1794,12 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
     # Open HDF5 files containing molecular + atomic opacities
     if (opacity_database == 'High-T'):        # High T database
 
-        # By default, use the new POSEIDON v1.2 opacity database
-        if (database_version == '1.2'):
+        # By default, use the new POSEIDON v1.3 opacity database
+        if (database_version == '1.3'):
+            opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.3.hdf5', 'r')
+
+        # Backwards compatibility with v1.2 database
+        elif (database_version == '1.2'):
             opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_v1.2.hdf5', 'r')
 
         # Or for backwards compatibility, you can use the old v1.0 database
@@ -1805,7 +1809,7 @@ def extinction_LBL(chemical_species, active_species, cia_pairs, ff_pairs,
     
         else:
             raise Exception("Invalid opacity database version.\n"
-                            "The options are: '1.0' or '1.2'.")
+                            "The options are: '1.0', '1.2', or '1.3.")
 
     elif (opacity_database == 'Temperate'):   # Low T database
         opac_file = h5py.File(input_file_path + '/opacity/Opacity_database_0.01cm-1_Temperate.hdf5', 'r')
