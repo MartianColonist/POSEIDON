@@ -848,7 +848,7 @@ def wl_grid_line_by_line(wl_min, wl_max, line_by_line_res = 0.01):
 def read_opacities(model, wl, opacity_treatment = 'opacity_sampling', 
                    T_fine = None, log_P_fine = None, opacity_database = 'High-T',
                    device = 'cpu', wl_interp = 'sample', testing = False,
-                   database_version = '1.2'):
+                   database_version = '1.3'):
     '''
     Load the various cross sections required by a given model. When using 
     opacity sampling, the native high-resolution are pre-interpolated onto 
@@ -922,16 +922,21 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
                                                                         wl_interp, testing, database_version,
                                                                         lognormal_logwidth_free,)
                     
-    elif (opacity_treatment == 'line_by_line'):   
+    elif (opacity_treatment == 'line_by_line'):
         
         # For line-by-line case, we still compute Rayleigh scattering in advance
         Rayleigh_stored, eta_stored = store_Rayleigh_eta_LBL(wl, chemical_species)   
         
         # No need for pre-computed arrays for line-by-line, so keep empty arrays
-        sigma_stored, CIA_stored, \
-        ff_stored, bf_stored, sigma_Mie_stored, 
-        aerosol_wl_grid, aerosol_r_m_grid, \
-        aerosol_log_r_m_std_dev_grid = (np.array([]) for _ in range(8))
+        sigma_stored = np.array([])
+        CIA_stored = np.array([])
+        ff_stored = np.array([])
+        CIA_stored = np.array([])
+        bf_stored = np.array([])
+        sigma_Mie_stored = np.array([])
+        aerosol_wl_grid = np.array([])
+        aerosol_r_m_grid = np.array([])
+        aerosol_log_r_m_std_dev_grid = np.array([])
 
     # Move cross sections to GPU memory to speed up later computations
     if (device == 'gpu'):
@@ -1544,7 +1549,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 # aerosol grid is being used or not 
                 if (model['cloud_model'] == 'Mie'):
 
-                    n_aerosol, sigma_ext_cloud, g_cloud, w_cloud = compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
+                    n_aerosol, sigma_ext_cloud, \
+                    g_cloud, w_cloud = compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
                                                                                                     P, wl, r, H, n,
                                                                                                     r_m, r_i_real, r_i_complex,
                                                                                                     P_cloud, P_cloud_bottom, log_X_Mie,
@@ -1575,7 +1581,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                     P_cloud = np.array([P_cloud])
 
                 # Create the kappa arrays
-                kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate = extinction(chemical_species, active_species,
+                kappa_gas, kappa_Ray, \
+                kappa_cloud, kappa_cloud_seperate = extinction(chemical_species, active_species,
                                                                                     CIA_pairs, ff_pairs, bf_species,
                                                                                     n, T, P, wl, X, X_active, X_CIA, 
                                                                                     X_ff, X_bf, a, gamma, P_cloud, 
@@ -2134,7 +2141,7 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
     # For relative offsets, find which data indices the offset applies to
     if (offset_datasets is not None):
         
-        # Initialize the offset datasets
+        # Initialise the offset datasets
         offset_datasets = np.array(offset_datasets)
 
         # If there is only one dataset with an offset
@@ -2381,10 +2388,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'log_g_fac': [log_g_phot-0.5, log_g_phot+0.5],
                              'T_phot': [T_phot, err_T_phot], 
                              'log_g_phot': [log_g_phot, err_log_g_phot], 
-                             'delta_rel': [-1.0e-3, 1.0e-3],
-                             'delta_rel_1': [-1.0e-3, 1.0e-3],
-                             'delta_rel_2': [-1.0e-3, 1.0e-3],
-                             'delta_rel_3': [-1.0e-3, 1.0e-3],
+                             'delta_rel': [-100, 100],
+                             'delta_rel_1': [-100, 100],
+                             'delta_rel_2': [-100, 100],
+                             'delta_rel_3': [-100, 100],
                              'b': [np.log10(0.001*np.min(err_data**2)),
                                    np.log10(100.0*np.max(err_data**2))],
                              'x_tol': [0.05, 1.0],
