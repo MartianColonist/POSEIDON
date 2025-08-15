@@ -4595,11 +4595,11 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                 ax.xaxis.set_major_locator(xmajorLocator)
                 ax.xaxis.set_minor_locator(xminorLocator)
 
-            if ('log_X' in param) and ('base' not in param):
-                xmajorLocator = MultipleLocator(5)
-                xminorLocator = MultipleLocator(2.5)
-                ax.xaxis.set_major_locator(xmajorLocator)
-                ax.xaxis.set_minor_locator(xminorLocator)
+          #  if ('log_X' in param) and ('base' not in param):
+          #      xmajorLocator = MultipleLocator(5)
+          #      xminorLocator = MultipleLocator(2.5)
+          #      ax.xaxis.set_major_locator(xmajorLocator)
+          #      ax.xaxis.set_minor_locator(xminorLocator)
 
             if (len(custom_ticks) != 0):
                 xmajorLocator = MultipleLocator(custom_ticks[q][0])
@@ -4909,13 +4909,45 @@ def plot_histograms(planet, models, plot_parameters,
                         elements = ratio.split('/')   # Split into constituent elements
                         element_1, element_2 = elements
 
-                        # For metallicity, sum the C, O, N, P, and S abundances
+                        # For metallicity, sum the abundances of elements heavier than He
                         if (ratio == 'M/H') or (ratio == 'log_M/H'):
-                            element_ratio_norm = np.zeros(N_samples)
-                            for element_i in ['C', 'O', 'N', 'P', 'S']:
-                                element_ratio = elemental_ratio_samples(chemical_species, X_stored, 
-                                                                        element_i, element_2)
-                                element_ratio_norm += element_ratio / 10**(solar_abundances[element_i]-12.0)
+                            numerator = np.zeros(N_samples)
+                            denominator = 0.0
+
+                            # Automatically detect which elements are present in the atmosphere
+                            elements_in_atmosphere = set()
+                            
+                            # Scan all chemical species to find which elements are present
+                            for species in chemical_species:
+                                counts = count_atoms(species)
+                                for element in counts.keys():
+                                    # Only include metals (exclude H and He)
+                                    if element not in ['H', 'He']:
+                                        elements_in_atmosphere.add(element)
+                            
+                            # Convert to sorted list for consistent ordering
+                            elements_in_atmosphere = sorted(list(elements_in_atmosphere))
+                            
+                            # Only include elements that have solar abundance data
+                            available_elements = []
+                            for element_i in elements_in_atmosphere:
+                                if element_i in solar_abundances:
+                                    available_elements.append(element_i)
+                            
+                            # Calculate metallicity using detected elements
+                            for element_i in available_elements:
+
+                                # Sum elemental ratios for the atmosphere
+                                numerator += elemental_ratio_samples(chemical_species, X_stored, 
+                                                                     element_i, element_2)
+
+                                # Sum solar abundances for normalisation
+                                denominator += 10**(solar_abundances[element_i]-12.0)
+
+                            # Divide summed atmospheric abundances by summed solar abundances for the metallicity
+                            element_ratio_norm = numerator / denominator
+
+                        # Other elemental ratios
                         else:
                             element_ratio = elemental_ratio_samples(chemical_species, X_stored, 
                                                                     element_1, element_2)
