@@ -804,10 +804,10 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                         cloud_params += ['log_r_m_' + aerosol]
                         cloud_params += ['log_X_' + aerosol]
 
-            # Uniaxial random, uniaxial seperate, biaxial random, biaxial seperate slabs 
+            # Uniaxial random, uniaxial separate, biaxial random, biaxial separate slabs 
             # Make error message for fuzzy deck and UX (sorry!)
             # Random will assume 2/3 and 1/3 for uniaxial and 1/3 1/3 1/3 for biaxial 
-            # Seperate will allow free mixing ratios, but keep particle size, slab width the same. 
+            # separate will allow free mixing ratios, but keep particle size, slab width the same. 
             elif ('uniaxial' in cloud_type):
 
                 if len(aerosol_species) > 2:
@@ -832,13 +832,12 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                     # Still assume the same radius
                     cloud_params += ['log_r_m_uniaxial']
 
-                    # Have seperate mixing ratios
+                    # Have separate mixing ratios
                     cloud_params += ['log_X_ordinary']
                     cloud_params += ['log_X_extraordinary']
 
                     print('This model assumes the first aerosol is ordinary, then extraordinary')
                 
-
             elif ('biaxial' in cloud_type):
 
                 if len(aerosol_species) > 3:
@@ -863,7 +862,7 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                     # Still assume the same radius
                     cloud_params += ['log_r_m_biaxial']
 
-                    # Have seperate mixing ratios
+                    # Have separate mixing ratios
                     cloud_params += ['log_X_Ec']
                     cloud_params += ['log_X_Eb']
                     cloud_params += ['log_X_Ea']
@@ -888,7 +887,6 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
             cloud_params += ['kappa_cloud_eddysed']
             cloud_params += ['g_cloud_eddysed']
             cloud_params += ['w_cloud_eddysed']
-
 
         else:
             raise Exception("Error: unsupported cloud model.")
@@ -2139,7 +2137,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                                 # And that either returns a list of arrays, or something else, which is why we have the try-except 
 
                                 # Shared parameters, where the first index needs to be the deck species 
-                                # This is why we keep the deck and slab seperate and then join them together
+                                # This is why we keep the deck and slab separate and then join them together
                                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                                 P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0]])
                                 P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0]])
@@ -2170,7 +2168,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                         else:
                             try:
                                 # Shared parameters, where the first index needs to be the deck species 
-                                # This is why we keep the deck and slab seperate and then join them together
+                                # This is why we keep the deck and slab separate and then join them together
                                 r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                                 P_deck = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_deck')!= -1)[0]])
                                 P_slab = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names, 'log_P_top_slab')!= -1)[0]])
