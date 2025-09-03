@@ -13,6 +13,7 @@ from mpi4py import MPI
 from numba import jit, cuda
 from spectres import spectres
 from scipy.interpolate import interp1d as Interp
+from inspect import getfullargspec
 
 from .parameters import split_params
 
@@ -1926,4 +1927,59 @@ def mock_missing(name):
             f'this is likely due to it not being installed.')
     return type(name, (), {'__init__': init})
 
-  
+def _update_model(model, **model_kwargs):
+    """Given a model dictionary, reinitialize it to update any changed parameters."""
+    from .core import define_model
+
+    # Allows for updating model parameters within the function, rather than before
+    for key, value in model_kwargs.items():
+        if key in model:
+            model[key] = value
+        else:
+            raise KeyError(f'`define_model` got an unexpected keyword argument {key}')
+
+    model_args = getfullargspec(define_model).args
+
+    # Get list of dictionary values for the args of define_model
+    try:
+        inputs = [model[arg] for arg in model_args if arg in model]
+    except KeyError as e:
+        raise KeyError(f'`model` dictionary is missing the key {e} required to define the model.')
+
+    model = define_model(*inputs)
+    
+    return model
+
+def _update_atmosphere(planet, model, atmosphere, **atm_kwargs):
+    """Given an atmosphere dictionary, reinitialize it to update any changed parameters."""
+    from .core import make_atmosphere
+    
+    atm_ispec = getfullargspec(make_atmosphere)
+
+    atm_args = getfullargspec(make_atmosphere).args
+    atm_defaults = getfullargspec(make_atmosphere).defaults
+    n_kwargs = len(atm_defaults) if atm_defaults is not None else 0
+
+    kwarg_names = atm_args[-n_kwargs:]
+
+    inputs = []
+
+    for key, value in atm_kwargs.items():
+        if key in kwarg_names:
+            idx = kwarg_names.index(key)
+            atm_defaults[idx] = value
+        else:
+            raise KeyError(f'`make_atmosphere` got an unexpected keyword argument {key}')
+    
+    for key in atm_args[:-n_kwargs]:
+        if key in atmosphere:
+            inputs += [atmosphere[key]]
+        else:
+            raise KeyError(f'`atmosphere` dictionary is missing the key {key} required to make the atmosphere.')
+    
+    inputs += atm_defaults
+
+
+    atmosphere = make_atmosphere(planet, model, *inputs)
+
+    return atmosphere
