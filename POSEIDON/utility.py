@@ -1931,6 +1931,25 @@ def _update_model(model, **model_kwargs):
     """Given a model dictionary, reinitialize it to update any changed parameters."""
     from .core import define_model
 
+    model_ispec = getfullargspec(define_model)
+
+    model_args = model_ispec.args
+    model_defaults = model_ispec.defaults
+    n_kwargs = len(model_defaults) if model_defaults is not None else 0
+
+    kwarg_names = model_args[-n_kwargs:]
+
+    inputs = []
+
+    for i in range(len(model_args)):
+        key = model_args[i]
+        if key in model:
+            inputs += [model[key]]
+        elif key in kwarg_names:
+            inputs += [model_defaults[kwarg_names.index(key)]]
+        else:
+            raise KeyError(f'`model` dictionary is missing the key {key} required to define the model.')
+
     # Allows for updating model parameters within the function, rather than before
     for key, value in model_kwargs.items():
         if key in model:
@@ -1940,13 +1959,16 @@ def _update_model(model, **model_kwargs):
 
     model_args = getfullargspec(define_model).args
 
-    # Get list of dictionary values for the args of define_model
-    try:
-        inputs = [model[arg] for arg in model_args if arg in model]
-    except KeyError as e:
-        raise KeyError(f'`model` dictionary is missing the key {e} required to define the model.')
+    # This SHOULD be every parameter. Pack in dictionary then check for updated parameters
+    input_dict = dict(zip(model_args, inputs))
 
-    model = define_model(*inputs)
+    for key, value in model_kwargs.items():
+        if key in input_dict:
+            input_dict[key] = value
+        else:
+            raise KeyError(f'`define_model` got an unexpected keyword argument {key}')
+
+    model = define_model(*input_dict.values())
     
     return model
 
@@ -1956,30 +1978,34 @@ def _update_atmosphere(planet, model, atmosphere, **atm_kwargs):
     
     atm_ispec = getfullargspec(make_atmosphere)
 
-    atm_args = getfullargspec(make_atmosphere).args
-    atm_defaults = getfullargspec(make_atmosphere).defaults
+    atm_args = atm_ispec.args
+    atm_defaults = atm_ispec.defaults
     n_kwargs = len(atm_defaults) if atm_defaults is not None else 0
 
     kwarg_names = atm_args[-n_kwargs:]
 
-    inputs = []
+    inputs = [planet, model]
 
-    for key, value in atm_kwargs.items():
-        if key in kwarg_names:
-            idx = kwarg_names.index(key)
-            atm_defaults[idx] = value
-        else:
-            raise KeyError(f'`make_atmosphere` got an unexpected keyword argument {key}')
-    
-    for key in atm_args[:-n_kwargs]:
+    for i in range(len(atm_args)):
+        key = atm_args[i]
         if key in atmosphere:
             inputs += [atmosphere[key]]
+        elif key in ['planet', 'model']:
+            continue
+        elif key in kwarg_names:
+            inputs += [atm_defaults[kwarg_names.index(key)]]
         else:
             raise KeyError(f'`atmosphere` dictionary is missing the key {key} required to make the atmosphere.')
+        
+    # This SHOULD be every parameter. Pack in dictionary then check for updated parameters
+    input_dict = dict(zip(atm_args, inputs))
     
-    inputs += atm_defaults
+    for key, value in atm_kwargs.items():
+        if key in input_dict:
+            input_dict[key] = value
+        else:
+            raise KeyError(f'`make_atmosphere` got an unexpected keyword argument {key}')
 
-
-    atmosphere = make_atmosphere(planet, model, *inputs)
+    atmosphere = make_atmosphere(*input_dict.values())
 
     return atmosphere
