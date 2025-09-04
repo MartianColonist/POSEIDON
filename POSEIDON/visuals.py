@@ -41,7 +41,7 @@ warnings.filterwarnings("ignore", message = "This figure includes Axes that are 
                                             "so results might be incorrect.")
 
 from .utility import bin_spectrum, generate_latex_param_names, round_sig_figs, \
-                     confidence_intervals, create_directories
+                     confidence_intervals, create_directories, plot_collection
 from .instrument import bin_spectrum_to_data
 from .parameters import split_params
 from .retrieval import get_retrieved_atmosphere
@@ -5299,3 +5299,105 @@ def vary_one_parameter_PT(model, planet, param_name, vary_list,
                        frameon=False, columnspacing=1.0)
     
     fig.set_size_inches(9.0, 9.0)
+
+def vary_one_parameter(model, planet, star, atmosphere, opac, wl, param_name, vary_list, spectrum_type = 'transmission', 
+                    y_unit = 'transit_depth', **plot_kwargs):
+    
+    '''
+    This function is utilized in tutorial noteooks to show how turning a knob on a parameter changes a resultant spectrum
+
+    Args:
+        model (dict):
+            A specific description of a given POSEIDON model.
+        planet (dict):
+            Collection of planetary properties used by POSEIDON.
+        star (dict):
+            Collection of stellar properties used by POSEIDON.
+        atmosphere (dict):
+            Collection of atmospheric properties used by POSEIDON.
+        opac (dict):
+            Collection of cross sections and other opacity sources.
+        wl (np.array of float):
+            Model wavelength grid (μm).
+        param_name (string):
+            Name of the parameter to vary
+        vary_list (array of float):
+            Array containing values to test
+        spectrum_type (str):
+            The type of spectrum for POSEIDON to compute
+            (Options: transmission / emission / direct_emission / 
+                    transmission_time_average).
+        y_unit (str):
+            The unit of the y-axis
+            (Options: 'transit_depth', 'eclipse_depth', '(Rp/Rs)^2', 
+            '(Rp/R*)^2', 'Fp/Fs', 'Fp/F*', 'Fp').
+        
+
+    Returns: 
+        Outputs a plot of resultant spectra with the param_name at the vary_list values.
+
+    '''
+    from POSEIDON.core import compute_spectrum
+    from POSEIDON.utility import _update_model, _update_atmosphere
+
+    # Array that holds each spectrum and their label
+    spectra_array = []
+    spectra_labels = []
+
+    assert param_name in model['param_names'], f"{param_name} is not in the param list. Check model['param_names']"
+
+    for i in range(len(vary_list)):
+
+        if param_name in planet.keys():
+            planet[param_name] = vary_list[i]
+        elif param_name in star.keys():
+            star[param_name] = vary_list[i]
+        elif param_name in model.keys():
+            model[param_name] = vary_list[i]
+        elif param_name in atmosphere.keys():
+            if param_name in model['cloud_param_names']:
+                cloud_index = np.argwhere(model['cloud_param_names'] == param_name)[0][0]
+                atmosphere['cloud_params'][cloud_index] = vary_list[i]
+            elif param_name in model['PT_param_names']:
+                PT_index = np.argwhere(model['PT_param_names'] == param_name)[0][0]
+                atmosphere['PT_params'][PT_index] = vary_list[i]
+            elif param_name in model['X_param_names']:
+                X_index = np.argwhere(model['X_param_names'] == param_name)[0][0]
+                atmosphere['log_X_params'][X_index] = vary_list[i]
+            elif param_name in model['surface_param_names']:
+                surface_index = np.argwhere(model['surface_param_names'] == param_name)[0][0]
+                atmosphere['surface_params'][surface_index] = vary_list[i]
+            elif param_name in model['geometry_param_names']:
+                geometry_index = np.argwhere(model['geometry_param_names'] == param_name)[0][0]
+                atmosphere['geometry_params'][geometry_index] = vary_list[i]
+            atmosphere[param_name] = vary_list[i]
+        else:
+            raise Exception(f"{param_name} not found in planet, star, model or atmosphere dictionaries.")
+        
+        model = _update_model(model)
+        atmosphere = _update_atmosphere(planet, model, atmosphere)
+    
+        spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                    spectrum_type = spectrum_type)
+            
+        spectra_array.append(spectrum)
+        label = param_name + ' = ' + str(vary_list[i])
+        spectra_labels.append(label)
+
+
+    # Plot
+    for s in range(len(spectra_array)):
+        if s == 0:
+            spectra = plot_collection(spectra_array[s], wl, collection = [])
+        else:
+            spectra = plot_collection(spectra_array[s], wl, collection = spectra)
+
+    label = 'Varying ' + param_name
+    
+    fig = plot_spectra(spectra, planet, R_to_bin = 100,
+                       plt_label = label,
+                       spectra_labels = spectra_labels,
+                       plot_full_res = False,
+                       save_fig = False,
+                       y_unit = y_unit,
+                       **plot_kwargs)

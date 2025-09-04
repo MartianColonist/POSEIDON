@@ -1237,7 +1237,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'albedo_deck' : albedo_deck,
                   'T_surf' : T_surf, 'albedo_surf' : albedo_surf, 
                   'surface_component_percentages' : surface_component_percentages,
-                  'R_p_ref' : R_p_ref,}
+                  'R_p_ref' : R_p_ref, 'P_ref' : P_ref,
+                  'PT_params' : PT_params, 'log_X_params' : log_X_params,
+                  'cloud_params' : cloud_params, 'geometry_params' : geometry_params,
+                  'surface_params' : surface_params,}
 
     return atmosphere
 
