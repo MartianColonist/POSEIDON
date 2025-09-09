@@ -5354,22 +5354,22 @@ def vary_one_parameter(model, planet, star, atmosphere, opac, wl, param_name, va
             star[param_name] = vary_list[i]
         elif param_name in model.keys():
             model[param_name] = vary_list[i]
+        elif param_name in model['cloud_param_names']:
+            cloud_index = np.argwhere(model['cloud_param_names'] == param_name)[0][0]
+            atmosphere['cloud_params'][cloud_index] = vary_list[i]
+        elif param_name in model['PT_param_names']:
+            PT_index = np.argwhere(model['PT_param_names'] == param_name)[0][0]
+            atmosphere['PT_params'][PT_index] = vary_list[i]
+        elif param_name in model['X_param_names']:
+            X_index = np.argwhere(model['X_param_names'] == param_name)[0][0]
+            atmosphere['log_X_params'][X_index] = vary_list[i]
+        elif param_name in model['surface_param_names']:
+            surface_index = np.argwhere(model['surface_param_names'] == param_name)[0][0]
+            atmosphere['surface_params'][surface_index] = vary_list[i]
+        elif param_name in model['geometry_param_names']:
+            geometry_index = np.argwhere(model['geometry_param_names'] == param_name)[0][0]
+            atmosphere['geometry_params'][geometry_index] = vary_list[i]
         elif param_name in atmosphere.keys():
-            if param_name in model['cloud_param_names']:
-                cloud_index = np.argwhere(model['cloud_param_names'] == param_name)[0][0]
-                atmosphere['cloud_params'][cloud_index] = vary_list[i]
-            elif param_name in model['PT_param_names']:
-                PT_index = np.argwhere(model['PT_param_names'] == param_name)[0][0]
-                atmosphere['PT_params'][PT_index] = vary_list[i]
-            elif param_name in model['X_param_names']:
-                X_index = np.argwhere(model['X_param_names'] == param_name)[0][0]
-                atmosphere['log_X_params'][X_index] = vary_list[i]
-            elif param_name in model['surface_param_names']:
-                surface_index = np.argwhere(model['surface_param_names'] == param_name)[0][0]
-                atmosphere['surface_params'][surface_index] = vary_list[i]
-            elif param_name in model['geometry_param_names']:
-                geometry_index = np.argwhere(model['geometry_param_names'] == param_name)[0][0]
-                atmosphere['geometry_params'][geometry_index] = vary_list[i]
             atmosphere[param_name] = vary_list[i]
         else:
             raise Exception(f"{param_name} not found in planet, star, model or atmosphere dictionaries.")
