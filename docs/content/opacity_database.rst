@@ -501,7 +501,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
    * - :math:`\mathrm{AlH}`
      - `AloHa <https://www.exomol.com/data/molecules/AlH/27Al-1H/AloHa/>`_
        
-       (2016-07-26)
+       (2024-03-07)
      - `Yurchenko et al. <https://ui.adsabs.harvard.edu/abs/2024MNRAS.527.9736Y/abstract>`_
 
        `(2023) <https://ui.adsabs.harvard.edu/abs/2024MNRAS.527.9736Y/abstract>`_
