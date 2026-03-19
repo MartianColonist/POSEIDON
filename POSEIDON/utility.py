@@ -732,18 +732,37 @@ def write_retrieved_spectrum(retrieval_name, wl, spec_low2,
 
 
 def write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
-                       T_median, T_high1, T_high2):
+                       T_median, T_high1, T_high2, region_name = None):
     '''
-    ADD DOCSTRING
+    Write the retrieved P-T profile confidence intervals to a text file.
+
+    Args:
+        retrieval_name (str):
+            Name of the retrieval run.
+        P (np.array of float):
+            Model pressure grid (bar).
+        T_low2, T_low1, T_median, T_high1, T_high2 (np.array of float):
+            Temperature confidence intervals at each pressure level.
+        region_name (str, optional):
+            If provided, appends a region label to the output filename
+            (e.g. 'dayside', 'nightside', 'evening', 'morning').
     '''
 
     # Identify output directory location where the retrieved P-T profile will be saved
     output_dir = '../samples/'
+
+    # Build output filename, optionally including a region label
+    if (region_name is not None):
+        filename = retrieval_name + '_PT_retrieved_' + region_name + '.txt'
+    else:
+        filename = retrieval_name + '_PT_retrieved.txt'
     
-    # Write retrieved spectrum
-    f = open(output_dir + retrieval_name + '_PT_retrieved.txt', 'w')
+    # Write retrieved P-T profile
+    f = open(output_dir + filename, 'w')
     
     # Write top line
+    if (region_name is not None):
+        f.write('Region: ' + region_name + '\n')
     f.write('P (bar) | T: -2σ | T: -1σ  | T: median | T: +1σ | T: +2σ \n')
     
     for i in range(len(P)):
@@ -754,16 +773,36 @@ def write_retrieved_PT(retrieval_name, P, T_low2, T_low1,
 
 
 def write_retrieved_log_X(retrieval_name, chemical_species, P, log_X_low2, 
-                          log_X_low1, log_X_median, log_X_high1, log_X_high2):
+                          log_X_low1, log_X_median, log_X_high1, log_X_high2,
+                          region_name = None):
     '''
-    ADD DOCSTRING
+    Write the retrieved mixing ratio profile confidence intervals to a text file.
+
+    Args:
+        retrieval_name (str):
+            Name of the retrieval run.
+        chemical_species (list of str):
+            Chemical species included in the model.
+        P (np.array of float):
+            Model pressure grid (bar).
+        log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2 (np.array of float):
+            Log-mixing-ratio confidence intervals for each species at each pressure level.
+        region_name (str, optional):
+            If provided, appends a region label to the output filename
+            (e.g. 'dayside', 'nightside', 'evening', 'morning').
     '''
 
     # Identify output directory location where the retrieved mixing ratio profiles will be saved
     output_dir = '../samples/'
+
+    # Build output filename, optionally including a region label
+    if (region_name is not None):
+        filename = retrieval_name + '_log_X_retrieved_' + region_name + '.txt'
+    else:
+        filename = retrieval_name + '_log_X_retrieved.txt'
     
-    # Write retrieved spectrum
-    f = open(output_dir + retrieval_name + '_log_X_retrieved.txt', 'w')
+    # Write retrieved mixing ratio profiles
+    f = open(output_dir + filename, 'w')
 
     # First line of file lists the chemical species included in this model
     chem_species_string = 'Chemical species: '
@@ -824,9 +863,27 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     return wl, spec_low2, spec_low1, spec_median, spec_high1, spec_high2
 
 
-def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
+def read_retrieved_PT(planet_name, model_name, retrieval_name = None,
+                      region_name = None):
     '''
-    ADD DOCSTRING
+    Read the retrieved P-T profile confidence intervals from a text file.
+
+    Args:
+        planet_name (str):
+            The name of the planet.
+        model_name (str):
+            The name of the model.
+        retrieval_name (str, optional):
+            The name of the retrieval run. If None, defaults to model_name.
+        region_name (str, optional):
+            If provided, reads the region-specific P-T file
+            (e.g. 'dayside', 'nightside', 'evening', 'morning').
+
+    Returns:
+        P (np.array of float):
+            Pressure grid (bar).
+        T_low2, T_low1, T_median, T_high1, T_high2 (np.array of float):
+            Temperature confidence intervals at each pressure level.
     '''
 
     if (retrieval_name is None):
@@ -837,12 +894,17 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     # Identify output directory location where the retrieved P-T profile is located
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
-    # Find retrieved P-T profile file
-    fname = output_dir + retrieval_name + '_PT_retrieved.txt'
+    # Build filename, optionally including a region label
+    if (region_name is not None):
+        fname = output_dir + retrieval_name + '_PT_retrieved_' + region_name + '.txt'
+        skiprows = 2   # Region-specific files have an extra 'Region:' header line
+    else:
+        fname = output_dir + retrieval_name + '_PT_retrieved.txt'
+        skiprows = 1   # Standard file has a single header line
 
     # Read retrieved temperature confidence intervals
     PT_file = pd.read_csv(fname, sep = '[\\s]{1,20}', engine = 'python', 
-                          header = None, skiprows = 1)
+                          header = None, skiprows = skiprows)
 
     P = np.array(PT_file[0])         # Pressure (bar)
     T_low2 = np.array(PT_file[1])    # -2σ
@@ -854,9 +916,29 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     return P, T_low2, T_low1, T_median, T_high1, T_high2
 
 
-def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
+def read_retrieved_log_X(planet_name, model_name, retrieval_name = None,
+                         region_name = None):
     '''
-    ADD DOCSTRING
+    Read the retrieved mixing ratio profile confidence intervals from a text file.
+
+    Args:
+        planet_name (str):
+            The name of the planet.
+        model_name (str):
+            The name of the model.
+        retrieval_name (str, optional):
+            The name of the retrieval run. If None, defaults to model_name.
+        region_name (str, optional):
+            If provided, reads the region-specific log_X file
+            (e.g. 'dayside', 'nightside', 'evening', 'morning').
+
+    Returns:
+        P (np.array of float):
+            Pressure grid (bar).
+        chemical_species (np.array of str):
+            Chemical species included in the model.
+        log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2 (np.array of float):
+            Log-mixing-ratio confidence intervals for each species.
     '''
 
     if (retrieval_name is None):
@@ -864,11 +946,14 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
     else:
         retrieval_name = model_name + '_' + retrieval_name
 
-    # Identify output directory location where the retrieved P-T profile is located
+    # Identify output directory location where the retrieved mixing ratio profile is located
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
-    # Find retrieved P-T profile file
-    fname = output_dir + retrieval_name + '_log_X_retrieved.txt'
+    # Build filename, optionally including a region label
+    if (region_name is not None):
+        fname = output_dir + retrieval_name + '_log_X_retrieved_' + region_name + '.txt'
+    else:
+        fname = output_dir + retrieval_name + '_log_X_retrieved.txt'
 
     # Read file to figure out number of layers and chemical species
     file = open(fname, 'r')

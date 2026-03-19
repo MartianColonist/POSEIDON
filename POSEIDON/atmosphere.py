@@ -103,6 +103,132 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_set, P_set):
     return T
 
 
+def compute_T_Madhu_2D(P, a1_1, a2_1, log_P1_1, log_P2_1, 
+                       a1_2, a2_2, log_P1_2, log_P2_2, 
+                       T_deep, P_ref, N_sectors, N_zones,
+                       alpha, beta, phi, theta):
+    '''
+    Computes a 2D temperature field using two Madhusudhan & Seager (2009)
+    P-T profiles: one for each side of the atmosphere (e.g. dayside/nightside
+    or evening/morning). Both profiles share a common deep temperature T_deep
+    at the reference pressure P_ref (i.e. log_P3 = log10(P_ref) for both).
+
+    For a D-N 2D model: profile 1 = dayside, profile 2 = nightside.
+    For an E-M 2D model: profile 1 = evening, profile 2 = morning.
+
+    The angular interpolation between the two profiles follows the same scheme
+    used by the gradient profiles in MacDonald & Lewis (2022).
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        a1_1 (float):
+            Alpha_1 parameter for profile 1.
+        a2_1 (float):
+            Alpha_2 parameter for profile 1.
+        log_P1_1 (float):
+            Layer 1-2 boundary pressure for profile 1 (log10 bar).
+        log_P2_1 (float):
+            Inversion pressure for profile 1 (log10 bar).
+        a1_2 (float):
+            Alpha_1 parameter for profile 2.
+        a2_2 (float):
+            Alpha_2 parameter for profile 2.
+        log_P1_2 (float):
+            Layer 1-2 boundary pressure for profile 2 (log10 bar).
+        log_P2_2 (float):
+            Inversion pressure for profile 2 (log10 bar).
+        T_deep (float):
+            Shared deep temperature at P_ref (K).
+        P_ref (float):
+            Reference pressure (bar). Sets log_P3 for both profiles.
+        N_sectors (int):
+            Number of azimuthal sectors.
+        N_zones (int):
+            Number of zenith zones.
+        alpha (float):
+            Terminator opening angle (degrees).
+        beta (float):
+            Day-night opening angle (degrees).
+        phi (np.array of float):
+            Mid-sector angles (radians).
+        theta (np.array of float):
+            Mid-zone angles (radians).
+
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure, sector, 
+            and zone (K).
+
+    '''
+
+    # Store number of layers and log_P3 (shared deep pressure)
+    N_layers = len(P)
+    log_P3 = np.log10(P_ref)
+
+    # Compute 1D Madhu profiles for each side
+    # T_set = T_deep, P_set = P_ref for both profiles
+    T_profile_1 = compute_T_Madhu(P, a1_1, a2_1, log_P1_1, log_P2_1,
+                                  log_P3, T_deep, P_ref)   # shape (N_layers, 1, 1)
+    T_profile_2 = compute_T_Madhu(P, a1_2, a2_2, log_P1_2, log_P2_2,
+                                  log_P3, T_deep, P_ref)   # shape (N_layers, 1, 1)
+
+    # Extract 1D arrays
+    T_1 = T_profile_1[:, 0, 0]   # Profile 1 (day or evening)
+    T_2 = T_profile_2[:, 0, 0]   # Profile 2 (night or morning)
+
+    # Initialise 3D temperature array
+    T = np.zeros(shape=(N_layers, N_sectors, N_zones))
+
+    # Convert alpha and beta from degrees to radians
+    alpha_rad = alpha * (np.pi / 180.0)
+    beta_rad = beta * (np.pi / 180.0)
+
+    # Populate 3D temperature field by angular interpolation
+    for j in range(N_sectors):
+        for k in range(N_zones):
+
+            # Determine the interpolation weight between the two profiles.
+            # For E-M models the azimuthal angle phi controls the blend.
+            # For D-N models the zenith angle theta controls the blend.
+            # Profile 1 is the first side (day or evening) and profile 2 is 
+            # the second side (night or morning).
+
+            # Evening-Morning weight from phi
+            if (N_sectors > 1):
+                if (phi[j] <= -alpha_rad / 2.0):
+                    w_phi = 1.0     # Pure profile 1 (evening)
+                elif (phi[j] >= alpha_rad / 2.0):
+                    w_phi = 0.0     # Pure profile 2 (morning)
+                else:
+                    w_phi = 0.5 - (phi[j] / alpha_rad) 
+            else:
+                w_phi = 0.5   # Single sector (terminator average)
+
+            # Day-Night weight from theta
+            if (N_zones > 1):
+                if (theta[k] <= -beta_rad / 2.0):
+                    w_theta = 1.0   # Pure profile 1 (dayside)
+                elif (theta[k] >= beta_rad / 2.0):
+                    w_theta = 0.0   # Pure profile 2 (nightside)
+                else:
+                    w_theta = 0.5 - (theta[k] / beta_rad) 
+            else:
+                w_theta = 0.5   # Single zone (no D-N distinction)
+
+            # For D-N models (N_sectors=1), w_phi=0.5 so w=w_theta
+            # For E-M models (N_zones=1), w_theta=0.5 so w=w_phi
+            w = w_phi + w_theta - 0.5
+
+            # Clamp to [0, 1]
+            w = max(0.0, min(1.0, w))
+
+            for i in range(N_layers):
+                T[i, j, k] = w * T_1[i] + (1.0 - w) * T_2[i]
+
+    return T
+
+
 def compute_T_slope(P, T_phot, Delta_T_arr, log_P_phot = 0.5, 
                     log_P_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0]):
     '''
@@ -1186,6 +1312,8 @@ def add_bulk_component(P, T, X_param, N_species, N_sectors, N_zones,
                 X[2,:,j,k] = X_He
         
     # For any other choice of bulk species, the first mixing ratio is the bulk species
+    else:
+        
         if (len(bulk_species) > 1):
             raise Exception("Only a single species can be designated as bulk " +
                             "(besides models with H2 & He or H & He with a fixed He/H2 ratio).")
@@ -2016,7 +2144,7 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
     
     '''
 
-    # If disable_atamosphere is True, just return the following 
+    # If disable_atmosphere is True, just return the following 
     if disable_atmosphere == True:
         return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True
     
@@ -2083,24 +2211,52 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # Gaussian smooth P-T profile
         T = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
         
-    # For the Madhusudhan & Seager (2009) profile (1D only)
+    # For the Madhusudhan & Seager (2009) profile (1D or 2D)
     elif (PT_profile == 'Madhu'):
+
+        # 1D case: single Madhu profile
+        if (len(PT_state) == 6):
         
-        # Unpack P-T profile parameters
-        a1, a2, log_P1, log_P2, log_P3, T_set = PT_state
-        
-        # Profile requires P3 > P2 and P3 > P1, reject otherwise
-        if ((log_P3 < log_P2) or (log_P3 < log_P1)):
+            # Unpack P-T profile parameters
+            a1, a2, log_P1, log_P2, log_P3, T_set = PT_state
             
-            # Quit computations if model rejected
-            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
-        
-        # If P-T parameters valid
-        else:
+            # Profile requires P3 > P2 and P3 > P1, reject otherwise
+            if ((log_P3 < log_P2) or (log_P3 < log_P1)):
+                
+                # Quit computations if model rejected
+                return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
             
-            # Compute unsmoothed temperature profile
-            T_rough = compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, 
-                                      T_set, P_param_set)
+            # If P-T parameters valid
+            else:
+                
+                # Compute unsmoothed temperature profile
+                T_rough = compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, 
+                                          T_set, P_param_set)
+
+        # 2D case: two Madhu profiles sharing a common deep temperature at P_ref
+        elif (len(PT_state) == 9):
+            
+            # Unpack P-T profile parameters
+            a1_1, a2_1, log_P1_1, log_P2_1, \
+            a1_2, a2_2, log_P1_2, log_P2_2, T_deep = PT_state
+
+            log_P3 = np.log10(P_ref)
+
+            # Both profiles require P3 > P2 and P3 > P1, reject otherwise
+            if ((log_P3 < log_P2_1) or (log_P3 < log_P1_1) or
+                (log_P3 < log_P2_2) or (log_P3 < log_P1_2)):
+                
+                # Quit computations if model rejected
+                return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+            
+            # If P-T parameters valid
+            else:
+
+                # Compute 2D temperature field from two Madhu profiles
+                T_rough = compute_T_Madhu_2D(P, a1_1, a2_1, log_P1_1, log_P2_1,
+                                             a1_2, a2_2, log_P1_2, log_P2_2,
+                                             T_deep, P_ref, N_sectors, N_zones,
+                                             alpha, beta, phi, theta)
 
         # Gaussian smooth P-T profile
         T = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
