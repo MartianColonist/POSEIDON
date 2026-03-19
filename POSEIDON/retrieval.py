@@ -181,11 +181,8 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             print('POSEIDON retrieval finished in ' + str(total) + ' hours')
 
             # Compute samples of retrieved P-T, mixing ratio profiles, and spectrum
-            T_low2, T_low1, T_median, \
-            T_high1, T_high2, \
-            log_X_low2, log_X_low1, \
-            log_X_median, log_X_high1, \
-            log_X_high2, \
+            T_per_region, \
+            log_X_per_region, \
             spec_low2, spec_low1, \
             spec_median, spec_high1, \
             spec_high2, T_best, \
@@ -219,14 +216,25 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             # Only write retrieved P-T profile and mixing ratio arrays if atmosphere enabled
             if (disable_atmosphere == False):
 
-                # Save sampled P-T profile
-                write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
-                                   T_median, T_high1, T_high2)
+                # Save sampled P-T and mixing ratio profiles for each
+                # atmospheric region. For 1D models the dict has a single
+                # entry keyed by None (no suffix). For 2D/3D models each
+                # region (e.g. dayside/nightside, evening/morning) gets
+                # its own output file.
+                for region_name in T_per_region:
 
-                # Save sampled mixing ratio profiles
-                write_retrieved_log_X(retrieval_name, chemical_species, P, 
-                                      log_X_low2, log_X_low1, log_X_median, 
-                                      log_X_high1, log_X_high2)
+                    T_r_low2, T_r_low1, T_r_median, T_r_high1, T_r_high2 = T_per_region[region_name]
+                    log_X_r_low2, log_X_r_low1, log_X_r_median, log_X_r_high1, log_X_r_high2 = log_X_per_region[region_name]
+
+                    write_retrieved_PT(retrieval_name, P,
+                                       T_r_low2, T_r_low1, T_r_median,
+                                       T_r_high1, T_r_high2,
+                                       region_name = region_name)
+
+                    write_retrieved_log_X(retrieval_name, chemical_species, P,
+                                          log_X_r_low2, log_X_r_low1, log_X_r_median,
+                                          log_X_r_high1, log_X_r_high2,
+                                          region_name = region_name)
 
             print("All done! Output files can be found in " + output_dir + "results/")
 
@@ -508,7 +516,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             # Apply multiplicative stellar contamination to spectrum
             spectrum = epsilon * spectrum
 
-    #***** Step 5: nightside contamination (credit to John Kappelmeier) *****#
+    #***** Step 5: k contamination (credit to John Kappelmeier) *****#
     
     # Nightside contamination is only relevant for transmission spectra
     if ('transmission' in spectrum_type):
@@ -1297,43 +1305,71 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
             ymodel_samples[i,:] = ymodel
             
     # Compute 1 and 2 sigma confidence intervals for P-T and mixing ratio profiles and spectrum
-        
-    # P-T profile
-    if (disable_atmosphere == False):
-        _, T_low2, T_low1, T_median, \
-        T_high1, T_high2, _ = confidence_intervals(N_sample_draws, 
-                                                T_stored[:,:,0,0], N_D)
-    else:
-        T_low2, T_low1, T_median, T_high1, T_high2 = None, None, None, None, None
 
-    # Mixing ratio profiles
+    # Determine atmospheric regions based on model dimensionality
+    Atmosphere_dimension = model['Atmosphere_dimension']
+    TwoD_type = model['TwoD_type']
+
+    T_per_region = {}       # Dict mapping region name -> (T_low2, T_low1, T_median, T_high1, T_high2)
+    log_X_per_region = {}   # Dict mapping region name -> (log_X_low2, ..., log_X_high2)
+
     if (disable_atmosphere == False):
 
-        log_X_low2 = np.zeros(shape=(N_species, N_D))
-        log_X_low1 = np.zeros(shape=(N_species, N_D))
-        log_X_median = np.zeros(shape=(N_species, N_D))
-        log_X_high1 = np.zeros(shape=(N_species, N_D))
-        log_X_high2 = np.zeros(shape=(N_species, N_D))
+        # Build list of (region_name, sector_index, zone_index) tuples
+        region_list = []
 
-        for q in range(N_species):
+        if (Atmosphere_dimension == 1):
+            # 1D model: single region with no label
+            region_list.append((None, 0, 0))
 
-            _, log_X_low2[q,:], log_X_low1[q,:], \
-            log_X_median[q,:], log_X_high1[q,:], \
-            log_X_high2[q,:], _ = confidence_intervals(N_sample_draws, 
-                                                    log_X_stored[:,q,:,0,0], N_D)
-            
-    else:
+        elif (Atmosphere_dimension == 2):
 
-        log_X_low2, log_X_low1, log_X_median, \
-        log_X_high1, log_X_high2 = None, None, None, None, None
-    
+            if (TwoD_type == 'E-M'):
+                # Evening terminator is first sector, morning is last sector
+                region_list.append(('evening', 0, 0))
+                region_list.append(('morning', N_sectors - 1, 0))
+
+            elif (TwoD_type == 'D-N'):
+                # Dayside is first zone, nightside is last zone
+                region_list.append(('dayside', 0, 0))
+                region_list.append(('nightside', 0, N_zones - 1))
+
+        elif (Atmosphere_dimension == 3):
+            # Four corner regions combining evening/morning with dayside/nightside
+            region_list.append(('dayside_evening', 0, 0))
+            region_list.append(('dayside_morning', N_sectors - 1, 0))
+            region_list.append(('nightside_evening', 0, N_zones - 1))
+            region_list.append(('nightside_morning', N_sectors - 1, N_zones - 1))
+
+        for region_name, j_sector, k_zone in region_list:
+
+            # Temperature confidence intervals for this region
+            _, T_r_low2, T_r_low1, T_r_median, \
+            T_r_high1, T_r_high2, _ = confidence_intervals(N_sample_draws,
+                                                           T_stored[:,:,j_sector,k_zone], N_D)
+            T_per_region[region_name] = (T_r_low2, T_r_low1, T_r_median, T_r_high1, T_r_high2)
+
+            # Mixing ratio confidence intervals for this region
+            log_X_low2 = np.zeros(shape=(N_species, N_D))
+            log_X_low1 = np.zeros(shape=(N_species, N_D))
+            log_X_median = np.zeros(shape=(N_species, N_D))
+            log_X_high1 = np.zeros(shape=(N_species, N_D))
+            log_X_high2 = np.zeros(shape=(N_species, N_D))
+
+            # Mixing ratio confidence intervals for each species in this region
+            for q in range(N_species):
+                _, log_X_low2[q,:], log_X_low1[q,:], log_X_median[q,:], \
+                log_X_high1[q,:], log_X_high2[q,:], _ = confidence_intervals(N_sample_draws, 
+                                                                             log_X_stored[:,q,:,j_sector,k_zone],N_D)
+                
+            log_X_per_region[region_name] = (log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2)
+                
     # Spectrum
     _, spec_low2, spec_low1, spec_median, \
     spec_high1, spec_high2, _ = confidence_intervals(N_sample_draws, 
                                                      spectrum_stored, len(wl))
     
-    return T_low2, T_low1, T_median, T_high1, T_high2, \
-           log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2, \
+    return T_per_region, log_X_per_region, \
            spec_low2, spec_low1, spec_median, spec_high1, spec_high2, \
            T_best, spectrum_best, ymodel_best, ymodel_samples
 

@@ -3776,7 +3776,7 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
 
     # Define colours for plotted spectra (default or user choice)
     if (len(colour_list) == 0):   # If user did not specify a custom colour list
-        colours = ['purple', 'darkorange', 'green']
+        colours = ['purple', 'darkorange', 'green', 'crimson']
     else:
         colours = colour_list
 
@@ -3846,59 +3846,56 @@ def plot_PT_retrieved(planet_name, PT_median, PT_low2, PT_low1, PT_high1,
     
     #***** Plot P-T profiles *****#
     
-    # 1D temperature profile
-    if (Atmosphere_dimension > 1):
-        raise Exception("This function does not currently support " + 
-                        "multidimensional retrievals.")
+    # Loop over retrieved P-T profiles (supports 1D, 2D, and 3D models;
+    # for multidimensional models each region profile is passed as a
+    # separate entry in the PT_median / PT_low / PT_high collections)
+
+    # Loop over retrieved P-T profiles
+    for i in range(N_PT):
         
-    else:
-
-        # Loop over retrieved P-T profiles
-        for i in range(N_PT):
-            
-            # Extract temperature and pressure grid
-            (T_med, P) = PT_median[i]
-            (T_low1, P) = PT_low1[i]
-            (T_low2, P) = PT_low2[i]
-            (T_high1, P) = PT_high1[i]
-            (T_high2, P) = PT_high2[i]
-            
-            # If user did not specify a model label, just call them "Model 1, 2" etc.
-            if (len(PT_labels) == 0):
-                if (N_PT == 1):
-                    label_i = r'Retrieved P-T Profile'
-                else:
-                    label_i = r'Retrieved P-T Profile ' + str(i+1)
-            else:
-                label_i = PT_labels[i]
-            
-            # Only add sigma intervals to legend for one model (avoids clutter)
+        # Extract temperature and pressure grid
+        (T_med, P) = PT_median[i]
+        (T_low1, P) = PT_low1[i]
+        (T_low2, P) = PT_low2[i]
+        (T_high1, P) = PT_high1[i]
+        (T_high2, P) = PT_high2[i]
+        
+        # If user did not specify a model label, just call them "Model 1, 2" etc.
+        if (len(PT_labels) == 0):
             if (N_PT == 1):
-                label_med = label_i + r' (Median)'
-                label_one_sig = label_i + r' ($1 \sigma$)'
-                label_two_sig = label_i + r' ($2 \sigma$)'
+                label_i = r'Retrieved P-T Profile'
             else:
-                label_med = label_i
-                label_one_sig = ''
-                label_two_sig = ''
+                label_i = r'Retrieved P-T Profile ' + str(i+1)
+        else:
+            label_i = PT_labels[i]
+        
+        # Only add sigma intervals to legend for one model (avoids clutter)
+        if (N_PT == 1):
+            label_med = label_i + r' (Median)'
+            label_one_sig = label_i + r' ($1 \sigma$)'
+            label_two_sig = label_i + r' ($2 \sigma$)'
+        else:
+            label_med = label_i
+            label_one_sig = ''
+            label_two_sig = ''
 
-            # Plot median retrieved spectrum
-            ax1.semilogy(T_med, P, lw = 1.5, color = scale_lightness(colours[i], 1.0), 
-                        label = label_med)
-            
-            # Plot +/- 1σ confidence region
-            if sigma_to_plot == 1 or sigma_to_plot == 2:
-                ax1.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
-                                facecolor = colours[i], label = label_one_sig)
+        # Plot median retrieved spectrum
+        ax1.semilogy(T_med, P, lw = 1.5, color = scale_lightness(colours[i], 1.0), 
+                    label = label_med)
+        
+        # Plot +/- 1σ confidence region
+        if sigma_to_plot == 1 or sigma_to_plot == 2:
+            ax1.fill_betweenx(P, T_low1, T_high1, lw = 0.0, alpha = 0.5, 
+                            facecolor = colours[i], label = label_one_sig)
 
-            # Plot +/- 2σ sigma confidence region
-            if sigma_to_plot == 2:
-                ax1.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
-                                facecolor = colours[i], label = label_two_sig)
+        # Plot +/- 2σ sigma confidence region
+        if sigma_to_plot == 2:
+            ax1.fill_betweenx(P, T_low2, T_high2, lw = 0.0, alpha = 0.2, 
+                            facecolor = colours[i], label = label_two_sig)
 
-        # Plot actual (true) P-T profile
-        if (T_true != None):
-            ax1.semilogy(T_true, P, lw = 1.5, color = 'crimson', label = 'True')
+    # Plot actual (true) P-T profile
+    if (T_true != None):
+        ax1.semilogy(T_true, P, lw = 1.5, color = 'crimson', label = 'True')
 
     # Plot the retrieved surface pressure
     # This assumes the distribution is a tailed distribution (rn)
