@@ -297,8 +297,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
         if ((PT_profile == 'isotherm') and (PT_dim > 1)):
             raise Exception("Cannot retrieve multiple PT profiles with an isothermal shape")
             
-        if ((PT_profile == 'Madhu') and (PT_dim > 1)):
-            raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D models")
+        if ((PT_profile == 'Madhu') and (PT_dim > 2)):
+            raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D and 2D models")
         
         if ((PT_profile == 'Pelletier') and (PT_dim > 1)):
             raise Exception("Pelletier (2021) profile only supported for 1D models")
@@ -361,6 +361,10 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                     elif (PT_profile == 'two-gradients'):   
                         PT_params += ['T_Even_high', 'T_Even_mid', 'T_Morn_high',
                                     'T_Morn_mid', 'log_P_mid', 'T_deep']
+                    elif (PT_profile == 'Madhu'):
+                        PT_params += ['a1_even', 'a2_even', 'log_P1_even', 'log_P2_even',
+                                      'a1_morn', 'a2_morn', 'log_P1_morn', 'log_P2_morn',
+                                      'T_deep']
 
                 elif (TwoD_type == 'D-N'):
                     if (PT_profile == 'gradient'):            
@@ -368,7 +372,11 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                     elif (PT_profile == 'two-gradients'):   
                         PT_params += ['T_Day_high', 'T_Day_mid', 'T_Night_high',
                                     'T_Night_mid', 'log_P_mid', 'T_deep']
-    
+                    elif (PT_profile == 'Madhu'):
+                        PT_params += ['a1_day', 'a2_day', 'log_P1_day', 'log_P2_day',
+                                      'a1_night', 'a2_night', 'log_P1_night', 'log_P2_night',
+                                      'T_deep']
+
             # Difference parameter prescription from MacDonald & Lewis (2022)
             elif (TwoD_param_scheme == 'difference'):
 
@@ -1270,7 +1278,10 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
     elif (PT_profile == 'two-gradients'):
         len_PT = 8     
     elif (PT_profile == 'Madhu'):   # Madhusudhan & Seager (2009) profile
-        len_PT = 6
+        if (PT_dim == 1):
+            len_PT = 6
+        elif (PT_dim == 2):
+            len_PT = 9   # (a1_1, a2_1, log_P1_1, log_P2_1, a1_2, a2_2, log_P1_2, log_P2_2, T_deep)
     elif (PT_profile == 'Pelletier'): # Pelletier (2021)
         len_PT = len(PT_in)
     elif (PT_profile == 'Guillot'): # Guillot (2010)
@@ -1382,6 +1393,22 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                     Delta_T_mid = -1.0 * (PT_in[3] * alpha)
             log_P_mid = PT_in[4]
             T_deep = PT_in[5]
+
+        # For the 2D Madhusudhan & Seager (2009) profile (absolute only)
+        elif (PT_profile == 'Madhu'):
+            # PT_in = [a1_1, a2_1, log_P1_1, log_P2_1,
+            #          a1_2, a2_2, log_P1_2, log_P2_2, T_deep]
+            # Profile 1 = day (D-N) or evening (E-M)
+            # Profile 2 = night (D-N) or morning (E-M)
+            PT_state[0] = PT_in[0]   # a1 for profile 1
+            PT_state[1] = PT_in[1]   # a2 for profile 1
+            PT_state[2] = PT_in[2]   # log_P1 for profile 1
+            PT_state[3] = PT_in[3]   # log_P2 for profile 1
+            PT_state[4] = PT_in[4]   # a1 for profile 2
+            PT_state[5] = PT_in[5]   # a2 for profile 2
+            PT_state[6] = PT_in[6]   # log_P1 for profile 2
+            PT_state[7] = PT_in[7]   # log_P2 for profile 2
+            PT_state[8] = PT_in[8]   # T_deep (shared)
 
         # For Evening-Morning gradients
         if (TwoD_type == 'E-M'):

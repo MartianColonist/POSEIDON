@@ -2566,6 +2566,28 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 else:
                     prior_ranges[parameter] = prior_ranges_defaults['T']
 
+            # Set non-specified Madhu alpha/pressure parameters to base defaults
+            elif parameter.startswith('a1'):
+                if ('a1' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['a1']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['a1']
+            elif parameter.startswith('a2'):
+                if ('a2' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['a2']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['a2']
+            elif parameter.startswith('log_P1'):
+                if ('log_P1' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['log_P1']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['log_P1']
+            elif parameter.startswith('log_P2'):
+                if ('log_P2' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['log_P2']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['log_P2']
+
             # Check if user didn't specify a distance prior for an imaged object 
             elif (parameter == 'd'):
                 raise Exception("Error: no prior range provided for the system " +
