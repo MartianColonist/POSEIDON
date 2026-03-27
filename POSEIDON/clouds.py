@@ -1899,7 +1899,7 @@ def Mie_cloud(P,wl,r, H, n,
             n_aerosol = np.zeros_like(r)
 
             # Find index in P array where top of opaque deck is 
-            P_cloud_index = find_nearest(P,P_cloud)
+            P_cloud_index = find_nearest(P,P_cloud[q])
 
             # Find the radius corresponding to the cloud top pressure 
             cloud_top_height = r[P_cloud_index]
