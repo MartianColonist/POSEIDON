@@ -6,8 +6,8 @@ However, it is easy to add you own text files to the 'surface_reflectivities' fo
 All reflectivities are directional-hemispherical reflectivities (r_dh), except for data from Goodis Gordon et al. 2024 
 
 See 
-Mullens et al. 2026 for full description Sources 1-5
-Zelakiewicz et al. 2026 for Source 6. 
+Mullens et al. 2026 for full description Sources 1-6
+Zelakiewicz et al. 2026 for Source 7 
 
 Author: Elijah Mullens (eem85@cornell.edu)
 
@@ -29,18 +29,26 @@ Source 3 : Hammond 2025 (H25)
 - https://zenodo.org/records/14017134
 
 Source 4 : First 2024 (F25)
-- Used TO01, SE04, and CNE9 from Figure 2
+- Figure 2
 - https://ui.adsabs.harvard.edu/abs/2025NatAs...9..370F/abstract
 - Accessed data through Zenodo, or GitHub 
 - https://zenodo.org/records/12822668
 - https://github.com/ishan-mishra/rocky_exo_jwst/tree/main
 
-Source 5 : Goodis Gordon et al. 2024
+Source 5 : Hammond 2025 (H25)
+- Figure 2
+- https://ui.adsabs.harvard.edu/abs/2022MNRAS.516.4569F/abstract
+- Accessed data through Zenodo 
+- https://zenodo.org/records/6323322#.YufC0S-B2lF
+- 100963-30 and 112774-10 were not glassy and therefore not reported
+
+
+Source 6 : Goodis Gordon et al. 2024
 - From Figures 1 and 3 
 - https://ui.adsabs.harvard.edu/abs/2025ApJ...983..168G/abstract
 - Sent from Goodis Gordon (pers comm)
 
-Source 6 : Zelakiewicz et al. 2026
+Source 7 : Zelakiewicz et al. 2026
 - Tables 2-3, Figure 1 (b)
 - https://ui.adsabs.harvard.edu/abs/2026arXiv260325694Z/abstract
 
