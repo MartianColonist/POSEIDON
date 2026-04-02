@@ -1092,7 +1092,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
     
     # Generate plot   
     fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                       plt_label = 'Spectral Contribution Plot',
+                       plt_label = 'Spectral Decomposition',
                        spectra_labels = labels,
                        plot_full_res = False, 
                        save_fig = False,
