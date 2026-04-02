@@ -3,7 +3,7 @@ This readme details the references for various txt files in this folder.
 These are the surface albedos that come default with POSEIDON. 
 However, it is easy to add you own text files to the 'surface_reflectivities' folder in 'inputs'
 
-All reflectivities are directional-hemispherical reflectivities (r_dh), except for data from Goodis Gordon et al. 2024 
+All reflectivities are directional-hemispherical reflectivities (r_dh), except for data from Goodis Gordon et al. 2025 
 
 See 
 Mullens et al. 2026 for full description Sources 1-6
@@ -43,12 +43,12 @@ Source 5 : Hammond 2025 (H25)
 - 100963-30 and 112774-10 were not glassy and therefore not reported
 
 
-Source 6 : Goodis Gordon et al. 2024
+Source 6 : Goodis Gordon et al. 2025 (GG25)
 - From Figures 1 and 3 
 - https://ui.adsabs.harvard.edu/abs/2025ApJ...983..168G/abstract
 - Sent from Goodis Gordon (pers comm)
 
-Source 7 : Zelakiewicz et al. 2026
+Source 7 : Zelakiewicz et al. 2026 (Z26)
 - Tables 2-3, Figure 1 (b)
 - https://ui.adsabs.harvard.edu/abs/2026arXiv260325694Z/abstract
 
