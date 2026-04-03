@@ -46,6 +46,21 @@ rank = comm.Get_rank()
 # Global dictionary to store maximum histogram values for each parameter
 global_max_hist_values = {}
 
+# Global theme dictionaries for dark/light mode plotting
+dark_theme = {
+    'fig_colour':        'black',
+    'text_colour':       'white',
+    'ax_edge_colour':    'white',
+    'tick_colour':       'white',
+}
+
+light_theme = {
+    'fig_colour':        'white',
+    'text_colour':       'black',
+    'ax_edge_colour':    'black',
+    'tick_colour':       'black',
+}
+
 
 def scale_lightness(colour_name, scale):
     ''' 
@@ -383,7 +398,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                max_n_ticks=5, top_ticks=False, use_math_text=False, 
                verbose=False, fig=None, model_idx = None, 
                two_sigma_upper_limits = [], two_sigma_lower_limits = [],
-               title_vertical_padding = 0.1):
+               title_vertical_padding = 0.1, dark_mode = False):
     '''
     Generate a corner plot of the 1D and 2D marginalised posteriors.
 
@@ -463,12 +478,18 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             List of parameters for which the 2σ lower limit will be plotted instead of the 1σ range.
         title_vertical_padding (float):
             Vertical padding for the titles for multiple overlapping corner plots.
+        dark_mode (bool):
+            If True, uses a dark background with white text and axes.
+            Defaults to False (light mode).
     
     Returns:
         cornerplot (matplotlib figure, matplotlib axes objects):
             Output corner plot.
 
     '''
+
+    # Select theme for dark/light mode
+    theme = dark_theme if dark_mode else light_theme
 
     # Initialise values
     if quantiles is None:
@@ -552,6 +573,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
     # Initialize figure.
     if (fig is None and model_idx is None) or (fig is None and model_idx == 0):
         fig, axes = plt.subplots(ndim, ndim, figsize=(dim, dim))
+        fig.patch.set_facecolor(theme['fig_colour'])
     elif fig is not None and model_idx is not None:
         try:
             fig, axes = fig
@@ -613,6 +635,10 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         # Plot the 1-D marginalized posteriors.
 
         # Setup axes
+        ax.set_facecolor(theme['fig_colour'])
+        for spine in ax.spines.values():
+            spine.set_edgecolor(theme['ax_edge_colour'])
+        ax.tick_params(colors=theme['tick_colour'], which='both')
         ax.set_xlim(span[i])
         if max_n_ticks == 0:
             ax.xaxis.set_major_locator(NullLocator())
@@ -633,7 +659,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                 ax.set_xticklabels([])
         else:
             [l.set_rotation(45) for l in ax.get_xticklabels()]
-            ax.set_xlabel(labels[i], **label_kwargs)
+            ax.set_xlabel(labels[i], color=theme['text_colour'], **label_kwargs)
             ax.xaxis.set_label_coords(0.5, -0.3)
         
         # Generate distribution
@@ -642,7 +668,7 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             # If `sx` is an integer, plot a weighted histogram with
             # `sx` bins within the provided bounds.
             n, b, _ = ax.hist(x, bins=sx_hist, weights=weights, color=colour_plt,
-                              edgecolor='black', lw = 0.8,
+                              edgecolor=theme['ax_edge_colour'], lw = 0.8,
                               range=np.sort(span[i]), alpha = 0.6,
                               **hist_kwargs)
             # Add border
@@ -820,7 +846,8 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                         **title_kwargs,
                        )
             else:
-                ax.set_title(title, fontsize=title_fontsize, **title_kwargs)
+                ax.set_title(title, fontsize=title_fontsize,
+                             color=theme['text_colour'], **title_kwargs)
         else:
             ax.set_title(None)
 
@@ -841,6 +868,11 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             elif j == i:
                 continue
 
+            ax.set_facecolor(theme['fig_colour'])
+            for spine in ax.spines.values():
+                spine.set_edgecolor(theme['ax_edge_colour'])
+            ax.tick_params(colors=theme['tick_colour'], which='both')
+
             if max_n_ticks == 0:
                 ax.xaxis.set_major_locator(NullLocator())
                 ax.yaxis.set_major_locator(NullLocator())
@@ -857,13 +889,13 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                 ax.set_xticklabels([])
             else:
                 [l.set_rotation(45) for l in ax.get_xticklabels()]
-                ax.set_xlabel(labels[j], **label_kwargs)
+                ax.set_xlabel(labels[j], color=theme['text_colour'], **label_kwargs)
                 ax.xaxis.set_label_coords(0.5, -0.3)
             if j > 0:
                 ax.set_yticklabels([])
             else:
                 [l.set_rotation(45) for l in ax.get_yticklabels()]
-                ax.set_ylabel(labels[i], **label_kwargs)
+                ax.set_ylabel(labels[i], color=theme['text_colour'], **label_kwargs)
                 ax.yaxis.set_label_coords(-0.3, 0.5)
             # Generate distribution.
             sx_corr = smooth_corr[j]
@@ -908,7 +940,7 @@ def generate_cornerplot(planet, model, params_to_plot = None,
                         retrieval_name = None, true_vals = None,
                         colour_scheme = '#984ea3', span = None, corner_name = None,
                         two_sigma_upper_limits = [], two_sigma_lower_limits = [],
-                        N_bins = 30,
+                        N_bins = 30, dark_mode = False,
                         ):
     '''
     Generate giant triangle plot of doom to visualise the results of a 
@@ -935,6 +967,9 @@ def generate_cornerplot(planet, model, params_to_plot = None,
             List of parameters for which the 2σ lower limit will be plotted instead of the 1σ range.
         N_bins (int):
             Number of bins to use for the histograms.
+        dark_mode (bool, optional):
+            If True, uses a dark background with white text and axes.
+            Defaults to False (light mode).
     
     Returns:
         fig (matplotlib figure object):
@@ -1025,7 +1060,8 @@ def generate_cornerplot(planet, model, params_to_plot = None,
                                               'levels': levels,
                                               'plot_datapoints': False},
                                two_sigma_upper_limits=two_sigma_upper_limits,
-                               two_sigma_lower_limits=two_sigma_lower_limits
+                               two_sigma_lower_limits=two_sigma_lower_limits,
+                               dark_mode=dark_mode,
                               )
 
         # Set plot file name
@@ -1048,6 +1084,7 @@ def generate_overplot(planet, models, params_to_plot = None,
                       two_sigma_upper_limits = [], two_sigma_lower_limits = [],
                       external_samples = [], external_param_names = [],
                       title_vertical_padding = 0.1, N_bins = 30,
+                      dark_mode = False,
                       ):
     '''
     Generate overplotted giant triangle plot of doom to visualise the results 
@@ -1082,6 +1119,9 @@ def generate_overplot(planet, models, params_to_plot = None,
             Vertical padding for the titles for multiple overlapping corner plots.
         N_bins (int):
             Number of bins to use for the histograms.
+        dark_mode (bool, optional):
+            If True, uses a dark background with white text and axes.
+            Defaults to False (light mode).
 
     Returns:
         fig (matplotlib figure object):
@@ -1210,9 +1250,13 @@ def generate_overplot(planet, models, params_to_plot = None,
                                       two_sigma_upper_limits=two_sigma_upper_limits,
                                       two_sigma_lower_limits=two_sigma_lower_limits,
                                       title_vertical_padding=title_vertical_padding,
+                                      dark_mode=dark_mode,
                                      )
 
-            existing_fig[0].text(0.7, (0.75 + 0.05 * m),
+            # Select theme for dark/light mode
+        theme = dark_theme if dark_mode else light_theme
+
+        existing_fig[0].text(0.7, (0.75 + 0.05 * m),
                                  model_display_names[m],
                                  horizontalalignment='left',
                                  fontsize=annotation_text_size,
