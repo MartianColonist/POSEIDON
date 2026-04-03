@@ -1417,9 +1417,11 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                  show_data_bin_width = True, show_data_cap = True,
                  add_retrieved_offsets = False, verbose_offsets = True,
                  add_retrieved_error_inflation = False,
-                 xlabels = True, ylabels = True, 
+                 xlabels = True, x_wavelength_label = True, x_tick_label = True,
+                 ylabels = True, 
                  x_tick_fontsize = 12, x_label_fontsize = 16,
                  y_tick_fontsize = 12, y_label_fontsize = 16,
+                 x_tick_list = [],
                  legend_fontsize = 10, plt_label_fontsize = 14,
                  planet_name_fontsize = 16, plot_style = 'standard',
                  fill_between = [], fill_between_alpha = 0.5, fill_to_spectrum = [],
@@ -1533,7 +1535,11 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         verbose offsets (bool, optional):
             Will print out offsets applied to which datasets.
         x_labels (bool):
-            If False, will remove x_ticks labels and x_label.
+            If False, will remove x_ticks labels and Wavelength (um).
+        x_wavelength_label (bool)
+            If False, will just remove 'Wavelength (um)
+        x_tick_label (bool):
+            If False, will just remove the x tick labels
         y_labels (bool):
             If False, will remove y_ticks labels and y_label.
         x_tick_fontsize (int, optional):
@@ -1544,6 +1550,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
             Font size for y-axis tick labels.
         y_label_fontsize (int, optional):
             Font size for y-axis label.
+        x_tick_list (list of floats, optional):
+            Sets the xticks
         legend_fontsize (int, optional):
             Font size for the legend.
         plt_label_fontsize (int, optional):
@@ -2264,7 +2272,7 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     ax1.set_ylim([y_range[0], y_range[1]])
         
     # Set axis labels
-    if (xlabels == True):
+    if (xlabels == True) and (x_wavelength_label == True):
         ax1.set_xlabel(r'Wavelength (μm)', fontsize = x_label_fontsize)
 
     if (ylabels == True):
@@ -2314,11 +2322,13 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
     wl_ticks = set_spectrum_wl_ticks(wl_min, wl_max, wl_axis)
         
     # Plot wl tick labels
-    if (xlabels == True):
-        ax1.set_xticks(wl_ticks)
+    if len(x_tick_list) != 0:
+        ax1.set_xticks(x_tick_list)
     else:
         ax1.set_xticks(wl_ticks)
-        ax1.tick_params(labelbottom=False)  
+
+    if (xlabels == False) or (x_tick_label == False):
+        ax1.tick_params(labelbottom=False) 
     
     # If ylabels is False, don't show them
     if (ylabels == False):
