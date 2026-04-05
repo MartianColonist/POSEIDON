@@ -1,3 +1,12 @@
+# Aspen leaf from USGS
+# The reflectivity has been extended into the UV (300-400 nm) for additional coverage
+# by copying the reflectivity at 414 nm. 
+# The original data starts at 414 nm and onward.
+3.00000e-01 4.94959e-02
+3.50000e-01 4.94959e-02
+3.70000e-01 4.94959e-02
+3.90000e-01 4.94959e-02
+4.00000e-01 4.94959e-02
 4.14000e-01 4.94959e-02
 4.15000e-01 4.94969e-02
 4.16000e-01 4.94980e-02
