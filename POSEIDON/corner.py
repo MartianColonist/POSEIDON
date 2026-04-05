@@ -940,7 +940,8 @@ def generate_cornerplot(planet, model, params_to_plot = None,
                         retrieval_name = None, true_vals = None,
                         colour_scheme = '#984ea3', span = None, corner_name = None,
                         two_sigma_upper_limits = [], two_sigma_lower_limits = [],
-                        N_bins = 30, dark_mode = False,
+                        N_bins = 30, dark_mode = False, labels = None, colour_quantile = 'royalblue',
+                        label_kwargs = {'fontsize':18}
                         ):
     '''
     Generate giant triangle plot of doom to visualise the results of a 
@@ -970,6 +971,14 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         dark_mode (bool, optional):
             If True, uses a dark background with white text and axes.
             Defaults to False (light mode).
+        labels (list of str, optional):
+            Custom labels for the parameters to use on the plot axes.
+            If not provided, default LaTeX-style labels will be generated.
+        colour_quantile (str, optional):
+            Colour for the quantile lines on the 1D histograms. Default is 'royalblue'.
+        label_kwargs (dict, optional):
+            Extra keyword arguments that will be sent to the matplotlib axes
+            'set_xlabel' and 'set_ylabel' methods.
     
     Returns:
         fig (matplotlib figure object):
@@ -1037,8 +1046,10 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         # Calculate 2D levels for 1, 2, 3 sigma contours    
         levels = 1.0 - np.exp(-0.5 * np.array([1.0, 2.0, 3.0]) ** 2)
 
-        # Generate LaTeX names for each parameter for plot axes
-        params_latex = generate_latex_param_names(params_to_plot)
+        # If custom labels are not provided, generate default LaTeX names for each parameter for plot axes
+        if not labels:
+            # Generate LaTeX names for each parameter for plot axes
+            labels = generate_latex_param_names(params_to_plot)
         
         # Generate corner plot
         fig, axes = cornerplot(results, 
@@ -1046,14 +1057,14 @@ def generate_cornerplot(planet, model, params_to_plot = None,
                                smooth_hist=N_bins, 
                                smooth_corr=0.02, 
                                colour_plt=colour_scheme,
-                               colour_quantile='royalblue',
+                               colour_quantile=colour_quantile,
                                show_titles=True,\
-                               labels=params_latex, 
+                               labels=labels, 
                                param_names=params_to_plot,
                                truths=true_vals, 
                                span=span,
                                truth_colour='green',
-                               label_kwargs={'fontsize': 18}, 
+                               label_kwargs=label_kwargs, 
                                hist_kwargs={'histtype':'stepfilled'},
                                hist2d_kwargs={'plot_contours': True,
                                               'fill_contours': True,
