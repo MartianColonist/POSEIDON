@@ -15,7 +15,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                        PT_dim, X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface, 
-                       sharp_DN_transition, reference_parameter, 
+                       sharp_DN_transition, sharp_EM_transition,
+                       reference_parameter, 
                        disable_atmosphere, aerosol_species, log_P_slope_arr,
                        number_P_knots, PT_penalty, 
                        high_res_method, alpha_high_res_option, 
@@ -108,6 +109,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
             If True, model a surface via an opaque cloud deck.
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
+        sharp_EM_transition (bool):
+            For 2D / 3D models, sets evening-morning transition width (alpha) to 0.
         reference_parameter (str):
             For retrievals, whether R_p_ref or P_ref will be a free parameter
             (Options: R_p_ref / P_ref).
@@ -991,11 +994,16 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
         
         if (Atmosphere_dimension == 3):
             if (sharp_DN_transition == False):
-                geometry_params += ['alpha', 'beta']
+                if (sharp_EM_transition == False):
+                    geometry_params += ['alpha', 'beta']
+                else:
+                    geometry_params += ['beta']
             else:
-                geometry_params += ['alpha']
+                if (sharp_EM_transition == False):
+                    geometry_params += ['alpha']
+                # If both are sharp, no geometry params needed
         elif (Atmosphere_dimension == 2):
-            if (TwoD_type == 'E-M'):
+            if ((TwoD_type == 'E-M') and (sharp_EM_transition == False)):
                 geometry_params += ['alpha']
             elif ((TwoD_type == 'D-N') and (sharp_DN_transition == False)):
                 geometry_params += ['beta']

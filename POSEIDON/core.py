@@ -390,6 +390,7 @@ def define_model(model_name, bulk_species, param_species,
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
+                 sharp_EM_transition = False,
                  reference_parameter = 'R_p_ref', disable_atmosphere = False,
                  aerosol_species = [], 
                  thermal = True, thermal_scattering = False, reflection = False,
@@ -492,6 +493,8 @@ def define_model(model_name, bulk_species, param_species,
             If True, model a surface via an opaque cloud deck.
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
+        sharp_EM_transition (bool):
+            For 2D / 3D models, sets evening-morning transition width (alpha) to 0.
         reference_parameter (str):
             For retrievals, whether R_p_ref, P_ref, or both will be a free parameter
             (Options: R_p_ref / P_ref / R_p_ref+P_ref).
@@ -705,6 +708,7 @@ def define_model(model_name, bulk_species, param_species,
                                                             species_EM_gradient, species_DN_gradient, 
                                                             species_vert_gradient, Atmosphere_dimension,
                                                             opaque_Iceberg, surface, sharp_DN_transition,
+                                                            sharp_EM_transition,
                                                             reference_parameter, disable_atmosphere, 
                                                             aerosol_species, log_P_slope_arr,
                                                             number_P_knots, PT_penalty, 
@@ -749,6 +753,7 @@ def define_model(model_name, bulk_species, param_species,
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
              'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
              'sharp_DN_transition': sharp_DN_transition,
+             'sharp_EM_transition': sharp_EM_transition,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
              'aerosol_species': aerosol_species,
@@ -1076,6 +1081,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     gravity_setting = model['gravity_setting']
     mass_setting = model['mass_setting']
     sharp_DN_transition = model['sharp_DN_transition']
+    sharp_EM_transition = model['sharp_EM_transition']
     log_P_slope_phot = model['log_P_slope_phot'] 
     log_P_slope_arr = model['log_P_slope_arr']
     aerosol_species = model['aerosol_species']
@@ -1127,7 +1133,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     if ((len(cloud_params) == 0) and (cloud_model != 'cloud-free')):
         raise Exception("Cloud parameters must be provided for cloudy models.")
     if ((len(geometry_params) == 0) and (Atmosphere_dimension > 1) and
-        (sharp_DN_transition == False)):
+        (sharp_DN_transition == False) and (sharp_EM_transition == False)):
             raise Exception("Geometry parameters must be provided for 2D or 3D models.")
     
     # Line profile requires T_eq
@@ -1139,6 +1145,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     # If user specifies a sharp day-night transition, use no transition slices
     if (sharp_DN_transition == True):
         N_slice_DN = 0
+
+    # If user specifies a sharp evening-morning transition, use no transition slices
+    if (sharp_EM_transition == True):
+        N_slice_EM = 0
 
     # Check that the number of azimuthal and zenith slices are even
     if ((N_slice_EM % 2 != 0) or (N_slice_DN % 2 != 0)):
@@ -1156,7 +1166,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     phi, theta, phi_edge, \
     theta_edge, dphi, dtheta = angular_grids(Atmosphere_dimension, TwoD_type, 
                                              N_slice_EM, N_slice_DN, 
-                                             alpha, beta, sharp_DN_transition)
+                                             alpha, beta, sharp_DN_transition,
+                                             sharp_EM_transition)
 
     #***** Generate state arrays for the PT and mixing ratio profiles *****#
 
