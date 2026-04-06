@@ -1202,7 +1202,7 @@ def generate_latex_param_names(param_names):
         if (param in ['Delta_T_1', 'Delta_T_2', 'Delta_T_3', 'Delta_T_4', 
                       'Delta_T_5', 'Delta_T_6', 'Delta_T_7', 'Delta_T_8',
                       'Delta_T_9', 'Delta_T_10', 'Delta_T_11', 'Delta_T_12']):
-            latex_names += ['$\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
+            latex_names += ['$\\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
             continue
         if (param == 'T_phot_PT'):
             latex_names += ['$T_{\\mathrm{phot}}$']
@@ -1278,20 +1278,20 @@ def generate_latex_param_names(param_names):
 
         if ('Delta_log_P_' in param):
             if('SiO2' in param):
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{SiO_2}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\, \\mathrm{SiO_2}$'
                 latex_names += [string]
                 continue
             if('Fe2O3' in param):
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{Fe_2O_3}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\,  \\mathrm{Fe_2O_3}$'
                 latex_names += [string]
                 continue
             if('MgSiO3' in param):
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{MgSiO_3}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\,  \\mathrm{MgSiO_3}$'
                 latex_names += [string]
                 continue
             else:
                 aerosol_name = param.split('_')[3]
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{' + aerosol_name + '}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\, \\mathrm{' + aerosol_name + '}$'
                 latex_names += [string]
                 continue
 
@@ -1329,7 +1329,7 @@ def generate_latex_param_names(param_names):
         #  Quick fix for cloud_type = 'one_slab'
         # 'Delta_log_P_' will not be recognised so new if statement can be made
         if ('Delta_log_P' == param):
-            string = '$\\Delta \\, \\log \\, \mathrm{P}$'
+            string = '$\\Delta \\, \\log \\, \\mathrm{P}$'
             latex_names += [string]
             continue
 
