@@ -63,7 +63,7 @@ def create_directories(base_dir, planet_name):
         os.mkdir(retrieval_dir + '/samples')
         
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def prior_index(value, grid, start = 0):
     ''' 
     Search a grid to find the previous index closest to a specified value (i.e. 
@@ -166,7 +166,7 @@ def interp_GPU(x_value, x, y):
     return y_interp
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache = True)
 def prior_index_V2(value, grid_start, grid_end, N_grid):
     ''' 
     Find the previous index of a *uniformly spaced* grid closest to a specified 
@@ -205,7 +205,7 @@ def prior_index_V2(value, grid_start, grid_end, N_grid):
         return int(i)
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache = True)
 def closest_index(value, grid_start, grid_end, N_grid):
     '''
     Same as 'prior_index_V2', but for the closest index (i.e. can also round up).

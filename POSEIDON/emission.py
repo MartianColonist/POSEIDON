@@ -26,7 +26,7 @@ def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def planck_lambda_arr(T, wl):
     '''
     Compute the Planck function spectral radiance for a range of model
@@ -107,7 +107,7 @@ def planck_lambda_arr_GPU(T, wl, B_lambda):
             B_lambda[i,k] = coeff * (1.0 / (math.exp(c_2 / (wl[k] * T[i])) - 1.0))
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def emission_single_stream(T, dz, wl, kappa, Gauss_quad = 2):
     '''
     Compute the emergent top-of-atmosphere flux from a planet or brown dwarf.
@@ -177,7 +177,7 @@ def emission_single_stream(T, dz, wl, kappa, Gauss_quad = 2):
     
     return F, dtau
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def emission_single_stream_w_albedo(T, dz, wl, kappa, Gauss_quad = 2, 
                                     surf_reflect = [], index_below_P_surf = 0):
     '''
@@ -342,7 +342,7 @@ def emission_single_stream_GPU(T, dz, wl, kappa, Gauss_quad = 2):
     return cp.asnumpy(F_p), dtau
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def determine_photosphere_radii(dtau, r_low, wl, photosphere_tau = 2/3):
     '''
     Interpolate optical depth to find the radius corresponding to the

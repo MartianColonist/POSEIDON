@@ -22,7 +22,7 @@ except ImportError:
     pymsg = mock_missing('pymsg')
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def planck_lambda(T, wl):
     '''
     Compute the Planck function spectral radiance.
@@ -729,7 +729,7 @@ def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
            I_phot_out, I_het_out
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def stellar_contamination_single_spot(f, I_het, I_phot):
     '''
     Computes the multiplicative stellar contamination factor for a transmission
@@ -756,7 +756,7 @@ def stellar_contamination_single_spot(f, I_het, I_phot):
     return epsilon
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def stellar_contamination_general(f_het, I_het, I_phot):
     '''
     Computes the multiplicative stellar contamination factor for a transmission

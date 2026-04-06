@@ -140,7 +140,7 @@ def check_atmosphere_physical(atmosphere, opac):
 # Spectral Contribution Functions
 #################################
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def extinction_spectral_contribution(chemical_species, active_species, cia_pairs, 
                                      ff_pairs, bf_species, aerosol_species,
                                      n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, 
@@ -1132,7 +1132,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 # Pressure Contribution Functions
 #################################
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def extinction_pressure_contribution(chemical_species, active_species, cia_pairs, 
                                      ff_pairs, bf_species, aerosol_species,
                                      n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, 

@@ -87,7 +87,7 @@ def atmosphere_regions(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN):
     return N_sectors, N_zones
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache=True)
 def angular_grids(Atmosphere_dimension, TwoD_type, N_slice_EM, N_slice_DN, 
                   alpha, beta, sharp_DN_transition, sharp_EM_transition):
     '''
