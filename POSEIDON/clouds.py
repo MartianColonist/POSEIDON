@@ -403,14 +403,14 @@ def compute_and_plot_aerosol_cross_section_from_file(wl, r_m, file_name, species
     plt.show()
 
     if (species != None):
-        title = (species + ' : Normalized $\sigma_{ext}$ , Asymmetry Parameter, ' +
+        title = (species + r' : Normalized $\sigma_{ext}$ , Asymmetry Parameter, ' +
                  'and Single Scattering Albedo' + '\n $r_m$ = ' + str(round(r_m, 3)) + 
-                 ' ($\mu$m)' +  '\n $\omega$ : 0 (black, completely absorbing) to 1 ' + 
+                 r' ($\mu$m)' + '\n' + r' $\omega$ : 0 (black, completely absorbing) to 1 ' + 
                  '(white, completely scattering)'+ '\n g : 0 (Rayleigh Limit) to 1 (Total Forward Scattering) '+ '\n')
     plt.figure(figsize=(10,6))
     plt.plot(wl_Mie, eff_ext_cross_section/np.max(eff_ext_cross_section), 
-             label = '$\sigma_{ext}$ = $\sigma_{abs}$ + $\sigma_{scat}$ (Normalized)')
-    plt.plot(wl_Mie, eff_w, label = 'Single Scattering Albedo ($\omega$)')
+             label = r'$\sigma_{ext}$ = $\sigma_{abs}$ + $\sigma_{scat}$ (Normalized)')
+    plt.plot(wl_Mie, eff_w, label = r'Single Scattering Albedo ($\omega$)')
     plt.plot(wl_Mie, eff_g, label = 'Asymmetry Parameter (g)')
     plt.title(title)
     plt.xlabel('Wavelength (μm)')
@@ -855,7 +855,7 @@ def plot_lognormal_distribution(r_m_std_dev = 0.5):
         plt.scatter(np.log10(radii), probs, color = color[n], lw = 2)
 
     plt.ylim(-0.02, np.max(probs)+0.1)
-    title = 'Assumed Particle Size Distribution ($\sigma_r$ = ' + str(r_m_std_dev) + ')'
+    title = r'Assumed Particle Size Distribution ($\sigma_r$ = ' + str(r_m_std_dev) + ')'
     plt.title(title)
     plt.ylabel('Probability')
     plt.xlabel('Log Particle Radii (μm)')
@@ -1056,11 +1056,11 @@ def database_properties_plot(file_name):
         label = 'r$_m$ : ' + str(r_m_array[i]) + ' μm'
         eff_ext_cross_section = ext_array[i]
         axd['C'].plot(wl, np.log10(eff_ext_cross_section), label = label, c = color[i], lw = 2)
-    title = aerosol + ' Effective Extinction Cross Section\n$\sigma_{\mathrm{ext},\,\mathrm{eff}}$ = $\sigma_{\mathrm{abs},\,\mathrm{eff}}$ + $\sigma_{\mathrm{scat},\,\mathrm{eff}}$'
+    title = aerosol + r' Effective Extinction Cross Section' + '\n' + r'$\sigma_{\mathrm{ext},\,\mathrm{eff}}$ = $\sigma_{\mathrm{abs},\,\mathrm{eff}}$ + $\sigma_{\mathrm{scat},\,\mathrm{eff}}$'
     axd['C'].set_title(title)
     #plt.legend(loc = 'upper right', framealpha = 1)
     #axd['C'].set_xlabel('Wavelength (μm)')
-    axd['C'].set_ylabel('log$_{10}$ ($\sigma_{ext}$)')
+    axd['C'].set_ylabel(r'log$_{10}$ ($\sigma_{ext}$)')
     axd['C'].set_xlim((0,30))
 
     # Only plot up to the max wavelength 
@@ -1084,9 +1084,9 @@ def database_properties_plot(file_name):
         label = 'r$_m$ : ' + str(r_m_array[i]) + ' μm'
         w = w_array[i]
         axd['D'].plot(wl[wl_min_index:wl_max_index], w[wl_min_index:wl_max_index], label = label, c = color[i], lw = 2)
-    title = aerosol + ' Single Scattering Albedos $\omega$\n0 (black, completely absorbing) to 1 (white, completely scattering)'
+    title = aerosol + r' Single Scattering Albedos $\omega$' + '\n' + '0 (black, completely absorbing) to 1 (white, completely scattering)'
     axd['D'].set_title(title)
-    axd['D'].set_ylabel('$\omega$')
+    axd['D'].set_ylabel(r'$\omega$')
     axd['D'].set_xlabel('Wavelength (μm)')
     axd['D'].set_ylim((-0.05,1.05))
     axd['D'].set_xlim((0,30))
