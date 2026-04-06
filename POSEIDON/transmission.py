@@ -217,11 +217,11 @@ def path_distribution_geometric(b, r_up, r_low, dr, i_bot, j_sector_back,
         r_min_sq = r_min * r_min
         r_max_sq = r_max * r_max
 
+        # Set sector count
+        j_sector_last = -1  # This counts the angular index where the transmissivity was last computed
+
         # For each terminator sector
         for j in range(N_phi):
-            
-            # Refresh sector count
-            j_sector_last = -1  # This counts the angular index where the transmissivity was last computed
             
             # Find which asymmetric terminator sector this angle lies in
             j_sector_back_in = j_sector_back[j]
