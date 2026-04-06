@@ -359,8 +359,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                     if (PT_profile == 'gradient'):            
                         PT_params += ['T_Even_high', 'T_Morn_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):   
-                        PT_params += ['T_Even_high', 'T_Even_mid', 'T_Morn_high',
-                                    'T_Morn_mid', 'log_P_mid', 'T_deep']
+                        PT_params += ['T_Even_high', 'T_Morn_high', 'T_Even_mid',
+                                      'T_Morn_mid', 'log_P_mid', 'T_deep']
                     elif (PT_profile == 'Madhu'):
                         PT_params += ['a1_even', 'a2_even', 'log_P1_even', 'log_P2_even',
                                       'a1_morn', 'a2_morn', 'log_P1_morn', 'log_P2_morn',
@@ -370,8 +370,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                     if (PT_profile == 'gradient'):            
                         PT_params += ['T_Day_high', 'T_Night_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):   
-                        PT_params += ['T_Day_high', 'T_Day_mid', 'T_Night_high',
-                                    'T_Night_mid', 'log_P_mid', 'T_deep']
+                        PT_params += ['T_Day_high', 'T_Night_high', 'T_Day_mid',
+                                      'T_Night_mid', 'log_P_mid', 'T_deep']
                     elif (PT_profile == 'Madhu'):
                         PT_params += ['a1_day', 'a2_day', 'log_P1_day', 'log_P2_day',
                                       'a1_night', 'a2_night', 'log_P1_night', 'log_P2_night',
@@ -385,14 +385,14 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                         PT_params += ['T_bar_term_high', 'Delta_T_term_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):            
                         PT_params += ['T_bar_term_high', 'T_bar_term_mid', 'Delta_T_term_high', 
-                                    'Delta_T_term_mid', 'log_P_mid', 'T_deep']
+                                      'Delta_T_term_mid', 'log_P_mid', 'T_deep']
 
                 elif (TwoD_type == 'D-N'):
                     if (PT_profile == 'gradient'):            
                         PT_params += ['T_bar_DN_high', 'Delta_T_DN_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):            
                         PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Delta_T_DN_high', 
-                                    'Delta_T_DN_mid', 'log_P_mid', 'T_deep']
+                                      'Delta_T_DN_mid', 'log_P_mid', 'T_deep']
 
             # Gradient parameter prescription from MacDonald & Lewis (2023)
             elif (TwoD_param_scheme == 'gradient'):
@@ -402,7 +402,7 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                         PT_params += ['T_bar_DN_high', 'Grad_theta_T_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):            
                         PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Grad_theta_T_high', 
-                                    'Grad_theta_T_mid', 'log_P_mid', 'T_deep']
+                                      'Grad_theta_T_mid', 'log_P_mid', 'T_deep']
         
         # 3D model (asymmetric terminator + day-night transition)
         elif (PT_dim == 3):
@@ -411,8 +411,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                 PT_params += ['T_bar_term_high', 'Delta_T_term_high', 'Delta_T_DN_high', 'T_deep']
             elif (PT_profile == 'two-gradients'):            
                 PT_params += ['T_bar_term_high', 'T_bar_term_mid', 'Delta_T_term_high', 
-                            'Delta_T_term_mid', 'Delta_T_DN_high', 'Delta_T_DN_mid', 
-                            'log_P_mid', 'T_deep']
+                              'Delta_T_term_mid', 'Delta_T_DN_high', 'Delta_T_DN_mid', 
+                              'log_P_mid', 'T_deep']
             
         N_PT_params = len(PT_params)   # Store number of P-T profile parameters
         params += PT_params            # Add P-T parameter names to combined list
@@ -464,8 +464,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Morn_high', 
                                                      'log_' + species + '_deep']
                                     elif (X_profile == 'two-gradients'):  
-                                        X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Even_mid',
-                                                     'log_' + species + '_Morn_high', 'log_' + species + '_Morn_mid', 
+                                        X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Morn_high',
+                                                     'log_' + species + '_Even_mid', 'log_' + species + '_Morn_mid', 
                                                      'log_P_' + species + '_mid', 'log_' + species + '_deep']
                                     elif (X_profile == 'dissociation'):
                                         if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
@@ -498,8 +498,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Night_high', 
                                                      'log_' + species + '_deep']
                                     elif (X_profile == 'two-gradients'):  
-                                        X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Day_mid',
-                                                     'log_' + species + '_Night_high', 'log_' + species + '_Night_mid', 
+                                        X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Night_high', 
+                                                     'log_' + species + '_Day_mid', 'log_' + species + '_Night_mid', 
                                                      'log_P_' + species + '_mid', 'log_' + species + '_deep']
                                     elif (X_profile == 'dissociation'):
                                         if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
