@@ -323,7 +323,8 @@ def shared_memory_array(rank, comm, shape):
     
     # Create a shared array of size given by product of each dimension
     size = np.prod(shape)
-    itemsize = MPI.DOUBLE.Get_size() 
+    dtype = np.float64
+    itemsize = dtype().itemsize  # Always 8
 
     if (rank == 0): 
         nbytes = size * itemsize   # Array memory allocated for first process
@@ -336,9 +337,9 @@ def shared_memory_array(rank, comm, shape):
     win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
  
     # Create a numpy array whose data points to the shared memory
-    buf, itemsize = win.Shared_query(0) 
-    assert itemsize == MPI.DOUBLE.Get_size() 
-    array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
+    buf, disp_unit = win.Shared_query(0) 
+  #  assert itemsize == MPI.DOUBLE.Get_size() 
+    array = np.ndarray(buffer=buf, dtype=dtype, shape=shape) 
     
     return array, win
 
