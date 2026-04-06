@@ -33,6 +33,7 @@ setup(
         "batman-package",
         "scikit-learn",
         "miepython==2.5.5",
+        "setuptools==81.0.0",
     ],
     zip_safe=False,
 )
