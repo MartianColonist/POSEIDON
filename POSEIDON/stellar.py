@@ -4,11 +4,14 @@ Stellar spectra and star spot/faculae contamination calculations.
 '''
 
 import os
+import warnings
 import numpy as np
 from numba.core.decorators import jit
 from spectres import spectres
 import scipy.constants as sc
-import pysynphot as psyn
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
+    import pysynphot as psyn
 from mpi4py import MPI
 
 from .utility import mock_missing, shared_memory_array
