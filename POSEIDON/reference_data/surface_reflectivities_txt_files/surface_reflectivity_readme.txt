@@ -50,6 +50,8 @@ Source 6 : Goodis Gordon et al. 2025 (GG25)
 
 Source 7 : Zelakiewicz et al. 2026 (Z26)
 - Tables 2-3, Figure 1 (b)
+- Modern_Earth_Z26.txt is the MODIS Surface from the paper (a composite spectrum)
+- USGS Sand and Ocean in Z26 identical to those in GG25
 - https://ui.adsabs.harvard.edu/abs/2026arXiv260325694Z/abstract
 
 

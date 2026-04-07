@@ -7,7 +7,7 @@ in the POSEIDON v1.4 update.
 
 Geology Supplemental Material 
 ___________________________
-Many of the albedos curated in the databse are linked to specific minerals and rocks.
+Many of the albedos curated in the database are linked to specific minerals and rocks.
 
 In order to foster future collaboration between geologists and exoplanet scientists, 
 in the appendix of Mullens et al 2026 (the POSEIDON v1.4 paper) there are 
@@ -26,6 +26,9 @@ opacity previews, and potential consideratios for interpretation if detected, se
 Table A3. 
 
 For in-depth tabulations of the albedo data included in the database, see Tables A4-7. 
+
+When using any albedos in a publication, please be sure to cite the publication the 
+data was collected in, as well as relevant publications for original laboratory measurements. 
 
 Surface Albedo References 
 ___________________________
@@ -63,6 +66,9 @@ reflectance (for more details, see Appendix A in Mullens et al (2026)).
 `Paragas (2025) [P25] <https://ui.adsabs.harvard.edu/abs/2025ApJ...981..130P/abstract>`_
 :math:`\hookrightarrow ` Txt files found `here <https://github.com/MartianColonist/POSEIDON/tree/Mie-HotFix-w-Surfaces/POSEIDON/reference_data/surface_reflectivities_txt_files/Paragas-P25>`_ 
 
+`Zelakiewicz (2026) [Z26] <https://ui.adsabs.harvard.edu/abs/2026arXiv260325694Z/abstract>`_
+:math:`\hookrightarrow ` Txt files found `here <https://github.com/MartianColonist/POSEIDON/tree/Mie-HotFix-w-Surfaces/POSEIDON/reference_data/surface_reflectivities_txt_files/Zelakiewicz-Z26>`_ 
+
 Miscellaneous (i.e., colors) txt files found `here <https://github.com/MartianColonist/POSEIDON/tree/Mie-HotFix-w-Surfaces/POSEIDON/reference_data/surface_reflectivities_txt_files/Misc>`_ 
 
 Surface Albedo Previews  
@@ -96,7 +102,7 @@ ___________________________
    :width: 50
    :align: center
 
-.. image:: ../_static/opacity_previews/surfaces/GG25_Library.png
+.. image:: ../_static/opacity_previews/surfaces/HWO_Library.png
    :width: 50
    :align: center
 
