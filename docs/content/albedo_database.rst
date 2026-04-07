@@ -30,6 +30,8 @@ For in-depth tabulations of the albedo data included in the database, see Tables
 When using any albedos in a publication, please be sure to cite the publication the 
 data was collected in, as well as relevant publications for original laboratory measurements. 
 
+H12, GG25, H25, and Z26 collected previously published laboratory data while F22, F25, P25 performed and reported newly measured laboratory data. 
+
 Surface Albedo References 
 ___________________________
 
