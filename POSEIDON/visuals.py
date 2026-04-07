@@ -2293,6 +2293,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
                 ax1.set_ylabel(r'Eclipse Depth $(ppm)$', fontsize = y_label_fontsize)
             else:
                 ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
+        elif (plot_type == 'reflection'):
+                ax1.set_ylabel(r'Reflection Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
         elif (plot_type == 'direct_emission'):
             if (y_unit == 'Fp'):
                 ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
@@ -2774,6 +2776,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             ax1.set_ylabel(r'Eclipse Depth $(ppm)$', fontsize = y_label_fontsize)
         else:
             ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
+    elif (plot_type == 'reflection'):
+            ax1.set_ylabel(r'Reflection Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
     elif (plot_type == 'direct_emission'):
         if (y_unit == 'Fp'):
             ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
@@ -3772,6 +3776,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
                 ax1.set_ylabel(r'Eclipse Depth $(ppm)$', fontsize = y_label_fontsize)
             else:
                 ax1.set_ylabel(r'Emission Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
+        elif (plot_type == 'reflection'):
+                ax1.set_ylabel(r'Reflection Spectrum $(F_p/F_*)$', fontsize = y_label_fontsize)
         elif (plot_type == 'direct_emission'):
             if (y_unit == 'Fp'):
                 ax1.set_ylabel(r'$F_{\rm{p}}$ (W m$^{-2}$ m$^{-1}$)', fontsize = y_label_fontsize)
