@@ -997,7 +997,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_X_params = [], cloud_params = [], geometry_params = [],
                     surface_params = [],
                     log_g = None, M_p = None, T_input = [], X_input = [], 
-                    P_surf = None, P_param_set = 1.0e-2, He_fraction = 0.17, 
+                    P_param_set = 1.0e-2, He_fraction = 0.17, 
                     N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
                     chemistry_grid = None, mu_back = None):
     '''
@@ -1035,8 +1035,6 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             Temperature profile (only if provided directly by the user).
         X_input (2D np.array of float):
             Mixing ratio profiles (only if provided directly by the user).
-        P_surf (float):
-            Surface pressure of the planet.
         P_param_set (float):
             Only used for the Madhusudhan & Seager (2009) P-T profile.
             Sets the pressure where the reference temperature parameter is 
