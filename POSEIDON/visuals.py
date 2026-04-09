@@ -1597,6 +1597,8 @@ def plot_spectra(spectra, planet, data_properties = None, show_data = False,
         plot_type = 'direct_emission'
     elif (y_unit in ['T_bright']):
         plot_type = 'brightness_temp'
+    elif (y_unit in ['reflection']):
+        plot_type = 'reflection'
     else:
         raise Exception("Unexpected y unit. Did you mean 'transit_depth' " +
                        "or 'eclipse_depth'?")
@@ -2541,6 +2543,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
         plot_type = 'direct_emission'
+    elif (y_unit in ['reflection']):
+        plot_type = 'reflection'
     else:
         raise Exception("Unexpected y unit. Did you mean 'transit_depth' " +
                        "or 'eclipse_depth'?")
@@ -3066,6 +3070,8 @@ def plot_spectra_retrieved(spectra_median, spectra_low2, spectra_low1,
         plot_type = 'emission'
     elif (y_unit in ['Fp']):
         plot_type = 'direct_emission'
+    elif (y_unit in ['reflection']):
+        plot_type = 'reflection'
     else:
         raise Exception("Unexpected y unit. Did you mean 'transit_depth' " +
                        "or 'eclipse_depth'?")
