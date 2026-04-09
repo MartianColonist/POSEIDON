@@ -2213,9 +2213,11 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
 
         # Check that the model wavelength grid covers all the data bins
         if (np.any((wl_data - half_bin) < wl_model[0])):
-            raise Exception("Some data lies below the lowest model wavelength, reduce wl_min.")
+            label = "Some data lies below the lowest model wavelength, reduce wl_min to below: " + str(np.min(wl_data - half_bin))
+            raise Exception(label)
         elif (np.any((wl_data + half_bin) > wl_model[-1])):
-            raise Exception("Some data lies above the highest model wavelength, increase wl_max.")
+            label = "Some data lies above the highest model wavelength, reduce wl_max to above: " + str(np.max(wl_data + half_bin))
+            raise Exception(label)
         
         # Length of each dataset (used for indexing the combined dataset, if necessary to extract one specific dataset later)
         len_data = np.concatenate([len_data, np.array([len(ydata_i)])])
