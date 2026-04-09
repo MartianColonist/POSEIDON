@@ -375,12 +375,6 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         else:
             d_sampled = planet['system_distance']
 
-        # Unpack surface pressure if set as a free parameter
-        if (surface == True) and (disable_atmosphere != True):
-            P_surf = np.power(10.0, surface_params[np.where(surface_param_names == 'log_P_surf')[0][0]])
-        else:
-            P_surf = None
-
         # Unpack background gas molecular mass if set as a free parameter
         if ('mu_back' in physical_param_names):
             mu_back = physical_params[np.where(physical_param_names == 'mu_back')[0][0]]
@@ -392,7 +386,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params,
                                      surface_params,  
-                                     log_g, M_p, T_input, X_input, P_surf, P_param_set,
+                                     log_g, M_p, T_input, X_input, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN, 
                                      constant_gravity, chemistry_grid, mu_back)
         
@@ -1592,12 +1586,6 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     else:
         log_g = None
 
-    # Unpack surface pressure if set as a free parameter
-    if ((surface == True) and ('log_P_surf' in physical_param_names)):
-        P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
-    else:
-        P_surf = None
-
     # Unpack background gas molecular mass if set as a free parameter
     if ('mu_back' in physical_param_names):
         mu_back = physical_params[np.where(physical_param_names == 'mu_back')[0][0]]
@@ -1617,7 +1605,7 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
                                  log_X_params, cloud_params, geometry_params,
                                  surface_params,
                                  log_g = log_g, M_p = M_p, T_input = T_input,
-                                 X_input = X_input, P_surf = P_surf,
+                                 X_input = X_input,
                                  P_param_set = P_param_set, He_fraction = He_fraction, 
                                  N_slice_EM = N_slice_EM, N_slice_DN = N_slice_DN, 
                                  constant_gravity = constant_gravity,
