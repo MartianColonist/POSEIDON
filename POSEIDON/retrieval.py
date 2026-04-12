@@ -210,7 +210,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                      spec_low1, spec_median, spec_high1, spec_high2)
             
             # Save ymodel samples
-            if (save_ymodel == True):
+            if save_ymodel and ymodel_samples is not None:
 
                 ymodel_samples_object = np.array(ymodel_samples).T
 
@@ -1137,7 +1137,8 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
     else:
         T_best = 0.0
-                    
+
+    ymodel_samples = None
     # For all the samples, generate spectra and PT profiles
     for i in range(N_sample_draws):
 
