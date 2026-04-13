@@ -1,3 +1,5 @@
+# Extended from 0.4 to 0.1 microns 
+# to allow for wavelength grids below 0.4 microns
 1.00000e-01 8.38481e-02
 4.00000e-01 8.38481e-02
 4.02002e-01 8.42201e-02
