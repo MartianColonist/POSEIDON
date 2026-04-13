@@ -863,3 +863,30 @@ Utilized: Free chemistry and equilibrium chemistry transmission retrievals, data
    :alt: Sample image
    :width: 1000
    :align: center
+
+Zelakiewicz et al (2026)
+^^^^^^^^^^^^^^^^
+`Identifying Surface Degeneracies in Single-Visit Reflected Light Observations of Modern Earth using the Habitable Worlds Observatory`
+(`ADS Link <https://ui.adsabs.harvard.edu/abs/2026arXiv260325694Z/abstract>`_)
+
+Utilized: Free chemistry reflection retrievals, reflecting surfaces, Mie-scattering patchy clouds
+
+.. image:: ../_static/paper_images/Zelakiewicz_2026a.png
+   :alt: Sample image
+   :width: 1000
+   :align: center
+
+POSEIDON 1.4.0 Released! (April 2026) (Lead Developers: Elijah Mullens, Ryan MacDonald, Aiden Zelakiewicz)
+___________________________
+
+Mullens et al (2026)
+^^^^^^^^^^^^^^^^
+`The Rocky Planet Picture Show: Implementation of Surface Reflection and Emission in POSEIDON with Application to and Interpretation of JWST Data`
+(`ADS Link TBD`_)
+
+
+Developed: Reflecting and emitting surfaces for planets with atmospheres and patchy clouds, and bare rocks. Introduced albedo database. Also developed shiny gray deck for cloud models. 
+.. image:: ../_static/paper_images/Zelakiewicz_2026a.png
+   :alt: Sample image
+   :width: 1000
+   :align: center
