@@ -33,9 +33,10 @@ Exoplanet Eclipse Spectroscopy
    notebooks/reflection
    notebooks/reflection_emission_advanced_aerosols
    notebooks/emission_contributions
+   notebooks/reflection_emission_surfaces
+   notebooks/reflection_hwo
 
-
-High-Resolution Cross-Correlation Spectroscopy (**NEW**!)
+High-Resolution Cross-Correlation Spectroscopy
 -------------------------------
 
 .. toctree::
@@ -63,4 +64,5 @@ Miscellaneous
    notebooks/PT_profiles
    notebooks/aerosol_database
    notebooks/aerosol_advanced_directionality
+   notebooks/reflection_emission_advanced_shiny_gray_decks
 

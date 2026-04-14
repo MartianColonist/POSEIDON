@@ -17,9 +17,10 @@ Low-Resolution Retrievals
    notebooks/advanced_visuals
    notebooks/retrieval_equilibrium
    notebooks/JWST_proposal
+   notebooks/retrieval_emission_bare_rocky_planet
 
 
-High-Resolution Retrievals (**NEW**)
+High-Resolution Retrievals
 ----------------------------------------------------
 
 .. toctree::

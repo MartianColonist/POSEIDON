@@ -69,7 +69,7 @@ New in POSEIDON v1.1:
 Contributor Hall of Fame:
 ------------------------------------
 
-* Ryan MacDonald (Lead Developer)
+* Ryan MacDonald (Lead Developer) --- Ryan.MacDonald@st-andrews.ac.uk
 * Elijah Mullens (Aerosols, emission with scattering, and reflection spectra)
 * Ruizhe Wang (High-resolution cross correlation retrievals and equilibrium chemistry)
 * Charlotte Fairman (Contributor)
@@ -90,7 +90,6 @@ Contributor Hall of Fame:
    content/forward_model_tutorials
    content/retrieval_tutorials
    content/opacity_database
-   content/albedo_database
 
 .. toctree::
    :maxdepth: 2
@@ -98,7 +97,7 @@ Contributor Hall of Fame:
 
    content/citations
    content/contributing
-   content/poseidon_papers_new
+   content/poseidon_papers
    autoapi/index
 
 

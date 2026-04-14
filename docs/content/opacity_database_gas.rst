@@ -2,12 +2,7 @@ Opacity Database (Gas-Phase)
 ================
 
 Molecular, atomic, and aerosol opacities are a required input to any radiative 
-transfer code. POSEIDON's opacity database includes high-resolution 
-(:math:`R \sim 10^6`) line-by-line absorption cross sections and continuum 
-absorption processes, alongside Mie scattering extinction cross sections, 
-single scattering albedos, and asymmetry parameters, and suface albedos. 
-
-Here we tabulate gas-phase opacities. 
+transfer code. This page summarises the gas-phase opacities included in POSEIDON.
 
 Line-by-line Cross Sections
 ___________________________
@@ -1390,4 +1385,4 @@ A description of the original public release POSEIDON opacity database can be fo
 (Appendix C).
 
 Is your favourite molecule missing? Has a revolutionary new line list just been
-released? Please address any request for new opacities to: ryanjmac@umich.edu.
+released? Please address any request for new opacities to: Ryan.MacDonald@st-andrews.ac.uk.
