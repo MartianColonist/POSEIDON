@@ -1,6 +1,9 @@
 This readme details the references for various txt files in this folder. 
 
 These are the surface albedos that come default with POSEIDON. 
+
+The `albedo_database_for_v1.4' includes the zip file of the database that comes with v1.4. In order to avoid users having to redownload all opacity tables, we include the zip file here that can just be placed into inputs. 
+
 However, it is easy to add you own text files to the 'surface_reflectivities' folder in 'inputs'
 
 All reflectivities are directional-hemispherical reflectivities (r_dh), except for data from Goodis Gordon et al. 2025 
