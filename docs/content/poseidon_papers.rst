@@ -10,6 +10,10 @@ Each list includes the ADS link, a key figure from the paper displaying POSEIDON
 Pre Public Release
 ___________________________
 
+Lead Developer of POSEIDON: Ryan MacDonald
+
+Coinciding Paper: MacDonald & Madhusudhan (2017a)
+
 MacDonald & Madhusudhan (2017a)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 `HD 209458b in new light: evidence of nitrogen chemistry, patchy clouds and sub-solar water` 
@@ -223,8 +227,12 @@ Description TBD.
    :align: center
 
 
-POSEIDON 1.0 Released! (January 2023) (Lead Developer: Ryan MacDonald)
+POSEIDON 1.0 Released! (January 2023)
 ___________________________
+
+Lead Developer of POSEIDON 1.0: Ryan MacDonald
+
+Coinciding Paper: MacDonald (2023)
 
 MacDonald (2023)
 ^^^^^^^^^^^^^^^^
@@ -271,8 +279,12 @@ Description TBD.
    :width: 1000
    :align: center
 
-POSEIDON 1.1 Released! (June 2023) (Lead Developers: Ryan MacDonald (Stellar Contamination), Ruizhe Wang (Equilibrium Chemistry Grid), Elijah Mullens (Contributor to Equilibrium Chemistry))
+POSEIDON 1.1 Released! (June 2023) 
 ___________________________
+
+Lead Developers of POSEIDON 1.1: Ryan MacDonald (Stellar Contamination), Ruizhe Wang (Equilibrium Chemistry Grid), Elijah Mullens (Contributor to Equilibrium Chemistry)
+
+Coinciding Paper: N/A
 
 Coulombe et al. (2023)
 ^^^^^^^^^^^^^^^^
@@ -467,8 +479,12 @@ Inclusion of nightside thermal emission in transmission spectra.
    :width: 1000
    :align: center
 
-POSEIDON 1.2 Released! (September 2024) (Lead Developers: Elijah Mullens (Aerosols, Scattering + Reflection, Contribution Visuals, etc.), Ryan MacDonald (New Opacity Database), Charlotte Fairman (Contributor to Aerosol Models))
+POSEIDON 1.2 Released! (September 2024) 
 ___________________________
+
+Lead Developers of POSEIDON 1.2: Lead Developers: Elijah Mullens (Aerosols, Scattering + Reflection, Contribution Visuals, etc.), Ryan MacDonald (New Opacity Database), Charlotte Fairman (Contributor to Aerosol Models)
+
+Coinciding Paper: Mullens, Lewis, & MacDonald (2024)
 
 Mullens, Lewis, & MacDonald (2024)
 ^^^^^^^^^^^^^^^^
@@ -641,8 +657,12 @@ Description TBD.
    :width: 1000
    :align: center
 
-POSEIDON 1.3 Released! (4/2025) (Lead Developers: Ruizhe Wang, Ryan MacDonald)
+POSEIDON 1.3 Released! (April 2025) 
 ___________________________
+
+Lead Developers of POSEIDON 1.3: Lead Developers: Ruizhe Wang (High-Resolution Cross-Correlation Retrieval), Ryan MacDonald (Opacities)
+
+Coinciding Paper: Wang et al. (2025)
 
 Wang et al. (2025)
 ^^^^^^^^^^^^^^^^
@@ -702,8 +722,12 @@ Description TBD.
    :width: 1000
    :align: center
 
-POSEIDON 1.3.1 Released! (July 2025) (Lead Developers: Elijah Mullens)
+POSEIDON 1.3.1 Released! (July 2025)
 ___________________________
+
+Lead Developers of POSEIDON 1.3.1: Lead Developers: Elijah Mullens
+
+Coinciding Paper: Mullens & Lewis (2025)
 
 Mullens & Lewis (2025)
 ^^^^^^^^^^^^^^^^
@@ -886,8 +910,12 @@ Description TBD.
    :width: 1000
    :align: center
 
-POSEIDON 1.4 Released! (April 2026) (Lead Developers: Elijah Mullens (Surfaces, Albedo Database, Shiny Decks, Code Rework), Ryan MacDonald (Ultra Hot Jupiter H2 Dissociation), Aiden Zelakiewicz (Beta Tester, HWO Tutorial))
+POSEIDON 1.4 Released! (April 2026) 
 ___________________________
+
+Lead Developers: Elijah Mullens (Surfaces, Albedo Database, Shiny Decks, Code Rework, etc), Ryan MacDonald (Ultra Hot Jupiter H2 Dissociation. Code Rework), Aiden Zelakiewicz (Beta Tester, HWO Tutorial)
+
+Coinciding Paper: Mullens et al. (2026)
 
 Mullens et al. (2026)
 ^^^^^^^^^^^^^^^^
