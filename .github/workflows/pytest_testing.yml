@@ -5,12 +5,10 @@ on:
     branches:    
       - 'main'
       - 'dev'
-      - 'python_3.11_support'
   pull_request:
     branches:
       - 'main'
       - 'dev'
-      - 'python_3.11_support'
 
 jobs:
   test:
@@ -22,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.9', '3.10', '3.11'] 
+        python-version: ['3.10', '3.11', '3.12'] 
     steps:
     - uses: actions/checkout@v4
 
