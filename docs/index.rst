@@ -20,22 +20,30 @@ POSEIDON's official features currently include:
 * Parametric prescriptions for stellar contamination, multidimensional clouds, and more.
 * High-resolution line-by-line models (:math:`R \sim 10^6`) for cross correlation analyses.
 * Modelling and retrievals for brown dwarfs and directly imaged exoplanets.
-* NEW: High-resolution cross correlation retrievals for ground-based exoplanet datasets.
+* High-resolution cross correlation retrievals for ground-based exoplanet datasets.
+* NEW: surface thermal emission and reflection retrievals for rocky planets.
 
 
 POSEIDON contains an extensive range of tutorials covering forward models and 
 retrievals for a wide variety of different applications.
 
 
+New in POSEIDON v1.4:
+------------------------------------
+
+* TBD (Elijah to add)
+
+For a comprehensive list of new features, see the POSEIDON `Release Notes 
+<https://github.com/MartianColonist/POSEIDON/releases>`_ on GitHub.
+
+To use the new surface reflection features, you will need to re-download the POSEIDON input data.
+Please see the installation instructions.
+
 New in POSEIDON v1.3:
 ------------------------------------
 
 * High-resolution cross correlation retrievals for transmission and emission spectra.
 * New tutorials illustrating applications of cross correlations and high-resolution retrievals to WASP-121b and WASP-77 Ab.
-
-For a comprehensive list of new features, see the POSEIDON `Release Notes 
-<https://github.com/MartianColonist/POSEIDON/releases>`_ on GitHub.
-
 
 New in POSEIDON v1.2:
 ------------------------------------
@@ -45,10 +53,6 @@ New in POSEIDON v1.2:
 * New `opacity database <content/opacity_database.html>`_ with state-of-the-art molecular line lists.
 * Emission and reflection spectra, including scattering, for modelling and retrievals.
 * Many new tutorials.
-
-To use these new features, you will need to re-download the POSEIDON input data.
-Please see the installation instructions.
-
 
 New in POSEIDON v1.1:
 ------------------------------------
@@ -67,6 +71,7 @@ Contributor Hall of Fame:
 * Ruizhe Wang (High-resolution cross correlation retrievals and equilibrium chemistry)
 * Charlotte Fairman (Contributor)
 * John Kappelmeier (Contributor)
+* Aiden Zelakiewicz (HWO reflection tutorial)
 
 
 .. toctree::
@@ -82,6 +87,7 @@ Contributor Hall of Fame:
    content/forward_model_tutorials
    content/retrieval_tutorials
    content/opacity_database
+   content/albedo_database
 
 .. toctree::
    :maxdepth: 2
@@ -89,6 +95,7 @@ Contributor Hall of Fame:
 
    content/citations
    content/contributing
+   content/poseidon_papers_new
    autoapi/index
 
 
