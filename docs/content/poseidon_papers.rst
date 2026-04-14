@@ -5,7 +5,7 @@ POSEIDON Paper Timeline
 
 Each list includes the ADS link, a key figure from the paper displaying POSEIDON, and a list of how POSEIDON was utilized. 
 
-.. note:: Don't see your paper below? Reach out to us! 
+.. note:: Don't see your paper below? Reach out to us! Ryan.MacDonald@st-andrews.ac.uk.
 
 Pre Public Release
 ___________________________
