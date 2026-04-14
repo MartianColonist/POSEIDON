@@ -112,7 +112,7 @@ package via:
    pip install -e .
 
 
-Step 4: Set input file environment variables
+Step 4: Configure input files
 ____________________________________________
 
 By this point, the input files should have hopefully finished downloading. 
