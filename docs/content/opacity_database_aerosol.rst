@@ -1,13 +1,9 @@
 Opacity Database (Aerosol)
 ================
 
-Molecular, atomic, and aerosol opacities are a required input to any radiative 
-transfer code. POSEIDON's opacity database includes high-resolution 
-(:math:`R \sim 10^6`) line-by-line absorption cross sections and continuum 
-absorption processes, alongside Mie scattering extinction cross sections, 
-single scattering albedos, and asymmetry parameters, and suface albedos. 
-
-Here we tabulate aerosol opacities. 
+Aerosol scattering and absorption can significantly affect the observed spectra of 
+exoplanets and brown dwarfs. This page summarises the Mie scattering aerosol database
+included in POSEIDON.
 
 Aerosol Database
 ________________
