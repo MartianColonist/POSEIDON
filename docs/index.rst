@@ -31,7 +31,10 @@ retrievals for a wide variety of different applications.
 New in POSEIDON v1.4:
 ------------------------------------
 
-* TBD (Elijah to add)
+* Inclusion of surfaces with wavelength-dependent albedos for thermal emission and reflection spectra.
+* An extensive database of lab-measured surface albedos with detailed documentation. 
+* New tutorials illustrating rocky planet thermal emission and reflection spectra for JWST and HWO.
+* New tutorial illustrating stellar contamination in transmission.
 
 For a comprehensive list of new features, see the POSEIDON `Release Notes 
 <https://github.com/MartianColonist/POSEIDON/releases>`_ on GitHub.
