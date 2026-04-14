@@ -876,7 +876,7 @@ Utilized: Free chemistry reflection retrievals, reflecting surfaces, Mie-scatter
    :width: 1000
    :align: center
 
-POSEIDON 1.4.0 Released! (April 2026) (Lead Developers: Elijah Mullens, Ryan MacDonald, Aiden Zelakiewicz)
+POSEIDON 1.4.0 Released! (April 2026) (Lead Developers: Elijah Mullens (Surfaces, Albedo Database, Shiny Decks, Code Rework), Ryan MacDonald (Ultra Hot Jupiter H2 Dissociation), Aiden Zelakiewicz (Beta Tester, HWO Tutorial))
 ___________________________
 
 Mullens et al (2026)
