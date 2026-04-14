@@ -12,6 +12,8 @@ If you use the functionality of surfaces with POSEIDON, please cite Mullens et a
 Surface Albedo Previews  
 ___________________________
 
+Here we show wavelength vs albedo for all albedos pre-included in the database. For more details, see the pdfs below. 
+
 .. image:: ../_static/opacity_previews/surfaces/Ultramafic_Surfaces.png
    :width: 1000
    :align: center
