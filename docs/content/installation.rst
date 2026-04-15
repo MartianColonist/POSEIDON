@@ -7,9 +7,9 @@ ____________________________
 POSEIDON requires various input files (opacity data, stellar models, etc.) that
 are stored separately from the GitHub repository (due to file size limitations).
 Before installing POSEIDON, you will need to download these input files, which
-have been packaged for convenience as a single .zip file (67 GB):
+have been packaged for convenience as a single .zip file (72 GB):
 
-* `inputs.zip <https://drive.google.com/file/d/1Ojqc7u-zzdGLkI33BX63hMTtHNBsZqdw/view?usp=sharing>`_
+* `inputs.zip <https://drive.google.com/file/d/1ZSMoW8R8swYVTCiRAQZgIkyGmVDQQX2N/view?usp=sharing>`_
 
 You can also find all the required input files on `Zenodo 
 <https://zenodo.org/records/16107813>`_.
@@ -17,7 +17,7 @@ You can also find all the required input files on `Zenodo
 .. note::
    For POSEIDON v1.4, there is a surface albedo database that is now included in the inputs folder. 
    If you already have downloaded the v1.3 version of the inputs, and don't want to redownload them, you can 
-   acess the surface_reflectivities folder `here <https://github.com/MartianColonist/POSEIDON/tree/dev_bugfix/POSEIDON/reference_data/surface_reflectivities_txt_files/albedo_database_for_v1.4>`_.
+   access the surface_reflectivities folder `here <https://github.com/MartianColonist/POSEIDON/tree/dev_bugfix/POSEIDON/reference_data/surface_reflectivities_txt_files/albedo_database_for_v1.4>`_.
 
    Download the surface_reflectivities.zip folder, and add it to your inputs folder. As of 1.4 you should have four top-level folders in inputs: stellar_grids, opacity, chemistry_grids, and surface_reflectivities. 
 
