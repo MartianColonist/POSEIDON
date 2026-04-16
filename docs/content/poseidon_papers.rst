@@ -3,7 +3,11 @@
 POSEIDON Paper Timeline
 ===============
 
-Each list includes the ADS link, a key figure from the paper displaying POSEIDON, and a list of how POSEIDON was utilized. 
+This page provides an (in progress!) timeline of papers that have used POSEIDON 
+for modelling and retrieving exoplanet atmospheres.
+
+Each entry includes a NASA ADS link, a key figure from the paper showing POSEIDON's use, 
+and a summary of how POSEIDON was used in the paper.
 
 .. note:: Don't see your paper below? Reach out to us! Ryan.MacDonald@st-andrews.ac.uk.
 
@@ -926,7 +930,7 @@ Mullens et al. (2026)
 Added reflecting and emitting surfaces for planets with atmospheres, patchy clouds, 
 and bare rocks. First release of the surface albedo database. Also developed shiny gray deck for cloud models. 
 
-.. image:: ../_static/paper_images/Zelakiewicz_2026a.png
+.. image:: ../_static/paper_images/Mullens_2026.png
    :alt: Sample image
    :width: 1000
    :align: center
