@@ -16,4 +16,3 @@ The sections below describe each of the opacity databases included in POSEIDON.
 
 
 
-
