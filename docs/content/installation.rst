@@ -17,9 +17,9 @@ You can also find all the required input files on `Zenodo
 .. note::
    For POSEIDON v1.4, there is a surface albedo database that is now included in the inputs folder. 
    If you already have downloaded the v1.3 version of the inputs, and don't want to redownload them, you can 
-   access the surface_reflectivities folder `here <https://github.com/MartianColonist/POSEIDON/tree/dev_bugfix/POSEIDON/reference_data/surface_reflectivities_txt_files/albedo_database_for_v1.4>`_.
+   access the surface_reflectivities folder `here <https://github.com/MartianColonist/POSEIDON/tree/dev_bugfix/POSEIDON/reference_data/surface_reflectivities_txt_files/albedo_database_for_v1.4>`_ to add it manually.
 
-   Download the surface_reflectivities.zip folder, and add it to your inputs folder. As of 1.4 you should have four top-level folders in inputs: stellar_grids, opacity, chemistry_grids, and surface_reflectivities. 
+   Download the surface_reflectivities.zip folder, unzip it, and add it to your inputs folder. As of 1.4 you should have four top-level folders in inputs: stellar_grids, opacity, chemistry_grids, and surface_reflectivities. 
 
 Step 2: Install mpi4py and PyMultiNest
 ______________________________________
