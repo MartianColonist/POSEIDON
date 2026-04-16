@@ -57,7 +57,7 @@ jobs:
       run: |
         conda activate test_install || true
         conda install -c conda-forge mpich mpi4py --yes
-        conda install -c conda-forge pymultinest --yes
+        conda install -c conda-forge multinest pymultinest --yes
 
     - name: Install mpi4py and pymultinest on MacOS
       if: runner.os == 'macOS'
@@ -65,7 +65,7 @@ jobs:
         conda activate test_install || true
         conda env config vars set CONDA_SUBDIR=osx-64
         conda install -c conda-forge mpich mpi4py --yes
-        conda install -c conda-forge pymultinest --yes
+        conda install -c conda-forge multinest pymultinest --yes
 
     - name: Install POSEIDON
       run: |
@@ -84,6 +84,7 @@ jobs:
       run: |
         echo "POSEIDON_input_data=$GITHUB_WORKSPACE/inputs/" >> $GITHUB_ENV
         echo "PYSYN_CDBS=$GITHUB_WORKSPACE/inputs/stellar_grids/" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$HOME/miniconda3/envs/test_install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Run tests
       run: |
