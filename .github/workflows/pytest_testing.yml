@@ -56,16 +56,16 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         conda activate test_install || true
-        conda install -c conda-forge mpi4py --yes
-        conda install -c conda-forge pymultinest=2.12 --yes
+        conda install -c conda-forge mpich mpi4py --yes
+        conda install -c conda-forge pymultinest --yes
 
     - name: Install mpi4py and pymultinest on MacOS
       if: runner.os == 'macOS'
       run: |
         conda activate test_install || true
         conda env config vars set CONDA_SUBDIR=osx-64
-        conda install -c conda-forge mpi4py --yes
-        conda install -c conda-forge pymultinest=2.12 --yes
+        conda install -c conda-forge mpich mpi4py --yes
+        conda install -c conda-forge pymultinest --yes
 
     - name: Install POSEIDON
       run: |
