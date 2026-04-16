@@ -16,7 +16,7 @@ from .utility import prior_index
 from .chemistry import interpolate_log_X_grid
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_set, P_set):
     '''
     Computes the temperature profile for an atmosphere using a re-arranged
@@ -532,7 +532,7 @@ def compute_T_Line(P, g, T_eq, log_kappa_IR, log_gamma, log_gamma_2, alpha, beta
     return T
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
                              N_sectors, N_zones, alpha, beta, phi, theta,
                              P_deep = 10.0, P_high = 1.0e-5):
@@ -633,7 +633,7 @@ def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
     return T
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_T_field_two_gradients(P, T_bar_term_high, T_bar_term_mid, 
                                   Delta_T_term_high, Delta_T_term_mid,
                                   Delta_T_DN_high, Delta_T_DN_mid, log_P_mid,
@@ -755,7 +755,7 @@ def compute_T_field_two_gradients(P, T_bar_term_high, T_bar_term_mid,
     return T
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species, 
                              species_has_profile, alpha, beta, phi, theta, 
                              P_deep = 10.0, P_high = 1.0e-5):
@@ -878,7 +878,7 @@ def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species,
     return X_profiles
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_species, 
                                   species_has_profile, alpha, beta, phi, theta, 
                                   P_deep = 10.0, P_high = 1.0e-5):
@@ -1013,7 +1013,7 @@ def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_spec
     return X_profiles
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def Parmentier_dissociation_profile(P, T, A_0, alpha, beta, gamma, A_0_ref):
     '''
     Thermal dissociation profile from Parmentier et al. 2018.
@@ -1330,7 +1330,7 @@ def add_bulk_component(P, T, X_param, N_species, N_sectors, N_zones,
     return X
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def radial_profiles_test(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
     ''' 
     Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
@@ -1491,7 +1491,7 @@ def radial_profiles_test(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones)
     return n, r, r_up, r_low, dr
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
     ''' 
     Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
@@ -1606,7 +1606,7 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
     return n, r, r_up, r_low, dr
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def radial_profiles_constant_g(P, T, g_0, P_ref, R_p_ref, mu, N_sectors, N_zones):
     ''' 
     Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
@@ -1813,7 +1813,7 @@ def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species,
     return X_active, X_CIA, X_ff, X_bf
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all):
     ''' 
     Computes the mean molecular mass in each atmospheric column.

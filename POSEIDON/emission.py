@@ -26,7 +26,7 @@ def find_nearest(array, value):
     idx = (np.abs(array - value)).argmin()
     return idx
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def planck_lambda_arr(T, wl):
     '''
     Compute the Planck function spectral radiance for a range of model
@@ -107,7 +107,7 @@ def planck_lambda_arr_GPU(T, wl, B_lambda):
             B_lambda[i,k] = coeff * (1.0 / (math.exp(c_2 / (wl[k] * T[i])) - 1.0))
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def emission_single_stream(T, dz, wl, kappa, Gauss_quad = 2):
     '''
     Compute the emergent top-of-atmosphere flux from a planet or brown dwarf.
@@ -177,7 +177,7 @@ def emission_single_stream(T, dz, wl, kappa, Gauss_quad = 2):
     
     return F, dtau
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def emission_single_stream_w_albedo(T, dz, wl, kappa, Gauss_quad = 2, 
                                     surf_reflect = [], index_below_P_surf = 0):
     '''
@@ -342,7 +342,7 @@ def emission_single_stream_GPU(T, dz, wl, kappa, Gauss_quad = 2):
     return cp.asnumpy(F_p), dtau
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def determine_photosphere_radii(dtau, r_low, wl, photosphere_tau = 2/3):
     '''
     Interpolate optical depth to find the radius corresponding to the
@@ -2547,7 +2547,7 @@ def assign_assumptions_and_compute_reflection(P, T, dz, wl, kappa_tot, dtau_tot,
             albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
                                         kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
                                         w_cloud_cut, g_cloud_cut, zone_idx,
-                                        surf_reflect,
+                                        surf_reflect_cut,
                                         kappa_cloud_seperate_cut,
                                         single_phase = 3, multi_phase = 0,
                                         frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
@@ -2573,7 +2573,7 @@ def assign_assumptions_and_compute_reflection(P, T, dz, wl, kappa_tot, dtau_tot,
                     albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
                                                     kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
                                                     w_cloud_cut, g_cloud_cut, zone_idx,
-                                                    surf_reflect,
+                                                    surf_reflect_cut,
                                                     kappa_cloud_seperate_clear_cut,
                                                     single_phase = 3, multi_phase = 0,
                                                     frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,

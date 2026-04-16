@@ -7,12 +7,19 @@ ____________________________
 POSEIDON requires various input files (opacity data, stellar models, etc.) that
 are stored separately from the GitHub repository (due to file size limitations).
 Before installing POSEIDON, you will need to download these input files, which
-have been packaged for convenience as a single .zip file (67 GB):
+have been packaged for convenience as a single .zip file (72 GB):
 
-* `inputs.zip <https://drive.google.com/file/d/1Ojqc7u-zzdGLkI33BX63hMTtHNBsZqdw/view?usp=sharing>`_
+* `inputs.zip <https://drive.google.com/file/d/1ZSMoW8R8swYVTCiRAQZgIkyGmVDQQX2N/view?usp=sharing>`_
 
 You can also find all the required input files on `Zenodo 
-<https://zenodo.org/records/16107813>`_.
+<https://zenodo.org/records/19595136>`_.
+
+.. note::
+   For POSEIDON v1.4, there is a surface albedo database that is now included in the inputs folder. 
+   If you already have downloaded the v1.3 version of the inputs, and don't want to redownload them, you can 
+   access the surface_reflectivities folder `here <https://github.com/MartianColonist/POSEIDON/tree/dev_bugfix/POSEIDON/reference_data/surface_reflectivities_txt_files/albedo_database_for_v1.4>`_ to add it manually.
+
+   Download the surface_reflectivities.zip folder, unzip it, and add it to your inputs folder. As of 1.4 you should have four top-level folders in inputs: stellar_grids, opacity, chemistry_grids, and surface_reflectivities. 
 
 Step 2: Install mpi4py and PyMultiNest
 ______________________________________
@@ -35,12 +42,12 @@ on either Linux (e.g. Ubuntu) or Mac OS.
 Linux conda environment setup
 -----------------------------
 
-POSEIDON currently supports Python versions up to 3.11.9. You can create a new 
-anaconda environment with, say, the latest version of Python 3.10 via:
+POSEIDON currently supports Python versions up to 3.12. You can create a new 
+anaconda environment with the latest version of Python 3.12 via:
 
 .. code-block:: bash
 
-   conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.10
+   conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.12
 
 Once the basic Python packages are installed in this fresh environment, you
 can activate the environment where POSEIDON will dwell:
@@ -57,7 +64,7 @@ For Mac OS, you need to set the CONDA_SUBDIR environment variable to osx-64
 
 .. code-block:: bash
 
-   CONDA_SUBDIR=osx-64 conda create -n 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.10
+   CONDA_SUBDIR=osx-64 conda create -n 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.12
    conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
    conda env config vars set CONDA_SUBDIR=osx-64
 
@@ -105,7 +112,7 @@ package via:
    pip install -e .
 
 
-Step 4: Set input file environment variables
+Step 4: Configure input files
 ____________________________________________
 
 By this point, the input files should have hopefully finished downloading. 

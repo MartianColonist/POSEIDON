@@ -63,7 +63,7 @@ def create_directories(base_dir, planet_name):
         os.mkdir(retrieval_dir + '/samples')
         
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def prior_index(value, grid, start = 0):
     ''' 
     Search a grid to find the previous index closest to a specified value (i.e. 
@@ -166,7 +166,7 @@ def interp_GPU(x_value, x, y):
     return y_interp
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache = True)
 def prior_index_V2(value, grid_start, grid_end, N_grid):
     ''' 
     Find the previous index of a *uniformly spaced* grid closest to a specified 
@@ -205,7 +205,7 @@ def prior_index_V2(value, grid_start, grid_end, N_grid):
         return int(i)
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache = True)
 def closest_index(value, grid_start, grid_end, N_grid):
     '''
     Same as 'prior_index_V2', but for the closest index (i.e. can also round up).
@@ -323,7 +323,8 @@ def shared_memory_array(rank, comm, shape):
     
     # Create a shared array of size given by product of each dimension
     size = np.prod(shape)
-    itemsize = MPI.DOUBLE.Get_size() 
+    dtype = np.float64
+    itemsize = dtype().itemsize  # Always 8
 
     if (rank == 0): 
         nbytes = size * itemsize   # Array memory allocated for first process
@@ -336,9 +337,9 @@ def shared_memory_array(rank, comm, shape):
     win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
  
     # Create a numpy array whose data points to the shared memory
-    buf, itemsize = win.Shared_query(0) 
-    assert itemsize == MPI.DOUBLE.Get_size() 
-    array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
+    buf, disp_unit = win.Shared_query(0) 
+  #  assert itemsize == MPI.DOUBLE.Get_size() 
+    array = np.ndarray(buffer=buf, dtype=dtype, shape=shape) 
     
     return array, win
 
@@ -1201,7 +1202,7 @@ def generate_latex_param_names(param_names):
         if (param in ['Delta_T_1', 'Delta_T_2', 'Delta_T_3', 'Delta_T_4', 
                       'Delta_T_5', 'Delta_T_6', 'Delta_T_7', 'Delta_T_8',
                       'Delta_T_9', 'Delta_T_10', 'Delta_T_11', 'Delta_T_12']):
-            latex_names += ['$\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
+            latex_names += ['$\\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
             continue
         if (param == 'T_phot_PT'):
             latex_names += ['$T_{\\mathrm{phot}}$']
@@ -1277,20 +1278,20 @@ def generate_latex_param_names(param_names):
 
         if ('Delta_log_P_' in param):
             if('SiO2' in param):
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{SiO_2}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\, \\mathrm{SiO_2}$'
                 latex_names += [string]
                 continue
             if('Fe2O3' in param):
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{Fe_2O_3}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\,  \\mathrm{Fe_2O_3}$'
                 latex_names += [string]
                 continue
             if('MgSiO3' in param):
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{MgSiO_3}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\,  \\mathrm{MgSiO_3}$'
                 latex_names += [string]
                 continue
             else:
                 aerosol_name = param.split('_')[3]
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{' + aerosol_name + '}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\, \\mathrm{' + aerosol_name + '}$'
                 latex_names += [string]
                 continue
 
@@ -1328,7 +1329,7 @@ def generate_latex_param_names(param_names):
         #  Quick fix for cloud_type = 'one_slab'
         # 'Delta_log_P_' will not be recognised so new if statement can be made
         if ('Delta_log_P' == param):
-            string = '$\\Delta \\, \\log \\, \mathrm{P}$'
+            string = '$\\Delta \\, \\log \\, \\mathrm{P}$'
             latex_names += [string]
             continue
 

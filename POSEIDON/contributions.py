@@ -37,6 +37,7 @@ from .clouds import compute_relevant_Mie_properties
 from .utility import mock_missing
 
 from .core import compute_spectrum
+from .visuals import dark_theme, light_theme
 
 try:
     import cupy as cp
@@ -139,7 +140,7 @@ def check_atmosphere_physical(atmosphere, opac):
 # Spectral Contribution Functions
 #################################
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def extinction_spectral_contribution(chemical_species, active_species, cia_pairs, 
                                      ff_pairs, bf_species, aerosol_species,
                                      n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, 
@@ -948,6 +949,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                                fill_between = [], fill_between_alpha = 0.5, fill_to_spectrum = [],
                                data = None,
                                spectra_labels = [],
+                               dark_mode = False,
                                **kwargs,
                                ):
     
@@ -994,6 +996,9 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
             Matplotlib axis provided externally.
         file_label (str, optional):
             Optional label to append to end of the output file name.
+        dark_mode (bool, optional):
+            If True, uses a dark background with white text and axes.
+            Defaults to False (light mode).
     '''
 
     from POSEIDON.utility import plot_collection
@@ -1092,7 +1097,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
     
     # Generate plot   
     fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                       plt_label = 'Spectral Contribution Plot',
+                       plt_label = 'Spectral Decomposition',
                        spectra_labels = labels,
                        plot_full_res = False, 
                        save_fig = False,
@@ -1108,6 +1113,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                        fill_to_spectrum = fill_to_spectrum,
                        show_data = show_data,
                        data_properties = data,
+                       dark_mode = dark_mode,
                        **kwargs,
                        )
         
@@ -1126,7 +1132,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 # Pressure Contribution Functions
 #################################
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def extinction_pressure_contribution(chemical_species, active_species, cia_pairs, 
                                      ff_pairs, bf_species, aerosol_species,
                                      n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, 
@@ -2184,6 +2190,7 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
                                spectrum_contribution_list_names, R = 100,
                                return_fig = False, save_fig = False,
                                show_log_plot = False, file_label = None,
+                               dark_mode = False,
                                ):
 
     '''
@@ -2208,6 +2215,9 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
             If True, will also show the log plot of the contribution function.
         file_label (str, optional):
             Optional label to append to end of the output file name.
+        dark_mode (bool, optional):
+            If True, uses a dark background with white text and axes.
+            Defaults to False (light mode).
 
     '''
 
@@ -2216,6 +2226,9 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+    # Select theme for dark/light mode
+    theme = dark_theme if dark_mode else light_theme
     
     for i in range(len(spectrum_contribution_list_names)):
 
@@ -2224,8 +2237,13 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
         # Trying Ryan's Binning 
         fig = plt.figure()  
         fig.set_size_inches(14, 7)
+        fig.patch.set_facecolor(theme['fig_colour'])
         ax = plt.gca()
+        ax.set_facecolor(theme['fig_colour'])
         ax.set_yscale("log")
+        for spine in ax.spines.values():
+            spine.set_edgecolor(theme['ax_edge_colour'])
+        ax.tick_params(colors=theme['tick_colour'], which='both')
 
         # Bin the wavelengths using the first pressure layer of the spectrum 
         # This is because bin_spectrum returns both a wl binned and spectrum grid and we want the wl binned for now 
@@ -2249,9 +2267,9 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
         ax.set_xlim([wl[0], wl[-1]])
         ax.set_ylim([P[0], P[-1]])        
         
-        ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5)
-        ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
-        ax.set_title(title)
+        ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5, color = theme['text_colour'])
+        ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15, color = theme['text_colour'])
+        ax.set_title(title, color = theme['text_colour'])
 
         fig1 = fig
 
@@ -2262,8 +2280,13 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
 
             fig = plt.figure()  
             fig.set_size_inches(14, 7)
+            fig.patch.set_facecolor(theme['fig_colour'])
             ax = plt.gca()
+            ax.set_facecolor(theme['fig_colour'])
             ax.set_yscale("log")
+            for spine in ax.spines.values():
+                spine.set_edgecolor(theme['ax_edge_colour'])
+            ax.tick_params(colors=theme['tick_colour'], which='both')
 
             Contribution_binned[Contribution_binned == 0] = np.min(Contribution_binned[np.nonzero(Contribution_binned)])
 
@@ -2274,10 +2297,10 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
             ax.set_xlim([wl[0], wl[-1]])
             ax.set_ylim([P[0], P[-1]])        
             
-            ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5)
-            ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
+            ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5, color = theme['text_colour'])
+            ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15, color = theme['text_colour'])
             title = 'LOG Contribution Function : ' + str(spectrum_contribution_list_names[i])
-            ax.set_title(title)
+            ax.set_title(title, color = theme['text_colour'])
 
             fig2 = fig
 
@@ -2422,7 +2445,7 @@ def plot_photometric_contribution(P, planet,
                                   spectrum_contribution_list_names,
                                   bins = [],
                                   return_fig = False, save_fig = False,
-                                  file_label = None,
+                                  file_label = None, dark_mode = False,
                                   ):
     
     '''
@@ -2447,6 +2470,9 @@ def plot_photometric_contribution(P, planet,
             If True, saves a PDF in the POSEIDON output folder.
         file_label (str, optional):
             Optional label to append to end of the output file name.
+        dark_mode (bool, optional):
+            If True, uses a dark background with white text and axes.
+            Defaults to False (light mode).
         
     '''
 
@@ -2455,6 +2481,9 @@ def plot_photometric_contribution(P, planet,
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+    # Select theme for dark/light mode
+    theme = dark_theme if dark_mode else light_theme
 
     # Loop over each molecule
     labels = []
@@ -2494,11 +2523,16 @@ def plot_photometric_contribution(P, planet,
         plt.show()
         
         fig, ax = plt.subplots(figsize=(10, 10))
-        ax.set_ylabel('Log Pressure (bar)')
+        fig.patch.set_facecolor(theme['fig_colour'])
+        ax.set_facecolor(theme['fig_colour'])
+        for spine in ax.spines.values():
+            spine.set_edgecolor(theme['ax_edge_colour'])
+        ax.tick_params(colors=theme['tick_colour'], which='both')
+        ax.set_ylabel('Log Pressure (bar)', color = theme['text_colour'])
         ax.invert_yaxis()
-        ax.set_xlabel('Contribution')
+        ax.set_xlabel('Contribution', color = theme['text_colour'])
         title = 'Photometric Contribution Function All Wavelengths : ' + str(labels[i])
-        ax.set_title(title)
+        ax.set_title(title, color = theme['text_colour'])
         ax.plot(photometric_all_wavelengths[i],np.log10(P))
         plt.show()
 

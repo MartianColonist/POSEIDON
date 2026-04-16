@@ -171,32 +171,33 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                sampling_efficiency = sampling_target, 
                                const_efficiency_mode = False)
 
-        # Write retrieval results to file
+        # Write retrieval runtime to terminal
         if (rank == 0):
-
-            # Write retrieval runtime to terminal
             t1 = time.perf_counter()
             total = round_sig_figs((t1-t0)/3600.0, 2)  # Round to 2 significant figures
-            
             print('POSEIDON retrieval finished in ' + str(total) + ' hours')
 
-            # Compute samples of retrieved P-T, mixing ratio profiles, and spectrum
-            T_per_region, \
-            log_X_per_region, \
-            spec_low2, spec_low1, \
-            spec_median, spec_high1, \
-            spec_high2, T_best, \
-            spectrum_best, ymodel_best, \
-            ymodel_samples = retrieved_samples(planet, star, model, opac, data,
-                                               retrieval_name, wl, P, P_ref, R_p_ref,
-                                               P_param_set, He_fraction, N_slice_EM, 
-                                               N_slice_DN, spectrum_type, T_phot_grid, 
-                                               T_het_grid, log_g_phot_grid,
-                                               log_g_het_grid, I_phot_grid, 
-                                               I_het_grid, y_p, F_s_obs,
-                                               constant_gravity, chemistry_grid,
-                                               N_output_samples)
-            
+        # Compute samples of retrieved P-T, mixing ratio profiles, and spectrum
+        # All ranks participate to distribute the forward model evaluations
+        T_per_region, \
+        log_X_per_region, \
+        spec_low2, spec_low1, \
+        spec_median, spec_high1, \
+        spec_high2, T_best, \
+        spectrum_best, ymodel_best, \
+        ymodel_samples = retrieved_samples(planet, star, model, opac, data,
+                                           retrieval_name, wl, P, P_ref, R_p_ref,
+                                           P_param_set, He_fraction, N_slice_EM, 
+                                           N_slice_DN, spectrum_type, T_phot_grid, 
+                                           T_het_grid, log_g_phot_grid,
+                                           log_g_het_grid, I_phot_grid, 
+                                           I_het_grid, y_p, F_s_obs,
+                                           constant_gravity, chemistry_grid,
+                                           N_output_samples, comm = comm)
+
+        # Write retrieval results to file (rank 0 only)
+        if (rank == 0):
+
             # Write POSEIDON retrieval output files 
             write_MultiNest_results(planet, model, data, retrieval_name,
                                     N_live, ev_tol, sampling_algorithm, wl, R,
@@ -207,7 +208,7 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                      spec_low1, spec_median, spec_high1, spec_high2)
             
             # Save ymodel samples
-            if (save_ymodel == True):
+            if (save_ymodel and ymodel_samples is not None):
 
                 ymodel_samples_object = np.array(ymodel_samples).T
 
@@ -374,12 +375,6 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         else:
             d_sampled = planet['system_distance']
 
-        # Unpack surface pressure if set as a free parameter
-        if (surface == True) and (disable_atmosphere != True):
-            P_surf = np.power(10.0, surface_params[np.where(surface_param_names == 'log_P_surf')[0][0]])
-        else:
-            P_surf = None
-
         # Unpack background gas molecular mass if set as a free parameter
         if ('mu_back' in physical_param_names):
             mu_back = physical_params[np.where(physical_param_names == 'mu_back')[0][0]]
@@ -391,7 +386,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
         atmosphere = make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params, 
                                      log_X_params, cloud_params, geometry_params,
                                      surface_params,  
-                                     log_g, M_p, T_input, X_input, P_surf, P_param_set,
+                                     log_g, M_p, T_input, X_input, P_param_set,
                                      He_fraction, N_slice_EM, N_slice_DN, 
                                      constant_gravity, chemistry_grid, mu_back)
         
@@ -548,7 +543,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     return ymodel, spectrum, atmosphere, ln_prior_TP
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def CLR_Prior(chem_params_drawn, limit = -12.0):
     
     ''' Implements the centred-log-ratio (CLR) prior for chemical mixing ratios.
@@ -1197,10 +1192,17 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                       N_slice_EM, N_slice_DN, spectrum_type, T_phot_grid, 
                       T_het_grid, log_g_phot_grid, log_g_het_grid, I_phot_grid, 
                       I_het_grid, y_p, F_s_obs, constant_gravity, 
-                      chemistry_grid, N_output_samples):
+                      chemistry_grid, N_output_samples,
+                      comm = None):
     '''
     ADD DOCSTRING
     '''
+
+    # Set up MPI communicator for parallel sample generation
+    if comm is None:
+        comm = MPI.COMM_WORLD
+    rank = comm.Get_rank()
+    size = comm.Get_size()
 
     # Load relevant output directory
     output_prefix = retrieval_name + '-'
@@ -1212,26 +1214,41 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
     # Unpack model properties
     disable_atmosphere = model['disable_atmosphere']
     
-    # Run PyMultiNest analyser to extract posterior samples
-    analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
-                                    verbose = False)
-    samples = analyzer.get_equal_weighted_posterior()[:,:-1]
+    # Only rank 0 reads the MultiNest output to determine samples
+    if (rank == 0):
+        # Run PyMultiNest analyser to extract posterior samples
+        analyzer = pymultinest.Analyzer(n_params, outputfiles_basename = output_prefix,
+                                        verbose = False)
+        samples = analyzer.get_equal_weighted_posterior()[:,:-1]
 
-    # Store best-fitting set of parameters
-    best_fit = analyzer.get_best_fit()
-    best_fit_params = best_fit['parameters']
+        # Store best-fitting set of parameters
+        best_fit = analyzer.get_best_fit()
+        best_fit_params = np.array(best_fit['parameters'])
 
-    # Find total number of available posterior samples from MultiNest 
-    N_samples_total = len(samples[:,0])
+        # Find total number of available posterior samples from MultiNest 
+        N_samples_total = len(samples[:,0])
+        
+        # Randomly draw parameter samples from posterior
+        N_sample_draws = min(N_samples_total, N_output_samples)
+        sample = np.random.choice(len(samples), N_sample_draws, replace=False)
+
+        # Extract the parameter vectors for each sample
+        sample_params = samples[sample, :]
+    else:
+        best_fit_params = None
+        N_sample_draws = None
+        sample_params = None
+
+    # Broadcast data needed by all ranks
+    best_fit_params = comm.bcast(best_fit_params, root=0)
+    N_sample_draws = comm.bcast(N_sample_draws, root=0)
+    sample_params = comm.bcast(sample_params, root=0)
+
+    if (rank == 0):
+        print("Now generating " + str(N_sample_draws) + " sampled spectra and " + 
+              "P-T profiles from the posterior distribution...")
     
-    # Randomly draw parameter samples from posterior
-    N_sample_draws = min(N_samples_total, N_output_samples)
-    sample = np.random.choice(len(samples), N_sample_draws, replace=False)
-
-    print("Now generating " + str(N_sample_draws) + " sampled spectra and " + 
-          "P-T profiles from the posterior distribution...")
-    
-    # Calculate best-fitting spectrum and PT profile
+    # Calculate best-fitting spectrum and PT profile (rank 0 only, quick single eval)
     ymodel_best, spectrum_best, \
     atmosphere_best, _ = forward_model(best_fit_params, planet, star, model, opac, data, 
                                        wl, P, P_ref_set, R_p_ref_set, P_param_set, 
@@ -1249,15 +1266,19 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
 
     else:
         T_best = 0.0
-                    
-    # For all the samples, generate spectra and PT profiles
-    for i in range(N_sample_draws):
+
+    # Distribute sample indices across MPI ranks
+    parr_indices = list(range(rank, N_sample_draws, size))
+    N_parr_samples = len(parr_indices)
+
+    # For all the samples assigned to this rank, generate spectra and PT profiles
+    for local_i, global_i in enumerate(parr_indices):
 
         # Estimate run time for this function based on one model evaluation
-        if (i == 0):
-            t0 = time.perf_counter()   # Time how long one model takes
+        if (local_i == 0):
+            t0 = time.perf_counter()
 
-        param_vector = samples[sample[i],:]
+        param_vector = sample_params[global_i, :]
 
         ymodel, spectrum, \
         atmosphere, _ = forward_model(param_vector, planet, star, model, opac, data, 
@@ -1268,110 +1289,143 @@ def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                                       I_phot_grid, I_het_grid, y_p, F_s_obs,
                                       constant_gravity, chemistry_grid)
 
-        # Based on first model, create arrays to store retrieved temperature, spectrum, and mixing ratios
-        if (i == 0):
+        # Based on first model, create local arrays to store this rank's results
+        if (local_i == 0):
 
-            # Estimate run time for this function based on one model evaluation
             t1 = time.perf_counter()
-            total = round_sig_figs((N_sample_draws * (t1-t0)/60.0), 2)  # Round to 2 significant figures
-            
-            print('This process will take approximately ' + str(total) + ' minutes')
+            if (rank == 0):
+                total = round_sig_figs((N_sample_draws / size * (t1-t0)/60.0), 2)
+                print('This process will take approximately ' + str(total) + ' minutes')
 
-            # Only store T and log X if an atmosphere enabled
             if (disable_atmosphere == False):
-
-                # Find size of mixing ratio field (same as temperature field)
                 N_species, N_D, N_sectors, N_zones = np.shape(atmosphere['X'])
+                parr_T_stored = np.zeros(shape=(N_parr_samples, N_D, N_sectors, N_zones))
+                parr_log_X_stored = np.zeros(shape=(N_parr_samples, N_species, N_D, N_sectors, N_zones))
 
-                # Create arrays to store sampled retrieval outputs
-                T_stored = np.zeros(shape=(N_sample_draws, N_D, N_sectors, N_zones))
-                log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
-
-            spectrum_stored = np.zeros(shape=(N_sample_draws, len(wl)))
+            parr_spectrum_stored = np.zeros(shape=(N_parr_samples, len(wl)))
 
             if model['high_res_method'] is None:
-                ymodel_samples = np.zeros(shape=(N_sample_draws, len(ymodel)))
+                parr_ymodel_samples = np.zeros(shape=(N_parr_samples, len(ymodel)))
+
+        if (disable_atmosphere == False):
+            parr_T_stored[local_i,:,:,:] = atmosphere['T']
+            parr_log_X_stored[local_i,:,:,:,:] = np.log10(atmosphere['X'])
+
+        parr_spectrum_stored[local_i,:] = spectrum
+
+        if model['high_res_method'] is None:
+            parr_ymodel_samples[local_i,:] = ymodel
+
+    # Gather results from all ranks onto rank 0
+    # We need to reconstruct the full arrays in the original sample order
+    
+    # Gather the local spectrum arrays
+    all_spectrum_list = comm.gather(parr_spectrum_stored, root=0)
+
+    if model['high_res_method'] is None:
+        all_ymodel_list = comm.gather(parr_ymodel_samples, root=0)
+
+    if (disable_atmosphere == False):
+        all_T_list = comm.gather(parr_T_stored, root=0)
+        all_log_X_list = comm.gather(parr_log_X_stored, root=0)
+
+    # Reconstruct full arrays on rank 0 in the correct order
+    if (rank == 0):
+
+        spectrum_stored = np.zeros(shape=(N_sample_draws, len(wl)))
+        if model['high_res_method'] is None:
+            ymodel_samples = np.zeros(shape=(N_sample_draws, len(ymodel_best)))
+        
+        if (disable_atmosphere == False):
+            T_stored = np.zeros(shape=(N_sample_draws, N_D, N_sectors, N_zones))
+            log_X_stored = np.zeros(shape=(N_sample_draws, N_species, N_D, N_sectors, N_zones))
+
+        # Reconstruct in original order: rank r handled indices [r, r+size, r+2*size, ...]
+        for r in range(size):
+            r_indices = list(range(r, N_sample_draws, size))
+            for local_i, global_i in enumerate(r_indices):
+                spectrum_stored[global_i, :] = all_spectrum_list[r][local_i, :]
+                if model['high_res_method'] is None:
+                    ymodel_samples[global_i, :] = all_ymodel_list[r][local_i, :]
+                if (disable_atmosphere == False):
+                    T_stored[global_i, :, :, :] = all_T_list[r][local_i, :, :, :]
+                    log_X_stored[global_i, :, :, :, :] = all_log_X_list[r][local_i, :, :, :, :]
+
+    else:
+        # Non-root ranks don't need the final arrays
+        spectrum_stored = None
+        ymodel_samples = None
+        T_stored = None
+        log_X_stored = None
+
+    # Only rank 0 computes confidence intervals and returns results
+    if (rank == 0):
+
+        # Compute 1 and 2 sigma confidence intervals for P-T and mixing ratio profiles and spectrum
+
+        # Determine atmospheric regions based on model dimensionality
+        Atmosphere_dimension = model['Atmosphere_dimension']
+        TwoD_type = model['TwoD_type']
+
+        T_per_region = {}
+        log_X_per_region = {}
 
         if (disable_atmosphere == False):
 
-            # Store temperature field and mixing ratios in sample arrays
-            T_stored[i,:,:,:] = atmosphere['T']
-            log_X_stored[i,:,:,:,:] = np.log10(atmosphere['X'])
+            region_list = []
 
-        # Store spectrum in sample array
-        spectrum_stored[i,:] = spectrum
+            if (Atmosphere_dimension == 1):
+                region_list.append((None, 0, 0))
 
-        if model['high_res_method'] is None:
-            ymodel_samples[i,:] = ymodel
-            
-    # Compute 1 and 2 sigma confidence intervals for P-T and mixing ratio profiles and spectrum
+            elif (Atmosphere_dimension == 2):
 
-    # Determine atmospheric regions based on model dimensionality
-    Atmosphere_dimension = model['Atmosphere_dimension']
-    TwoD_type = model['TwoD_type']
+                if (TwoD_type == 'E-M'):
+                    region_list.append(('evening', 0, 0))
+                    region_list.append(('morning', N_sectors - 1, 0))
 
-    T_per_region = {}       # Dict mapping region name -> (T_low2, T_low1, T_median, T_high1, T_high2)
-    log_X_per_region = {}   # Dict mapping region name -> (log_X_low2, ..., log_X_high2)
+                elif (TwoD_type == 'D-N'):
+                    region_list.append(('dayside', 0, 0))
+                    region_list.append(('nightside', 0, N_zones - 1))
 
-    if (disable_atmosphere == False):
+            elif (Atmosphere_dimension == 3):
+                region_list.append(('dayside_evening', 0, 0))
+                region_list.append(('dayside_morning', N_sectors - 1, 0))
+                region_list.append(('nightside_evening', 0, N_zones - 1))
+                region_list.append(('nightside_morning', N_sectors - 1, N_zones - 1))
 
-        # Build list of (region_name, sector_index, zone_index) tuples
-        region_list = []
+            for region_name, j_sector, k_zone in region_list:
 
-        if (Atmosphere_dimension == 1):
-            # 1D model: single region with no label
-            region_list.append((None, 0, 0))
+                _, T_r_low2, T_r_low1, T_r_median, \
+                T_r_high1, T_r_high2, _ = confidence_intervals(N_sample_draws,
+                                                               T_stored[:,:,j_sector,k_zone], N_D)
+                T_per_region[region_name] = (T_r_low2, T_r_low1, T_r_median, T_r_high1, T_r_high2)
 
-        elif (Atmosphere_dimension == 2):
+                log_X_low2 = np.zeros(shape=(N_species, N_D))
+                log_X_low1 = np.zeros(shape=(N_species, N_D))
+                log_X_median = np.zeros(shape=(N_species, N_D))
+                log_X_high1 = np.zeros(shape=(N_species, N_D))
+                log_X_high2 = np.zeros(shape=(N_species, N_D))
 
-            if (TwoD_type == 'E-M'):
-                # Evening terminator is first sector, morning is last sector
-                region_list.append(('evening', 0, 0))
-                region_list.append(('morning', N_sectors - 1, 0))
-
-            elif (TwoD_type == 'D-N'):
-                # Dayside is first zone, nightside is last zone
-                region_list.append(('dayside', 0, 0))
-                region_list.append(('nightside', 0, N_zones - 1))
-
-        elif (Atmosphere_dimension == 3):
-            # Four corner regions combining evening/morning with dayside/nightside
-            region_list.append(('dayside_evening', 0, 0))
-            region_list.append(('dayside_morning', N_sectors - 1, 0))
-            region_list.append(('nightside_evening', 0, N_zones - 1))
-            region_list.append(('nightside_morning', N_sectors - 1, N_zones - 1))
-
-        for region_name, j_sector, k_zone in region_list:
-
-            # Temperature confidence intervals for this region
-            _, T_r_low2, T_r_low1, T_r_median, \
-            T_r_high1, T_r_high2, _ = confidence_intervals(N_sample_draws,
-                                                           T_stored[:,:,j_sector,k_zone], N_D)
-            T_per_region[region_name] = (T_r_low2, T_r_low1, T_r_median, T_r_high1, T_r_high2)
-
-            # Mixing ratio confidence intervals for this region
-            log_X_low2 = np.zeros(shape=(N_species, N_D))
-            log_X_low1 = np.zeros(shape=(N_species, N_D))
-            log_X_median = np.zeros(shape=(N_species, N_D))
-            log_X_high1 = np.zeros(shape=(N_species, N_D))
-            log_X_high2 = np.zeros(shape=(N_species, N_D))
-
-            # Mixing ratio confidence intervals for each species in this region
-            for q in range(N_species):
-                _, log_X_low2[q,:], log_X_low1[q,:], log_X_median[q,:], \
-                log_X_high1[q,:], log_X_high2[q,:], _ = confidence_intervals(N_sample_draws, 
-                                                                             log_X_stored[:,q,:,j_sector,k_zone],N_D)
-                
-            log_X_per_region[region_name] = (log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2)
-                
-    # Spectrum
-    _, spec_low2, spec_low1, spec_median, \
-    spec_high1, spec_high2, _ = confidence_intervals(N_sample_draws, 
-                                                     spectrum_stored, len(wl))
+                for q in range(N_species):
+                    _, log_X_low2[q,:], log_X_low1[q,:], log_X_median[q,:], \
+                    log_X_high1[q,:], log_X_high2[q,:], _ = confidence_intervals(N_sample_draws, 
+                                                                                 log_X_stored[:,q,:,j_sector,k_zone],N_D)
+                    
+                log_X_per_region[region_name] = (log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2)
+                    
+        # Spectrum
+        _, spec_low2, spec_low1, spec_median, \
+        spec_high1, spec_high2, _ = confidence_intervals(N_sample_draws, 
+                                                         spectrum_stored, len(wl))
+        
+        return T_per_region, log_X_per_region, \
+               spec_low2, spec_low1, spec_median, spec_high1, spec_high2, \
+               T_best, spectrum_best, ymodel_best, ymodel_samples
     
-    return T_per_region, log_X_per_region, \
-           spec_low2, spec_low1, spec_median, spec_high1, spec_high2, \
-           T_best, spectrum_best, ymodel_best, ymodel_samples
+    else:
+        # Non-root ranks return None (caller should check rank)
+        return None, None, None, None, None, None, None, \
+               T_best, spectrum_best, None, None
 
 
 def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = None, 
@@ -1532,12 +1586,6 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     else:
         log_g = None
 
-    # Unpack surface pressure if set as a free parameter
-    if ((surface == True) and ('log_P_surf' in physical_param_names)):
-        P_surf = np.power(10.0, physical_params[np.where(physical_param_names == 'log_P_surf')[0][0]])
-    else:
-        P_surf = None
-
     # Unpack background gas molecular mass if set as a free parameter
     if ('mu_back' in physical_param_names):
         mu_back = physical_params[np.where(physical_param_names == 'mu_back')[0][0]]
@@ -1557,7 +1605,7 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
                                  log_X_params, cloud_params, geometry_params,
                                  surface_params,
                                  log_g = log_g, M_p = M_p, T_input = T_input,
-                                 X_input = X_input, P_surf = P_surf,
+                                 X_input = X_input,
                                  P_param_set = P_param_set, He_fraction = He_fraction, 
                                  N_slice_EM = N_slice_EM, N_slice_DN = N_slice_DN, 
                                  constant_gravity = constant_gravity,
