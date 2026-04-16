@@ -7,7 +7,9 @@ in the POSEIDON v1.4 update (see Mullens et al. 2026).
 
 **When using any albedos in a publication, please be sure to cite the publication the 
 data was collected in, as well as relevant publications for original laboratory measurements. 
-If you use the functionality of surfaces with POSEIDON, please cite Mullens et al. 2026.**
+If you use the functionality of surfaces with POSEIDON, or use the surface albedo database, 
+please cite Mullens et al. 2026.**
+
 
 Surface Albedo Previews  
 ___________________________
