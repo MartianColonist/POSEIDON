@@ -12,7 +12,7 @@ have been packaged for convenience as a single .zip file (72 GB):
 * `inputs.zip <https://drive.google.com/file/d/1ZSMoW8R8swYVTCiRAQZgIkyGmVDQQX2N/view?usp=sharing>`_
 
 You can also find all the required input files on `Zenodo 
-<https://zenodo.org/records/16107813>`_.
+<https://zenodo.org/records/19595136>`_.
 
 .. note::
    For POSEIDON v1.4, there is a surface albedo database that is now included in the inputs folder. 
