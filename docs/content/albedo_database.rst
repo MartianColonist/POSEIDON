@@ -55,7 +55,7 @@ Here we show wavelength vs albedo for all albedos pre-included in the database. 
 Surface Albedo References 
 ___________________________
 
-As of POSEIDON v1.4, a fresh install of POSEIDON comes with a surface_reflectivies folder 
+As of POSEIDON v1.4, a fresh install of POSEIDON comes with a surface_reflectivities folder 
 in the inputs folder. This folder contains the pre-included surface albedos (as .txt files) 
 from the following source, where all txt files can be found collected `here <https://github.com/MartianColonist/POSEIDON/tree/dev_bugfix/POSEIDON/reference_data/surface_reflectivities_txt_files/>`_. 
 The last portion of the albedo name signifies its source (i.e., _H12 = Hu 2012)
@@ -73,6 +73,9 @@ reflectance (for more details, see Appendix A in Mullens et al (2026)).
 
 **When using any albedos in a publication, please be sure to cite the publication the 
 data was collected in, as well as relevant publications for original laboratory measurements.**
+
+Don't see your favourite albedo included in the database? Do you want to add your 
+own lab data to the database? Please do reach out: eem85@cornell.edu.
 
 H12, GG25, H25, and Z26 collected and/or reformatted previously published laboratory data. 
 
