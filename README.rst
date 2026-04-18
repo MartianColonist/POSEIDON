@@ -54,7 +54,7 @@ If you use POSEIDON in your work, please cite `MacDonald & Madhusudhan (2017)
 License
 -------
 
-Copyright 2023-2025 Ryan J. MacDonald
+Copyright 2023-2026 Ryan J. MacDonald
 
 POSEIDON is available under the BSD 3-Clause License.
 Please see the LICENSE file for more information.
@@ -70,5 +70,5 @@ Interesting in contributing to POSEIDON? Please see the `contribution guide
 Questions and Support
 ---------------------
 
-Feel free to reach out to Ryan MacDonald (ryanjmac@umich.edu) or Elijah Mullens 
-(eem85@cornell.edu). 
+Feel free to reach out to Ryan MacDonald (Ryan.MacDonald@st-andrews.ac.uk) 
+or Elijah Mullens (eem85@cornell.edu). 

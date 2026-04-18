@@ -63,7 +63,7 @@ def create_directories(base_dir, planet_name):
         os.mkdir(retrieval_dir + '/samples')
         
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def prior_index(value, grid, start = 0):
     ''' 
     Search a grid to find the previous index closest to a specified value (i.e. 
@@ -166,7 +166,7 @@ def interp_GPU(x_value, x, y):
     return y_interp
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache = True)
 def prior_index_V2(value, grid_start, grid_end, N_grid):
     ''' 
     Find the previous index of a *uniformly spaced* grid closest to a specified 
@@ -205,7 +205,7 @@ def prior_index_V2(value, grid_start, grid_end, N_grid):
         return int(i)
 
 
-@jit(nopython=True)
+@jit(nopython=True, cache = True)
 def closest_index(value, grid_start, grid_end, N_grid):
     '''
     Same as 'prior_index_V2', but for the closest index (i.e. can also round up).
@@ -323,7 +323,8 @@ def shared_memory_array(rank, comm, shape):
     
     # Create a shared array of size given by product of each dimension
     size = np.prod(shape)
-    itemsize = MPI.DOUBLE.Get_size() 
+    dtype = np.float64
+    itemsize = dtype().itemsize  # Always 8
 
     if (rank == 0): 
         nbytes = size * itemsize   # Array memory allocated for first process
@@ -336,9 +337,9 @@ def shared_memory_array(rank, comm, shape):
     win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
  
     # Create a numpy array whose data points to the shared memory
-    buf, itemsize = win.Shared_query(0) 
-    assert itemsize == MPI.DOUBLE.Get_size() 
-    array = np.ndarray(buffer=buf, dtype='d', shape=shape) 
+    buf, disp_unit = win.Shared_query(0) 
+  #  assert itemsize == MPI.DOUBLE.Get_size() 
+    array = np.ndarray(buffer=buf, dtype=dtype, shape=shape) 
     
     return array, win
 
@@ -732,18 +733,37 @@ def write_retrieved_spectrum(retrieval_name, wl, spec_low2,
 
 
 def write_retrieved_PT(retrieval_name, P, T_low2, T_low1, 
-                       T_median, T_high1, T_high2):
+                       T_median, T_high1, T_high2, region_name = None):
     '''
-    ADD DOCSTRING
+    Write the retrieved P-T profile confidence intervals to a text file.
+
+    Args:
+        retrieval_name (str):
+            Name of the retrieval run.
+        P (np.array of float):
+            Model pressure grid (bar).
+        T_low2, T_low1, T_median, T_high1, T_high2 (np.array of float):
+            Temperature confidence intervals at each pressure level.
+        region_name (str, optional):
+            If provided, appends a region label to the output filename
+            (e.g. 'dayside', 'nightside', 'evening', 'morning').
     '''
 
     # Identify output directory location where the retrieved P-T profile will be saved
     output_dir = '../samples/'
+
+    # Build output filename, optionally including a region label
+    if (region_name is not None):
+        filename = retrieval_name + '_PT_retrieved_' + region_name + '.txt'
+    else:
+        filename = retrieval_name + '_PT_retrieved.txt'
     
-    # Write retrieved spectrum
-    f = open(output_dir + retrieval_name + '_PT_retrieved.txt', 'w')
+    # Write retrieved P-T profile
+    f = open(output_dir + filename, 'w')
     
     # Write top line
+    if (region_name is not None):
+        f.write('Region: ' + region_name + '\n')
     f.write('P (bar) | T: -2σ | T: -1σ  | T: median | T: +1σ | T: +2σ \n')
     
     for i in range(len(P)):
@@ -754,16 +774,36 @@ def write_retrieved_PT(retrieval_name, P, T_low2, T_low1,
 
 
 def write_retrieved_log_X(retrieval_name, chemical_species, P, log_X_low2, 
-                          log_X_low1, log_X_median, log_X_high1, log_X_high2):
+                          log_X_low1, log_X_median, log_X_high1, log_X_high2,
+                          region_name = None):
     '''
-    ADD DOCSTRING
+    Write the retrieved mixing ratio profile confidence intervals to a text file.
+
+    Args:
+        retrieval_name (str):
+            Name of the retrieval run.
+        chemical_species (list of str):
+            Chemical species included in the model.
+        P (np.array of float):
+            Model pressure grid (bar).
+        log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2 (np.array of float):
+            Log-mixing-ratio confidence intervals for each species at each pressure level.
+        region_name (str, optional):
+            If provided, appends a region label to the output filename
+            (e.g. 'dayside', 'nightside', 'evening', 'morning').
     '''
 
     # Identify output directory location where the retrieved mixing ratio profiles will be saved
     output_dir = '../samples/'
+
+    # Build output filename, optionally including a region label
+    if (region_name is not None):
+        filename = retrieval_name + '_log_X_retrieved_' + region_name + '.txt'
+    else:
+        filename = retrieval_name + '_log_X_retrieved.txt'
     
-    # Write retrieved spectrum
-    f = open(output_dir + retrieval_name + '_log_X_retrieved.txt', 'w')
+    # Write retrieved mixing ratio profiles
+    f = open(output_dir + filename, 'w')
 
     # First line of file lists the chemical species included in this model
     chem_species_string = 'Chemical species: '
@@ -824,9 +864,27 @@ def read_retrieved_spectrum(planet_name, model_name, retrieval_name = None):
     return wl, spec_low2, spec_low1, spec_median, spec_high1, spec_high2
 
 
-def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
+def read_retrieved_PT(planet_name, model_name, retrieval_name = None,
+                      region_name = None):
     '''
-    ADD DOCSTRING
+    Read the retrieved P-T profile confidence intervals from a text file.
+
+    Args:
+        planet_name (str):
+            The name of the planet.
+        model_name (str):
+            The name of the model.
+        retrieval_name (str, optional):
+            The name of the retrieval run. If None, defaults to model_name.
+        region_name (str, optional):
+            If provided, reads the region-specific P-T file
+            (e.g. 'dayside', 'nightside', 'evening', 'morning').
+
+    Returns:
+        P (np.array of float):
+            Pressure grid (bar).
+        T_low2, T_low1, T_median, T_high1, T_high2 (np.array of float):
+            Temperature confidence intervals at each pressure level.
     '''
 
     if (retrieval_name is None):
@@ -837,12 +895,17 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     # Identify output directory location where the retrieved P-T profile is located
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
-    # Find retrieved P-T profile file
-    fname = output_dir + retrieval_name + '_PT_retrieved.txt'
+    # Build filename, optionally including a region label
+    if (region_name is not None):
+        fname = output_dir + retrieval_name + '_PT_retrieved_' + region_name + '.txt'
+        skiprows = 2   # Region-specific files have an extra 'Region:' header line
+    else:
+        fname = output_dir + retrieval_name + '_PT_retrieved.txt'
+        skiprows = 1   # Standard file has a single header line
 
     # Read retrieved temperature confidence intervals
     PT_file = pd.read_csv(fname, sep = '[\\s]{1,20}', engine = 'python', 
-                          header = None, skiprows = 1)
+                          header = None, skiprows = skiprows)
 
     P = np.array(PT_file[0])         # Pressure (bar)
     T_low2 = np.array(PT_file[1])    # -2σ
@@ -854,9 +917,29 @@ def read_retrieved_PT(planet_name, model_name, retrieval_name = None):
     return P, T_low2, T_low1, T_median, T_high1, T_high2
 
 
-def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
+def read_retrieved_log_X(planet_name, model_name, retrieval_name = None,
+                         region_name = None):
     '''
-    ADD DOCSTRING
+    Read the retrieved mixing ratio profile confidence intervals from a text file.
+
+    Args:
+        planet_name (str):
+            The name of the planet.
+        model_name (str):
+            The name of the model.
+        retrieval_name (str, optional):
+            The name of the retrieval run. If None, defaults to model_name.
+        region_name (str, optional):
+            If provided, reads the region-specific log_X file
+            (e.g. 'dayside', 'nightside', 'evening', 'morning').
+
+    Returns:
+        P (np.array of float):
+            Pressure grid (bar).
+        chemical_species (np.array of str):
+            Chemical species included in the model.
+        log_X_low2, log_X_low1, log_X_median, log_X_high1, log_X_high2 (np.array of float):
+            Log-mixing-ratio confidence intervals for each species.
     '''
 
     if (retrieval_name is None):
@@ -864,11 +947,14 @@ def read_retrieved_log_X(planet_name, model_name, retrieval_name = None):
     else:
         retrieval_name = model_name + '_' + retrieval_name
 
-    # Identify output directory location where the retrieved P-T profile is located
+    # Identify output directory location where the retrieved mixing ratio profile is located
     output_dir = './POSEIDON_output/' + planet_name + '/retrievals/samples/'
 
-    # Find retrieved P-T profile file
-    fname = output_dir + retrieval_name + '_log_X_retrieved.txt'
+    # Build filename, optionally including a region label
+    if (region_name is not None):
+        fname = output_dir + retrieval_name + '_log_X_retrieved_' + region_name + '.txt'
+    else:
+        fname = output_dir + retrieval_name + '_log_X_retrieved.txt'
 
     # Read file to figure out number of layers and chemical species
     file = open(fname, 'r')
@@ -1116,7 +1202,7 @@ def generate_latex_param_names(param_names):
         if (param in ['Delta_T_1', 'Delta_T_2', 'Delta_T_3', 'Delta_T_4', 
                       'Delta_T_5', 'Delta_T_6', 'Delta_T_7', 'Delta_T_8',
                       'Delta_T_9', 'Delta_T_10', 'Delta_T_11', 'Delta_T_12']):
-            latex_names += ['$\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
+            latex_names += ['$\\Delta \\, T_{\\mathrm{' + param[8:] + '}}$']
             continue
         if (param == 'T_phot_PT'):
             latex_names += ['$T_{\\mathrm{phot}}$']
@@ -1192,20 +1278,20 @@ def generate_latex_param_names(param_names):
 
         if ('Delta_log_P_' in param):
             if('SiO2' in param):
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{SiO_2}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\, \\mathrm{SiO_2}$'
                 latex_names += [string]
                 continue
             if('Fe2O3' in param):
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{Fe_2O_3}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\,  \\mathrm{Fe_2O_3}$'
                 latex_names += [string]
                 continue
             if('MgSiO3' in param):
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\,  \\mathrm{MgSiO_3}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\,  \\mathrm{MgSiO_3}$'
                 latex_names += [string]
                 continue
             else:
                 aerosol_name = param.split('_')[3]
-                string = '$\\Delta \\, \\log \\, \mathrm{P} \\, \\mathrm{' + aerosol_name + '}$'
+                string = '$\\Delta \\, \\log \\, \\mathrm{P} \\, \\mathrm{' + aerosol_name + '}$'
                 latex_names += [string]
                 continue
 
@@ -1243,7 +1329,7 @@ def generate_latex_param_names(param_names):
         #  Quick fix for cloud_type = 'one_slab'
         # 'Delta_log_P_' will not be recognised so new if statement can be made
         if ('Delta_log_P' == param):
-            string = '$\\Delta \\, \\log \\, \mathrm{P}$'
+            string = '$\\Delta \\, \\log \\, \\mathrm{P}$'
             latex_names += [string]
             continue
 
@@ -1755,7 +1841,7 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     
     # Load values for error inflation parameters (if included in model)
     _, _, _, _, _, _, _, \
-    err_inflation_params, _ = split_params(best_fit_params, N_params_cum)
+    err_inflation_params, _, _ = split_params(best_fit_params, N_params_cum)
     
     if (model['high_res_method'] is None):
       

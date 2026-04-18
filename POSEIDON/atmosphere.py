@@ -16,7 +16,7 @@ from .utility import prior_index
 from .chemistry import interpolate_log_X_grid
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_set, P_set):
     '''
     Computes the temperature profile for an atmosphere using a re-arranged
@@ -99,6 +99,132 @@ def compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, T_set, P_set):
             T[i,0,0] = T2 + np.power(((1.0/a2)*(log_P[i] - log_P2)), 2.0)
         elif (log_P[i] <= log_P1):
             T[i,0,0] = T0 + np.power(((1.0/a1)*(log_P[i] - log_P_min)), 2.0)
+
+    return T
+
+
+def compute_T_Madhu_2D(P, a1_1, a2_1, log_P1_1, log_P2_1, 
+                       a1_2, a2_2, log_P1_2, log_P2_2, 
+                       T_deep, P_ref, N_sectors, N_zones,
+                       alpha, beta, phi, theta):
+    '''
+    Computes a 2D temperature field using two Madhusudhan & Seager (2009)
+    P-T profiles: one for each side of the atmosphere (e.g. dayside/nightside
+    or evening/morning). Both profiles share a common deep temperature T_deep
+    at the reference pressure P_ref (i.e. log_P3 = log10(P_ref) for both).
+
+    For a D-N 2D model: profile 1 = dayside, profile 2 = nightside.
+    For an E-M 2D model: profile 1 = evening, profile 2 = morning.
+
+    The angular interpolation between the two profiles follows the same scheme
+    used by the gradient profiles in MacDonald & Lewis (2022).
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        a1_1 (float):
+            Alpha_1 parameter for profile 1.
+        a2_1 (float):
+            Alpha_2 parameter for profile 1.
+        log_P1_1 (float):
+            Layer 1-2 boundary pressure for profile 1 (log10 bar).
+        log_P2_1 (float):
+            Inversion pressure for profile 1 (log10 bar).
+        a1_2 (float):
+            Alpha_1 parameter for profile 2.
+        a2_2 (float):
+            Alpha_2 parameter for profile 2.
+        log_P1_2 (float):
+            Layer 1-2 boundary pressure for profile 2 (log10 bar).
+        log_P2_2 (float):
+            Inversion pressure for profile 2 (log10 bar).
+        T_deep (float):
+            Shared deep temperature at P_ref (K).
+        P_ref (float):
+            Reference pressure (bar). Sets log_P3 for both profiles.
+        N_sectors (int):
+            Number of azimuthal sectors.
+        N_zones (int):
+            Number of zenith zones.
+        alpha (float):
+            Terminator opening angle (degrees).
+        beta (float):
+            Day-night opening angle (degrees).
+        phi (np.array of float):
+            Mid-sector angles (radians).
+        theta (np.array of float):
+            Mid-zone angles (radians).
+
+    Returns:
+        T (3D np.array of float):
+            Temperature of each layer as a function of pressure, sector, 
+            and zone (K).
+
+    '''
+
+    # Store number of layers and log_P3 (shared deep pressure)
+    N_layers = len(P)
+    log_P3 = np.log10(P_ref)
+
+    # Compute 1D Madhu profiles for each side
+    # T_set = T_deep, P_set = P_ref for both profiles
+    T_profile_1 = compute_T_Madhu(P, a1_1, a2_1, log_P1_1, log_P2_1,
+                                  log_P3, T_deep, P_ref)   # shape (N_layers, 1, 1)
+    T_profile_2 = compute_T_Madhu(P, a1_2, a2_2, log_P1_2, log_P2_2,
+                                  log_P3, T_deep, P_ref)   # shape (N_layers, 1, 1)
+
+    # Extract 1D arrays
+    T_1 = T_profile_1[:, 0, 0]   # Profile 1 (day or evening)
+    T_2 = T_profile_2[:, 0, 0]   # Profile 2 (night or morning)
+
+    # Initialise 3D temperature array
+    T = np.zeros(shape=(N_layers, N_sectors, N_zones))
+
+    # Convert alpha and beta from degrees to radians
+    alpha_rad = alpha * (np.pi / 180.0)
+    beta_rad = beta * (np.pi / 180.0)
+
+    # Populate 3D temperature field by angular interpolation
+    for j in range(N_sectors):
+        for k in range(N_zones):
+
+            # Determine the interpolation weight between the two profiles.
+            # For E-M models the azimuthal angle phi controls the blend.
+            # For D-N models the zenith angle theta controls the blend.
+            # Profile 1 is the first side (day or evening) and profile 2 is 
+            # the second side (night or morning).
+
+            # Evening-Morning weight from phi
+            if (N_sectors > 1):
+                if (phi[j] <= -alpha_rad / 2.0):
+                    w_phi = 1.0     # Pure profile 1 (evening)
+                elif (phi[j] >= alpha_rad / 2.0):
+                    w_phi = 0.0     # Pure profile 2 (morning)
+                else:
+                    w_phi = 0.5 - (phi[j] / alpha_rad) 
+            else:
+                w_phi = 0.5   # Single sector (terminator average)
+
+            # Day-Night weight from theta
+            if (N_zones > 1):
+                if (theta[k] <= -beta_rad / 2.0):
+                    w_theta = 1.0   # Pure profile 1 (dayside)
+                elif (theta[k] >= beta_rad / 2.0):
+                    w_theta = 0.0   # Pure profile 2 (nightside)
+                else:
+                    w_theta = 0.5 - (theta[k] / beta_rad) 
+            else:
+                w_theta = 0.5   # Single zone (no D-N distinction)
+
+            # For D-N models (N_sectors=1), w_phi=0.5 so w=w_theta
+            # For E-M models (N_zones=1), w_theta=0.5 so w=w_phi
+            w = w_phi + w_theta - 0.5
+
+            # Clamp to [0, 1]
+            w = max(0.0, min(1.0, w))
+
+            for i in range(N_layers):
+                T[i, j, k] = w * T_1[i] + (1.0 - w) * T_2[i]
 
     return T
 
@@ -406,7 +532,7 @@ def compute_T_Line(P, g, T_eq, log_kappa_IR, log_gamma, log_gamma_2, alpha, beta
     return T
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
                              N_sectors, N_zones, alpha, beta, phi, theta,
                              P_deep = 10.0, P_high = 1.0e-5):
@@ -507,7 +633,7 @@ def compute_T_field_gradient(P, T_bar_term, Delta_T_term, Delta_T_DN, T_deep,
     return T
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_T_field_two_gradients(P, T_bar_term_high, T_bar_term_mid, 
                                   Delta_T_term_high, Delta_T_term_mid,
                                   Delta_T_DN_high, Delta_T_DN_mid, log_P_mid,
@@ -629,7 +755,7 @@ def compute_T_field_two_gradients(P, T_bar_term_high, T_bar_term_mid,
     return T
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species, 
                              species_has_profile, alpha, beta, phi, theta, 
                              P_deep = 10.0, P_high = 1.0e-5):
@@ -752,7 +878,7 @@ def compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, param_species,
     return X_profiles
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_species, 
                                   species_has_profile, alpha, beta, phi, theta, 
                                   P_deep = 10.0, P_high = 1.0e-5):
@@ -887,6 +1013,159 @@ def compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, param_spec
     return X_profiles
 
 
+@jit(nopython = True, cache = True)
+def Parmentier_dissociation_profile(P, T, A_0, alpha, beta, gamma, A_0_ref):
+    '''
+    Thermal dissociation profile from Parmentier et al. 2018.
+    
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T (np.array of float):
+            Atmosphere temperature array (K).
+        A_0 (float): 
+            Deep abundance without dissociation.
+        alpha (float):
+            Power-law index for pressure dependence.
+        beta (float):
+            Exponential coefficient for temperature dependence.
+        gamma (float):
+            Logarithmic offset coefficient.
+        A_0_ref (float):
+            Reference deep abundance without dissociation.
+
+    Returns:
+        A (np.array of float):
+            Volume mixing ratio profile.
+
+    '''
+
+    # Find horizontal shift 
+    log_A_shift = np.log10(A_0 / A_0_ref)
+
+    # Find dissociated abundance
+    A_d = 10 ** (log_A_shift - gamma) * P.astype('float64') ** alpha * 10 ** (beta / T.astype('float64'))
+    
+    # Combine deep abundance with dissociated abundance for full profile
+    A = ((1 / A_0) ** 0.5 + (1 / A_d) ** 0.5) ** (-2)
+
+    return A
+
+
+# TBD: numbafy this function be extracting the coefficient dictionary into a lookup function
+def compute_X_dissociation(P, T, log_X_state, N_sectors, N_zones, param_species, 
+                           species_has_profile, alpha, beta, phi, theta):
+    '''
+    Determines if a thermal dissociation profile should be used, and then 
+    calculates the appropriate profile using the Parmentier et al. 2018 formulation.
+
+    Args:
+        P (np.array of float):
+            Atmosphere pressure array (bar).
+        T (np.array of float):
+            Atmosphere temperature array (K)
+        log_X_state (2D np.array of float):
+            Mixing ratio state array.
+        param_species (np.array of str):
+            Chemical species with parametrised mixing ratios.
+        species_has_profile (np.array of int):
+            Array with an integer '1' if a species in 'param_species' has a 
+            gradient profile, or '0' for an constant mixing ratio with altitude.
+        N_sectors (int):
+            Number of azimuthal sectors.
+        N_zones (int):
+            Number of zenith zones.
+
+    Returns:
+        log_X: the mixing ratio  of the ith element as a function of pressure.
+
+    '''
+
+    # Store number of layers for convenience
+    N_layers = len(P)
+    
+    # Store lengths of species arrays for convenience
+    N_param_species = len(param_species)
+
+    # Initialise mixing ratio array
+    X_profiles = np.zeros(shape=(N_param_species, N_layers, N_sectors, N_zones))
+
+   # log_X = np.zeros(shape = (N_param_species, len(P), N_sectors, N_zones))
+
+    # Convert alpha and beta from degrees to radians
+    alpha_rad = alpha * (np.pi / 180.0)
+    beta_rad = beta * (np.pi / 180.0)
+
+    # Coefficients from Table 1 of Parmentier et al. 2018
+    coefficients = {'H2': (1.0, 2.41e4, 6.5, 10 ** -0.1),
+                    'H2O': (2.0, 4.83e4, 15.9, 10 ** -3.3), 
+                    'TiO': (1.6, 5.94e4, 23.0, 10 ** -7.1),
+                    'VO': (1.5, 5.40e4, 23.8, 10 ** -9.2),
+                    'H-': (0.6, -0.14e4, 7.7, 10 ** -8.3),
+                    'Na': (0.6, 1.89e4, 12.2, 10 ** -5.5),
+                    'K': (0.6, 1.28e4, 12.7, 10 ** -7.1)}
+
+    # Loop over parametrised chemical species
+    for q in range(N_param_species):
+
+        # Unpack abundance field parameters for this species
+        log_X_bar_term, Delta_log_X_term, \
+        Delta_log_X_DN = log_X_state[q,:]
+
+        # Convert average terminator abundance into linear space
+        X_bar_term = np.power(10.0, log_X_bar_term)
+
+        # Compute evening and morning abundances in terminator plane
+        X_Evening = X_bar_term * np.power(10.0, (Delta_log_X_term/2.0))
+        X_Morning = X_bar_term * np.power(10.0, (-Delta_log_X_term/2.0))
+
+        # Compute 3D abundance field for species q throughout atmosphere 
+        for j in range(N_sectors):
+
+            # Compute high abundance in terminator plane for given angle phi
+            if (phi[j] <= -alpha_rad/2.0):
+                X_term = X_Evening
+            elif ((phi[j] > -alpha_rad/2.0) and (phi[j] < alpha_rad/2.0)):
+                X_term = X_bar_term * np.power(10.0, (-(phi[j]/(alpha_rad/2.0)) * (Delta_log_X_term/2.0)))
+            elif (phi[j] >= -alpha_rad/2.0):
+                X_term = X_Morning
+                
+            # Compute dayside and nightside abundances for given angle phi
+            X_Day   = X_term * np.power(10.0, (Delta_log_X_DN/2.0))
+            X_Night = X_term * np.power(10.0, (-Delta_log_X_DN/2.0))
+            
+            for k in range(N_zones):
+                
+                # Compute deep abundance for given angles phi and theta
+                if (theta[k] <= -beta_rad/2.0):
+                    X_deep = X_Day
+                elif ((theta[k] > -beta_rad/2.0) and (theta[k] < beta_rad/2.0)):
+                    X_deep = X_term * np.power(10.0, (-(theta[k]/(beta_rad/2.0)) * (Delta_log_X_DN/2.0)))
+                elif (theta[k] >= -beta_rad/2.0):
+                    X_deep = X_Night
+
+                # If the given species has a vertical profile with a gradient
+                if (species_has_profile[q] == 1):
+
+                    # If species undergoes thermal dissociation in the Parmentier+2018 prescription
+                    if (param_species[q] in ('H2O', 'TiO', 'VO', 'H-', 'Na', 'K')):
+
+                        # Load coefficients for this species from dictionary
+                        alpha_P, beta_P, gamma_P, A_0_ref_P = coefficients[param_species[q]]
+
+                        # Use dissociation profile
+                        X_profiles[q,:,j,k] = Parmentier_dissociation_profile(P, T[:,j,k], X_deep, 
+                                                                              alpha_P, beta_P, gamma_P, A_0_ref_P)
+                    else:
+                    # Keep regular profile 
+                        X_profiles[q,:,j,k] = X_deep
+                else:
+                # Keep constant-in-altitude profile 
+                    X_profiles[q,:,j,k] = X_deep    
+    
+    return X_profiles
+
+
 def compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones):
     '''
     The function takes in four parameters and returns an array of values called log_X  that represent the
@@ -903,7 +1182,8 @@ def compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones):
         log_p: An array of logarithm of the pressures.
 
     Returns:
-        log_x: the the mixing ratio  of the ith element as a function of pressure.
+        log_X: the the mixing ratio  of the ith element as a function of pressure.
+    
     '''
 
     log_p = np.log10(P)
@@ -938,8 +1218,8 @@ def compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones):
         
     return np.power(10, log_X)
 
-def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
-                       He_fraction):
+def add_bulk_component(P, T, X_param, N_species, N_sectors, N_zones, 
+                       bulk_species, He_fraction):
     ''' 
     Concatenates mixing ratios of the bulk species to the parametrised mixing
     ratios, forming the full mixing ratio array (i.e. sums to 1).
@@ -951,6 +1231,8 @@ def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
     Args:
         P (np.array of float):
             Atmosphere pressure array (bar).
+        T (np.array of float):
+            Atmosphere temperature array (K).
         X_param (4D np.array of float):
             Mixing ratios of the parametrised chemical species in each layer 
             as a function of pressure, sector, and zone.
@@ -979,7 +1261,7 @@ def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
     X = np.zeros(shape=(N_species, N_layers, N_sectors, N_zones))
     
     # For H2+He bulk mixture
-    if ('H2' and 'He' in bulk_species):
+    if (('H2' and 'He' in bulk_species) and ('H' not in bulk_species)):
     
         # Compute H2 and He mixing ratios for a fixed H2/He fraction (defined in config.py)
         X_H2 = (1.0 - np.sum(X_param, axis=0))/(1.0 + He_fraction)   # H2 mixing ratio array
@@ -990,7 +1272,7 @@ def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
         X[1,:,:,:] = X_He
 
     # For H+He bulk mixture
-    elif ('H' and 'He' in bulk_species):
+    elif (('H' and 'He' in bulk_species) and ('H2' not in bulk_species)):
 
         # Compute H and He mixing ratios for a fixed H2/He fraction (defined in config.py)
         X_H = 2.0*(1.0 - np.sum(X_param, axis=0))/(1.0 + He_fraction)   # H mixing ratio array
@@ -999,10 +1281,39 @@ def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
         # Add H and He mixing ratios to first two elements in X state vector for this region
         X[0,:,:,:] = X_H  
         X[1,:,:,:] = X_He
+
+    # For H2+H+He bulk mixture with dissociation
+    elif ('H2' and 'H' and 'He' in bulk_species):
+        # Determine background gas total mixing ratio (H2 + H + He)
+        X_bulk = 1.0 - np.sum(X_param, axis=0)
+
+        # Determine deep abundances of H2 and He (negligible H)
+        X_H2_deep = X_bulk / (1.0 + He_fraction)
+        X_He_deep = He_fraction * X_H2_deep
+
+        # H2 dissociation coefficients from Table 1 of Parmentier et al. 2018
+        Parmentier_coefficients = {'H2': (1.0, 2.41e4, 6.5, 10 ** -0.1)}
+        alpha, beta, gamma, A_0_ref = Parmentier_coefficients['H2']
+
+        # Determine vertical profile of H2 using Parmentier et al. 2018 dissociation
+        for j in range(N_sectors):
+            for k in range(N_zones):
+
+                X_H2 = Parmentier_dissociation_profile(P, T[:,j,k], X_H2_deep[:,j,k], 
+                                                       alpha, beta, gamma, A_0_ref)
+
+                # Determine H and He profiles from H2 profile
+                X_H = (X_bulk[:,j,k] - (1 + He_fraction) * X_H2) / (1 + He_fraction/2.0)
+                X_He = (He_fraction * X_H2) + ((He_fraction/2.0) * X_H)
+                        
+                # Add H2, H, and He mixing ratios to first three elements in X state vector for this region
+                X[0,:,j,k] = X_H2
+                X[1,:,j,k] = X_H
+                X[2,:,j,k] = X_He
         
     # For any other choice of bulk species, the first mixing ratio is the bulk species
-    else: 
-
+    else:
+        
         if (len(bulk_species) > 1):
             raise Exception("Only a single species can be designated as bulk " +
                             "(besides models with H2 & He or H & He with a fixed He/H2 ratio).")
@@ -1019,7 +1330,7 @@ def add_bulk_component(P, X_param, N_species, N_sectors, N_zones, bulk_species,
     return X
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def radial_profiles_test(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
     ''' 
     Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
@@ -1180,7 +1491,7 @@ def radial_profiles_test(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones)
     return n, r, r_up, r_low, dr
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
     ''' 
     Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
@@ -1295,7 +1606,7 @@ def radial_profiles(P, T, g_0, R_p, P_ref, R_p_ref, mu, N_sectors, N_zones):
     return n, r, r_up, r_low, dr
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def radial_profiles_constant_g(P, T, g_0, P_ref, R_p_ref, mu, N_sectors, N_zones):
     ''' 
     Solves the equation of hydrostatic equilibrium [ dP/dr = -G*M*rho/r^2 ] 
@@ -1502,7 +1813,7 @@ def mixing_ratio_categories(P, X, N_sectors, N_zones, included_species,
     return X_active, X_CIA, X_ff, X_bf
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def compute_mean_mol_mass(P, X, N_species, N_sectors, N_zones, masses_all):
     ''' 
     Computes the mean molecular mass in each atmospheric column.
@@ -1708,7 +2019,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
              He_fraction, T_input, X_input, P_param_set, 
              log_P_slope_phot, log_P_slope_arr, Na_K_fixed_ratio,
              constant_gravity = False, chemistry_grid = None,
-             PT_penalty = False, T_eq = None, mu_back = None):
+             PT_penalty = False, T_eq = None, mu_back = None,
+             disable_atmosphere = False):
     '''
     Main function to calculate the vertical profiles in each atmospheric 
     column. The profiles cover the temperature, number density, mean molecular 
@@ -1799,6 +2111,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             Note: not the same as T_equ, the free parameter in Guillot profile.
         mu_back (float):
             Mean molecular mass of background gas, if bulk_species = ['ghost'] (AMU).
+        disable_atmosphere (bool):
+            If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
     
     Returns:
         T (3D np.array of float):
@@ -1830,6 +2144,10 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
     
     '''
 
+    # If disable_atmosphere is True, just return the following 
+    if disable_atmosphere == True:
+        return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True
+    
     # For an isothermal profile
     if (PT_profile == 'isotherm'):
         
@@ -1893,24 +2211,52 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # Gaussian smooth P-T profile
         T = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
         
-    # For the Madhusudhan & Seager (2009) profile (1D only)
+    # For the Madhusudhan & Seager (2009) profile (1D or 2D)
     elif (PT_profile == 'Madhu'):
+
+        # 1D case: single Madhu profile
+        if (len(PT_state) == 6):
         
-        # Unpack P-T profile parameters
-        a1, a2, log_P1, log_P2, log_P3, T_set = PT_state
-        
-        # Profile requires P3 > P2 and P3 > P1, reject otherwise
-        if ((log_P3 < log_P2) or (log_P3 < log_P1)):
+            # Unpack P-T profile parameters
+            a1, a2, log_P1, log_P2, log_P3, T_set = PT_state
             
-            # Quit computations if model rejected
-            return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
-        
-        # If P-T parameters valid
-        else:
+            # Profile requires P3 > P2 and P3 > P1, reject otherwise
+            if ((log_P3 < log_P2) or (log_P3 < log_P1)):
+                
+                # Quit computations if model rejected
+                return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
             
-            # Compute unsmoothed temperature profile
-            T_rough = compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, 
-                                      T_set, P_param_set)
+            # If P-T parameters valid
+            else:
+                
+                # Compute unsmoothed temperature profile
+                T_rough = compute_T_Madhu(P, a1, a2, log_P1, log_P2, log_P3, 
+                                          T_set, P_param_set)
+
+        # 2D case: two Madhu profiles sharing a common deep temperature at P_ref
+        elif (len(PT_state) == 9):
+            
+            # Unpack P-T profile parameters
+            a1_1, a2_1, log_P1_1, log_P2_1, \
+            a1_2, a2_2, log_P1_2, log_P2_2, T_deep = PT_state
+
+            log_P3 = np.log10(P_ref)
+
+            # Both profiles require P3 > P2 and P3 > P1, reject otherwise
+            if ((log_P3 < log_P2_1) or (log_P3 < log_P1_1) or
+                (log_P3 < log_P2_2) or (log_P3 < log_P1_2)):
+                
+                # Quit computations if model rejected
+                return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+            
+            # If P-T parameters valid
+            else:
+
+                # Compute 2D temperature field from two Madhu profiles
+                T_rough = compute_T_Madhu_2D(P, a1_1, a2_1, log_P1_1, log_P2_1,
+                                             a1_2, a2_2, log_P1_2, log_P2_2,
+                                             T_deep, P_ref, N_sectors, N_zones,
+                                             alpha, beta, phi, theta)
 
         # Gaussian smooth P-T profile
         T = gauss_conv(T_rough, sigma=3, axis=0, mode='nearest')
@@ -2006,6 +2352,12 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
     if (X_profile in ['gradient', 'two-gradients']):
         species_has_profile[np.isin(param_species, species_vert_gradient)] = 1  
     
+    elif (X_profile == 'dissociation'):
+        if (len(species_vert_gradient) == 0):
+            species_has_profile[:] = 1
+        else:
+            species_has_profile[np.isin(param_species, species_vert_gradient)] = 1
+
     # Read user provided mixing ratio profiles
     if (X_profile == 'file_read'):
         X = X_input.reshape((N_species, len(P), 1, 1))   
@@ -2017,7 +2369,6 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             X_param = compute_X_field_gradient(P, log_X_state, N_sectors, N_zones, 
                                                param_species, species_has_profile, 
                                                alpha, beta, phi, theta)
-
         # For two-gradient profiles                            
         elif (X_profile == 'two-gradients'):
             X_param = compute_X_field_two_gradients(P, log_X_state, N_sectors, N_zones, 
@@ -2026,6 +2377,14 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             
         elif (X_profile == 'lever'):
             X_param = compute_X_lever(P, log_X_state, species_has_profile, N_sectors, N_zones)
+
+        # For thermal dissociation profiles
+        elif (X_profile == 'dissociation'):
+    #        X_param = compute_X_dissociation_1D(P,T[:,0,0], log_X_state,
+    #                                            param_species, species_has_profile, 
+    #                                            N_sectors, N_zones)
+            X_param = compute_X_dissociation(P, T, log_X_state, N_sectors, N_zones, param_species, 
+                                             species_has_profile, alpha, beta, phi, theta)
 
         # Read in equilibrium mixing ratio profiles 
         elif (X_profile == 'chem_eq'):
@@ -2076,11 +2435,9 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
             K_X_state = [X_param[param_species.index("Na")]*0.1]
             X_param = np.append(X_param, K_X_state, axis = 0)
             
-        
         # Add bulk mixing ratios to form full mixing ratio array
-        X = add_bulk_component(P, X_param, N_species, N_sectors, N_zones, 
+        X = add_bulk_component(P, T, X_param, N_species, N_sectors, N_zones, 
                                bulk_species, He_fraction)
-
     
     # Check if any mixing ratios are negative (i.e. trace species sum to > 1, so bulk < 0)
     if (np.any(X[0,:,:,:] < 0.0)): 

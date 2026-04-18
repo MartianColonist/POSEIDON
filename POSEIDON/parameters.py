@@ -15,14 +15,16 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                        PT_dim, X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
                        species_EM_gradient, species_DN_gradient, species_vert_gradient,
                        Atmosphere_dimension, opaque_Iceberg, surface, 
-                       sharp_DN_transition, reference_parameter, 
+                       sharp_DN_transition, sharp_EM_transition,
+                       reference_parameter, 
                        disable_atmosphere, aerosol_species, log_P_slope_arr,
                        number_P_knots, PT_penalty, 
                        high_res_method, alpha_high_res_option, 
                        fix_alpha_high_res, fix_W_conv_high_res, 
                        fix_beta_high_res, fix_Delta_phi_high_res,
                        lognormal_logwidth_free,
-                       ):
+                       surface_components, surface_model, surface_percentage_option,
+                       thermal, reflection):
     '''
     From the user's chosen model settings, determine which free parameters
     define this POSEIDON model. The different types of free parameters are
@@ -42,7 +44,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
              file_read).
         X_profile (str):
             Chosen mixing ratio profile parametrisation
-            (Options: isochem / gradient / two-gradients / lever / file_read).
+            (Options: isochem / gradient / two-gradients / lever / dissociation / 
+            file_read).
         cloud_model (str):
             Chosen cloud parametrisation
             (Options: cloud-free / MacMad17 / Iceberg / Mie).
@@ -106,6 +109,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
             If True, model a surface via an opaque cloud deck.
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
+        sharp_EM_transition (bool):
+            For 2D / 3D models, sets evening-morning transition width (alpha) to 0.
         reference_parameter (str):
             For retrievals, whether R_p_ref or P_ref will be a free parameter
             (Options: R_p_ref / P_ref).
@@ -145,6 +150,20 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
         lognormal_logwidth_free (bool):
             If True, has log_r_m_std_dev be a free parameter for aerosols. 
             Only applicable for certain aerosols with precomputed grids. 
+        surface_components (list of strings):
+            List of surface components (if surface_model = 'Lab_data')
+        surface_model (string):
+            Surface model definition 
+            (Options: gray, constant_albedo, lab_data)
+        surface_percentage_option (string):
+            Will make surface percentages log or linear (log is reccomended for CLR retrievals)
+            (Options: linear, log)
+        thermal (bool):
+            If true, uses a emission model (scattering determines if one-stream or two-stream)
+            Only used here for seeing if we need to set the T_surf parameter
+        reflection (bool):
+            If True, uses a two-stream multiple scattering reflection model.
+            Only used here for seeing if we need to set the T_surf parameter
 
     Returns:
         params (np.array of str):
@@ -177,6 +196,7 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
     geometry_params = []  # Geometry parameters
     stellar_params = []   # Stellar parameters
     high_res_params = []  # High resolution retrieval parameters
+    surface_params = []   # Surface parameters 
 
     # ***** Physical property parameters *****#
 
@@ -191,7 +211,48 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
         N_cloud_params = 0
         N_geometry_params = 0
 
-        params += physical_params  # Add physical parameter names to combined list
+        params += physical_params         # Add physical parameter names to combined list
+
+        #***** Surface parameters *****#
+    
+        if (surface == True):
+            
+            # If its emission or reflection, the bare rock has a surface temperature 
+            # And other parameters (like albedo)
+            # Else, for transmission its just a bare rock (no log P surf)
+            # Usually for transmission, bare rock models are used in conjunction
+            # with stellar contamination retreivals
+            if (thermal == True) or (reflection == True):
+
+                # For bare rocks, always have surface temperature as a free parameter
+                surface_params += ['T_surf']
+
+                # Surface Models 
+                if (surface_model == 'constant'):
+                    surface_params += ['albedo_surf']
+
+                elif (surface_model == 'lab_data'):
+
+                    if len(surface_components) > 1:
+                        for n in range(len(surface_components)):
+                                if (surface_percentage_option == 'linear'):
+                                    surface_params += [surface_components[n] + '_percentage']
+                                elif (surface_percentage_option == 'log'):
+                                    surface_params += ['log_' + surface_components[n] + '_percentage']
+                                    
+                elif (surface_model == 'gray'):
+                    pass
+                else:
+                    raise Exception('Only suface models are gray, constant, and lab_data.')
+        
+
+            N_surface_params = len(surface_params)   # Store number of physical parameters
+
+            # The params are added at the end, after the offset parameters, so that order is mantained
+            #params += surface_params  
+        
+        else:
+            N_surface_params = 0
 
     # Models including atmospheres
     else:
@@ -222,9 +283,6 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
         if (object_type == 'directly_imaged'):
             physical_params += ['d']             # Distance to system (pc)
 
-        if (surface == True):
-            physical_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
-
         if ('ghost' in bulk_species):
             physical_params += ['mu_back']    # Background molecular weight (AMU)
 
@@ -242,8 +300,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
         if ((PT_profile == 'isotherm') and (PT_dim > 1)):
             raise Exception("Cannot retrieve multiple PT profiles with an isothermal shape")
             
-        if ((PT_profile == 'Madhu') and (PT_dim > 1)):
-            raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D models")
+        if ((PT_profile == 'Madhu') and (PT_dim > 2)):
+            raise Exception("Madhusudhan & Seager (2009) profile only supported for 1D and 2D models")
         
         if ((PT_profile == 'Pelletier') and (PT_dim > 1)):
             raise Exception("Pelletier (2021) profile only supported for 1D models")
@@ -304,16 +362,24 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                     if (PT_profile == 'gradient'):            
                         PT_params += ['T_Even_high', 'T_Morn_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):   
-                        PT_params += ['T_Even_high', 'T_Even_mid', 'T_Morn_high',
-                                    'T_Morn_mid', 'log_P_mid', 'T_deep']
+                        PT_params += ['T_Even_high', 'T_Morn_high', 'T_Even_mid',
+                                      'T_Morn_mid', 'log_P_mid', 'T_deep']
+                    elif (PT_profile == 'Madhu'):
+                        PT_params += ['a1_even', 'a2_even', 'log_P1_even', 'log_P2_even',
+                                      'a1_morn', 'a2_morn', 'log_P1_morn', 'log_P2_morn',
+                                      'T_deep']
 
                 elif (TwoD_type == 'D-N'):
                     if (PT_profile == 'gradient'):            
                         PT_params += ['T_Day_high', 'T_Night_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):   
-                        PT_params += ['T_Day_high', 'T_Day_mid', 'T_Night_high',
-                                    'T_Night_mid', 'log_P_mid', 'T_deep']
-    
+                        PT_params += ['T_Day_high', 'T_Night_high', 'T_Day_mid',
+                                      'T_Night_mid', 'log_P_mid', 'T_deep']
+                    elif (PT_profile == 'Madhu'):
+                        PT_params += ['a1_day', 'a2_day', 'log_P1_day', 'log_P2_day',
+                                      'a1_night', 'a2_night', 'log_P1_night', 'log_P2_night',
+                                      'T_deep']
+
             # Difference parameter prescription from MacDonald & Lewis (2022)
             elif (TwoD_param_scheme == 'difference'):
 
@@ -322,14 +388,14 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                         PT_params += ['T_bar_term_high', 'Delta_T_term_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):            
                         PT_params += ['T_bar_term_high', 'T_bar_term_mid', 'Delta_T_term_high', 
-                                    'Delta_T_term_mid', 'log_P_mid', 'T_deep']
+                                      'Delta_T_term_mid', 'log_P_mid', 'T_deep']
 
                 elif (TwoD_type == 'D-N'):
                     if (PT_profile == 'gradient'):            
                         PT_params += ['T_bar_DN_high', 'Delta_T_DN_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):            
                         PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Delta_T_DN_high', 
-                                    'Delta_T_DN_mid', 'log_P_mid', 'T_deep']
+                                      'Delta_T_DN_mid', 'log_P_mid', 'T_deep']
 
             # Gradient parameter prescription from MacDonald & Lewis (2023)
             elif (TwoD_param_scheme == 'gradient'):
@@ -339,7 +405,7 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                         PT_params += ['T_bar_DN_high', 'Grad_theta_T_high', 'T_deep']
                     elif (PT_profile == 'two-gradients'):            
                         PT_params += ['T_bar_DN_high', 'T_bar_DN_mid', 'Grad_theta_T_high', 
-                                    'Grad_theta_T_mid', 'log_P_mid', 'T_deep']
+                                      'Grad_theta_T_mid', 'log_P_mid', 'T_deep']
         
         # 3D model (asymmetric terminator + day-night transition)
         elif (PT_dim == 3):
@@ -348,15 +414,15 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                 PT_params += ['T_bar_term_high', 'Delta_T_term_high', 'Delta_T_DN_high', 'T_deep']
             elif (PT_profile == 'two-gradients'):            
                 PT_params += ['T_bar_term_high', 'T_bar_term_mid', 'Delta_T_term_high', 
-                            'Delta_T_term_mid', 'Delta_T_DN_high', 'Delta_T_DN_mid', 
-                            'log_P_mid', 'T_deep']
+                              'Delta_T_term_mid', 'Delta_T_DN_high', 'Delta_T_DN_mid', 
+                              'log_P_mid', 'T_deep']
             
         N_PT_params = len(PT_params)   # Store number of P-T profile parameters
         params += PT_params            # Add P-T parameter names to combined list
 
         #***** Mixing ratio parameters *****#
 
-        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'lever', 'chem_eq']):
+        if (X_profile not in ['isochem', 'gradient', 'two-gradients', 'file_read', 'lever', 'chem_eq', 'dissociation']):
             raise Exception("Error: unsupported mixing ratio profile.")
         
         if (X_profile == 'lever') and (X_dim != 1):
@@ -379,6 +445,11 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                          'log_P_' + species + '_mid', 'log_' + species + '_deep']
                         elif (X_profile == 'lever'):
                             X_params += ['log_' + species + '_iso', 'log_P_' + species, 'Upsilon_' + species]
+                        elif (X_profile == 'dissociation'):
+                            if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                X_params += ['log_' + species + '_deep']   # Deep abundance
+                            else:
+                                X_params += ['log_' + species]   # Constant in altitude
                     else:
                         X_params += ['log_' + species]
                 
@@ -396,9 +467,14 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Morn_high', 
                                                      'log_' + species + '_deep']
                                     elif (X_profile == 'two-gradients'):  
-                                        X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Even_mid',
-                                                     'log_' + species + '_Morn_high', 'log_' + species + '_Morn_mid', 
+                                        X_params += ['log_' + species + '_Even_high', 'log_' + species + '_Morn_high',
+                                                     'log_' + species + '_Even_mid', 'log_' + species + '_Morn_mid', 
                                                      'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                    elif (X_profile == 'dissociation'):
+                                        if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                            X_params += ['log_' + species + '_Even_deep', 'log_' + species + '_Morn_deep']   # Deep abundance
+                                        else:
+                                            X_params += ['log_' + species + '_Even', 'log_' + species + '_Morn']   # Constant in altitude
                                 else:   # No altitude variation for this species
                                     X_params += ['log_' + species + '_Even', 'log_' + species + '_Morn']
 
@@ -408,7 +484,12 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                                     elif (X_profile == 'two-gradients'):  
                                         X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                    elif (X_profile == 'dissociation'):
+                                        if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                            X_params += ['log_' + species + '_deep']   # Deep abundance
+                                        else:
+                                            X_params += ['log_' + species]   # Constant in altitude
                                 else:   # No altitude variation for this species
                                     X_params += ['log_' + species]
                                 
@@ -420,9 +501,14 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Night_high', 
                                                      'log_' + species + '_deep']
                                     elif (X_profile == 'two-gradients'):  
-                                        X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Day_mid',
-                                                     'log_' + species + '_Night_high', 'log_' + species + '_Night_mid', 
+                                        X_params += ['log_' + species + '_Day_high', 'log_' + species + '_Night_high', 
+                                                     'log_' + species + '_Day_mid', 'log_' + species + '_Night_mid', 
                                                      'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                    elif (X_profile == 'dissociation'):
+                                        if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                            X_params += ['log_' + species + '_Day_deep', 'log_' + species + '_Night_deep']   # Deep abundance
+                                        else:
+                                            X_params += ['log_' + species + '_Day', 'log_' + species + '_Night']   # Constant in altitude
                                 else:   # No altitude variation for this species
                                     X_params += ['log_' + species + '_Day', 'log_' + species + '_Night']
 
@@ -432,7 +518,12 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                                     elif (X_profile == 'two-gradients'):  
                                         X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                    elif (X_profile == 'dissociation'):
+                                        if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                            X_params += ['log_' + species + '_deep']   # Deep abundance
+                                        else:
+                                            X_params += ['log_' + species]   # Constant in altitude
                                 else:   # No altitude variation for this species
                                     X_params += ['log_' + species]
                                                     
@@ -450,6 +541,11 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
                                                      'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
                                                      'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                    elif (X_profile == 'dissociation'):
+                                        if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                            X_params += ['log_' + species + '_bar_term_deep', 'Delta_log_' + species + '_term_deep']   # Deep abundance
+                                        else:
+                                            X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']   # Constant in altitude
                                 else:   # No altitude variation for this species
                                     X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
 
@@ -459,7 +555,12 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                                     elif (X_profile == 'two-gradients'):  
                                         X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                    elif (X_profile == 'dissociation'):
+                                        if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                            X_params += ['log_' + species + '_deep']   # Deep abundance
+                                        else:
+                                            X_params += ['log_' + species]   # Constant in altitude
                                 else:   # No altitude variation for this species
                                     X_params += ['log_' + species]
 
@@ -474,6 +575,11 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
                                                      'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
                                                      'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                    elif (X_profile == 'dissociation'):
+                                        if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                            X_params += ['log_' + species + '_bar_DN_deep', 'Delta_log_' + species + '_DN_deep']   # Deep abundance
+                                        else:
+                                            X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']   # Constant in altitude
                                 else:   # No altitude variation for this species
                                     X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
 
@@ -483,12 +589,20 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                         X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                                     elif (X_profile == 'two-gradients'):  
                                         X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                                     'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                                    elif (X_profile == 'dissociation'):
+                                        if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                            X_params += ['log_' + species + '_deep']   # Deep abundance
+                                        else:
+                                            X_params += ['log_' + species]   # Constant in altitude
                                 else:   # No altitude variation for this species
                                     X_params += ['log_' + species]
 
-                    # Gradient parameter prescription from MacDonald & Lewis (2023)
+                    # Gradient parameter prescription
                     if (TwoD_param_scheme == 'gradient'):
+
+                        if (X_profile == 'dissociation'):
+                            raise Exception("Error: Dissociation profile not supported for 2D gradient parameter scheme.")
 
                         # Species with variation only across the terminator (2D Day-Night X_i)
                         if (TwoD_type == 'D-N'):                
@@ -529,6 +643,13 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                              'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
                                              'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
                                              'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                            elif (X_profile == 'dissociation'):
+                                if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                    X_params += ['log_' + species + '_bar_term_deep', 'Delta_log_' + species + '_term_deep',
+                                                 'Delta_log_' + species + '_DN_deep']   # Deep abundance
+                                else:
+                                    X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term',
+                                                 'Delta_log_' + species + '_DN']   # Constant in altitude
                         else:   # No altitude variation for this species
                             X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term',
                                          'Delta_log_' + species + '_DN']
@@ -543,6 +664,11 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                 X_params += ['log_' + species + '_bar_term_high', 'log_' + species + '_bar_term_mid',
                                              'Delta_log_' + species + '_term_high', 'Delta_log_' + species + '_term_mid', 
                                              'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                            elif (X_profile == 'dissociation'):
+                                if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                    X_params += ['log_' + species + '_bar_term_deep', 'Delta_log_' + species + '_term_deep']   # Deep abundance
+                                else:
+                                    X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']   # Constant in altitude
                         else:   # No altitude variation for this species
                             X_params += ['log_' + species + '_bar_term', 'Delta_log_' + species + '_term']
 
@@ -556,6 +682,11 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                 X_params += ['log_' + species + '_bar_DN_high', 'log_' + species + '_bar_DN_mid',
                                              'Delta_log_' + species + '_DN_high', 'Delta_log_' + species + '_DN_mid', 
                                              'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                            elif (X_profile == 'dissociation'):
+                                if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                    X_params += ['log_' + species + '_bar_DN_deep', 'Delta_log_' + species + '_DN_deep']   # Deep abundance
+                                else:
+                                    X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']   # Constant in altitude
                         else:   # No altitude variation for this species
                             X_params += ['log_' + species + '_bar_DN', 'Delta_log_' + species + '_DN']
 
@@ -566,7 +697,12 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                                 X_params += ['log_' + species + '_high', 'log_' + species + '_deep']
                             elif (X_profile == 'two-gradients'):  
                                 X_params += ['log_' + species + '_high', 'log_' + species + '_mid', 
-                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']      
+                                             'log_P_' + species + '_mid', 'log_' + species + '_deep']
+                            elif (X_profile == 'dissociation'):
+                                if (species in ['H2O', 'TiO', 'VO', 'H-', 'Na', 'K']):   # Parmentier+2018 profiles
+                                    X_params += ['log_' + species + '_deep']   # Deep abundance
+                                else:
+                                    X_params += ['log_' + species]   # Constant in altitude
                         else:
                             X_params += ['log_' + species]
     
@@ -591,13 +727,16 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                 
             if ('deck' in cloud_type):
                 cloud_params += ['log_P_cloud']
+            
+            if ('shiny' in cloud_type):
+                cloud_params += ['albedo_deck']
                 
             # If working with a 2D patchy cloud model
             if (cloud_dim == 2):
                 cloud_params += ['phi_cloud']
                 
-            if (cloud_type not in ['deck', 'haze', 'deck_haze']):
-                raise Exception("Error: unsupported cloud model.")
+            if (cloud_type not in ['deck', 'haze', 'deck_haze', 'shiny_deck']):
+                raise Exception("Error: unsupported cloud model (deck, haze, deck_haze, shiny_deck).")
 
             if (cloud_dim not in [1, 2]):
                 raise Exception("The MacDonald & Madhusudhan (2017) cloud model " +
@@ -630,9 +769,22 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                 
             if ('haze' not in cloud_type) and ('deck' not in cloud_type):
                 raise Exception("Error: unsupported cloud model.")
+            
+            if ('shiny' in cloud_type):
+                raise Exception("Shiny deck not supported with Iceberg")
 
         # Mie scattering     
         elif (cloud_model == 'Mie'):
+
+            # Allow opaque decks to be shiny 
+            if ('shiny' in cloud_type):
+                if ('deck' not in cloud_type):
+                    raise Exception('Shiny is only available for Mie models with opaque decks (shiny_fuzzy_deck, shiny_opaque_deck_plus_slab, shiny_fuzzy_deck_plus_slab, shiny_opaque_deck_plus_uniform_X).')
+                else:
+                    cloud_params += ['albedo_deck']
+
+                    # Need to remove 'shiny' from the cloud type, just so I don't have to rewrite code below
+                    cloud_type = cloud_type.split('shiny_')[1]
 
             # Patchy Clouds
             if (cloud_dim == 2): 
@@ -645,7 +797,7 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                     cloud_params += ['f_aerosol_2']
                     cloud_params += ['f_clear']
                 else:
-                    raise Exception('Patchy clouds only avaible for up to two species. Otherwise reach out to Elijah.')
+                    raise Exception('Patchy clouds only available for up to two species. Otherwise reach out to Elijah.')
 
             if (cloud_type =='fuzzy_deck'):
 
@@ -842,11 +994,16 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
         
         if (Atmosphere_dimension == 3):
             if (sharp_DN_transition == False):
-                geometry_params += ['alpha', 'beta']
+                if (sharp_EM_transition == False):
+                    geometry_params += ['alpha', 'beta']
+                else:
+                    geometry_params += ['beta']
             else:
-                geometry_params += ['alpha']
+                if (sharp_EM_transition == False):
+                    geometry_params += ['alpha']
+                # If both are sharp, no geometry params needed
         elif (Atmosphere_dimension == 2):
-            if (TwoD_type == 'E-M'):
+            if ((TwoD_type == 'E-M') and (sharp_EM_transition == False)):
                 geometry_params += ['alpha']
             elif ((TwoD_type == 'D-N') and (sharp_DN_transition == False)):
                 geometry_params += ['beta']
@@ -933,6 +1090,45 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
     N_high_res_params = len(high_res_params)    # Store number of high-res parameters
     params += high_res_params                   # Add high-res parameter names to combined list
 
+    #***** Surface parameters *****#
+
+    # In assign_free_params the order parameters are added to 'params'
+    # must equal the order of split_params()
+    # therefore surface parameters are added after offset, since they are the newest 'group' 
+
+    # Only do the following this if disable atmosphere is false
+    # Otherwise, the surface parameters are defined earlier (see above, large if/else statement if disable_atmosphere == True)
+    if disable_atmosphere == False:
+
+        if (surface == True):
+            surface_params += ['log_P_surf']       # Rocky planet surface pressure (bar)
+
+        # Surface Models 
+        if (surface_model == 'constant'):
+            surface_params += ['albedo_surf']
+
+        elif (surface_model == 'lab_data'):
+            # If there is more than one surface component, apply percentages
+            if len(surface_components) > 1:
+                for n in range(len(surface_components)):
+                    if (surface_percentage_option == 'linear'):
+                        surface_params += [surface_components[n] + '_percentage']
+                    elif (surface_percentage_option == 'log'):
+                        surface_params += ['log_' + surface_components[n] + '_percentage']
+        elif (surface_model == 'gray'):
+            pass
+        else:
+            raise Exception('Only suface models are gray, constant, and lab_data.')
+        
+        N_surface_params = len(surface_params)   # Store number of physical parameters
+        params += surface_params                  # Add physical parameter names to combined list  
+
+    # Due to the ordering of params, need to add the surface params
+    # after offsets are added. 
+    # This is when disable atmopshere is True (scroll up)
+    else:
+        params += surface_params 
+    
     #***** Final recasting of parameter arrays *****#
 
     # Convert parameter lists to numpy arrays
@@ -944,16 +1140,18 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
     geometry_params = np.array(geometry_params)
     stellar_params = np.array(stellar_params)
     high_res_params = np.array(high_res_params)
+    surface_params = np.array(surface_params)
 
     # The cumulative sum of the number of each type of parameter saves time indexing later 
     N_params_cumulative = np.cumsum([N_physical_params, N_PT_params, 
                                      N_species_params, N_cloud_params,
                                      N_geometry_params, N_stellar_params, 
                                      N_offset_params, N_error_params, 
-                                     N_high_res_params])
+                                     N_high_res_params, N_surface_params])
 
     return params, physical_params, PT_params, X_params, cloud_params, \
-           geometry_params, stellar_params, high_res_params, N_params_cumulative
+           geometry_params, stellar_params, high_res_params, surface_params, \
+           N_params_cumulative
 
 
 def split_params(params_drawn, N_params_cumulative):
@@ -986,6 +1184,8 @@ def split_params(params_drawn, N_params_cumulative):
             Drawn values of the error inflation parameters.
         high_res_drawn (list of float | np.array of float):
             Drawn values of the high-resolution retrieval parameters.
+        surface_drawn (list of float | np.array of float):
+            Drawn values of the surface parameters
 
     '''
 
@@ -1016,8 +1216,12 @@ def split_params(params_drawn, N_params_cumulative):
     # Extract high res parameters
     high_res_drawn = params_drawn[N_params_cumulative[7]:N_params_cumulative[8]]
 
+    # Extract surface adjustment parameters      
+    surface_drawn = params_drawn[N_params_cumulative[8]:N_params_cumulative[9]]
+
     return physical_drawn, PT_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
-           stellar_drawn, offsets_drawn, err_inflation_drawn, high_res_drawn
+           stellar_drawn, offsets_drawn, err_inflation_drawn, high_res_drawn, \
+           surface_drawn
 
 
 def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
@@ -1082,7 +1286,10 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
     elif (PT_profile == 'two-gradients'):
         len_PT = 8     
     elif (PT_profile == 'Madhu'):   # Madhusudhan & Seager (2009) profile
-        len_PT = 6
+        if (PT_dim == 1):
+            len_PT = 6
+        elif (PT_dim == 2):
+            len_PT = 9   # (a1_1, a2_1, log_P1_1, log_P2_1, a1_2, a2_2, log_P1_2, log_P2_2, T_deep)
     elif (PT_profile == 'Pelletier'): # Pelletier (2021)
         len_PT = len(PT_in)
     elif (PT_profile == 'Guillot'): # Guillot (2010)
@@ -1103,6 +1310,8 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
         len_X = 8
     elif (X_profile == 'lever'):
         len_X = 3                     # (log_X_iso, log_P_X, Upsilon_X)
+    elif (X_profile == 'dissociation'):
+        len_X = 3                     # (log_X_bar_term, Delta_log_X_term, Delta_log_X_DN)
     elif (X_profile == 'isochem'):
         len_X = 4      # To cover multi-D cases, we use same log_X format as gradient profile
     elif (X_profile == 'file_read'):   # User provided file
@@ -1192,6 +1401,22 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                     Delta_T_mid = -1.0 * (PT_in[3] * alpha)
             log_P_mid = PT_in[4]
             T_deep = PT_in[5]
+
+        # For the 2D Madhusudhan & Seager (2009) profile (absolute only)
+        elif (PT_profile == 'Madhu'):
+            # PT_in = [a1_1, a2_1, log_P1_1, log_P2_1,
+            #          a1_2, a2_2, log_P1_2, log_P2_2, T_deep]
+            # Profile 1 = day (D-N) or evening (E-M)
+            # Profile 2 = night (D-N) or morning (E-M)
+            PT_state[0] = PT_in[0]   # a1 for profile 1
+            PT_state[1] = PT_in[1]   # a2 for profile 1
+            PT_state[2] = PT_in[2]   # log_P1 for profile 1
+            PT_state[3] = PT_in[3]   # log_P2 for profile 1
+            PT_state[4] = PT_in[4]   # a1 for profile 2
+            PT_state[5] = PT_in[5]   # a2 for profile 2
+            PT_state[6] = PT_in[6]   # log_P1 for profile 2
+            PT_state[7] = PT_in[7]   # log_P2 for profile 2
+            PT_state[8] = PT_in[8]   # T_deep (shared)
 
         # For Evening-Morning gradients
         if (TwoD_type == 'E-M'):
@@ -1320,16 +1545,33 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                         log_X_state[q,2] = 0.0                   # Upsilon_X = 0 for isochem
                         count += 1
 
+            elif (X_profile == 'dissociation'):
+                
+                count = 0  # Counter to make tracking location in log_X_in easier
+                
+                # Loop over parametrised chemical species
+                for q, species in enumerate(param_species):
+                    if ((len(species_vert_gradient) != 0) and (species in species_vert_gradient)):
+                        log_X_state[q,0] = log_X_in[count]       # log_X_bar_term_deep
+                        log_X_state[q,1] = 0.0                   # No vertical gradient
+                        log_X_state[q,2] = 0.0                   # No Day-Night gradient
+                        count += 1
+                    else:   # No altitude variation for this species
+                        log_X_state[q,0] = log_X_in[count]       # log_X_bar_term
+                        log_X_state[q,1] = 0.0                   # No vertical gradient
+                        log_X_state[q,2] = 0.0                   # No Day-Night gradient
+                        count += 1
+
         # 2D atmosphere
         elif (X_dim == 2):
 
             count = 0  # Counter to make tracking location in log_X_in easier
-        
+
             # Loop over parametrised chemical species
             for q, species in enumerate(param_species):
 
                 # Convert input parameters into average terminator mixing ratio and difference
-                if (X_profile == 'isochem'):
+                if (X_profile in ['isochem', 'dissociation']):
                     if (((len(species_EM_gradient) != 0) and (species in species_EM_gradient)) or 
                         ((len(species_DN_gradient) != 0) and (species in species_DN_gradient))):
                         if (TwoD_param_scheme == 'absolute'):
@@ -1462,6 +1704,10 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                         log_X_state[q,5] = 0.0                  # No Day-Night gradients
                         log_X_state[q,6] = log_P_X_mid
                         log_X_state[q,7] = log_X_deep
+                    elif (X_profile == 'dissociation'):
+                        log_X_state[q,0] = log_X_bar
+                        log_X_state[q,1] = Delta_log_X         
+                        log_X_state[q,2] = 0.0                  # No Day-Night gradient
 
                 # For Day-Night gradients
                 if (TwoD_type == 'D-N'):
@@ -1479,6 +1725,10 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                         log_X_state[q,5] = Delta_log_X_mid
                         log_X_state[q,6] = log_P_X_mid
                         log_X_state[q,7] = log_X_deep
+                    elif (X_profile == 'dissociation'):
+                        log_X_state[q,0] = log_X_bar
+                        log_X_state[q,1] = 0.0                  # No Evening-Morning gradient
+                        log_X_state[q,2] = Delta_log_X
 
         # 3D atmosphere
         elif (X_dim == 3):
@@ -1488,7 +1738,7 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
             # Loop over parametrised chemical species
             for q, species in enumerate(param_species):
 
-                if (X_profile == 'isochem'):
+                if (X_profile in ['isochem', 'dissociation']):
                     if (((len(species_EM_gradient) != 0) and (species in species_EM_gradient)) and
                         ((len(species_DN_gradient) != 0) and (species in species_DN_gradient))):
                         log_X_bar_term = log_X_in[count]
@@ -1651,8 +1901,12 @@ def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,
                     log_X_state[q,5] = Delta_log_X_DN_mid
                     log_X_state[q,6] = log_P_X_mid
                     log_X_state[q,7] = log_X_deep
+                elif (X_profile == 'dissociation'):
+                    log_X_state[q,0] = log_X_bar_term
+                    log_X_state[q,1] = Delta_log_X_term
+                    log_X_state[q,2] = Delta_log_X_DN
 
-    # If it is chem_eq, then we need the 
+    
     else:
         log_X_state = log_X_in
                 
@@ -1721,6 +1975,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
     else:
         enable_deck = 0
 
+    # Check if the model is a shiny deck
+    if ('albedo_deck' in cloud_param_names):
+        enable_shiny_deck = 1
+    else:
+        enable_shiny_deck = 0
+
     # Clear atmosphere
     if (cloud_model == 'cloud-free'):
         
@@ -1740,6 +2000,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
         log_r_m_std_dev = 0.5
+        albedo_deck = -1
 
         # Set eddysed values to dummy values 
         kappa_cloud_eddysed = 0
@@ -1763,6 +2024,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
             P_cloud = np.power(10.0, clouds_in[np.where(cloud_param_names == 'log_P_cloud')[0][0]])
         else:
             P_cloud = 100.0   # Set to 100 bar for models without a cloud deck
+
+        # If it is a shiny deck
+        if (enable_shiny_deck == 1):
+            albedo_deck = clouds_in[np.where(cloud_param_names == 'albedo_deck')[0][0]]
+        else:
+            albedo_deck = -1
 
         P_slab_bottom = 100.0  # Not used for this model
             
@@ -1851,6 +2118,8 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         g_cloud_eddysed = 0
         w_cloud_eddysed = 0
 
+        # Set albedo deck to a dummy value 
+        albedo_deck = -1 
 
         # Set fractional clouds for two aerosol species to dummy variables 
         f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
@@ -2162,6 +2431,12 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                 r_i_real = 0
                 r_i_complex = 0
 
+        # See if there is a shiny deck
+        if (enable_shiny_deck == 1):
+            albedo_deck = clouds_in[np.where(cloud_param_names == 'albedo_deck')[0][0]]
+        else:
+            albedo_deck = -1
+
     # This cloud model is to specifically take in kappa_cloud, g_cloud, and w_cloud from eddysed calculations
     # i.e from PICASO, VIRGA
     elif (cloud_model =='eddysed'):
@@ -2194,12 +2469,13 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
         r_i_complex = 0
         log_X_Mie = []
         log_r_m_std_dev = 0.5
+        albedo_deck = -1
         f_both, f_aerosol_1, f_aerosol_2, f_clear = 0,0,0,1 # 1 so there isn't a /0 in compute_spectrum
     
     return kappa_cloud_0, P_cloud, f_cloud, phi_0, theta_0, a, gamma, r_m, log_n_max, \
            fractional_scale_height, r_i_real, r_i_complex, log_X_Mie, P_slab_bottom, \
            kappa_cloud_eddysed, g_cloud_eddysed, w_cloud_eddysed, log_r_m_std_dev, \
-            f_both, f_aerosol_1, f_aerosol_2, f_clear
+            f_both, f_aerosol_1, f_aerosol_2, f_clear, albedo_deck
 
 
 def unpack_geometry_params(param_names, geometry_in, N_params_cumulative):
@@ -2346,3 +2622,76 @@ def unpack_stellar_params(param_names, star, stellar_in, stellar_contam,
 
     return f_het, f_spot, f_fac, T_het, T_spot, T_fac, T_phot, log_g_het, \
            log_g_spot, log_g_fac, log_g_phot
+
+def unpack_surface_params(param_names, surface_in,
+                          surface, surface_model,
+                          N_params_cumulative):
+    '''
+    Extract the surface property values
+    from the drawn surface parameters, according to the model
+    specified by the user.
+    
+    Args:
+        param_names (np.array of str):
+            Free parameters defining this POSEIDON model.
+        surface_in (list of float | np.array of float):
+            Drawn values of the surface parameters.
+       surface (bool):
+            If True, model a surface via an opaque cloud deck.
+        surface_model (string):
+            Surface model definition 
+            (Options: gray, constant, lab_data)
+        N_params_cumulative (np.array of int):
+            Cumulative sum of number of parameters (used for indexing).
+
+    Returns:
+        P_surf, T_surf, albedo_surf, surface_component_percentages 
+
+    '''
+    
+    # Unpack names of geometry parameters
+    surface_param_names = param_names[N_params_cumulative[8]:N_params_cumulative[9]]
+
+    if ('log_P_surf' in surface_param_names):
+        P_surf = np.power(10.0, surface_in[np.where(surface_param_names == 'log_P_surf')[0][0]])
+    else:
+        P_surf = 1000
+    
+    if ('T_surf' in surface_param_names):
+        T_surf = surface_in[np.where(surface_param_names == 'T_surf')[0][0]]
+    else:
+        T_surf = 0
+    
+    if ('albedo_surf' in surface_param_names):
+        albedo_surf = surface_in[np.where(surface_param_names == 'albedo_surf')[0][0]]
+    else:
+        albedo_surf = 0
+    
+    if any("percentage" in s for s in surface_param_names):
+        # If they are log percentages, take 10** 
+        if any("log" in s for s in surface_param_names[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]):
+
+            try:
+                surface_component_percentages = np.power(10.0,surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]])
+            except:
+                # In retrievals, surface_in is not an array so the above statement doesn't work
+                surface_in = np.array(surface_in)
+                surface_component_percentages = np.power(10.0,surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]])
+
+        # else, assume they are linear 
+        else:
+            try:
+                surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+            except:
+                # In retrievals, surface_in is not an array so the above statement doesn't work
+                surface_in = np.array(surface_in)
+                surface_component_percentages = surface_in[np.where(np.char.find(surface_param_names,'percentage')!= -1)[0]]
+                
+    else:
+        surface_component_percentages = [1]
+
+    # Note that surface_component_percentages are later to be ensured to add to one in core.py, compute_spectrum
+    # The reason they aren't here is because 
+    # they can be normalized to one before they go to CLR_Surface in retrieval.py which is not good and biases the retrieval
+    
+    return P_surf, T_surf, albedo_surf, surface_component_percentages

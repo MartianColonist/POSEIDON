@@ -36,6 +36,9 @@ from .clouds import compute_relevant_Mie_properties
 
 from .utility import mock_missing
 
+from .core import compute_spectrum
+from .visuals import dark_theme, light_theme
+
 try:
     import cupy as cp
 except ImportError:
@@ -137,7 +140,7 @@ def check_atmosphere_physical(atmosphere, opac):
 # Spectral Contribution Functions
 #################################
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def extinction_spectral_contribution(chemical_species, active_species, cia_pairs, 
                                      ff_pairs, bf_species, aerosol_species,
                                      n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, 
@@ -589,7 +592,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     PT_dim = model['PT_dim']
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
-    scattering = model['scattering']
+    thermal = model['thermal']
+    thermal_scattering = model['thermal_scattering']
     reflection = model['reflection']
     lognormal_logwidth_free = model['lognormal_logwidth_free']
 
@@ -602,10 +606,6 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     elif (('emission' in spectrum_type) and 
          ((PT_dim or X_dim or cloud_dim) == 3)):
         raise Exception("Only 1D or 2D emission spectra currently supported.")
-    
-
-    if ((cloud_dim >= 2) and (spectrum_type != 'transmission')):
-        raise Exception('Cannot do contribution functions for patchy cloud models.')
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
@@ -658,7 +658,8 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     P_cloud_bottom = atmosphere['P_cloud_bottom']
     log_r_m_std_dev = atmosphere['log_r_m_std_dev']
 
-    if (scattering == True) or (reflection == True):
+
+    if (thermal_scattering == True) or (reflection == True):
         print('Contribution functions are largely untested for scattering and reflection. Bugs ahead... reach out to Elijah Mullens if you see any that need squashed.')
         if (len(aerosol_species)>=2):
             raise Exception('Cannot do more than one aerosol species when scattering or reflection is True. If you need this, reach out to Elijah Mullens.')
@@ -737,7 +738,6 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         T_fine = opac['T_fine']
         log_P_fine = opac['log_P_fine']
 
-        # Running POSEIDON on the CPU
         # Running POSEIDON on the CPU
         if (device == 'cpu'):
             
@@ -900,254 +900,15 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
         elif (device == 'gpu'):
             raise Exception("GPU transmission spectra not yet supported.")
 
-    # Generate transmission spectrum        
-    if (spectrum_type == 'transmission'):
-
-        if (device == 'gpu'):
-            raise Exception("GPU transmission spectra not yet supported.")
-        
-        # Total Spectrum First 
-        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray), 
-                           kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
-                           R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
-                           theta_edge)
-
-        spectrum_contribution_list = []
-
-        for i in range(len(kappa_gas_contribution_array)):
-
-            kappa_gas_temp = kappa_gas_contribution_array[i]
-            kappa_cloud_temp = kappa_cloud_contribution_array[i]
-        
-            # Call the core TRIDENT routine to compute the transmission spectrum
-            spectrum_temp = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas_temp + kappa_Ray), 
-                                    kappa_cloud_temp, enable_deck, enable_haze, b_p, y_p[0],
-                                    R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
-                                    theta_edge)
-            
-            spectrum_contribution_list.append(spectrum_temp)
-
-    # Generate emission spectrum
-    elif ('emission' in spectrum_type):
-
-        # Find zone index for the emission spectrum atmospheric region
-        if ('dayside' in spectrum_type):
-            zone_idx = 0
-        elif ('nightside' in spectrum_type):
-            zone_idx = -1
-        else:
-            zone_idx = 0
-
-        # Use atmospheric properties from dayside/nightside (only consider one region for 1D emission models)
-        dz = dr[:,0,zone_idx]
-        T = T[:,0,zone_idx]
-        
-        # First, compute the normal 
-        # Compute total extinction (all absorption + scattering sources)
-        kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                     kappa_cloud[:,0,zone_idx,:])
-
-        # Store differential extinction optical depth across each layer
-        dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
-
-        # Without scattering, compute single steam radiative transfer
-        if (scattering == False):
-
-            # Compute planet flux (on CPU or GPU)
-            if (device == 'cpu'):
-                F_p, dtau = emission_single_stream(T, dz, wl, kappa_tot, Gauss_quad)
-            elif (device == 'gpu'):
-                F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
-
-        elif (scattering == True):
-            
-            # Quick Fix for POSEIDON V1.3.1. new toon functions
-            if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                # Intialize w_cloud and g_cloud arrays
-                # Shape = (Aerosol_species, pressure, sector, zone, wl)
-                w_cloud_array = []
-                g_cloud_array = []
-
-                if len(aerosol_species) != 0:
-                    for aerosol in range(len(w_cloud)):
-                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                        # turn into a list so it doesn't end up being an array of arrays 
-                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
-
-                else:
-                    # Just a list of 0s
-                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
-                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
-
-                # Turn into an array so numba in toon functions is happy with indexing 
-                # Have to name different so that w_cloud isn't propogated to future iterations
-                w_cloud_toon = np.array(w_cloud_array)
-                g_cloud_toon = np.array(g_cloud_array)
-
-            # Need to make a g and w array that vary with pressure layer where aerosols actually are 
-            else:
-                raise Exception('Only 1 aerosol species supported for scattering in contributions')
-            
-            # A dummy array for emission and reflection Toon, so that its easier to port over 
-            # Changes to surfaces in next update
-            # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
-            surf_reflect = np.full_like(wl, -1) 
-
-            # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
-            kappa_cloud_seperate_toon = []
-            kappa_cloud_seperate_toon.append(kappa_cloud)
-            kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
-
-            # Compute planet flux including scattering (PICASO implementation), see emission.py for details
-            F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                      kappa_Ray, kappa_cloud, kappa_tot,
-                                      w_cloud_toon, g_cloud_toon, zone_idx,
-                                      surf_reflect, kappa_cloud_seperate,
-                                      hard_surface = 0, tridiagonal = 0, 
-                                      Gauss_quad = 5, numt = 1)
-            
-            dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
-
-        else:
-            raise Exception("Error: Invalid scattering option")
-
-        # Add in the separate reflection  
-        if (reflection == True):
-
-            # Quick Fix for POSEIDON V1.3.1. new toon functions
-            if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                # Intialize w_cloud and g_cloud arrays
-                # Shape = (Aerosol_species, pressure, sector, zone, wl)
-                w_cloud_array = []
-                g_cloud_array = []
-
-                if len(aerosol_species) != 0:
-                    for aerosol in range(len(w_cloud)):
-                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                        # turn into a list so it doesn't end up being an array of arrays 
-                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
-
-                else:
-                    # Just a list of 0s
-                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
-                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
-
-                # Turn into an array so numba in toon functions is happy with indexing 
-                w_cloud_toon = np.array(w_cloud_array)
-                g_cloud_toon = np.array(g_cloud_array)
-            
-            # A dummy array for emission and reflection Toon, so that its easier to port over 
-            # Changes to surfaces in next update
-            # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
-            surf_reflect = np.full_like(wl, -1) 
-
-            # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
-            kappa_cloud_seperate_toon = []
-            kappa_cloud_seperate_toon.append(kappa_cloud)
-            kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
-
-            albedo = reflection_Toon(P, wl, dtau_tot,
-                                     kappa_Ray, kappa_cloud, kappa_tot,
-                                     w_cloud_toon, g_cloud_toon, zone_idx,
-                                     surf_reflect, kappa_cloud_seperate,
-                                     single_phase = 3, multi_phase = 0,
-                                     frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                     Gauss_quad = 5, numt = 1,
-                                     toon_coefficients=0, tridiagonal=0, b_top=0)
-
-        # Calculate effective photosphere radius at tau = 2/3
-        if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
-            
-            # Running POSEIDON on the CPU
-            if (device == 'cpu'):
-                R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]),
-                                                      wl, photosphere_tau = 2/3)
-            
-            # Running POSEIDON on the GPU
-            elif (device == 'gpu'):
-
-                # Initialise photosphere radius array
-                R_p_eff = cp.zeros(len(wl))
-                dtau_flipped = cp.flip(dtau, axis=0)
-                r_low_flipped = np.ascontiguousarray(np.flip(r_low[:,0,zone_idx]))
-
-                # Find cumulative optical depth from top of atmosphere down at each wavelength
-                tau_lambda = cp.cumsum(dtau_flipped, axis=0)
-
-                # Calculate photosphere radius using GPU
-                determine_photosphere_radii_GPU[block, thread](tau_lambda, r_low_flipped, wl, R_p_eff, 2/3)
-
-                # Convert back to numpy array on CPU
-                R_p_eff = cp.asnumpy(R_p_eff)          
-        
-        else:
-            R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
-        
-        # If distance not specified, use fiducial value
-        if (d is None):
-            d = 1        # This value only used for flux ratios, so it cancels
-
-        # For direct emission spectra (brown dwarfs and directly imaged planets)        
-        if ('direct' in spectrum_type):
-
-            # Convert planet surface flux to observed flux at Earth
-            F_p_obs = (R_p_eff / d)**2 * F_p
-
-            # Direct spectrum is F_p observed at Earth
-            spectrum = F_p_obs
-
-        # For transiting planet emission spectra
-        else:
-
-            # Load stellar spectrum
-            F_s = star['F_star']
-            wl_s = star['wl_star']
-
-            if (np.array_equiv(wl_s, wl) is False):
-                raise Exception("Error: wavelength grid for stellar spectrum does " +
-                                "not match wavelength grid of planet spectrum. " +
-                                "Did you forget to provide 'wl' to create_star?")
-
-            # Interpolate stellar spectrum onto planet spectrum wavelength grid
-        #    F_s_interp = spectres(wl, wl_s, F_s)
-
-            # Convert stellar surface flux to observed flux at Earth
-            F_s_obs = (R_s / d)**2 * F_s
-
-            # Convert planet surface flux to observed flux at Earth
-            F_p_obs = (R_p_eff / d)**2 * F_p
-
-            # Final spectrum is the planet-star flux ratio
-            spectrum = F_p_obs / F_s_obs
-
-        if (reflection == True):
-            
-            try:
-                FpFs_reflected = albedo*(R_p_eff/a_p)**2
-            except:
-                raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
-            
-            if ('direct' in spectrum_type):
-
-                # Load stellar spectrum
-                F_s = star['F_star']
-                wl_s = star['wl_star']
-
-                if (np.array_equiv(wl_s, wl) is False):
-                    raise Exception("Error: wavelength grid for stellar spectrum does " +
-                                    "not match wavelength grid of planet spectrum. " +
-                                    "Did you forget to provide 'wl' to create_star?")
-
-                F_s_obs = (R_s / d)**2 * F_s
-                Fp_reflected_obs = FpFs_reflected*F_s_obs
-                
-                spectrum += Fp_reflected_obs
-
-            else:
-                #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
-                spectrum += FpFs_reflected
+        # Generate the full spectrum first 
+        spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                    spectrum_type = spectrum_type, save_spectrum = save_spectrum,
+                                    disable_continuum = disable_continuum, suppress_print = suppress_print,
+                                    Gauss_quad = Gauss_quad, use_photosphere_radius = use_photosphere_radius,
+                                    device = device, y_p = y_p,
+                                    return_albedo = False,
+                                    kappa_contributions = [kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate],
+                                    cloud_properties_contributions = [w_cloud,g_cloud])
 
         # Then do the contribution functions 
         spectrum_contribution_list = []
@@ -1157,210 +918,22 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
             kappa_gas_temp = kappa_gas_contribution_array[i]
             kappa_cloud_temp = kappa_cloud_contribution_array[i]
 
-            # Compute total extinction (all absorption + scattering sources)
-            kappa_tot = (kappa_gas_temp[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                        kappa_cloud_temp[:,0,zone_idx,:])
+            # We do this since you can only do one aerosol (right now) for contributions. 
+            # Otherwise this will have to be changed
+            kappa_cloud_seperate_toon = []
+            kappa_cloud_seperate_toon.append(kappa_cloud_temp)
+            kappa_cloud_seperate_temp = np.array(kappa_cloud_seperate_toon)
 
-            # Store differential extinction optical depth across each layer
-            dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
+            spectrum_temp = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                        spectrum_type = spectrum_type, save_spectrum = save_spectrum,
+                                        disable_continuum = disable_continuum, suppress_print = suppress_print,
+                                        Gauss_quad = Gauss_quad, use_photosphere_radius = use_photosphere_radius,
+                                        device = device, y_p = y_p,
+                                        return_albedo = False,
+                                        kappa_contributions = [kappa_gas_temp, kappa_Ray, kappa_cloud_temp, kappa_cloud_seperate_temp],
+                                        cloud_properties_contributions = [w_cloud,g_cloud])
 
-            # Without scattering, compute single steam radiative transfer
-            if (scattering == False):
-
-                # Compute planet flux (on CPU or GPU)
-                if (device == 'cpu'):
-                    F_p, dtau = emission_single_stream(T, dz, wl, kappa_tot, Gauss_quad)
-                elif (device == 'gpu'):
-                    F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
-
-            elif (scattering == True):
-
-                # Quick Fix for POSEIDON V1.3.1. new toon functions
-                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                    # Intialize w_cloud and g_cloud arrays
-                    # Shape = (Aerosol_species, pressure, sector, zone, wl)
-                    w_cloud_array = []
-                    g_cloud_array = []
-
-                    if len(aerosol_species) != 0:
-                        for aerosol in range(len(w_cloud)):
-                            # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                            # turn into a list so it doesn't end up being an array of arrays 
-                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
-
-                    else:
-                        # Just a list of 0s
-                        w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
-
-                    # Turn into an array so numba in toon functions is happy with indexing 
-                    w_cloud_toon = np.array(w_cloud_array)
-                    g_cloud_toon = np.array(g_cloud_array)
-                
-                # A dummy array for emission and reflection Toon, so that its easier to port over 
-                # Changes to surfaces in next update
-                # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
-                surf_reflect = np.full_like(wl, -1) 
-
-                # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
-                kappa_cloud_seperate_toon = []
-                kappa_cloud_seperate_toon.append(kappa_cloud_temp)
-                kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
-
-                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
-                F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                          kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                          w_cloud_toon, g_cloud_toon, zone_idx,
-                                          surf_reflect, kappa_cloud_seperate,
-                                          hard_surface = 0, tridiagonal = 0, 
-                                          Gauss_quad = 5, numt = 1)
-                
-            
-                
-                dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
-
-
-            else:
-                raise Exception("Error: Invalid scattering option")
-            
-            # Add in the separate reflection  
-            if (reflection == True):
-
-                # Quick Fix for POSEIDON V1.3.1. new toon functions
-                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                    # Intialize w_cloud and g_cloud arrays
-                    # Shape = (Aerosol_species, pressure, sector, zone, wl)
-                    w_cloud_array = []
-                    g_cloud_array = []
-
-                    if len(aerosol_species) != 0:
-                        for aerosol in range(len(w_cloud)):
-                            # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                            # turn into a list so it doesn't end up being an array of arrays 
-                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
-
-                    else:
-                        # Just a list of 0s
-                        w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
-
-                    # Turn into an array so numba in toon functions is happy with indexing 
-                    w_cloud_toon = np.array(w_cloud_array)
-                    g_cloud_toon = np.array(g_cloud_array)
-                
-                # A dummy array for emission and reflection Toon, so that its easier to port over 
-                # Changes to surfaces in next update
-                # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
-                surf_reflect = np.full_like(wl, -1) 
-
-                # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
-                kappa_cloud_seperate_toon = []
-                kappa_cloud_seperate_toon.append(kappa_cloud_temp)
-                kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
-
-                albedo = reflection_Toon(P, wl, dtau_tot,
-                                         kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                         w_cloud_toon, g_cloud_toon, zone_idx,
-                                         surf_reflect, kappa_cloud_seperate,
-                                         single_phase = 3, multi_phase = 0,
-                                         frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                         Gauss_quad = 5, numt = 1,
-                                         toon_coefficients=0, tridiagonal=0, b_top=0)
-
-            # Calculate effective photosphere radius at tau = 2/3
-            if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
-                
-                # Running POSEIDON on the CPU
-                if (device == 'cpu'):
-                    R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]),
-                                                          wl, photosphere_tau = 2/3)
-                
-                # Running POSEIDON on the GPU
-                elif (device == 'gpu'):
-
-                    # Initialise photosphere radius array
-                    R_p_eff = cp.zeros(len(wl))
-                    dtau_flipped = cp.flip(dtau, axis=0)
-                    r_low_flipped = np.ascontiguousarray(np.flip(r_low[:,0,zone_idx]))
-
-                    # Find cumulative optical depth from top of atmosphere down at each wavelength
-                    tau_lambda = cp.cumsum(dtau_flipped, axis=0)
-
-                    # Calculate photosphere radius using GPU
-                    determine_photosphere_radii_GPU[block, thread](tau_lambda, r_low_flipped, wl, R_p_eff, 2/3)
-
-                    # Convert back to numpy array on CPU
-                    R_p_eff = cp.asnumpy(R_p_eff)          
-            
-            else:
-                R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
-            
-            # If distance not specified, use fiducial value
-            if (d is None):
-                d = 1        # This value only used for flux ratios, so it cancels
-
-            # For direct emission spectra (brown dwarfs and directly imaged planets)        
-            if ('direct' in spectrum_type):
-
-                # Convert planet surface flux to observed flux at Earth
-                F_p_obs = (R_p_eff / d)**2 * F_p
-
-                # Direct spectrum is F_p observed at Earth
-                spectrum_temp = F_p_obs
-
-            # For transiting planet emission spectra
-            else:
-
-                # Load stellar spectrum
-                F_s = star['F_star']
-                wl_s = star['wl_star']
-
-                if (np.array_equiv(wl_s, wl) is False):
-                    raise Exception("Error: wavelength grid for stellar spectrum does " +
-                                    "not match wavelength grid of planet spectrum. " +
-                                    "Did you forget to provide 'wl' to create_star?")
-
-                # Interpolate stellar spectrum onto planet spectrum wavelength grid
-                #    F_s_interp = spectres(wl, wl_s, F_s)
-
-                # Convert stellar surface flux to observed flux at Earth
-                F_s_obs = (R_s / d)**2 * F_s
-
-                # Convert planet surface flux to observed flux at Earth
-                F_p_obs = (R_p_eff / d)**2 * F_p
-
-                # Final spectrum is the planet-star flux ratio
-                spectrum_temp = F_p_obs / F_s_obs
-            
-            if (reflection == True):
-            
-                try:
-                    FpFs_reflected = albedo*(R_p_eff/a_p)**2
-                except:
-                    raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
-                
-                if ('direct' in spectrum_type):
-
-                    # Load stellar spectrum
-                    F_s = star['F_star']
-                    wl_s = star['wl_star']
-
-                    if (np.array_equiv(wl_s, wl) is False):
-                        raise Exception("Error: wavelength grid for stellar spectrum does " +
-                                        "not match wavelength grid of planet spectrum. " +
-                                        "Did you forget to provide 'wl' to create_star?")
-
-                    F_s_obs = (R_s / d)**2 * F_s
-                    Fp_reflected_obs = FpFs_reflected*F_s_obs
-                    
-                    spectrum_temp += Fp_reflected_obs
-
-                else:
-                    #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
-                    spectrum_temp += FpFs_reflected
-
+           
             spectrum_contribution_list.append(spectrum_temp)
   
     return spectrum, spectrum_contribution_list_names, spectrum_contribution_list
@@ -1376,6 +949,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                                fill_between = [], fill_between_alpha = 0.5, fill_to_spectrum = [],
                                data = None,
                                spectra_labels = [],
+                               dark_mode = False,
                                **kwargs,
                                ):
     
@@ -1422,6 +996,9 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
             Matplotlib axis provided externally.
         file_label (str, optional):
             Optional label to append to end of the output file name.
+        dark_mode (bool, optional):
+            If True, uses a dark background with white text and axes.
+            Defaults to False (light mode).
     '''
 
     from POSEIDON.utility import plot_collection
@@ -1520,7 +1097,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
     
     # Generate plot   
     fig = plot_spectra(spectra, planet, R_to_bin = 100,
-                       plt_label = 'Spectral Contribution Plot',
+                       plt_label = 'Spectral Decomposition',
                        spectra_labels = labels,
                        plot_full_res = False, 
                        save_fig = False,
@@ -1536,6 +1113,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
                        fill_to_spectrum = fill_to_spectrum,
                        show_data = show_data,
                        data_properties = data,
+                       dark_mode = dark_mode,
                        **kwargs,
                        )
         
@@ -1554,7 +1132,7 @@ def plot_spectral_contribution(planet, wl, spectrum, spectrum_contribution_list_
 # Pressure Contribution Functions
 #################################
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def extinction_pressure_contribution(chemical_species, active_species, cia_pairs, 
                                      ff_pairs, bf_species, aerosol_species,
                                      n, T, P, wl, X, X_active, X_cia, X_ff, X_bf, 
@@ -2071,7 +1649,8 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     PT_dim = model['PT_dim']
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
-    scattering = model['scattering']
+    thermal = model['thermal']
+    thermal_scattering = model['thermal_scattering']
     reflection = model['reflection']
     lognormal_logwidth_free = model['lognormal_logwidth_free']
 
@@ -2085,8 +1664,8 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
          ((PT_dim or X_dim or cloud_dim) == 3)):
         raise Exception("Only 1D or 2D emission spectra currently supported.")
     
-    if (cloud_dim >= 2):
-        raise Exception('Cannot do contribution functions for patchy cloud models.')
+    #if (cloud_dim >= 2):
+    #    raise Exception('Cannot do contribution functions for patchy cloud models.')
 
     # Unpack planet and star properties
     b_p = planet['planet_impact_parameter']
@@ -2139,7 +1718,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     P_cloud_bottom = atmosphere['P_cloud_bottom']
     log_r_m_std_dev = atmosphere['log_r_m_std_dev']
 
-    if (scattering == True) or (reflection == True):
+    if (thermal_scattering == True) or (reflection == True):
         if (len(aerosol_species)>=2):
             raise Exception('Cannot do more than one aerosol species when scattering or reflection is True. If you need this, reach out to Elijah Mullens.')
 
@@ -2403,474 +1982,36 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
         elif (device == 'gpu'):
             raise Exception("GPU transmission spectra not yet supported.")
 
-    # Generate transmission spectrum        
-    if (spectrum_type == 'transmission'):
-
-        if (device == 'gpu'):
-            raise Exception("GPU transmission spectra not yet supported.")
-        
-        # Total Spectrum First 
-        spectrum = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas + kappa_Ray), 
-                           kappa_cloud, enable_deck, enable_haze, b_p, y_p[0],
-                           R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
-                           theta_edge)
-
-        spectrum_contribution_list = []
-
-        for i in range(len(kappa_gas_contribution_array)):
-
-            kappa_gas_temp = kappa_gas_contribution_array[i]
-            kappa_cloud_temp = kappa_cloud_contribution_array[i]
-        
-            # Call the core TRIDENT routine to compute the transmission spectrum
-            spectrum_temp = TRIDENT(P, r, r_up, r_low, dr, wl, (kappa_gas_temp + kappa_Ray), 
-                                    kappa_cloud_temp, enable_deck, enable_haze, b_p, y_p[0],
-                                    R_s, f_cloud, phi_cloud_0, theta_cloud_0, phi_edge, 
-                                    theta_edge)
-            
-            spectrum_contribution_list.append(spectrum_temp)
-
-    # Generate emission spectrum
-    elif ('emission' in spectrum_type):
-
-        # Find zone index for the emission spectrum atmospheric region
-        if ('dayside' in spectrum_type):
-            zone_idx = 0
-        elif ('nightside' in spectrum_type):
-            zone_idx = -1
-        else:
-            zone_idx = 0
-
-        # Use atmospheric properties from dayside/nightside (only consider one region for 1D emission models)
-        dz = dr[:,0,zone_idx]
-        T = T[:,0,zone_idx]
-        
-        # First, compute the normal 
-        # Compute total extinction (all absorption + scattering sources)
-        kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                     kappa_cloud[:,0,zone_idx,:])
-
-        # Store differential extinction optical depth across each layer
-        dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
-
-        # Without scattering, compute single steam radiative transfer
-        if (scattering == False):
-
-            # Compute planet flux (on CPU or GPU)
-            if (device == 'cpu'):
-                F_p, dtau = emission_single_stream(T, dz, wl, kappa_tot, Gauss_quad)
-            elif (device == 'gpu'):
-                F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
-
-        elif (scattering == True):
-
-            # Quick Fix for POSEIDON V1.3.1. new toon functions
-            if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                # Intialize w_cloud and g_cloud arrays
-                # Shape = (Aerosol_species, pressure, sector, zone, wl)
-                w_cloud_array = []
-                g_cloud_array = []
-
-                if len(aerosol_species) != 0:
-                    for aerosol in range(len(w_cloud)):
-                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                        # turn into a list so it doesn't end up being an array of arrays 
-                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
-
-                else:
-                    # Just a list of 0s
-                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
-                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
-
-                # Turn into an array so numba in toon functions is happy with indexing 
-                w_cloud_toon = np.array(w_cloud_array)
-                g_cloud_toon = np.array(g_cloud_array)
-            
-            # A dummy array for emission and reflection Toon, so that its easier to port over 
-            # Changes to surfaces in next update
-            # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
-            surf_reflect = np.full_like(wl, -1) 
-
-            # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
-            kappa_cloud_seperate_toon = []
-            kappa_cloud_seperate_toon.append(kappa_cloud)
-            kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
-
-            # Compute planet flux including scattering (PICASO implementation), see emission.py for details
-            F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                      kappa_Ray, kappa_cloud, kappa_tot,
-                                      w_cloud_toon, g_cloud_toon, zone_idx,
-                                      surf_reflect, kappa_cloud_seperate,
-                                      hard_surface = 0, tridiagonal = 0, 
-                                      Gauss_quad = 5, numt = 1)
-        
-            
-            dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
-        
-
-        else:
-            raise Exception("Error: Invalid scattering option")
-        
-        # Add in the separate reflection  
-        if (reflection == True):
-
-            # Quick Fix for POSEIDON V1.3.1. new toon functions
-            if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                # Intialize w_cloud and g_cloud arrays
-                # Shape = (Aerosol_species, pressure, sector, zone, wl)
-                w_cloud_array = []
-                g_cloud_array = []
-
-                if len(aerosol_species) != 0:
-                    for aerosol in range(len(w_cloud)):
-                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                        # turn into a list so it doesn't end up being an array of arrays 
-                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
-
-                else:
-                    # Just a list of 0s
-                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
-                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
-
-                # Turn into an array so numba in toon functions is happy with indexing 
-                w_cloud_toon = np.array(w_cloud_array)
-                g_cloud_toon = np.array(g_cloud_array)
-            
-            # A dummy array for emission and reflection Toon, so that its easier to port over 
-            # Changes to surfaces in next update
-            # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
-            surf_reflect = np.full_like(wl, -1) 
-
-            # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
-            kappa_cloud_seperate_toon = []
-            kappa_cloud_seperate_toon.append(kappa_cloud)
-            kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
-
-            albedo = reflection_Toon(P, wl, dtau_tot,
-                                     kappa_Ray, kappa_cloud, kappa_tot,
-                                     w_cloud_toon, g_cloud_toon, zone_idx,
-                                     surf_reflect, kappa_cloud_seperate,
-                                     single_phase = 3, multi_phase = 0,
-                                     frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                     Gauss_quad = 5, numt = 1,
-                                     toon_coefficients=0, tridiagonal=0, b_top=0)
-
-        # Calculate effective photosphere radius at tau = 2/3
-        if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
-            
-            # Running POSEIDON on the CPU
-            if (device == 'cpu'):
-                R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]),
-                                                      wl, photosphere_tau = 2/3)
-            
-            # Running POSEIDON on the GPU
-            elif (device == 'gpu'):
-
-                # Initialise photosphere radius array
-                R_p_eff = cp.zeros(len(wl))
-                dtau_flipped = cp.flip(dtau, axis=0)
-                r_low_flipped = np.ascontiguousarray(np.flip(r_low[:,0,zone_idx]))
-
-                # Find cumulative optical depth from top of atmosphere down at each wavelength
-                tau_lambda = cp.cumsum(dtau_flipped, axis=0)
-
-                # Calculate photosphere radius using GPU
-                determine_photosphere_radii_GPU[block, thread](tau_lambda, r_low_flipped, wl, R_p_eff, 2/3)
-
-                # Convert back to numpy array on CPU
-                R_p_eff = cp.asnumpy(R_p_eff)          
-        
-        else:
-            R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
-        
-        # If distance not specified, use fiducial value
-        if (d is None):
-            d = 1        # This value only used for flux ratios, so it cancels
-
-        # For direct emission spectra (brown dwarfs and directly imaged planets)        
-        if ('direct' in spectrum_type):
-
-            # Convert planet surface flux to observed flux at Earth
-            F_p_obs = (R_p_eff / d)**2 * F_p
-
-            # Direct spectrum is F_p observed at Earth
-            spectrum = F_p_obs
-
-        # For transiting planet emission spectra
-        else:
-
-            # Load stellar spectrum
-            F_s = star['F_star']
-            wl_s = star['wl_star']
-
-            if (np.array_equiv(wl_s, wl) is False):
-                raise Exception("Error: wavelength grid for stellar spectrum does " +
-                                "not match wavelength grid of planet spectrum. " +
-                                "Did you forget to provide 'wl' to create_star?")
-
-            # Interpolate stellar spectrum onto planet spectrum wavelength grid
-        #    F_s_interp = spectres(wl, wl_s, F_s)
-
-            # Convert stellar surface flux to observed flux at Earth
-            F_s_obs = (R_s / d)**2 * F_s
-
-            # Convert planet surface flux to observed flux at Earth
-            F_p_obs = (R_p_eff / d)**2 * F_p
-
-            # Final spectrum is the planet-star flux ratio
-            spectrum = F_p_obs / F_s_obs
-        
-        if (reflection == True):
-            
-            try:
-                FpFs_reflected = albedo*(R_p_eff/a_p)**2
-            except:
-                raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
-            
-            if ('direct' in spectrum_type):
-
-                # Load stellar spectrum
-                F_s = star['F_star']
-                wl_s = star['wl_star']
-
-                if (np.array_equiv(wl_s, wl) is False):
-                    raise Exception("Error: wavelength grid for stellar spectrum does " +
-                                    "not match wavelength grid of planet spectrum. " +
-                                    "Did you forget to provide 'wl' to create_star?")
-
-                F_s_obs = (R_s / d)**2 * F_s
-                Fp_reflected_obs = FpFs_reflected*F_s_obs
-                
-                spectrum += Fp_reflected_obs
-
-            else:
-                #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
-                spectrum += FpFs_reflected
-
         # Then do the contribution functions 
         spectrum_contribution_list = []
 
+                # Then do the contribution functions 
+        spectrum_contribution_list = []
+
         for i in range(len(kappa_gas_contribution_array)):
 
             kappa_gas_temp = kappa_gas_contribution_array[i]
             kappa_cloud_temp = kappa_cloud_contribution_array[i]
 
+            # We do this since you can only do one aerosol (right now) for contributions. 
+            # Otherwise this will have to be changed
+            kappa_cloud_seperate_toon = []
+            kappa_cloud_seperate_toon.append(kappa_cloud_temp)
+            kappa_cloud_seperate_temp = np.array(kappa_cloud_seperate_toon)
 
-            # Compute total extinction (all absorption + scattering sources)
-            kappa_tot = (kappa_gas_temp[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                        kappa_cloud_temp[:,0,zone_idx,:])
+            spectrum_temp = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                                        spectrum_type = spectrum_type, save_spectrum = save_spectrum,
+                                        disable_continuum = disable_continuum, suppress_print = suppress_print,
+                                        Gauss_quad = Gauss_quad, use_photosphere_radius = use_photosphere_radius,
+                                        device = device, y_p = y_p,
+                                        return_albedo = False,
+                                        kappa_contributions = [kappa_gas_temp, kappa_Ray, kappa_cloud_temp, kappa_cloud_seperate_temp],
+                                        cloud_properties_contributions = [w_cloud,g_cloud])
 
-            # Store differential extinction optical depth across each layer
-            dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
-
-            # Without scattering, compute single steam radiative transfer
-            if (scattering == False):
-
-                # Compute planet flux (on CPU or GPU)
-                if (device == 'cpu'):
-                    F_p, dtau = emission_single_stream(T, dz, wl, kappa_tot, Gauss_quad)
-                elif (device == 'gpu'):
-                    F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
-
-            elif (scattering == True):
-
-                # Quick Fix for POSEIDON V1.3.1. new toon functions
-                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                    # Intialize w_cloud and g_cloud arrays
-                    # Shape = (Aerosol_species, pressure, sector, zone, wl)
-                    w_cloud_array = []
-                    g_cloud_array = []
-
-                    if len(aerosol_species) != 0:
-                        for aerosol in range(len(w_cloud)):
-                            # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                            # turn into a list so it doesn't end up being an array of arrays 
-                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
-
-                    else:
-                        # Just a list of 0s
-                        w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
-
-                    # Turn into an array so numba in toon functions is happy with indexing 
-                    w_cloud_toon = np.array(w_cloud_array)
-                    g_cloud_toon = np.array(g_cloud_array)
-
-                # Need to make a g and w array that vary with pressure layer where aerosols actually are 
-                else:
-                    raise Exception('Only 1 aerosol species supported for scattering in contributions')
-                
-                # A dummy array for emission and reflection Toon, so that its easier to port over 
-                # Changes to surfaces in next update
-                # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
-                surf_reflect = np.full_like(wl, -1) 
-
-                # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
-                kappa_cloud_seperate_toon = []
-                kappa_cloud_seperate_toon.append(kappa_cloud_temp)
-                kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
-
-                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
-                F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                          kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                          w_cloud_toon, g_cloud_toon, zone_idx,
-                                          surf_reflect, kappa_cloud_seperate,
-                                          hard_surface = 0, tridiagonal = 0, 
-                                          Gauss_quad = 5, numt = 1)
-            
-                
-                dtau = np.flip(dtau, axis=0)   # Flip optical depth pressure axis back
-
-            else:
-                raise Exception("Error: Invalid scattering option")
-            
-                    # Add in the separate reflection  
-            if (reflection == True):
-
-                # Quick Fix for POSEIDON V1.3.1. new toon functions
-                if len(aerosol_species) == 1 or len(aerosol_species) == 0:
-                    # Intialize w_cloud and g_cloud arrays
-                    # Shape = (Aerosol_species, pressure, sector, zone, wl)
-                    w_cloud_array = []
-                    g_cloud_array = []
-
-                    if len(aerosol_species) != 0:
-                        for aerosol in range(len(w_cloud)):
-                            # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                            # turn into a list so it doesn't end up being an array of arrays 
-                            w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                            g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
-
-                    else:
-                        # Just a list of 0s
-                        w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
-
-                    # Turn into an array so numba in toon functions is happy with indexing 
-                    w_cloud_toon = np.array(w_cloud_array)
-                    g_cloud_toon = np.array(g_cloud_array)
-
-                # Need to make a g and w array that vary with pressure layer where aerosols actually are 
-                else:
-                    raise Exception('Only 1 aerosol species supported for scattering in contributions')
-                
-                # A dummy array for emission and reflection Toon, so that its easier to port over 
-                # Changes to surfaces in next update
-                # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
-                surf_reflect = np.full_like(wl, -1) 
-
-                # As of POSEIDON 1.3.1. kappa_cloud_seperate is used instead of kappa_cloud 
-                kappa_cloud_seperate_toon = []
-                kappa_cloud_seperate_toon.append(kappa_cloud_temp)
-                kappa_cloud_seperate = np.array(kappa_cloud_seperate_toon)
-
-                albedo = reflection_Toon(P, wl, dtau_tot,
-                                         kappa_Ray, kappa_cloud_temp, kappa_tot,
-                                         w_cloud_toon, g_cloud_toon, zone_idx,
-                                         surf_reflect, kappa_cloud_seperate,
-                                         single_phase = 3, multi_phase = 0,
-                                         frac_a = 1, frac_b = -1, frac_c = 2, constant_back = -0.5, constant_forward = 1,
-                                         Gauss_quad = 5, numt = 1,
-                                         toon_coefficients=0, tridiagonal=0, b_top=0)
-
-            # Calculate effective photosphere radius at tau = 2/3
-            if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
-                
-                # Running POSEIDON on the CPU
-                if (device == 'cpu'):
-                    R_p_eff = determine_photosphere_radii(np.flip(dtau, axis=0), np.flip(r_low[:,0,zone_idx]),
-                                                          wl, photosphere_tau = 2/3)
-                
-                # Running POSEIDON on the GPU
-                elif (device == 'gpu'):
-
-                    # Initialise photosphere radius array
-                    R_p_eff = cp.zeros(len(wl))
-                    dtau_flipped = cp.flip(dtau, axis=0)
-                    r_low_flipped = np.ascontiguousarray(np.flip(r_low[:,0,zone_idx]))
-
-                    # Find cumulative optical depth from top of atmosphere down at each wavelength
-                    tau_lambda = cp.cumsum(dtau_flipped, axis=0)
-
-                    # Calculate photosphere radius using GPU
-                    determine_photosphere_radii_GPU[block, thread](tau_lambda, r_low_flipped, wl, R_p_eff, 2/3)
-
-                    # Convert back to numpy array on CPU
-                    R_p_eff = cp.asnumpy(R_p_eff)          
-            
-            else:
-                R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
-            
-            # If distance not specified, use fiducial value
-            if (d is None):
-                d = 1        # This value only used for flux ratios, so it cancels
-
-            # For direct emission spectra (brown dwarfs and directly imaged planets)        
-            if ('direct' in spectrum_type):
-
-                # Convert planet surface flux to observed flux at Earth
-                F_p_obs = (R_p_eff / d)**2 * F_p
-
-                # Direct spectrum is F_p observed at Earth
-                spectrum_temp = F_p_obs
-
-            # For transiting planet emission spectra
-            else:
-
-                # Load stellar spectrum
-                F_s = star['F_star']
-                wl_s = star['wl_star']
-
-                if (np.array_equiv(wl_s, wl) is False):
-                    raise Exception("Error: wavelength grid for stellar spectrum does " +
-                                    "not match wavelength grid of planet spectrum. " +
-                                    "Did you forget to provide 'wl' to create_star?")
-
-                # Interpolate stellar spectrum onto planet spectrum wavelength grid
-                #    F_s_interp = spectres(wl, wl_s, F_s)
-
-                # Convert stellar surface flux to observed flux at Earth
-                F_s_obs = (R_s / d)**2 * F_s
-
-                # Convert planet surface flux to observed flux at Earth
-                F_p_obs = (R_p_eff / d)**2 * F_p
-
-                # Final spectrum is the planet-star flux ratio
-                spectrum_temp = F_p_obs / F_s_obs
-
-            if (reflection == True):
-            
-                try:
-                    FpFs_reflected = albedo*(R_p_eff/a_p)**2
-                except:
-                    raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
-                
-                if ('direct' in spectrum_type):
-
-                    # Load stellar spectrum
-                    F_s = star['F_star']
-                    wl_s = star['wl_star']
-
-                    if (np.array_equiv(wl_s, wl) is False):
-                        raise Exception("Error: wavelength grid for stellar spectrum does " +
-                                        "not match wavelength grid of planet spectrum. " +
-                                        "Did you forget to provide 'wl' to create_star?")
-
-                    F_s_obs = (R_s / d)**2 * F_s
-                    Fp_reflected_obs = FpFs_reflected*F_s_obs
-                    
-                    spectrum_temp += Fp_reflected_obs
-
-                else:
-                    #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
-                    spectrum_temp += FpFs_reflected
-
+           
             spectrum_contribution_list.append(spectrum_temp)
     
-    return spectrum, spectrum_contribution_list_names, spectrum_contribution_list
+    return spectrum_contribution_list_names, spectrum_contribution_list
 
 
 def pressure_contribution(planet, star, model, atmosphere, opac, wl,
@@ -2953,7 +2094,7 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     '''
 
     # Warning statement 
-    if (model['scattering'] == True) or (model['reflection'] == True):
+    if (model['thermal_scattering'] == True) or (model['reflection'] == True):
         print('Contribution functions are largely untested for scattering and reflection. Bugs ahead... reach out to Elijah Mullens if you see any that need squashed.')
 
     bulk_species_list = model['bulk_species']
@@ -2992,6 +2133,15 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
     # For denominator of contribution function (not used in current code, but returned just in case)
     norm = np.zeros(shape=(contribution_length,len(wl)))   # Running sum for contribution
 
+    # Compute the full spectrum 
+    # Only need to do this once 
+    spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
+                            spectrum_type = spectrum_type, save_spectrum = save_spectrum,
+                            disable_continuum = disable_continuum, suppress_print = suppress_print,
+                            Gauss_quad = Gauss_quad, use_photosphere_radius = use_photosphere_radius,
+                            device = device, y_p = y_p,
+                            return_albedo = False)
+
     # Create progress bar
     with tqdm(total=len(P), desc = "Progress") as pbar:
 
@@ -3001,7 +2151,7 @@ def pressure_contribution(planet, star, model, atmosphere, opac, wl,
             if verbose == True:
                 print(i)
 
-            spectrum, spectrum_contribution_list_names, \
+            spectrum_contribution_list_names, \
             spectrum_contribution_list = pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                                                                 spectrum_type = spectrum_type, 
                                                                                 save_spectrum = save_spectrum,
@@ -3040,6 +2190,7 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
                                spectrum_contribution_list_names, R = 100,
                                return_fig = False, save_fig = False,
                                show_log_plot = False, file_label = None,
+                               dark_mode = False,
                                ):
 
     '''
@@ -3064,6 +2215,9 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
             If True, will also show the log plot of the contribution function.
         file_label (str, optional):
             Optional label to append to end of the output file name.
+        dark_mode (bool, optional):
+            If True, uses a dark background with white text and axes.
+            Defaults to False (light mode).
 
     '''
 
@@ -3072,6 +2226,9 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+    # Select theme for dark/light mode
+    theme = dark_theme if dark_mode else light_theme
     
     for i in range(len(spectrum_contribution_list_names)):
 
@@ -3080,8 +2237,13 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
         # Trying Ryan's Binning 
         fig = plt.figure()  
         fig.set_size_inches(14, 7)
+        fig.patch.set_facecolor(theme['fig_colour'])
         ax = plt.gca()
+        ax.set_facecolor(theme['fig_colour'])
         ax.set_yscale("log")
+        for spine in ax.spines.values():
+            spine.set_edgecolor(theme['ax_edge_colour'])
+        ax.tick_params(colors=theme['tick_colour'], which='both')
 
         # Bin the wavelengths using the first pressure layer of the spectrum 
         # This is because bin_spectrum returns both a wl binned and spectrum grid and we want the wl binned for now 
@@ -3105,9 +2267,9 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
         ax.set_xlim([wl[0], wl[-1]])
         ax.set_ylim([P[0], P[-1]])        
         
-        ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5)
-        ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
-        ax.set_title(title)
+        ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5, color = theme['text_colour'])
+        ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15, color = theme['text_colour'])
+        ax.set_title(title, color = theme['text_colour'])
 
         fig1 = fig
 
@@ -3118,8 +2280,13 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
 
             fig = plt.figure()  
             fig.set_size_inches(14, 7)
+            fig.patch.set_facecolor(theme['fig_colour'])
             ax = plt.gca()
+            ax.set_facecolor(theme['fig_colour'])
             ax.set_yscale("log")
+            for spine in ax.spines.values():
+                spine.set_edgecolor(theme['ax_edge_colour'])
+            ax.tick_params(colors=theme['tick_colour'], which='both')
 
             Contribution_binned[Contribution_binned == 0] = np.min(Contribution_binned[np.nonzero(Contribution_binned)])
 
@@ -3130,10 +2297,10 @@ def plot_pressure_contribution(wl, P, planet, Contribution,
             ax.set_xlim([wl[0], wl[-1]])
             ax.set_ylim([P[0], P[-1]])        
             
-            ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5)
-            ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15)
+            ax.set_ylabel(r'P (bar)', fontsize = 15, labelpad=0.5, color = theme['text_colour'])
+            ax.set_xlabel(r'Wavelength ' + r'(μm)', fontsize = 15, color = theme['text_colour'])
             title = 'LOG Contribution Function : ' + str(spectrum_contribution_list_names[i])
-            ax.set_title(title)
+            ax.set_title(title, color = theme['text_colour'])
 
             fig2 = fig
 
@@ -3278,7 +2445,7 @@ def plot_photometric_contribution(P, planet,
                                   spectrum_contribution_list_names,
                                   bins = [],
                                   return_fig = False, save_fig = False,
-                                  file_label = None,
+                                  file_label = None, dark_mode = False,
                                   ):
     
     '''
@@ -3303,6 +2470,9 @@ def plot_photometric_contribution(P, planet,
             If True, saves a PDF in the POSEIDON output folder.
         file_label (str, optional):
             Optional label to append to end of the output file name.
+        dark_mode (bool, optional):
+            If True, uses a dark background with white text and axes.
+            Defaults to False (light mode).
         
     '''
 
@@ -3311,6 +2481,9 @@ def plot_photometric_contribution(P, planet,
 
     # Identify output directory location where the plot will be saved
     output_dir = './POSEIDON_output/' + planet_name + '/plots/'
+
+    # Select theme for dark/light mode
+    theme = dark_theme if dark_mode else light_theme
 
     # Loop over each molecule
     labels = []
@@ -3350,11 +2523,16 @@ def plot_photometric_contribution(P, planet,
         plt.show()
         
         fig, ax = plt.subplots(figsize=(10, 10))
-        ax.set_ylabel('Log Pressure (bar)')
+        fig.patch.set_facecolor(theme['fig_colour'])
+        ax.set_facecolor(theme['fig_colour'])
+        for spine in ax.spines.values():
+            spine.set_edgecolor(theme['ax_edge_colour'])
+        ax.tick_params(colors=theme['tick_colour'], which='both')
+        ax.set_ylabel('Log Pressure (bar)', color = theme['text_colour'])
         ax.invert_yaxis()
-        ax.set_xlabel('Contribution')
+        ax.set_xlabel('Contribution', color = theme['text_colour'])
         title = 'Photometric Contribution Function All Wavelengths : ' + str(labels[i])
-        ax.set_title(title)
+        ax.set_title(title, color = theme['text_colour'])
         ax.plot(photometric_all_wavelengths[i],np.log10(P))
         plt.show()
 

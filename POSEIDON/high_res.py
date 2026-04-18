@@ -490,7 +490,7 @@ def plot_CCF_Kp_Vsys(Kp_range, Vsys_range, CCF_Kp_Vsys, label=None,
     ax1.axvline(x=Vsys_expected, color="white", ls="--", lw=2)
     ax1.axhline(y=Kp_expected, color="white", ls="--", lw=2)
     ax1.plot(Vsys_range[loc[1]], Kp_range[loc[0]], "xk", ms=15, mew=3)
-    ax1.set_xlabel("$\Delta$V$_{sys}$ (km/s)")
+    ax1.set_xlabel(r"$\Delta$V$_{sys}$ (km/s)")
     ax1.set_ylabel(r"K$_{p}$ (km/s)")
     ax1.set_title(r"$\Delta$ CCF ($\sigma$)")
 

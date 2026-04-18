@@ -52,7 +52,8 @@ If you are using the v1.2 version of the aerosol database, consider also citing 
 and `PLATON <https://ui.adsabs.harvard.edu/abs/2019PASP..131c4501Z/abstract>`_, 
 whose algorithms were adapted to precompute Mie-scattering cross sections. 
 If you are using the v1.3.1 version of the aerosol database, consider citing 
-`miepython v2.5.5 <https://github.com/scottprahl/miepython>`_.
+`miepython v2.5.5 <https://github.com/scottprahl/miepython>`_ and 
+`Mullens et al. (2025) <https://ui.adsabs.harvard.edu/abs/2025ApJ...988L..43M/abstract>`_.
 
 The `opacity database <opacity_database.html>`_ page provides extensive
 references for specific aerosols (e.g. refractive index sources). We also provide
@@ -60,8 +61,8 @@ a comprehensive guide to our aerosol database and sources in the file
 `aerosol_database_readme.txt <../_static/Aerosol-Database-Readme.txt>`_.
 
 
-Thermal Scattering and Reflection 
----------------------------------
+Thermal Scattering and Reflection (Giant Planets) 
+-------------------------------------------------
 
 When using POSEIDON for emission spectroscopy with scattering enabled or for 
 reflection spectroscopy, please cite `Mullens et al. (2024) 
@@ -74,6 +75,13 @@ and for emission spectra with scattering please cite `Mukherjee et al. (2023)
 The underlying multiple scattering radiative transfer technique used in all these papers is 
 described in `Toon et al. (1989) <https://ui.adsabs.harvard.edu/abs/1989JGR....9416287T/abstract>`_.
 
+Thermal Scattering and Reflection (Rocky Planets) 
+-------------------------------------------------
+
+If you use POSEIDON with emitting and reflecting surfaces, or use the surface albedo database,
+please cite Mullens et al. (2026) (in prep). Also please also cite PICASO v4.0 (`Mang et al. (2026) <https://ui.adsabs.harvard.edu/abs/2026ApJ..1000...98M/abstract>`_.)
+
+If you use POSEIDON for HWO applications, please also consider citing `Zelakiewicz et al. (2026) <https://ui.adsabs.harvard.edu/abs/2026arXiv260325694Z/abstract>`_.
 
 Pressure-Temperature (P-T) Profiles
 -----------------------------------

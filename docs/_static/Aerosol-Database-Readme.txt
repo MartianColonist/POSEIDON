@@ -1158,6 +1158,13 @@ Crystal or Amorph : Amorphous
 Crystal Shape     : N/A
 
 Refractive Index References:
+
+2025 Note: These references below are actually incorrect. 
+           The real reference is Jager 2003 (see Mg2SiO4_amorph_sol_gel, KH18 entry) 
+           Thanks to Sarah Moran and Hannah Wakeford for pointing this out.
+           This change is reflected in the opacity database in the docs. 
+           We keep these below just in case we revist these in a future update. 
+
 --------------
 Scott & Duley (1996)
 

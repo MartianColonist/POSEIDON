@@ -5,12 +5,10 @@ on:
     branches:    
       - 'main'
       - 'dev'
-      - 'python_3.11_support'
   pull_request:
     branches:
       - 'main'
       - 'dev'
-      - 'python_3.11_support'
 
 jobs:
   test:
@@ -22,7 +20,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.9', '3.10', '3.11'] 
+        python-version: ['3.10', '3.11', '3.12'] 
     steps:
     - uses: actions/checkout@v4
 
@@ -39,7 +37,6 @@ jobs:
       with:
         miniconda-version: "latest"
         channels: conda-forge, defaults
-        use-only-tar-bz2: true
         auto-update-conda: true
         auto-activate-base: true
 
@@ -47,28 +44,28 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         echo "begin: PATH=$PATH;" 
-        conda create --name test_install python=${{ matrix.python-version }} -y
+        conda create --name test_install python=${{ matrix.python-version }} --yes
 
     - name: Create conda environment on MacOS
       if: runner.os == 'macOS'
       run: |
         echo "begin: PATH=$PATH;" 
-        CONDA_SUBDIR=osx-64 conda create --name test_install python=${{ matrix.python-version }} -y
+        CONDA_SUBDIR=osx-64 conda create --name test_install python=${{ matrix.python-version }} --yes
 
     - name: Install mpi4py and pymultinest on Ubuntu
       if: runner.os == 'Linux'
       run: |
         conda activate test_install || true
-        conda install -c conda-forge mpi4py -y
-        conda install -c conda-forge pymultinest -y
+        conda install -c conda-forge mpich=4.3.2 mpi4py --yes
+        conda install -c conda-forge pymultinest --yes
 
     - name: Install mpi4py and pymultinest on MacOS
       if: runner.os == 'macOS'
       run: |
         conda activate test_install || true
         conda env config vars set CONDA_SUBDIR=osx-64
-        conda install -c conda-forge mpi4py -y
-        conda install -c conda-forge pymultinest -y
+        conda install -c conda-forge mpich=4.3.2 mpi4py --yes
+        conda install -c conda-forge pymultinest --yes
 
     - name: Install POSEIDON
       run: |
@@ -87,6 +84,7 @@ jobs:
       run: |
         echo "POSEIDON_input_data=$GITHUB_WORKSPACE/inputs/" >> $GITHUB_ENV
         echo "PYSYN_CDBS=$GITHUB_WORKSPACE/inputs/stellar_grids/" >> $GITHUB_ENV
+        echo "LD_LIBRARY_PATH=$HOME/miniconda3/envs/test_install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Run tests
       run: |

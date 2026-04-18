@@ -14,6 +14,8 @@ except ImportError:
 from scipy.interpolate import InterpolatedUnivariateSpline as interp
 from spectres import spectres
 
+from POSEIDON.clouds import find_nearest
+
 
 def fwhm_instrument(wl_data, instrument):
     '''
@@ -742,3 +744,98 @@ def generate_syn_data_from_file(planet, wl_model, spectrum, data_dir,
         
     return
 
+
+def weighted_mean(data, err):            
+    '''
+    calculates the weighted mean for data points data with std devs. err
+    By: Munazza Alam, Harvard University (2018)
+    '''
+    
+    ind = err != 0.0
+    weights = 1.0/err[ind]**2
+    mu = np.sum(data[ind]*weights)/np.sum(weights)
+    var = 1.0/np.sum(weights)
+
+    return [mu, np.sqrt(var)]
+
+def create_binned_down_data_from_pandexo(file_name,
+                            wl, R_to_bin,
+                            stored_directory,
+                            saved_directory, 
+                            is_miri = True,):
+    
+    ##########################
+    # Load in pandexo 
+    ##########################
+
+    import numpy as np 
+
+    data = np.loadtxt(stored_directory +'/' + file_name).T
+
+
+    if is_miri == True: 
+        wl_data = np.flip(data[0])
+        model_spectra = np.flip(data[1])
+        pandexo_spectra = np.flip(data[2])
+        pandexo_err = np.flip(data[3])
+
+    else:
+        wl_data =         data[0]
+        model_spectra =   data[1]
+        pandexo_spectra = data[2]
+        pandexo_err =     data[3]
+
+    ##########################
+    # Create new data wavelength grid at lower resolution
+    ##########################
+
+    wl_data_new, half_bin_new = R_to_wl(R_to_bin, wl_data[0], wl_data[-1])
+
+    wl_min_array = wl_data_new - half_bin_new
+    wl_max_array = wl_data_new + half_bin_new
+
+    data_new = []
+    data_err_new = []
+
+    for n in range(len(wl_data_new)):
+
+        if n == 0:
+            index_min = 0
+        else:
+            index_min = find_nearest(wl_data, wl_min_array[n]) +1
+
+        index_max = find_nearest(wl_data, wl_max_array[n])
+
+        if wl_data[index_max] > wl_max_array[n]:
+            data_bin = pandexo_spectra[index_min:index_max]
+            err_bin = pandexo_err[index_min:index_max]
+        else:
+            data_bin = pandexo_spectra[index_min:index_max+1]
+            err_bin = pandexo_err[index_min:index_max+1]
+
+        mu, var = weighted_mean(data_bin, err_bin)
+
+        data_new.append(mu)
+        data_err_new.append(var)
+
+    # Trim data to match wl 
+    while np.max(wl_data_new+half_bin_new) > np.max(wl):
+        wl_data_new = wl_data_new[:-1]
+        half_bin_new = half_bin_new[:-1]
+        data_new = data_new[:-1]
+        data_err_new = data_err_new[:-1]
+
+    # Delete outliers due to chip gaps
+    wl_data_new = np.delete(wl_data_new,    np.argwhere(np.array(data_err_new) > 1))
+    half_bin_new = np.delete(half_bin_new , np.argwhere(np.array(data_err_new) > 1))
+    data_new = np.delete(data_new,          np.argwhere(np.array(data_err_new) > 1))
+    data_err_new = np.delete(data_err_new,  np.argwhere(np.array(data_err_new) > 1))
+
+    if os.path.isdir(saved_directory):
+        pass
+    else:
+        os.mkdir(saved_directory)
+
+    new_file_name = saved_directory + file_name.split('.')[0] + '_R' + str(R_to_bin) + '.txt'
+
+    np.savetxt(new_file_name, np.transpose([wl_data_new, half_bin_new, data_new, data_err_new]))

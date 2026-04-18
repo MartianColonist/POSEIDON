@@ -4,11 +4,14 @@ Stellar spectra and star spot/faculae contamination calculations.
 '''
 
 import os
+import warnings
 import numpy as np
 from numba.core.decorators import jit
 from spectres import spectres
 import scipy.constants as sc
-import pysynphot as psyn
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
+    import pysynphot as psyn
 from mpi4py import MPI
 
 from .utility import mock_missing, shared_memory_array
@@ -19,7 +22,7 @@ except ImportError:
     pymsg = mock_missing('pymsg')
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def planck_lambda(T, wl):
     '''
     Compute the Planck function spectral radiance.
@@ -726,7 +729,7 @@ def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
            I_phot_out, I_het_out
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def stellar_contamination_single_spot(f, I_het, I_phot):
     '''
     Computes the multiplicative stellar contamination factor for a transmission
@@ -753,7 +756,7 @@ def stellar_contamination_single_spot(f, I_het, I_phot):
     return epsilon
 
 
-@jit(nopython = True)
+@jit(nopython = True, cache = True)
 def stellar_contamination_general(f_het, I_het, I_phot):
     '''
     Computes the multiplicative stellar contamination factor for a transmission

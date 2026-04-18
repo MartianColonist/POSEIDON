@@ -34,7 +34,8 @@ from .supported_chemicals import supported_species, supported_cia, inactive_spec
                                  aerosols_lognormal_logwidth_free, aerosol_directional_supported_species, \
                                  diamond_supported_species
 from .parameters import assign_free_params, generate_state, \
-                        unpack_geometry_params, unpack_cloud_params
+                        unpack_geometry_params, unpack_cloud_params, \
+                        unpack_surface_params
 from .absorption import opacity_tables, store_Rayleigh_eta_LBL, extinction,\
                         extinction_LBL, extinction_GPU
 from .geometry import atmosphere_regions, angular_grids
@@ -43,9 +44,13 @@ from .instrument import init_instrument
 from .transmission import TRIDENT
 from .emission import emission_single_stream, determine_photosphere_radii, \
                       emission_single_stream_GPU, determine_photosphere_radii_GPU, \
-                      emission_Toon, reflection_Toon
+                      emission_Toon, reflection_Toon, \
+                      assign_assumptions_and_compute_single_stream_emission, \
+                      assign_assumptions_and_compute_thermal_scattering_emission, \
+                      assign_assumptions_and_compute_reflection
 
 from .clouds import compute_relevant_Mie_properties
+from .surfaces import load_surface_components, interpolate_surface_components, find_nearest_less_than
 
 from .utility import mock_missing
 
@@ -385,8 +390,10 @@ def define_model(model_name, bulk_species, param_species,
                  TwoD_param_scheme = 'difference', species_EM_gradient = [], 
                  species_DN_gradient = [], species_vert_gradient = [],
                  surface = False, sharp_DN_transition = False,
+                 sharp_EM_transition = False,
                  reference_parameter = 'R_p_ref', disable_atmosphere = False,
-                 aerosol_species = [], scattering = False, reflection = False,
+                 aerosol_species = [], 
+                 thermal = True, thermal_scattering = False, reflection = False,
                  log_P_slope_phot = 0.5,
                  log_P_slope_arr = [-3.0, -2.0, -1.0, 0.0, 1.0, 1.5, 2.0],
                  number_P_knots = 0, PT_penalty = False,
@@ -395,7 +402,8 @@ def define_model(model_name, bulk_species, param_species,
                  fix_alpha_high_res = False, fix_W_conv_high_res = False, 
                  fix_beta_high_res = True, fix_Delta_phi_high_res = True,
                  lognormal_logwidth_free = False,
-                 ):
+                 surface_components = [], surface_model = 'gray',
+                 surface_percentage_option = 'linear', surface_percentage_apply_to = 'models'):
     '''
     Create the model dictionary defining the configuration of the user-specified 
     forward model or retrieval.
@@ -485,6 +493,8 @@ def define_model(model_name, bulk_species, param_species,
             If True, model a surface via an opaque cloud deck.
         sharp_DN_transition (bool):
             For 2D / 3D models, sets day-night transition width (beta) to 0.
+        sharp_EM_transition (bool):
+            For 2D / 3D models, sets evening-morning transition width (alpha) to 0.
         reference_parameter (str):
             For retrievals, whether R_p_ref, P_ref, or both will be a free parameter
             (Options: R_p_ref / P_ref / R_p_ref+P_ref).
@@ -492,7 +502,9 @@ def define_model(model_name, bulk_species, param_species,
             If True, returns a flat planetary transmission spectrum @ (Rp/R*)^2
         aerosol (string):
             If cloud_model = Mie and cloud_type = specific_aerosol 
-        scattering (bool):
+        thermal (bool):
+            If true, uses a emission model (scattering determines if one-stream or two-stream)
+        thermal_scattering (bool):
             If True, uses a two-stream multiple scattering emission model.
         reflection (bool):
             If True, uses a two-stream multiple scattering reflection model.
@@ -535,7 +547,17 @@ def define_model(model_name, bulk_species, param_species,
         lognormal_logwidth_free (bool):
             If True, has log_r_m_std_dev be a free parameter for aerosols. 
             Only applicable for certain aerosols with precomputed grids. 
-
+        surface_components (list of strings):
+            List of surface components (if surface_model = 'Lab_data')
+        surface_model (string):
+            Surface model definition 
+            (Options: gray, constant_albedo, lab_data)
+        surface_percentage_option (string):
+            Will make surface percentages log or linear (log is reccomended for CLR retrievals)
+            (Options: linear, log)
+        surface_percentage_apply_to (string):
+            What the surface percentage is applied to. 
+            (Options: models, albedos)
     Returns:
         model (dict):
             Dictionary containing the description of the desired POSEIDON model.
@@ -574,6 +596,16 @@ def define_model(model_name, bulk_species, param_species,
         param_species = [i for i in param_species if i != 'K']
         param_species.append('K')
 
+    # it is not possible to have a shiny deck cloud model and a surface with an albedo
+    # This is because in the compute_spectrum() they use the same index variable name (for now)
+    # note that 'real' clouds work fine with surfaces with albedos. Just not the parameteric decks with albedo
+    if (surface == True) and ('shiny' in cloud_type):
+        raise Exception('POSEIDON does not support any shiny deck cloud model for planets with hard surfaces (it does support any other cloud model).')
+
+    # If the surface_components is non zero, the surface_model must be 'Lab_data' 
+    if len(surface_components) != 0 and surface_model != 'lab_data':
+        raise Exception('For specific surface components, surface model = lab_data')
+    
     # Combine bulk species with parametrised species
     chemical_species = np.append(bulk_species, param_species)
 
@@ -585,6 +617,15 @@ def define_model(model_name, bulk_species, param_species,
         if 'K' not in param_species or 'Na' not in param_species:
             raise Exception('If Na_K_fixed_ratio = True, please include Na and K in the param species')
         param_species = [i for i in param_species if i != 'K']
+
+    if reflection_up_to_5um == True and surface == True:
+        raise Exception('Reflection up to 5 um only available for gas giants (no surface)')
+    
+    if reflection_up_to_5um == True and 'shiny' in cloud_type:
+        raise Exception('Reflection up to 5 um not enabled for shiny deck models.')
+
+    if cloud_dim == 2 and len(aerosol_species) >= 2 and surface == True:
+        raise Exception('For planets with surfaces, can only to patchy clouds up to 1 aerosol species.\nCan do up to 2 for gas giants/brown dwarfs without surfaces.')
 
     # If PT_penalty = True but PT_profile != Pelletier, need to throw up an error
     if PT_penalty == True and PT_profile != 'Pelletier':
@@ -620,6 +661,14 @@ def define_model(model_name, bulk_species, param_species,
     if (alpha_high_res_option not in ['log', 'linear']):
         raise Exception('Error: alpha_high_res_option must be log or linear.')
         
+    # Make sure the surface percentage option is log or linear
+    if (surface_percentage_option not in ['log', 'linear']):
+        raise Exception('Error: surface_percentage_option must be log or linear.')
+    
+    # Make sure the surface percentage option is log or linear
+    if (surface_percentage_apply_to not in ['models', 'albedos']):
+        raise Exception('Error: surface_percentage_apply_to must be models or albedos.')
+    
     # Create list of collisionally-induced absorption (CIA) pairs
     CIA_pairs = []
     for pair in supported_cia:
@@ -651,21 +700,31 @@ def define_model(model_name, bulk_species, param_species,
     PT_param_names, X_param_names, \
     cloud_param_names, geometry_param_names, \
     stellar_param_names, high_res_param_names, \
-    N_params_cum = assign_free_params(param_species, bulk_species, object_type, 
-                                      PT_profile, X_profile, cloud_model, cloud_type, 
-                                      gravity_setting, mass_setting, stellar_contam, 
-                                      offsets_applied, error_inflation, PT_dim, 
-                                      X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
-                                      species_EM_gradient, species_DN_gradient, 
-                                      species_vert_gradient, Atmosphere_dimension,
-                                      opaque_Iceberg, surface, sharp_DN_transition,
-                                      reference_parameter, disable_atmosphere, 
-                                      aerosol_species, log_P_slope_arr,
-                                      number_P_knots, PT_penalty, 
-                                      high_res_method, alpha_high_res_option,
-                                      fix_alpha_high_res, fix_W_conv_high_res, 
-                                      fix_beta_high_res, fix_Delta_phi_high_res,
-                                      lognormal_logwidth_free)
+    surface_param_names, N_params_cum = assign_free_params(param_species, bulk_species, object_type, 
+                                                            PT_profile, X_profile, cloud_model, cloud_type, 
+                                                            gravity_setting, mass_setting, stellar_contam, 
+                                                            offsets_applied, error_inflation, PT_dim, 
+                                                            X_dim, cloud_dim, TwoD_type, TwoD_param_scheme, 
+                                                            species_EM_gradient, species_DN_gradient, 
+                                                            species_vert_gradient, Atmosphere_dimension,
+                                                            opaque_Iceberg, surface, sharp_DN_transition,
+                                                            sharp_EM_transition,
+                                                            reference_parameter, disable_atmosphere, 
+                                                            aerosol_species, log_P_slope_arr,
+                                                            number_P_knots, PT_penalty, 
+                                                            high_res_method, alpha_high_res_option,
+                                                            fix_alpha_high_res, fix_W_conv_high_res, 
+                                                            fix_beta_high_res, fix_Delta_phi_high_res,
+                                                            lognormal_logwidth_free,
+                                                            surface_components, surface_model, 
+                                                            surface_percentage_option,
+                                                            thermal, reflection)
+        
+    # Load in the lab data for surfaces HERE 
+    if surface_model == 'lab_data':
+        surface_component_albedos = load_surface_components(surface_components)
+    else:
+        surface_component_albedos = None
 
     # Package model properties
     model = {'model_name': model_name, 'object_type': object_type,
@@ -694,10 +753,12 @@ def define_model(model_name, bulk_species, param_species,
              'TwoD_param_scheme': TwoD_param_scheme, 'PT_dim': PT_dim,
              'X_dim': X_dim, 'cloud_dim': cloud_dim, 'surface': surface,
              'sharp_DN_transition': sharp_DN_transition,
+             'sharp_EM_transition': sharp_EM_transition,
              'reference_parameter': reference_parameter,
              'disable_atmosphere': disable_atmosphere,
              'aerosol_species': aerosol_species,
-             'scattering' : scattering,
+             'thermal' : thermal,
+             'thermal_scattering' : thermal_scattering,
              'reflection' : reflection,
              'log_P_slope_phot': log_P_slope_phot,
              'log_P_slope_arr': log_P_slope_arr,
@@ -707,6 +768,12 @@ def define_model(model_name, bulk_species, param_species,
              'high_res_method': high_res_method,
              'high_res_param_names': high_res_param_names,
              'lognormal_logwidth_free' : lognormal_logwidth_free,
+             'surface_param_names': surface_param_names, 
+             'surface_components': surface_components,
+             'surface_model': surface_model,
+             'surface_component_albedos': surface_component_albedos,
+             'surface_percentage_option': surface_percentage_option,
+             'surface_percentage_apply_to': surface_percentage_apply_to
              }
 
             
@@ -928,8 +995,9 @@ def read_opacities(model, wl, opacity_treatment = 'opacity_sampling',
 
 def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                     log_X_params = [], cloud_params = [], geometry_params = [],
+                    surface_params = [],
                     log_g = None, M_p = None, T_input = [], X_input = [], 
-                    P_surf = None, P_param_set = 1.0e-2, He_fraction = 0.17, 
+                    P_param_set = 1.0e-2, He_fraction = 0.17, 
                     N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
                     chemistry_grid = None, mu_back = None):
     '''
@@ -957,6 +1025,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             Parameters defining atmospheric aerosols.
         geometry_params (np.array of float):
             Terminator opening angle parameters.
+        surface_params (np.array of float):
+            Surface parameters
         log_g (float):
             Gravitational field of planet - only needed for free log_g parameter.
         M_p (float):
@@ -965,8 +1035,6 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
             Temperature profile (only if provided directly by the user).
         X_input (2D np.array of float):
             Mixing ratio profiles (only if provided directly by the user).
-        P_surf (float):
-            Surface pressure of the planet.
         P_param_set (float):
             Only used for the Madhusudhan & Seager (2009) P-T profile.
             Sets the pressure where the reference temperature parameter is 
@@ -1011,12 +1079,17 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     gravity_setting = model['gravity_setting']
     mass_setting = model['mass_setting']
     sharp_DN_transition = model['sharp_DN_transition']
+    sharp_EM_transition = model['sharp_EM_transition']
     log_P_slope_phot = model['log_P_slope_phot'] 
     log_P_slope_arr = model['log_P_slope_arr']
     aerosol_species = model['aerosol_species']
     Na_K_fixed_ratio = model['Na_K_fixed_ratio']
     PT_penalty = model['PT_penalty']
     lognormal_logwidth_free = model['lognormal_logwidth_free']
+
+    surface = model['surface']
+    surface_model = model['surface_model']
+    disable_atmosphere = model['disable_atmosphere']
 
     # Unpack planet properties
     R_p = planet['planet_radius']
@@ -1058,7 +1131,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     if ((len(cloud_params) == 0) and (cloud_model != 'cloud-free')):
         raise Exception("Cloud parameters must be provided for cloudy models.")
     if ((len(geometry_params) == 0) and (Atmosphere_dimension > 1) and
-        (sharp_DN_transition == False)):
+        (sharp_DN_transition == False) and (sharp_EM_transition == False)):
             raise Exception("Geometry parameters must be provided for 2D or 3D models.")
     
     # Line profile requires T_eq
@@ -1070,6 +1143,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     # If user specifies a sharp day-night transition, use no transition slices
     if (sharp_DN_transition == True):
         N_slice_DN = 0
+
+    # If user specifies a sharp evening-morning transition, use no transition slices
+    if (sharp_EM_transition == True):
+        N_slice_EM = 0
 
     # Check that the number of azimuthal and zenith slices are even
     if ((N_slice_EM % 2 != 0) or (N_slice_DN % 2 != 0)):
@@ -1087,7 +1164,8 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     phi, theta, phi_edge, \
     theta_edge, dphi, dtheta = angular_grids(Atmosphere_dimension, TwoD_type, 
                                              N_slice_EM, N_slice_DN, 
-                                             alpha, beta, sharp_DN_transition)
+                                             alpha, beta, sharp_DN_transition,
+                                             sharp_EM_transition)
 
     #***** Generate state arrays for the PT and mixing ratio profiles *****#
 
@@ -1111,7 +1189,7 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                            beta, phi, theta, species_vert_gradient, He_fraction,
                            T_input, X_input, P_param_set, log_P_slope_phot,
                            log_P_slope_arr, Na_K_fixed_ratio, constant_gravity,
-                           chemistry_grid, PT_penalty, T_eq, mu_back)
+                           chemistry_grid, PT_penalty, T_eq, mu_back, disable_atmosphere)
 
     #***** Store cloud / haze / aerosol properties *****#
 
@@ -1124,12 +1202,19 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
     P_cloud_bottom, kappa_cloud_eddysed, \
     g_cloud_eddysed, w_cloud_eddysed, \
     log_r_m_std_dev, \
-    f_both, f_aerosol_1, f_aerosol_2, f_clear = unpack_cloud_params(param_names, cloud_params,
-                                                                    cloud_model, cloud_dim, 
-                                                                    N_params_cum, TwoD_type)
-    
+    f_both, f_aerosol_1, f_aerosol_2, f_clear, \
+    albedo_deck = unpack_cloud_params(param_names, cloud_params,
+                                      cloud_model, cloud_dim, 
+                                      N_params_cum, TwoD_type)
+    #***** Store surface properties *****#
+
+    P_surf, T_surf, albedo_surf, surface_component_percentages = unpack_surface_params(param_names, surface_params,
+                                                                                       surface, surface_model,
+                                                                                       N_params_cum)
+
     # Compute the scale height (for fuzzy deck aerosol models)
-    if is_physical == False:
+    # Surfaces without atmospheres don't have scale heights
+    if is_physical == False or disable_atmosphere == True:
         g = 0
         H = 0
 
@@ -1159,7 +1244,10 @@ def make_atmosphere(planet, model, P, P_ref, R_p_ref, PT_params = [],
                   'log_r_m_std_dev' : log_r_m_std_dev,
                   'f_both' : f_both, 'f_aerosol_1' : f_aerosol_1, 
                   'f_aerosol_2' : f_aerosol_2, 'f_clear' : f_clear,
-                  }
+                  'albedo_deck' : albedo_deck,
+                  'T_surf' : T_surf, 'albedo_surf' : albedo_surf, 
+                  'surface_component_percentages' : surface_component_percentages,
+                  'R_p_ref' : R_p_ref,}
 
     return atmosphere
 
@@ -1217,7 +1305,8 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      disable_continuum = False, suppress_print = False,
                      Gauss_quad = 2, use_photosphere_radius = True,
                      device = 'cpu', y_p = np.array([0.0]),
-                     return_albedo = False):
+                     return_albedo = False,
+                     kappa_contributions = [],cloud_properties_contributions = []):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -1263,6 +1352,10 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             Units are in m, not in stellar radii.
         return_albedo (bool):
             If True, returns spectrum and albedo 
+        kappa_contributions (array):
+            Used by contributions.py functions
+        cloud_properties_contributions (array):
+            Used by contributions.py functions 
 
     Returns:
         spectrum (np.array of float):
@@ -1270,20 +1363,32 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     
     '''
 
+    # If there is no atmosphere, there is no opac object
+    disable_atmosphere = model['disable_atmosphere']
+
     # Check if the atmosphere is unphysical (e.g. temperature out of bounds)
-    if (check_atmosphere_physical(atmosphere, opac) == False):
-        spectrum = np.empty(len(wl))
-        spectrum[:] = np.NaN
-        return spectrum   # Unphysical => reject model
+    if (disable_atmosphere == False):
+        if (check_atmosphere_physical(atmosphere, opac) == False):
+            spectrum = np.empty(len(wl))
+            spectrum[:] = np.NaN
+            return spectrum   # Unphysical => reject model
 
     # Unpack model properties
     PT_dim = model['PT_dim']
     X_dim = model['X_dim']
     cloud_dim = model['cloud_dim']
-    scattering = model['scattering']
+    thermal = model['thermal']
+    thermal_scattering = model['thermal_scattering']
     reflection = model['reflection']
     reflection_up_to_5um = model['reflection_up_to_5um']
     lognormal_logwidth_free = model['lognormal_logwidth_free']
+
+    surface = model['surface']
+    surface_model = model['surface_model']
+    surface_component_albedos = model['surface_component_albedos']
+    surface_components = model['surface_components']
+    surface_percentage_option = model['surface_percentage_option']
+    surface_percentage_apply_to = model['surface_percentage_apply_to']
 
     # Check that the requested spectrum model is supported
     if (spectrum_type not in ['transmission', 'emission', 'direct_emission',
@@ -1352,6 +1457,19 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     f_aerosol_1 = atmosphere['f_aerosol_1']
     f_aerosol_2 = atmosphere['f_aerosol_2']
     f_clear = atmosphere['f_clear']
+    albedo_deck = atmosphere['albedo_deck']
+
+    R_p_ref = atmosphere['R_p_ref']
+    T_surf = atmosphere['T_surf']
+    albedo_surf = atmosphere['albedo_surf']
+
+    surface_component_percentages = atmosphere['surface_component_percentages']
+
+    # Normalize the percentages so they add up to one (we round since its usually 0.999999 or 1.0000002 or something)
+    # (note that in forward models, this is necessary but doesn't change input variables)
+    # (in retrievals, they should be normalized before they get to this step so that cube [drawn parameters] is updated)
+    if round(np.sum(surface_component_percentages)) != 1.0:
+        surface_component_percentages = surface_component_percentages/np.sum(surface_component_percentages)
 
     # Normalize the fractions so they add to one
     # This step also occurs in retrieval.py, so this is just for forward models 
@@ -1397,194 +1515,318 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     ff_pairs = model['ff_pairs']
     bf_species = model['bf_species']
             
-    # If computing line-by-line radiative transfer, use lbl optimised functions 
-    if (opac['opacity_treatment'] == 'line_by_line'):
+    # If there is kappa_contribUtion (where kappas are computed), skip the below and just compute the spectrum
+    if len(kappa_contributions) != 0:
+        kappa_gas, kappa_Ray, kappa_cloud, kappa_cloud_seperate = kappa_contributions[0],kappa_contributions[1],kappa_contributions[2],kappa_contributions[3]
+        w_cloud, g_cloud = cloud_properties_contributions[0], cloud_properties_contributions[1]
 
-        # Identify the opacity database being used
-        opacity_database = opac['opacity_database']
+        # These lines of code are not included in contribution.py, and are therefore put here 
 
-        # Load the version of the opacity database
-        database_version = opac['database_version']
-
-        # Unpack pre-computed Rayleigh cross sections
-        Rayleigh_stored = opac['Rayleigh_stored']
-
-        # Calculate extinction coefficients in line-by-line mode        
-        kappa_gas, kappa_Ray, kappa_cloud = extinction_LBL(chemical_species, active_species, 
-                                                           CIA_pairs, ff_pairs, bf_species, 
-                                                           n, T, P, wl, X, X_active, X_CIA, 
-                                                           X_ff, X_bf, a, gamma, P_cloud,
-                                                           kappa_cloud_0, Rayleigh_stored, 
-                                                           enable_haze, enable_deck,
-                                                           enable_surface, N_sectors, 
-                                                           N_zones, P_surf, opacity_database, 
-                                                           disable_continuum, suppress_print,
-                                                           database_version)
-        
-    # If using opacity sampling, we can use pre-interpolated cross sections
-    elif (opac['opacity_treatment'] == 'opacity_sampling'):
-
-        # Unpack pre-interpolated cross sections
-        sigma_stored = opac['sigma_stored']
-        CIA_stored = opac['CIA_stored']
-        Rayleigh_stored = opac['Rayleigh_stored']
-        ff_stored = opac['ff_stored']
-        bf_stored = opac['bf_stored']
-        aerosol_stored = opac['aerosol_stored']
-
-        # aerosol_grid = opac['aerosol_grid']
-
-        # Also unpack fine temperature and pressure grids from pre-interpolation
-        T_fine = opac['T_fine']
-        log_P_fine = opac['log_P_fine']
-
-        # Running POSEIDON on the CPU
-        if (device == 'cpu'):
+        # If there is a surface or if there there is an albedo deck 
+        # Note that albedo deck is treated like a surface below
+        if surface == True or albedo_deck != -1:
             
-            # If the cloud model is Mie, need to parse out 
-            # How the cloud type is defined and whether or not 
-            # aerosol grid is being used or not 
-            if (model['cloud_model'] == 'Mie'):
-                n_aerosol, sigma_ext_cloud, \
-                g_cloud, w_cloud = compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
-                                                                   P, wl, r, H, n, r_m, r_i_real, r_i_complex,
-                                                                   P_cloud, P_cloud_bottom, log_X_Mie,
-                                                                   log_n_max, fractional_scale_height,
-                                                                   lognormal_logwidth_free, log_r_m_std_dev)
-
-            else:
-
-                # Generate empty arrays so the dark god numba is satisfied
-                n_aerosol = []
-                sigma_ext_cloud = []
-                    
-                n_aerosol.append(np.zeros_like(r))
-                sigma_ext_cloud.append(np.zeros_like(wl))
-
-                n_aerosol = np.array(n_aerosol)
-                sigma_ext_cloud = np.array(sigma_ext_cloud)
-
-                w_cloud = np.zeros_like(wl)
-                g_cloud = np.zeros_like(wl)
-
-            # Calculate extinction coefficients in standard mode
-
-            # Numba will get mad if P_cloud is not an array (because you can have more than one cloud)
-            # This line just makes sure that P_cloud is an array 
-            if isinstance(P_cloud, np.ndarray) == False:
-                P_cloud = np.array([P_cloud])
-
-            # Create the kappa arrays
-            kappa_gas, kappa_Ray, \
-            kappa_cloud, kappa_cloud_separate = extinction(chemical_species, active_species,
-                                                           CIA_pairs, ff_pairs, bf_species,
-                                                           n, T, P, wl, X, X_active, X_CIA, 
-                                                           X_ff, X_bf, a, gamma, P_cloud, 
-                                                           kappa_cloud_0, sigma_stored, 
-                                                           CIA_stored, Rayleigh_stored, 
-                                                           ff_stored, bf_stored, enable_haze, 
-                                                           enable_deck, enable_surface,
-                                                           N_sectors, N_zones, T_fine, 
-                                                           log_P_fine, P_surf, enable_Mie, 
-                                                           n_aerosol, sigma_ext_cloud)
-            
-            # If we read in an eddysed file (from PICASO or VIRGA) that
-            # contains the single scattering albedo, asymmetry parameter, or kappa_cloud
-            if model['cloud_model'] == 'eddysed':
-
-                # Shenanigans so that the eddysed/picaso arrays work with whats already in POSEIDON
-                w_cloud_array = []
-                g_cloud_array = []
-                kappa_cloud_separate = []
-
-                w_cloud_array.append(w_cloud_eddysed)
-                g_cloud_array.append(g_cloud_eddysed)
-                kappa_cloud_separate.append(kappa_cloud_eddysed)
-
-                w_cloud = np.array(w_cloud_array)
-                g_cloud = np.array(g_cloud_array)
-                kappa_cloud = np.array(kappa_cloud_eddysed)
-                kappa_cloud_separate = np.array(kappa_cloud_separate)
-            
-            # Else, we need w and g from the precomputed aerosol database
-            # We loop over each aerosol species and reshape the w and g arrays to have the same 
-            # 4d shape as the kappa arrays 
-            # They are then looped over in toon emission and toon reflection 
-            elif scattering == True or reflection == True:
-
-                # Initialise w_cloud and g_cloud arrays
-                # Shape = (Aerosol_species, pressure, sector, zone, wl)
-                w_cloud_array = []
-                g_cloud_array = []
-
-                if (model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
-                    if (model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X'):
-                        #Adds a fake layer of w and g which, when multiplied by kappa_deck, will give 0 opacity anyway
-                        w_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
-                        g_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
-
-                if len(aerosol_species) != 0:
-                    for aerosol in range(len(w_cloud)):
-                        # For each w and g for each aerosol, make it have the same shape as kappa_cloud
-                        # turn into a list so it doesn't end up being an array of arrays 
-                        w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
-                        g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
-                else:
-                    # Just a list of 0s
-                    w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
-                    g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+            if surface == True:
+                if surface_model == 'gray':
+                    surf_reflect = np.zeros_like(wl)
+                    surf_reflect_array = []
                 
-                # Turn into an array so numba in toon functions is happy with indexing 
-                w_cloud = np.array(w_cloud_array)
-                g_cloud = np.array(g_cloud_array)
+                elif surface_model == 'constant':
+                    surf_reflect = np.full_like(wl, albedo_surf)
+                    surf_reflect_array = []
+
+                elif surface_model == 'lab_data':
+                    surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos)
+
+                    # If we are to apply surface percentages to the albedos (not the models)
+                    if surface_percentage_apply_to == 'albedos':
+                        surf_reflect = np.zeros_like(wl)
+                        for n in range(len(surface_component_percentages)):
+                            surf_reflect += surface_component_percentages[n]*surf_reflect_array[n]
+
+                    else:
+                        surf_reflect = np.full_like(wl, -1)  
+            else:
+                surf_reflect = np.full_like(wl, albedo_deck)
+                surf_reflect_array = []
+
+        # Make a dummy surf_reflect array so that the numba gods are happy in the toon functions 
+        else:
+            surf_reflect = np.full_like(wl, -1) 
+            surf_reflect_array = []
+
+        # Same with these lines of code 
+        if thermal_scattering == True or reflection == True:
+
+            # Intialise w_cloud and g_cloud arrays
+            # Shape = (Aerosol_species, pressure, sector, zone, wl)
+            w_cloud_array = []
+            g_cloud_array = []
+
+            if ((model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X')
+                or (model['cloud_type'] == 'shiny_opaque_deck_plus_slab') or (model['cloud_type'] == 'shiny_opaque_deck_plus_uniform_X')):
+                #Adds a fake layer of w and g which, when multiplied by kappa_deck, will give 0 opacity anyways
+                w_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
+                g_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
+
+            if len(aerosol_species) != 0:
+                for aerosol in range(len(w_cloud)):
+                    # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                    # turn into a list so it doesn't end up being an array of arrays 
+                    w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                    g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+            else:
+                # Just a list of 0s
+                w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
             
-            # two doesn't work for transmission right now 
-            elif spectrum_type == 'transmission' and (len(aerosol_species) == 2) and (cloud_dim == 2):
-                raise Exception('Cannot do patchy multiple clouds in transmission yet (fix this elijah)')
+            # Turn into an array so numba in toon functions is happy with indexing 
+            w_cloud = np.array(w_cloud_array)
+            g_cloud = np.array(g_cloud_array)
+                    
+    else:
+
+        # If there is no atmosphere, there is no opac object
+        # So will need to skip ahead to just modelling the bare rocky surface below
+        if (disable_atmosphere == False):
+
+            # If computing line-by-line radiative transfer, use lbl optimised functions 
+            if (opac['opacity_treatment'] == 'line_by_line'):
+
+                # Identify the opacity database being used
+                opacity_database = opac['opacity_database']
+
+                # Load the version of the opacity database
+                database_version = opac['database_version']
+
+                # Unpack pre-computed Rayleigh cross sections
+                Rayleigh_stored = opac['Rayleigh_stored']
+
+                # Calculate extinction coefficients in line-by-line mode        
+                kappa_gas, kappa_Ray, kappa_cloud = extinction_LBL(chemical_species, active_species, 
+                                                                   CIA_pairs, ff_pairs, bf_species, 
+                                                                   n, T, P, wl, X, X_active, X_CIA, 
+                                                                   X_ff, X_bf, a, gamma, P_cloud,
+                                                                   kappa_cloud_0, Rayleigh_stored, 
+                                                                   enable_haze, enable_deck,
+                                                                   enable_surface, N_sectors, 
+                                                                   N_zones, P_surf, opacity_database, 
+                                                                   disable_continuum, suppress_print,
+                                                                   database_version)
+                
+            # If using opacity sampling, we can use pre-interpolated cross sections
+            elif (opac['opacity_treatment'] == 'opacity_sampling'):
+
+                # Unpack pre-interpolated cross sections
+                sigma_stored = opac['sigma_stored']
+                CIA_stored = opac['CIA_stored']
+                Rayleigh_stored = opac['Rayleigh_stored']
+                ff_stored = opac['ff_stored']
+                bf_stored = opac['bf_stored']
+                aerosol_stored = opac['aerosol_stored']
+
+                # Also unpack fine temperature and pressure grids from pre-interpolation
+                T_fine = opac['T_fine']
+                log_P_fine = opac['log_P_fine']
+
+                # Running POSEIDON on the CPU
+                if (device == 'cpu'):
+                    
+                    # If the cloud model is Mie, need to parse out 
+                    # How the cloud type is defined and whether or not 
+                    # aerosol grid is being used or not 
+                    if (model['cloud_model'] == 'Mie'):
+
+                        n_aerosol, sigma_ext_cloud, \
+                        g_cloud, w_cloud = compute_relevant_Mie_properties(model, aerosol_species, aerosol_stored,
+                                                                                                        P, wl, r, H, n,
+                                                                                                        r_m, r_i_real, r_i_complex,
+                                                                                                        P_cloud, P_cloud_bottom, log_X_Mie,
+                                                                                                        log_n_max, fractional_scale_height,
+                                                                                                        lognormal_logwidth_free, log_r_m_std_dev,
+                                                                                                        )
+
+                    else:
+
+                        # Generate empty arrays so the dark god numba is satisfied
+                        n_aerosol = []
+                        sigma_ext_cloud = []
+                            
+                        n_aerosol.append(np.zeros_like(r))
+                        sigma_ext_cloud.append(np.zeros_like(wl))
+
+                        n_aerosol = np.array(n_aerosol)
+                        sigma_ext_cloud = np.array(sigma_ext_cloud)
+
+                        w_cloud = np.zeros_like(wl)
+                        g_cloud = np.zeros_like(wl)
+
+                    # Calculate extinction coefficients in standard mode
+
+                    # Numba will get mad if P_cloud is not an array (because you can have more than one cloud)
+                    # This line just makes sure that P_cloud is an array 
+                    if isinstance(P_cloud, np.ndarray) == False:
+                        P_cloud = np.array([P_cloud])
+
+                    # Create the kappa arrays
+                    kappa_gas, kappa_Ray, \
+                    kappa_cloud, kappa_cloud_seperate = extinction(chemical_species, active_species,
+                                                                                        CIA_pairs, ff_pairs, bf_species,
+                                                                                        n, T, P, wl, X, X_active, X_CIA, 
+                                                                                        X_ff, X_bf, a, gamma, P_cloud, 
+                                                                                        kappa_cloud_0, sigma_stored, 
+                                                                                        CIA_stored, Rayleigh_stored, 
+                                                                                        ff_stored, bf_stored, enable_haze, 
+                                                                                        enable_deck, enable_surface,
+                                                                                        N_sectors, N_zones, T_fine, 
+                                                                                        log_P_fine, P_surf, enable_Mie, 
+                                                                                        n_aerosol, sigma_ext_cloud)
+                    
+                    # If we read in an eddysed file (from PICASO or VIRGA) that
+                    # contains the single scattering albedo, asymmetry parameter, or kappa_cloud
+                    if model['cloud_model'] == 'eddysed':
+
+                        # Shenanigans so that the eddysed/picaso arrays work with what's already in POSEIDON
+                        w_cloud_array = []
+                        g_cloud_array = []
+                        kappa_cloud_seperate = []
+
+                        w_cloud_array.append(w_cloud_eddysed)
+                        g_cloud_array.append(g_cloud_eddysed)
+                        kappa_cloud_seperate.append(kappa_cloud_eddysed)
+
+                        w_cloud = np.array(w_cloud_array)
+                        g_cloud = np.array(g_cloud_array)
+                        kappa_cloud = np.array(kappa_cloud_eddysed)
+                        kappa_cloud_seperate = np.array(kappa_cloud_seperate)
+                    
+                    # Else, we need w and g from the precomputed aerosol database
+                    # We loop over each aerosol species and reshape the w and g arrays to have the same 
+                    # 4d shape as the kappa arrays 
+                    # They are then looped over in toon emission and toon reflection 
+                    elif thermal_scattering == True or reflection == True:
+
+                        # Intialise w_cloud and g_cloud arrays
+                        # Shape = (Aerosol_species, pressure, sector, zone, wl)
+                        w_cloud_array = []
+                        g_cloud_array = []
+
+                        if ((model['cloud_type'] == 'opaque_deck_plus_slab') or (model['cloud_type'] == 'opaque_deck_plus_uniform_X')
+                            or (model['cloud_type'] == 'shiny_opaque_deck_plus_slab') or (model['cloud_type'] == 'shiny_opaque_deck_plus_uniform_X')):
+                            #Adds a fake layer of w and g which, when multiplied by kappa_deck, will give 0 opacity anyways
+                            w_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
+                            g_cloud_array.append((np.zeros_like(kappa_cloud)).tolist())
+
+                        if len(aerosol_species) != 0:
+                            for aerosol in range(len(w_cloud)):
+                                # For each w and g for each aerosol, make it have the same shape as kappa_cloud
+                                # turn into a list so it doesn't end up being an array of arrays 
+                                w_cloud_array.append((np.ones_like(kappa_cloud)*w_cloud[aerosol]).tolist())
+                                g_cloud_array.append((np.ones_like(kappa_cloud)*g_cloud[aerosol]).tolist())
+                        else:
+                            # Just a list of 0s
+                            w_cloud_array.append((np.ones_like(kappa_gas)*w_cloud).tolist())
+                            g_cloud_array.append((np.ones_like(kappa_gas)*g_cloud).tolist())
+                        
+                        # Turn into an array so numba in toon functions is happy with indexing 
+                        w_cloud = np.array(w_cloud_array)
+                        g_cloud = np.array(g_cloud_array)
+                    
+                    # two doesn't work for transmission right now 
+                    elif spectrum_type == 'transmission' and (len(aerosol_species) == 2) and (cloud_dim == 2):
+                        raise Exception('Cannot do patchy multiple clouds in transmission yet (Reach out to Elijah Mullens if you need this)')
+
+                    # If there is a surface or if there there is an albedo deck 
+                    # Note that albedo deck is treated like a surface below
+                    if surface == True or albedo_deck != -1:
+                        
+                        if surface == True:
+                            if surface_model == 'gray':
+                                surf_reflect = np.zeros_like(wl)
+                                surf_reflect_array = []
+                            
+                            elif surface_model == 'constant':
+                                surf_reflect = np.full_like(wl, albedo_surf)
+                                surf_reflect_array = []
+
+                            elif surface_model == 'lab_data':
+                                surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos)
+
+                                # If we are to apply surface percentages to the albedos (not the models)
+                                if surface_percentage_apply_to == 'albedos':
+                                    surf_reflect = np.zeros_like(wl)
+                                    for n in range(len(surface_component_percentages)):
+                                        surf_reflect += surface_component_percentages[n]*surf_reflect_array[n]
+
+                                else:
+                                    surf_reflect = np.full_like(wl, -1)  
+                        else:
+                            surf_reflect = np.full_like(wl, albedo_deck)
+                            surf_reflect_array = []
+
+                    # Make a dummy surf_reflect array so that the numba gods are happy in the toon functions 
+                    else:
+                        surf_reflect = np.full_like(wl, -1) 
+                        surf_reflect_array = []
+                
+
+                # Running POSEIDON on the GPU
+                elif (device == 'gpu'):
+
+                    N_wl = len(wl)     # Number of wavelengths on model grid
+                    N_layers = len(P)  # Number of layers
+
+                    # Define extinction coefficient arrays explicitly on GPU
+                    kappa_gas = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+                    kappa_Ray = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+                    kappa_cloud = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
+
+                    # Find index of deep pressure below which atmosphere is opaque
+                    P_deep = 1000       # Default value of P_deep (needs to be high for brown dwarfs)
+                    i_bot = np.argmin(np.abs(P - P_deep))
+
+                    # Store length variables for mixing ratio arrays 
+                    N_species = len(chemical_species)        # Number of chemical species
+                    N_species_active = len(active_species)   # Number of spectrally active species
+                    
+                    N_cia_pairs = len(CIA_pairs)             # Number of cia pairs included
+                    N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
+                    N_bf_species = len(bf_species)           # Number of bound-free species included
+                
+                    # Calculate extinction coefficients in standard mode
+                    extinction_GPU[block, thread](kappa_gas, kappa_Ray, kappa_cloud, i_bot, 
+                                                N_species, N_species_active, N_cia_pairs, 
+                                                N_ff_pairs, N_bf_species, n, T, P, wl, 
+                                                X, X_active, X_CIA, X_ff, X_bf, a, 
+                                                gamma, P_cloud, kappa_cloud_0, 
+                                                sigma_stored, CIA_stored, 
+                                                Rayleigh_stored, ff_stored, bf_stored, 
+                                                enable_haze, enable_deck,
+                                                enable_surface, N_sectors, N_zones, 
+                                                T_fine, log_P_fine, P_surf, P_deep)
+                
+        # If there is no atmosphere, but there is a surface, then the albedos still need to be read in 
+        elif disable_atmosphere == True and surface == True:
+
+            if surface_model == 'gray':
+                surf_reflect = np.zeros_like(wl)
+                surf_reflect_array = []
             
-           # elif (thermal == True) and (scattering == False) and (len(aerosol_species) == 2):
-           #     raise Exception('Cannot do patchy multiple clouds in thermal without scattering yet (fix this elijah)')
-         
+            elif surface_model == 'constant':
+                surf_reflect = np.full_like(wl, albedo_surf)
+                surf_reflect_array = []
 
-        # Running POSEIDON on the GPU
-        elif (device == 'gpu'):
+            elif surface_model == 'lab_data':
+                surf_reflect_array = interpolate_surface_components(wl,surface_components,surface_component_albedos)
 
-            N_wl = len(wl)     # Number of wavelengths on model grid
-            N_layers = len(P)  # Number of layers
+                # If we are to apply surface percentages to the albedos (not the models)
+                if surface_percentage_apply_to == 'albedos':
+                    surf_reflect = np.zeros_like(wl)
+                    for n in range(len(surface_component_percentages)):
+                        surf_reflect += surface_component_percentages[n]*surf_reflect_array[n]
 
-            # Define extinction coefficient arrays explicitly on GPU
-            kappa_gas = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
-            kappa_Ray = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
-            kappa_cloud = cp.zeros(shape=(N_layers, N_sectors, N_zones, N_wl))
-
-            # Find index of deep pressure below which atmosphere is opaque
-            P_deep = 1000       # Default value of P_deep (needs to be high for brown dwarfs)
-            i_bot = np.argmin(np.abs(P - P_deep))
-
-            # Store length variables for mixing ratio arrays 
-            N_species = len(chemical_species)        # Number of chemical species
-            N_species_active = len(active_species)   # Number of spectrally active species
-            
-            N_cia_pairs = len(CIA_pairs)             # Number of cia pairs included
-            N_ff_pairs = len(ff_pairs)               # Number of free-free pairs included
-            N_bf_species = len(bf_species)           # Number of bound-free species included
-        
-            # Calculate extinction coefficients in standard mode
-            extinction_GPU[block, thread](kappa_gas, kappa_Ray, kappa_cloud, i_bot, 
-                                          N_species, N_species_active, N_cia_pairs, 
-                                          N_ff_pairs, N_bf_species, n, T, P, wl, 
-                                          X, X_active, X_CIA, X_ff, X_bf, a, 
-                                          gamma, P_cloud, kappa_cloud_0, 
-                                          sigma_stored, CIA_stored, 
-                                          Rayleigh_stored, ff_stored, bf_stored, 
-                                          enable_haze, enable_deck,
-                                          enable_surface, N_sectors, N_zones, 
-                                          T_fine, log_P_fine, P_surf, P_deep)
-            
-        # A dummy array for emission and reflection Toon, so that its easier to port over 
-        # Changes to surfaces in next update
-        # Only uses surfaces in emission_Toon and reflection when hard_surface = 1
-        surf_reflect = np.full_like(wl, -1) 
+                else:
+                    surf_reflect = np.full_like(wl, -1)  
 
     # Generate transmission spectrum        
     if (spectrum_type == 'transmission'):
@@ -1638,341 +1880,117 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     # Generate emission spectrum
     elif ('emission' in spectrum_type):
 
-        # Find zone index for the emission spectrum atmospheric region
-        if ('dayside' in spectrum_type):
-            zone_idx = 0
-        elif ('nightside' in spectrum_type):
-            zone_idx = -1
+        if disable_atmosphere != True:
+
+            # Find zone index for the emission spectrum atmospheric region
+            if ('dayside' in spectrum_type):
+                zone_idx = 0
+            elif ('nightside' in spectrum_type):
+                zone_idx = -1
+            else:
+                zone_idx = 0
+
+            # Use atmospheric properties from dayside/nightside (only consider one region for 1D emission models)
+            dz = dr[:,0,zone_idx]
+            T = T[:,0,zone_idx]
+
+            # Compute total extinction (all absorption + scattering sources)
+            kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
+                        kappa_cloud[:,0,zone_idx,:])
+
+            # Store differential extinction optical depth across each layer
+            dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
+        
+        # Planets without atmospheres don't have these arrays defined, but its just for the functions below
         else:
             zone_idx = 0
-
-        # Use atmospheric properties from dayside/nightside (only consider one region for 1D emission models)
-        dz = dr[:,0,zone_idx]
-        T = T[:,0,zone_idx]
-
-        # Compute total extinction (all absorption + scattering sources)
-        kappa_tot = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                     kappa_cloud[:,0,zone_idx,:])
-
-        # Store differential extinction optical depth across each layer
-        dtau_tot = np.ascontiguousarray(kappa_tot * dz.reshape((len(P), 1)))
-
-        # If there are patchy clouds
-        # need to have kappa_cloud_separate_clear
-        # And if aerosol species = 2
-        # will need kappa_cloud_separate_1 and kappa_cloud_separate_2
-        # and kappa_tot_1 kappa_tot_2 and dtaut_tot_1 and dtau_tot_2
-        if cloud_dim == 2:
-
-            # If there is only one cloud species there are two models: cloudy and clear
-            if (len(aerosol_species) == 1):
-
-                # Clear Model 
-                kappa_cloud_clear = np.zeros_like(kappa_cloud)
-                kappa_cloud_separate_clear = np.zeros_like(kappa_cloud_separate)
-                kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                                   kappa_cloud_clear[:,0,zone_idx,:])
-                dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
-            
-            # If there are two cloud species there are four models: cloudy (both species, which is default)
-            # the first aerosol alone, the second aerosol alone, and clear 
-            elif (len(aerosol_species) == 2):
-                
-                # Clear Model 
-                kappa_cloud_clear = np.zeros_like(kappa_cloud)
-                kappa_cloud_separate_clear = np.zeros_like(kappa_cloud_separate)
-                kappa_tot_clear = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                                   kappa_cloud_clear[:,0,zone_idx,:])
-                dtau_tot_clear = np.ascontiguousarray(kappa_tot_clear * dz.reshape((len(P), 1)))
-
-                # Aerosol 1
-                kappa_cloud_aerosol_1 = kappa_cloud_separate[0]
-                kappa_cloud_separate_aerosol_1 = np.array([kappa_cloud_separate[0],np.zeros_like(kappa_cloud)])
-                kappa_tot_aerosol_1 = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                                       kappa_cloud_aerosol_1[:,0,zone_idx,:])
-                dtau_tot_aerosol_1 = np.ascontiguousarray(kappa_tot_aerosol_1 * dz.reshape((len(P), 1)))
-
-                # Aerosol 2
-                kappa_cloud_aerosol_2 = kappa_cloud_separate[1]
-                kappa_cloud_separate_aerosol_2 = np.array([np.zeros_like(kappa_cloud),kappa_cloud_separate[1]])
-                kappa_tot_aerosol_2 = (kappa_gas[:,0,zone_idx,:] + kappa_Ray[:,0,zone_idx,:] +
-                                       kappa_cloud_aerosol_2[:,0,zone_idx,:])
-                dtau_tot_aerosol_2 = np.ascontiguousarray(kappa_tot_aerosol_2 * dz.reshape((len(P), 1)))
+            dz = []
+            T = []
+            kappa_tot = []
+            dtau_tot = []
+            kappa_gas = []
+            kappa_Ray = []
+            kappa_cloud = []
+            kappa_cloud_seperate = []
+            w_cloud = []
+            g_cloud = []
 
         # Without scattering, compute single steam radiative transfer
-        if (scattering == False):
+        if (thermal == True) and (thermal_scattering == False):
 
-            # 2D clouds are not available for single stream emission, only thermal scattering
-            if (cloud_dim == 2):
-                raise Exception("Patchy clouds not available for single-stream emission. " +    
-                                "Set scattering=True in define_model() or reach out to developers.")
-
-            # Compute planet flux (on CPU or GPU)
-            if (device == 'cpu'):
-                F_p, dtau = emission_single_stream(T, dz, wl, kappa_tot, Gauss_quad)
-            elif (device == 'gpu'):
-                F_p, dtau = emission_single_stream_GPU(T, dz, wl, kappa_tot, Gauss_quad)
+            F_p, dtau = assign_assumptions_and_compute_single_stream_emission(P, T, dz, wl, kappa_tot, dtau_tot,
+                                                                                kappa_gas, kappa_Ray,
+                                                                                kappa_cloud, kappa_cloud_seperate, 
+                                                                                zone_idx, Gauss_quad, device, 
+                                                                                # Cloud parameters
+                                                                                P_cloud, cloud_dim, aerosol_species, 
+                                                                                f_cloud, albedo_deck,
+                                                                                # Surface parameters
+                                                                                disable_atmosphere,
+                                                                                surface, surface_model, P_surf, T_surf,
+                                                                                surf_reflect, surf_reflect_array, 
+                                                                                surface_component_percentages,
+                                                                                surface_percentage_apply_to,
+                                                                                )
 
         # With scattering, compute emission using PICASO's Toon implementation
-        elif (scattering == True):
+        elif (thermal == True) and (thermal_scattering == True):
 
-                # Compute planet flux including scattering (PICASO implementation), see emission.py for details
-                # This includes all clouds combined when there is fractional clouds 
-                F_p, dtau = emission_Toon(P, T, wl, dtau_tot, 
-                                          kappa_Ray, kappa_cloud, kappa_tot,
-                                          w_cloud, g_cloud, zone_idx,
-                                          surf_reflect, kappa_cloud_separate,
-                                          hard_surface = 0, tridiagonal = 0, 
-                                          Gauss_quad = 5, numt = 1)
+            F_p, dtau = assign_assumptions_and_compute_thermal_scattering_emission(P, T, dz, wl, kappa_tot, dtau_tot,
+                                                                                    kappa_gas, kappa_Ray,
+                                                                                    kappa_cloud, kappa_cloud_seperate, 
+                                                                                    zone_idx, Gauss_quad, device, 
+                                                                                    # Cloud things
+                                                                                    P_cloud, cloud_dim, aerosol_species, 
+                                                                                    w_cloud, g_cloud,
+                                                                                    f_cloud, 
+                                                                                    f_both, f_aerosol_1, f_aerosol_2, f_clear,
+                                                                                    albedo_deck,
+                                                                                    # Surfaces
+                                                                                    disable_atmosphere,
+                                                                                    surface, surface_model, P_surf, T_surf,
+                                                                                    surf_reflect, surf_reflect_array, 
+                                                                                    surface_component_percentages,
+                                                                                    surface_percentage_apply_to
+                                                                                    )
                 
-                dtau = np.flip(dtau, axis = 0)   # Flip optical depth pressure axis back
-
-                if cloud_dim == 2:
-                    
-                    # 1D + 1D is clear + cloudy, so need to compute clear model here 
-                    if (len(aerosol_species) == 1):
-
-                        F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
-                                                              kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                                              w_cloud, g_cloud, zone_idx,
-                                                              surf_reflect, kappa_cloud_separate_clear,
-                                                              hard_surface = 0, tridiagonal = 0, 
-                                                              Gauss_quad = 5, numt = 1)
-                    
-                        F_p = (f_cloud * F_p) + ((1 - f_cloud) * F_p_clear)
-
-                    # 1D + 1D + 1D + 1D is clear + cloudy (both) + cloudy (aerosol 1) + cloudy (aerosol 2)
-                    # So need to compute three additional models 
-                    if (len(aerosol_species) == 2):
-
-                        F_p_clear, dtau_clear = emission_Toon(P, T, wl, dtau_tot_clear, 
-                                                              kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                                              w_cloud, g_cloud, zone_idx,
-                                                              surf_reflect, kappa_cloud_separate_clear,
-                                                              hard_surface = 0, tridiagonal = 0, 
-                                                              Gauss_quad = 5, numt = 1)
-
-                        F_p_aerosol_1, dtau_aerosol_1 = emission_Toon(P, T, wl, dtau_tot_aerosol_1, 
-                                                                      kappa_Ray, kappa_cloud_aerosol_1, kappa_tot_aerosol_1,
-                                                                      w_cloud, g_cloud, zone_idx,
-                                                                      surf_reflect, kappa_cloud_separate_aerosol_1,
-                                                                      hard_surface = 0, tridiagonal = 0, 
-                                                                      Gauss_quad = 5, numt = 1)
-                        
-                        F_p_aerosol_2, dtau_aerosol_2 = emission_Toon(P, T, wl, dtau_tot_aerosol_2, 
-                                                                      kappa_Ray, kappa_cloud_aerosol_2, kappa_tot_aerosol_2,
-                                                                      w_cloud, g_cloud, zone_idx,     
-                                                                      surf_reflect, kappa_cloud_separate_aerosol_2,
-                                                                      hard_surface = 0, tridiagonal = 0, 
-                                                                      Gauss_quad = 5, numt = 1)
-                        
-                        # Combine fluxes
-                        F_p = ((f_both * F_p) + 
-                               (f_aerosol_1 * F_p_aerosol_1) + 
-                               (f_aerosol_2 * F_p_aerosol_2) + 
-                               (f_clear * F_p_clear))
-                
-        else:
-            raise Exception("Error: Invalid scattering option")
+        elif (thermal == False) and (thermal_scattering == True):
+            raise Exception("If thermal_scattering is True, thermal must also be True. If you want reflection only, set thermal = False, thermal_scattering = False, and reflection = True.")
 
         # If reflection is being computed
         if (reflection == True):
             
-            # This option will only compute reflection up to 5 um 
-            # to speed up retrievals 
-            if reflection_up_to_5um == True:
-                
-                # Make sure the wavelength grid actually goes up to 5 um
-                try:
-                    index_5um = find_nearest(wl,5)
-                except:
-                    raise Exception('Does the wavelength object go up to 5um? (reflection_up_to_5um = True)')
-                
-                # Make new, temporary arrays of inputs only up to 5 um
-                wl_cut = wl[:index_5um]
-                dtau_tot_cut = dtau_tot[:,:index_5um]
-                kappa_Ray_cut = kappa_Ray[:,:,:,:index_5um]
-                kappa_cloud_cut = kappa_cloud[:,:,:,:index_5um]
-                kappa_tot_cut = kappa_tot[:,:index_5um]
-                w_cloud_cut = w_cloud[:,:,:,:,:index_5um]
-                g_cloud_cut = g_cloud[:,:,:,:,:index_5um]
-                kappa_cloud_separate_cut = kappa_cloud_separate[:,:,:,:,:index_5um]
-                surf_reflect_cut = surf_reflect[:index_5um]
-
-                # Compute the albedo using PICASO's implementation (see emission.py for details)
-                albedo_cut = reflection_Toon(P, wl_cut, dtau_tot_cut,
-                                             kappa_Ray_cut, kappa_cloud_cut, kappa_tot_cut,
-                                             w_cloud_cut, g_cloud_cut, zone_idx,
-                                             surf_reflect_cut, kappa_cloud_separate_cut,
-                                             single_phase = 3, multi_phase = 0,
-                                             frac_a = 1, frac_b = -1, frac_c = 2, 
-                                             constant_back = -0.5, constant_forward = 1,
-                                             Gauss_quad = 5, numt = 1,
-                                             toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                
-                # Create an albedo of 0's from 5um onwards
-                albedo_zeros = np.zeros(len(wl[index_5um:]))
-
-                # Join both arrays together
-                albedo = np.concatenate((albedo_cut, albedo_zeros))
-
-                # For 1 + 1D patchy clouds
-                if cloud_dim == 2:
-
-                    if (len(aerosol_species) == 1):
-
-                        dtau_tot_clear_cut = dtau_tot_clear[:,:index_5um]
-                        kappa_cloud_clear_cut = kappa_cloud_clear[:,:,:,:index_5um]
-                        kappa_tot_clear_cut = kappa_tot_clear[:,:index_5um]
-                        kappa_cloud_separate_clear_cut = kappa_cloud_separate_clear[:,:,:,:,:index_5um]
-
-                        albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
-                                                           kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
-                                                           w_cloud_cut, g_cloud_cut, zone_idx,
-                                                           surf_reflect_cut, kappa_cloud_separate_clear_cut,
-                                                           single_phase = 3, multi_phase = 0,
-                                                           frac_a = 1, frac_b = -1, frac_c = 2,
-                                                           constant_back = -0.5, constant_forward = 1,
-                                                           Gauss_quad = 5, numt = 1,
-                                                           toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                        
-
-                        albedo_clear = np.concatenate((albedo_clear_cut, albedo_zeros))
-                        
-                        albedo = (f_cloud * albedo) + ((1 - f_cloud) * albedo_clear)
-
-                    # 1D + 1D + 1D + 1D is clear + cloudy (both) + cloudy (aerosol 1) + cloudy (aerosol 2)
-                    # So need to compute three additional models 
-                    if (len(aerosol_species) == 2):
-
-                        dtau_tot_clear_cut = dtau_tot_clear[:,:index_5um]
-                        kappa_cloud_clear_cut = kappa_cloud_clear[:,:,:,:index_5um]
-                        kappa_tot_clear_cut = kappa_tot_clear[:,:index_5um]
-                        kappa_cloud_separate_clear_cut = kappa_cloud_separate_clear[:,:,:,:,:index_5um]
-
-                        albedo_clear_cut = reflection_Toon(P, wl_cut, dtau_tot_clear_cut,
-                                                           kappa_Ray_cut, kappa_cloud_clear_cut, kappa_tot_clear_cut,
-                                                           w_cloud_cut, g_cloud_cut, zone_idx,
-                                                           surf_reflect_cut, kappa_cloud_separate_clear_cut,
-                                                           single_phase = 3, multi_phase = 0,
-                                                           frac_a = 1, frac_b = -1, frac_c = 2,
-                                                           constant_back = -0.5, constant_forward = 1,
-                                                           Gauss_quad = 5, numt = 1,
-                                                           toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                        
-                        albedo_clear = np.concatenate((albedo_clear_cut, albedo_zeros))
-                        
-                        dtau_tot_aerosol_1_cut = dtau_tot_aerosol_1[:,:index_5um]
-                        kappa_cloud_aerosol_1_cut = kappa_cloud_aerosol_1[:,:,:,:index_5um]
-                        kappa_tot_aerosol_1_cut = kappa_tot_aerosol_1[:,:index_5um]
-                        kappa_cloud_separate_aerosol_1_cut = kappa_cloud_separate_aerosol_1[:,:,:,:,:index_5um]
-
-                        albedo_aerosol_1_cut = reflection_Toon(P, wl, dtau_tot_aerosol_1_cut,
-                                                               kappa_Ray_cut, kappa_cloud_aerosol_1_cut, kappa_tot_aerosol_1_cut,
-                                                               w_cloud_cut, g_cloud_cut, zone_idx,
-                                                               surf_reflect_cut, kappa_cloud_separate_aerosol_1_cut,
-                                                               single_phase = 3, multi_phase = 0,
-                                                               frac_a = 1, frac_b = -1, frac_c = 2,
-                                                               constant_back = -0.5, constant_forward = 1,
-                                                               Gauss_quad = 5, numt = 1,
-                                                               toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                        
-                        albedo_aerosol_1 = np.concatenate((albedo_aerosol_1_cut, albedo_zeros))
-
-                        dtau_tot_aerosol_2_cut = dtau_tot_aerosol_2[:,:index_5um]
-                        kappa_cloud_aerosol_2_cut = kappa_cloud_aerosol_2[:,:,:,:index_5um]
-                        kappa_tot_aerosol_2_cut = kappa_tot_aerosol_2[:,:index_5um]
-                        kappa_cloud_separate_aerosol_2_cut = kappa_cloud_separate_aerosol_2[:,:,:,:,:index_5um]
-                        
-                        albedo_aerosol_2_cut = reflection_Toon(P, wl, dtau_tot_aerosol_2_cut,
-                                                               kappa_Ray_cut, kappa_cloud_aerosol_2_cut, kappa_tot_aerosol_2_cut,
-                                                               w_cloud, g_cloud, zone_idx,
-                                                               surf_reflect_cut, kappa_cloud_separate_aerosol_2_cut,
-                                                               single_phase = 3, multi_phase = 0,
-                                                               frac_a = 1, frac_b = -1, frac_c = 2,
-                                                               constant_back = -0.5, constant_forward = 1,
-                                                               Gauss_quad = 5, numt = 1,
-                                                               toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                        
-                        albedo_aerosol_2 = np.concatenate((albedo_aerosol_2_cut, albedo_zeros))
-                        
-                        albedo = ((f_both * albedo) + 
-                                  (f_aerosol_1 * albedo_aerosol_1) + 
-                                  (f_aerosol_2 * albedo_aerosol_2) + 
-                                  (f_clear * albedo_clear))
-
-
-            # Else, just use the default arrays
-            else:
-                
-                albedo = reflection_Toon(P, wl, dtau_tot,
-                                         kappa_Ray, kappa_cloud, kappa_tot,
-                                         w_cloud, g_cloud, zone_idx,
-                                         surf_reflect, kappa_cloud_separate,
-                                         single_phase = 3, multi_phase = 0,
-                                         frac_a = 1, frac_b = -1, frac_c = 2,
-                                         constant_back = -0.5, constant_forward = 1,
-                                         Gauss_quad = 5, numt = 1,
-                                         toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                
-                if cloud_dim == 2:
-                    # 1D + 1D is clear + cloudy, so need to compute clear model here 
-                    if (len(aerosol_species) == 1):
-                        albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
-                                                       kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                                       w_cloud, g_cloud, zone_idx,
-                                                       surf_reflect, kappa_cloud_separate_clear,
-                                                       single_phase = 3, multi_phase = 0,
-                                                       frac_a = 1, frac_b = -1, frac_c = 2,
-                                                       constant_back = -0.5, constant_forward = 1,
-                                                       Gauss_quad = 5, numt = 1,
-                                                       toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                        
-
-                        albedo = (f_cloud * albedo) + ((1 - f_cloud) * albedo_clear)
-
-                    # 1D + 1D + 1D + 1D is clear + cloudy (both) + cloudy (aerosol 1) + cloudy (aerosol 2)
-                    # So need to compute three additional models 
-                    if (len(aerosol_species) == 2):
-
-                        albedo_clear = reflection_Toon(P, wl, dtau_tot_clear,
-                                                       kappa_Ray, kappa_cloud_clear, kappa_tot_clear,
-                                                       w_cloud, g_cloud, zone_idx,
-                                                       surf_reflect, kappa_cloud_separate_clear,
-                                                       single_phase = 3, multi_phase = 0,
-                                                       frac_a = 1, frac_b = -1, frac_c = 2,
-                                                       constant_back = -0.5, constant_forward = 1,
-                                                       Gauss_quad = 5, numt = 1,
-                                                       toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                        
-                        albedo_aerosol_1 = reflection_Toon(P, wl, dtau_tot_aerosol_1,
-                                                           kappa_Ray, kappa_cloud_aerosol_1, kappa_tot_aerosol_1,
-                                                           w_cloud, g_cloud, zone_idx,
-                                                           surf_reflect, kappa_cloud_separate_aerosol_1,
-                                                           single_phase = 3, multi_phase = 0,
-                                                           frac_a = 1, frac_b = -1, frac_c = 2,
-                                                           constant_back = -0.5, constant_forward = 1,
-                                                           Gauss_quad = 5, numt = 1,
-                                                           toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                        
-                        albedo_aerosol_2 = reflection_Toon(P, wl, dtau_tot_aerosol_2,
-                                                           kappa_Ray, kappa_cloud_aerosol_2, kappa_tot_aerosol_2,
-                                                           w_cloud, g_cloud, zone_idx,
-                                                           surf_reflect, kappa_cloud_separate_aerosol_2,
-                                                           single_phase = 3, multi_phase = 0,
-                                                           frac_a = 1, frac_b = -1, frac_c = 2,
-                                                           constant_back = -0.5, constant_forward = 1,
-                                                           Gauss_quad = 5, numt = 1,
-                                                           toon_coefficients = 0, tridiagonal = 0, b_top = 0)
-                        
-                        albedo = ((f_both * albedo) + 
-                                  (f_aerosol_1 * albedo_aerosol_1) + 
-                                  (f_aerosol_2 * albedo_aerosol_2) + 
-                                  (f_clear * albedo_clear))
+            albedo = assign_assumptions_and_compute_reflection(P, T, dz, wl, kappa_tot, dtau_tot,
+                                                                kappa_gas, kappa_Ray,
+                                                                kappa_cloud, kappa_cloud_seperate, 
+                                                                zone_idx, reflection_up_to_5um,
+                                                                # Cloud things
+                                                                P_cloud, cloud_dim, aerosol_species, 
+                                                                w_cloud, g_cloud,
+                                                                f_cloud, 
+                                                                f_both, f_aerosol_1, f_aerosol_2, f_clear,
+                                                                albedo_deck,
+                                                                # Surfaces
+                                                                disable_atmosphere,
+                                                                surface, surface_model, P_surf, T_surf,
+                                                                surf_reflect, surf_reflect_array, 
+                                                                surface_component_percentages,
+                                                                surface_percentage_apply_to
+                                                                )
+            
+            # For photospheric calculations
+            # If only reflection is true, the function above does not return tau, 
+            # Which for the thermal function is just the following
+            if (thermal == False) and (thermal_scattering == False):
+                if disable_atmosphere != True:
+                    dtau = dtau_tot 
+                else:
+                    dtau = 0
 
                     
         # Calculate effective photosphere radius at tau = 2/3
-        if (use_photosphere_radius == True):    # Flip to start at top of atmosphere
+        # If there is no atmosphere, the photosphere radius is R_p
+        if (use_photosphere_radius == True) and (disable_atmosphere == False):    # Flip to start at top of atmosphere
             
             # Running POSEIDON on the CPU
             if (device == 'cpu'):
@@ -1997,45 +2015,21 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 R_p_eff = cp.asnumpy(R_p_eff)          
         
         else:
-            R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
+            if disable_atmosphere == True:
+                R_p_eff = R_p_ref # If its a surface without atmosphere, R_p_ref is the effective radius
+
+            else:
+                R_p_eff = R_p    # If photosphere calculation disabled, use observed planet radius
         
         # If distance not specified, use fiducial value
         if (d is None):
             d = 1        # This value only used for flux ratios, so it cancels
 
-        # For direct emission spectra (brown dwarfs and directly imaged planets)        
-        if ('direct' in spectrum_type):
 
-            # Convert planet surface flux to observed flux at Earth
-            F_p_obs = (R_p_eff / d)**2 * F_p
+        # If its just a reflection spectra (no thermal component)
+        # Then the observed spectrum is just reflection and utilizes albedo
+        if (reflection == True) and (thermal == False):
 
-            # Direct spectrum is F_p observed at Earth
-            spectrum = F_p_obs
-
-        # For transiting planet emission spectra
-        else:
-
-            # Load stellar spectrum
-            F_s = star['F_star']
-            wl_s = star['wl_star']
-
-            if (np.array_equiv(wl_s, wl) is False):
-                raise Exception("Error: wavelength grid for stellar spectrum does " +
-                                "not match wavelength grid of planet spectrum. " +
-                                "Did you forget to provide 'wl' to create_star?")
-
-            # Convert stellar surface flux to observed flux at Earth
-            F_s_obs = (R_s / d)**2 * F_s
-
-            # Convert planet surface flux to observed flux at Earth
-            F_p_obs = (R_p_eff / d)**2 * F_p
-
-            # Final spectrum is the planet-star flux ratio
-            spectrum = F_p_obs / F_s_obs
-
-        # If reflection is true, need to convert geometric albedo to observed flux
-        if (reflection == True):
-            
             # Make sure user set a planetary distance 
             try:
                 FpFs_reflected = albedo*(R_p_eff/a_p)**2
@@ -2057,12 +2051,75 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                 F_s_obs = (R_s / d)**2 * F_s
                 Fp_reflected_obs = FpFs_reflected*F_s_obs
                 
-                spectrum += Fp_reflected_obs
+                spectrum = Fp_reflected_obs
 
             # Else, just add the FpFs to the spectrum
             else:
                 #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
-                spectrum += FpFs_reflected
+                spectrum = FpFs_reflected
+
+        # Else, reflected component is added on top of spectrum
+        else:
+            # For direct emission spectra (brown dwarfs and directly imaged planets)        
+            if ('direct' in spectrum_type):
+
+                # Convert planet surface flux to observed flux at Earth
+                F_p_obs = (R_p_eff / d)**2 * F_p
+
+                # Direct spectrum is F_p observed at Earth
+                spectrum = F_p_obs
+
+            # For transiting planet emission spectra
+            else:
+
+                # Load stellar spectrum
+                F_s = star['F_star']
+                wl_s = star['wl_star']
+
+                if (np.array_equiv(wl_s, wl) is False):
+                    raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                    "not match wavelength grid of planet spectrum. " +
+                                    "Did you forget to provide 'wl' to create_star?")
+
+                # Convert stellar surface flux to observed flux at Earth
+                F_s_obs = (R_s / d)**2 * F_s
+
+                # Convert planet surface flux to observed flux at Earth
+                F_p_obs = (R_p_eff / d)**2 * F_p
+
+                # Final spectrum is the planet-star flux ratio
+                spectrum = F_p_obs / F_s_obs
+
+            # If reflection is true, need to convert geometric albedo to observed flux
+            if (reflection == True):
+                
+                # Make sure user set a planetary distance 
+                try:
+                    FpFs_reflected = albedo*(R_p_eff/a_p)**2
+                except:
+                    raise Exception('Error: no planet orbital distance provided. For reflection, must set a_p in the planet object.')
+                
+                # If its a direct spectrum, convert to Fp
+                if ('direct' in spectrum_type):
+
+                    # Load stellar spectrum
+                    F_s = star['F_star']
+                    wl_s = star['wl_star']
+
+                    if (np.array_equiv(wl_s, wl) is False):
+                        raise Exception("Error: wavelength grid for stellar spectrum does " +
+                                        "not match wavelength grid of planet spectrum. " +
+                                        "Did you forget to provide 'wl' to create_star?")
+
+                    F_s_obs = (R_s / d)**2 * F_s
+                    Fp_reflected_obs = FpFs_reflected*F_s_obs
+                    
+                    spectrum += Fp_reflected_obs
+
+                # Else, just add the FpFs to the spectrum
+                else:
+                    #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
+                    spectrum += FpFs_reflected
         
     # Write spectrum to file
     if (save_spectrum == True):
@@ -2156,9 +2213,11 @@ def load_data(data_dir, datasets, instruments, wl_model, offset_datasets = None,
 
         # Check that the model wavelength grid covers all the data bins
         if (np.any((wl_data - half_bin) < wl_model[0])):
-            raise Exception("Some data lies below the lowest model wavelength, reduce wl_min.")
+            label = "Some data lies below the lowest model wavelength, reduce wl_min to below: " + str(np.min(wl_data - half_bin))
+            raise Exception(label)
         elif (np.any((wl_data + half_bin) > wl_model[-1])):
-            raise Exception("Some data lies above the highest model wavelength, increase wl_max.")
+            label = "Some data lies above the highest model wavelength, reduce wl_max to above: " + str(np.max(wl_data + half_bin))
+            raise Exception(label)
         
         # Length of each dataset (used for indexing the combined dataset, if necessary to extract one specific dataset later)
         len_data = np.concatenate([len_data, np.array([len(ydata_i)])])
@@ -2348,6 +2407,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     # Unpack parameter names
     param_names = model['param_names']
     X_param_names = model['X_param_names']
+    surface_param_names = model['surface_param_names']
     PT_profile = model['PT_profile']
     radius_unit = model['radius_unit']
     mass_unit = model['mass_unit']
@@ -2517,6 +2577,28 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                 else:
                     prior_ranges[parameter] = prior_ranges_defaults['T']
 
+            # Set non-specified Madhu alpha/pressure parameters to base defaults
+            elif parameter.startswith('a1'):
+                if ('a1' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['a1']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['a1']
+            elif parameter.startswith('a2'):
+                if ('a2' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['a2']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['a2']
+            elif parameter.startswith('log_P1'):
+                if ('log_P1' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['log_P1']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['log_P1']
+            elif parameter.startswith('log_P2'):
+                if ('log_P2' in prior_ranges):
+                    prior_ranges[parameter] = prior_ranges['log_P2']
+                else:
+                    prior_ranges[parameter] = prior_ranges_defaults['log_P2']
+
             # Check if user didn't specify a distance prior for an imaged object 
             elif (parameter == 'd'):
                 raise Exception("Error: no prior range provided for the system " +
@@ -2646,6 +2728,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         del prior_types['Grad_T']
 
     CLR_limit_check = 0   # Tracking variable for CLR limit check below
+    CLR_surface_limit_check = 0  # Tracking variable for CLR surface limit check below
 
     # Check that parameter types are all supported
     for parameter in param_names:
@@ -2657,6 +2740,10 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
         # Check that centred-log ratio prior is only used for mixing ratios
         if ((prior_types[parameter] == 'CLR') and (parameter not in X_param_names)):
             raise Exception("Unsupported prior for " + parameter)
+
+        # Check that centred-log ratio prior for surface is only used for mixing ratios
+        if ((prior_types[parameter] == 'CLR_surface') and (parameter not in surface_param_names)):
+            raise Exception("Unsupported prior for " + parameter + ' (CLR Surface only available for surface components)')
 
         # Check that centred-log ratio is being employed in a 1D model
         if ((prior_types[parameter] == 'CLR') and (Atmosphere_dimension != 1)):
@@ -2690,6 +2777,28 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                                     "parameters must have the same lower limit.")
                 else:
                     CLR_limit_check = CLR_limit
+
+        # Check surface parameters have valid settings
+        if (parameter in surface_param_names):
+
+            # Check that all CLR variables have the same lower limit
+            if (prior_types[parameter] == 'CLR_surface'):
+
+                # If the prior is [0,1] stop it immediately 
+                if (prior_ranges[parameter][0] == 0) and (prior_ranges[parameter][1] > 0):
+                    raise Exception('CLR Prior works in log space. Set surface_percentage_option = \'log\' in define_model() and set prior for all log percentages something like [-12,0].')
+
+                CLR_surface_limit = prior_ranges[parameter][0]
+                
+                if (CLR_surface_limit_check == 0):       # First parameter passes check
+                    CLR_surface_limit_check = CLR_surface_limit
+
+                if (CLR_surface_limit != CLR_surface_limit_check):
+                    raise Exception("When using a CLR prior, all log surface percentage " + 
+                                    "parameters must have the same lower limit.")
+                else:
+                    CLR_surface_limit_check = CLR_surface_limit
+
 
     # Package prior properties
     priors = {'prior_ranges': prior_ranges, 'prior_types': prior_types}
