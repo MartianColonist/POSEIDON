@@ -1264,15 +1264,15 @@ def generate_overplot(planet, models, params_to_plot = None,
                                       dark_mode=dark_mode,
                                      )
 
-            # Select theme for dark/light mode
-        theme = dark_theme if dark_mode else light_theme
-
-        existing_fig[0].text(0.7, (0.75 + 0.05 * m),
+            existing_fig[0].text(0.7, (0.75 + 0.05 * m),
                                  model_display_names[m],
                                  horizontalalignment='left',
                                  fontsize=annotation_text_size,
                                  color=colour_schemes[m],
                                  )
+
+        # Select theme for dark/light mode
+        theme = dark_theme if dark_mode else light_theme
 
         # Save corner plot in results directory
         if (overplot_name is None):
