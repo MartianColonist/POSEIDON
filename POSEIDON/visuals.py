@@ -2434,13 +2434,14 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
               plt_label = None, data_colour_list = [], data_labels = [], 
               data_marker_list = [], data_marker_size_list = [],
               err_colour = 'black', wl_axis = 'log', figure_shape = 'default', 
-              legend_location = 'upper right', legend_box = True,
+              legend_location = 'upper right', legend_box = True, legend_n_columns = 1,
               show_data_bin_width = True, show_data_cap = True,
               data_alpha = 0.8, data_edge_width = 0.8,
               ax = None, save_fig = True,
               x_tick_fontsize = 12, x_label_fontsize = 16,
               y_tick_fontsize = 12, y_label_fontsize = 16,
               legend_fontsize = 10, plt_label_fontsize = 14,
+              plt_label_padding = 0.0,
               planet_name_fontsize = 16,
               dark_mode = False,
               ):
@@ -2486,6 +2487,8 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             'lower left', 'lower right', 'outside right').
         legend_box (bool, optional):
             Flag indicating whether to plot a box surrounding the figure legend.
+        legend_n_columns (integer):
+            Manually set the number of columns for the legend.
         show_data_bin_width (bool, optional):
             Flag indicating whether to plot x bin widths for data points.
         show_data_cap (bool, optional):
@@ -2510,6 +2513,10 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
             Font size for the legend.
         plt_label_fontsize (int, optional):
             Font size for the plot label.
+        plt_label_padding (float, optional):
+            Vertical padding applied to the plot label in axis coordinates.
+            A value of 0.0 keeps the current position at y = 0.90.
+            Values > 0 move the plot label downward.
         planet_name_fontsize (int, optional):
             Font size for the planet name.
         dark_mode (bool, optional):
@@ -2795,7 +2802,7 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
   
     # Add plot label
     if (plt_label != None):
-        ax1.text(0.03, 0.90, plt_label, horizontalalignment='left', 
+        ax1.text(0.03, 0.90 - plt_label_padding, plt_label, horizontalalignment='left', 
                  verticalalignment='top', transform=ax1.transAxes,
                  fontsize = plt_label_fontsize, color = theme['text_colour'])
 
@@ -2809,23 +2816,33 @@ def plot_data(data, planet_name, wl_min = None, wl_max = None,
     ax1.tick_params(axis='x', labelsize=x_tick_fontsize)
     ax1.tick_params(axis='y', labelsize=y_tick_fontsize)
 
-    # Add box around legend
-    if (legend_box == True) and (legend_location != 'outside right'):
-        legend = ax1.legend(loc = legend_location, shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = 1, frameon = True)    # Legend settings
-        frame = legend.get_frame()
-        frame.set_facecolor(theme['legend_facecolour'])
-        frame.set_edgecolor(theme['legend_edgecolour'])
+    # Assign legend box settings
+    if (legend_box == True):
+        frameon = True
+        framefacecolour = theme['legend_facecolour']
+    else:
+        frameon = False
+        framefacecolour = None
+
+    # Add legend
+    if isinstance(legend_location, tuple):
+        legend = ax1.legend(loc = 'center', shadow = True, prop = {'size': legend_fontsize},
+                            ncol = legend_n_columns, frameon = frameon, bbox_to_anchor = legend_location)
     elif legend_location == 'outside right':
         legend = ax1.legend(loc='center left', shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = 1, frameon=False,bbox_to_anchor=(1, 0.5))  
+                            ncol = legend_n_columns, frameon = frameon, bbox_to_anchor = (1, 0.5))
     else:
-        legend = ax1.legend(loc=legend_location, shadow = True, prop = {'size':legend_fontsize}, 
-                            ncol = 1, frameon = False)    # Legend settings
+        legend = ax1.legend(loc = legend_location, shadow = True, prop={'size': legend_fontsize},
+                            ncol = legend_n_columns, frameon = frameon)  # Legend settings
 
-    # Apply theme to legend text
+    # Apply theme
+    frame = legend.get_frame()
+    frame.set_facecolor(framefacecolour)
+    frame.set_edgecolor(theme['legend_edgecolour'])
     for text in legend.get_texts():
         text.set_color(theme['legend_textcolour'])
+
+
         
     plt.tight_layout()
     
@@ -4787,6 +4804,7 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                               orientation = 'vertical',
                               title_alpha_list = [], use_parameter_color_for_title = False,
                               title_colour_list = [],
+                              ratio_is_solar_normalised = [],
                               dark_mode = False,
                               ):
     '''
@@ -4843,6 +4861,9 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         title_colour_list (list of str):
             List of colours to use for titles and constraints if 
             use_parameter_color_for_title is False.
+       ratio_is_solar_normalised  (list of bool, optional):
+            For each plotted parameter, True if the value is normalised to solar.
+            When True, titles append 'x solar' after the numerical constraints.
         dark_mode (bool, optional):
             If True, uses a dark background with white text and axes.
             Defaults to False (light mode).
@@ -4890,6 +4911,9 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
         param = plot_parameters[q]
         param_label = param_labels[q]
+        is_ratio_solar_normalised = False
+        if (len(ratio_is_solar_normalised) == N_params):
+            is_ratio_solar_normalised = ratio_is_solar_normalised[q]
         
         row_idx = q // N_columns
         column_idx = q - (row_idx * N_columns)
@@ -5004,12 +5028,24 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
 
             # Set minimum and maximum mixing ratio plot limits
             try:
-                param_min, param_max = span[q]
+                if (len(plot_parameters) == 1):
+                    try:
+                        param_min, param_max = span[0], span[1]
+                    except:
+                        param_min, param_max = span[q]
+                else:
+                    param_min, param_max = span[q]
             except:
-                quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
-                span[q] = _quantile(param_vals_m[:,q], quant)
-                param_min = span[q][0]
-                param_max = span[q][1]
+                if (len(plot_parameters) == 1):
+                    quant = [0.5 - 0.5 * span, 0.5 + 0.5 * span]
+                    span = _quantile(param_vals_m[:], quant)
+                    param_min = span[0]
+                    param_max = span[1]
+                else:
+                    quant = [0.5 - 0.5 * span[q], 0.5 + 0.5 * span[q]]
+                    span[q] = _quantile(param_vals_m[:,q], quant)
+                    param_min = span[q][0]
+                    param_max = span[q][1]
 
             # If alpha_hist is a list
             if isinstance(alpha_hist,list):
@@ -5139,6 +5175,16 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
                             ax.axhline(high1, lw=1, ls="dashed", color=constraint_colour)                     
 
                 # Plot title
+                if (is_ratio_solar_normalised and (title is not None)):
+                    if ('log_' in param):
+                        title = title.replace(param_label + r" = ",
+                                              param_label + r" $\rm{(solar)}$ = ", 1)
+                        title = title.replace(param_label + r" < ",
+                                              param_label + r" $\rm{(solar)}$ < ", 1)
+                        title = title.replace(param_label + r" > ",
+                                              param_label + r" $\rm{(solar)}$ > ", 1)
+                    else:
+                        title = title + r" $\times \, \rm{solar}$"
                 
                 # I prefer it flipped so that its in the order as plot_retrieved_spectra (EM)
                 top_y = 1.05 + ((N_models-1)*title_vert_spacing)
@@ -5330,6 +5376,7 @@ def plot_histograms(planet, models, plot_parameters,
                     orientation = 'vertical', title_alpha_list = [],
                     use_parameter_color_for_title = False,
                     title_colour_list = [],
+                    elemental_ratio_mode = None,
                     dark_mode = False):
     '''
     Plot a set of histograms from one or more retrievals.
@@ -5407,6 +5454,17 @@ def plot_histograms(planet, models, plot_parameters,
         title_colour_list (list of str):
             List of colours to use for titles and constraints if 
             use_parameter_color_for_title is False.
+        elemental_ratio_mode (str, optional):
+            Controls elemental ratio normalisation.
+            Options:
+            - None: 
+              default behaviour, X/H and M/H are normalised to solar, but 
+              X/Y (Y != H) are absolute. So O/H would be relative to solar, 
+              but C/O would be absolute.
+            - 'absolute': 
+               all elemental ratios are absolute.
+            - 'normalised' / 'normalized' / 'solar': 
+               all elemental ratios are normalised to solar.
         dark_mode (bool, optional):
             If True, uses a dark background with white text and axes.
             Defaults to False (light mode).
@@ -5438,8 +5496,16 @@ def plot_histograms(planet, models, plot_parameters,
             if (param in two_sigma_lower_limits):
                 raise Exception("Cannot have both a two sigma lower and upper limit for a given parameter.")
 
+    # Validate elemental ratio mode option
+    if elemental_ratio_mode is not None:
+        elemental_ratio_mode = str(elemental_ratio_mode).lower()
+        if elemental_ratio_mode not in ['absolute', 'normalised', 'normalized', 'solar']:
+            raise Exception("elemental_ratio_mode must be one of: None, 'absolute', " +
+                            "'normalised', 'normalized', or 'solar'.")
+
     
     param_vals = []    # List to store parameter values for all models, samples, and parameters
+    ratio_is_solar_normalised = np.zeros(shape=(N_params_to_plot), dtype=bool)
 
     # For each retrieval
     for m in range(N_models):
@@ -5577,6 +5643,15 @@ def plot_histograms(planet, models, plot_parameters,
                         elements = ratio.split('/')   # Split into constituent elements
                         element_1, element_2 = elements
 
+                        if (elemental_ratio_mode is None):
+                            apply_solar_normalisation = ((element_2 == 'H') or (ratio == 'M/H') or (ratio == 'log_M/H'))
+                        elif (elemental_ratio_mode == 'absolute'):
+                            apply_solar_normalisation = False
+                        else:
+                            apply_solar_normalisation = True
+
+                        ratio_is_solar_normalised[q] = apply_solar_normalisation
+
                         # For metallicity, sum the abundances of elements heavier than He
                         if (ratio == 'M/H') or (ratio == 'log_M/H'):
                             numerator = np.zeros(N_samples)
@@ -5610,17 +5685,23 @@ def plot_histograms(planet, models, plot_parameters,
                                                                      element_i, element_2)
 
                                 # Sum solar abundances for normalisation
-                                denominator += 10**(solar_abundances[element_i]-12.0)
+                                if apply_solar_normalisation:
+                                    denominator += 10**(solar_abundances[element_i]-12.0)
 
-                            # Divide summed atmospheric abundances by summed solar abundances for the metallicity
-                            element_ratio_norm = numerator / denominator
+                            if apply_solar_normalisation:
+                                # Divide summed atmospheric abundances by summed solar abundances for metallicity
+                                element_ratio_norm = numerator / denominator
+                            else:
+                                element_ratio_norm = numerator
 
                         # Other elemental ratios
                         else:
                             element_ratio = elemental_ratio_samples(chemical_species, X_stored, 
                                                                     element_1, element_2)
-                            if (element_2 == 'H'):
-                                element_ratio_norm = element_ratio / 10**(solar_abundances[element_1]-12.0)
+                            if apply_solar_normalisation:
+                                solar_ratio = 10**((solar_abundances[element_1]-12.0) -
+                                                   (solar_abundances[element_2]-12.0))
+                                element_ratio_norm = element_ratio / solar_ratio
                             else:
                                 element_ratio_norm = element_ratio
 
@@ -5703,6 +5784,7 @@ def plot_histograms(planet, models, plot_parameters,
                                     title_alpha_list = title_alpha_list,
                                     use_parameter_color_for_title=use_parameter_color_for_title,
                                     title_colour_list = title_colour_list,
+                                    ratio_is_solar_normalised = list(ratio_is_solar_normalised),
                                     dark_mode = dark_mode
                                     )
     
