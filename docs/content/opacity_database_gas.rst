@@ -1185,7 +1185,7 @@ The current line-by-line opacity sources included in POSEIDON are summarised bel
 
        Vacuum
      - 
-       .. image:: ../_static/opacity_previews/gases/Cs.png
+       .. image:: ../_static/opacity_previews/gases/Fe.png
           :width: 50
           :align: center
 
