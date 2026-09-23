@@ -2279,6 +2279,11 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                         # It will contain the string 'log_n_max' in it 
                         if any ('log_n_max' in s for s in cloud_param_names):
 
+                            # List of specific prefixes to ignore for f_ parameters (ex, f_SiO2)
+                            exclude_list = ['f_cloud', 'f_clear', 'f_both', 'f_aerosol_1', 'f_aerosol_2']
+                            # Find anything starting with 'f_' but NOT in the exclusion list
+                            condition_fractional_scale_height = np.char.startswith(cloud_param_names, 'f_') & ~np.isin(cloud_param_names, exclude_list)
+
                             # The try except is here because file_read option makes everything into a numpy file
                             # So you have to add an extra [0] to get the indexing to work correctly 
                             # Specifically, the file_read option doesn't like the float power line in r_m
@@ -2296,7 +2301,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
                                 # Deck specific parameters 
                                 log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
-                                fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+                                fractional_scale_height = clouds_in[np.where(condition_fractional_scale_height)[0]]
 
                                 # Slab specific parameters 
                                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0]]
@@ -2309,7 +2314,7 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
                                 P_cloud = np.concatenate((P_deck,P_slab), axis = 0) 
 
                                 log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
-                                fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+                                fractional_scale_height = clouds_in[np.where(condition_fractional_scale_height)[0]][0]
 
                                 log_X_Mie = clouds_in[np.where(np.char.find(cloud_param_names, 'log_X')!= -1)[0][0]]
                                 P_slab_bottom = np.power(10.0, (P_slab + clouds_in[np.where(np.char.find(cloud_param_names, 'Delta_log_P') != -1)[0][0]]))
@@ -2372,17 +2377,22 @@ def unpack_cloud_params(param_names, clouds_in, cloud_model, cloud_dim,
 
                     # Fuzzy deck 
                     if any ('log_n_max' in s for s in cloud_param_names):
-                    
+
+                        # List of specific prefixes to ignore for f_ parameters (ex, f_SiO2)
+                        exclude_list = ['f_cloud', 'f_clear', 'f_both', 'f_aerosol_1', 'f_aerosol_2']
+                        # Find anything starting with 'f_' but NOT in the exclusion list
+                        condition_fractional_scale_height = np.char.startswith(cloud_param_names, 'f_') & ~np.isin(cloud_param_names, exclude_list)
+                
                         try:
                             r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0]])
                             P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0]])
                             log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]]
-                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]]
+                            fractional_scale_height = clouds_in[np.where(condition_fractional_scale_height)[0]]
                         except:
                             r_m = np.float_power(10.0,clouds_in[np.where(np.char.find(cloud_param_names, 'log_r_m')!= -1)[0][0]])
                             P_cloud = np.power(10.0, clouds_in[np.where(np.char.find(cloud_param_names,'log_P_top')!= -1)[0][0]])
                             log_n_max = clouds_in[np.where(np.char.find(cloud_param_names, 'log_n_max')!= -1)[0]][0]
-                            fractional_scale_height = clouds_in[np.where(np.char.find(cloud_param_names, 'f')!= -1)[0]][0]
+                            fractional_scale_height = clouds_in[np.where(condition_fractional_scale_height)[0]][0]
 
                         # Need to set the slab parameters to dummy values to pass into the cloud object 
                         log_X_Mie = 100
