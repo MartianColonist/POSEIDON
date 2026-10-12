@@ -958,6 +958,7 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         # Unpack model properties
         model_name = model['model_name']
         param_names = model['param_names']
+        
         n_params = len(param_names)
 
         if (retrieval_name is None):

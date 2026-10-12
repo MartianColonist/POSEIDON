@@ -21,6 +21,7 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
                        high_res_method, alpha_high_res_option, 
                        fix_alpha_high_res, fix_W_conv_high_res, 
                        fix_beta_high_res, fix_Delta_phi_high_res,
+                       vsini
                        ):
     '''
     From the user's chosen model settings, determine which free parameters
@@ -803,6 +804,14 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
     else:
         raise Exception("Error: unsupported offset prescription.")
 
+    #***** Rotational broadening *****#
+
+    if vsini:
+        params += ['vsini']
+        N_vsini_params = 1
+    else:
+        N_vsini_params = 0
+
     #***** Error inflation parameters *****#
 
     if (error_inflation == None):
@@ -863,8 +872,8 @@ def assign_free_params(param_species, bulk_species, object_type, PT_profile,
     N_params_cumulative = np.cumsum([N_physical_params, N_PT_params, 
                                      N_species_params, N_cloud_params,
                                      N_geometry_params, N_stellar_params, 
-                                     N_offset_params, N_error_params, 
-                                     N_high_res_params])
+                                     N_offset_params, N_vsini_params,
+                                     N_error_params, N_high_res_params])
 
     return params, physical_params, PT_params, X_params, cloud_params, \
            geometry_params, stellar_params, high_res_params, N_params_cumulative
@@ -923,15 +932,18 @@ def split_params(params_drawn, N_params_cumulative):
 
     # Extract offset parameters
     offsets_drawn = params_drawn[N_params_cumulative[5]:N_params_cumulative[6]]
+
+    # Extract vsini parameter
+    vsini_drawn = params_drawn[N_params_cumulative[6]:N_params_cumulative[7]]
     
     # Extract error adjustment parameters      
-    err_inflation_drawn = params_drawn[N_params_cumulative[6]:N_params_cumulative[7]]
+    err_inflation_drawn = params_drawn[N_params_cumulative[7]:N_params_cumulative[8]]
 
     # Extract high res parameters
-    high_res_drawn = params_drawn[N_params_cumulative[7]:N_params_cumulative[8]]
+    high_res_drawn = params_drawn[N_params_cumulative[8]:N_params_cumulative[9]]
 
     return physical_drawn, PT_drawn, log_X_drawn, clouds_drawn, geometry_drawn, \
-           stellar_drawn, offsets_drawn, err_inflation_drawn, high_res_drawn
+           stellar_drawn, offsets_drawn, vsini_drawn, err_inflation_drawn, high_res_drawn
 
 
 def generate_state(PT_in, log_X_in, param_species, PT_dim, X_dim, PT_profile,

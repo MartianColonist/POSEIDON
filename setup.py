@@ -32,6 +32,7 @@ setup(
         "cmasher",
         "batman-package",
         "scikit-learn",
+        "PyAstronomy",
     ],
     zip_safe=False,
 )

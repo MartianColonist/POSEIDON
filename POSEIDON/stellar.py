@@ -11,7 +11,7 @@ import scipy.constants as sc
 import pysynphot as psyn
 from mpi4py import MPI
 
-from .utility import mock_missing, shared_memory_array
+from .utility import mock_missing, shared_memory_array, get_node_comm
 
 try:
     import pymsg as pymsg
@@ -133,6 +133,8 @@ def open_pymsg_grid(stellar_grid):
         stellar_grid = 'Goettingen-HiRes'   # Alias
     elif (stellar_grid.lower() == 'sphinx'):
         stellar_grid = 'SPHINX'
+    elif (stellar_grid.lower() == 'newera'):
+        stellar_grid = 'NewEra-JWST'
     else:
         raise Exception("Unsupported stellar grid for PyMSG")
 
@@ -185,10 +187,10 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
     wl_edges[1:-1] = 0.5*(wl_out[1:] + wl_out[:-1])
 
     # Check for user's wavelength grid lying outside PyMSG's grid wavelength range
-    if (wl_edges[0] < wl_s_min):
+    if (wl_edges[0] < wl_s_min and stellar_grid.lower() == 'phoenix'):
         raise Exception("Wavelength grid extends lower than PyMSG's minimum " + 
                         "wavelength for this grid (" + str(wl_s_min) + "μm)")
-    if (wl_edges[-1] > wl_s_max):
+    if (wl_edges[-1] > wl_s_max and stellar_grid.lower() == 'phoenix'):
         raise Exception("Wavelength grid extends higher than PyMSG's maximum " + 
                         "wavelength for this grid (" + str(wl_s_max) + "μm)")
 
@@ -197,9 +199,22 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
         x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met, '[alpha/Fe]': 0.0}
     elif (stellar_grid.lower() == 'sphinx'):
         x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met, 'C/O': 0.55}   # FIXING stellar C/O to solar (for now)
+    elif (stellar_grid.lower() == 'newera'):
+        x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met}
 
-    # Interpolate stellar grid to obtain stellar flux (also handles wl interpolation)
-    F_s = specgrid.flux(x, wl_edges*10000)   # PyMSG expects Angstroms
+    try:
+        # Interpolate stellar grid to obtain stellar flux (also handles wl interpolation)
+        F_s = specgrid.flux(x, 0, wl_edges*10000)   # PyMSG expects Angstroms
+   
+    except LookupError:
+        # Adjust x in the log(g) direction
+        dx = {key: 0.0 for key in x.keys()}   # Initialize dx to zero for all parameters
+        dx['log(g)'] = 1.0                # Directional adjustment for log(g)
+        x = specgrid.adjust_x(x, dx)
+
+        # Try to load the flux again
+        F_s = specgrid.flux(x, 0, wl_edges*10000)   # PyMSG expects Angstroms
+
     F_s = np.array(F_s) * 1e7   # Convert flux from erg/s/cm^2/A to W/m^2/m
 
     # Calculate average specific intensity
@@ -264,6 +279,11 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
     # Find MPI rank and size
     rank = comm.Get_rank()    # Core number
     size = comm.Get_size()    # Number of cores
+
+    # Split communicator into separate communicators for each node, so that
+    # shared_memory_array below only shares real memory within a node
+    node_comm = get_node_comm(comm)
+    node_rank = node_comm.Get_rank()
 
     # Unpack stellar properties
     Met_phot = star['Met']
@@ -345,7 +365,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
     #***** Interpolate photosphere spectra *****#
     
     # Initialise output photosphere spectra array
-    I_phot_out, win_phot = shared_memory_array(rank, comm, (N_spec_T_phot, N_spec_log_g_phot, len(wl_out)))
+    I_phot_out, win_phot = shared_memory_array(node_rank, node_comm, (N_spec_T_phot, N_spec_log_g_phot, len(wl_out)))
 
     # Calculate chunk size and offsets for each process
    # chunk_size = N_spec_T_phot // size     # Parallelise over T_phot
@@ -357,8 +377,8 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
 
    # for i in range(offset, offset + chunk_size):
 
-    # Only first core interpolates stellar grids into shared memory
-    if (rank == 0):
+    # Only first core on each node interpolates stellar grids into shared memory
+    if (node_rank == 0):
 
         # Interpolate and store stellar intensities
         for i in range(N_spec_T_phot):
@@ -369,11 +389,14 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                     I_phot_local = load_stellar_pysynphot(wl_out, T_phot_grid[i], 
                                                           Met_phot, log_g_phot_grid[j], 
                                                           stellar_grid)
-                elif (interp_backend == 'pymsg'):
+                elif (interp_backend == 'pymsg' and stellar_grid == 'phoenix'):
                     I_phot_local_1 = load_stellar_pymsg(wl_out[wl_out < 5.499], specgrid, T_phot_grid[i], 
                                                         Met_phot, log_g_phot_grid[j], stellar_grid)
                     I_phot_local_2 = planck_lambda(T_phot_grid[i], wl_out[wl_out >= 5.499])
                     I_phot_local = np.concatenate([I_phot_local_1, I_phot_local_2])
+                elif (interp_backend == 'pymsg' and stellar_grid == 'newera'):
+                    I_phot_local = load_stellar_pymsg(wl_out, specgrid, T_phot_grid[i], 
+                                                       Met_phot, log_g_phot_grid[j], stellar_grid)
                     
                 # Lock the shared memory window before copying results
                # win_phot.Lock(rank)
@@ -451,7 +474,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
     #***** Interpolate heterogeneity spectra *****#
     
     # Initialise output heterogeneity spectra array
-    I_het_out, win_het = shared_memory_array(rank, comm, (N_spec_T_het, N_spec_log_g_het, len(wl_out)))
+    I_het_out, win_het = shared_memory_array(node_rank, node_comm, (N_spec_T_het, N_spec_log_g_het, len(wl_out)))
 
     # Calculate chunk size and offsets for each process
   #  chunk_size = N_spec_T_het // size     # Parallelise over T_het
@@ -461,8 +484,8 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
   #  if (rank == (size - 1)):
   #      chunk_size += N_spec_T_het % size  
 
-    # Only first core interpolates stellar grids into shared memory
-    if (rank == 0):
+    # Only first core on each node interpolates stellar grids into shared memory
+    if (node_rank == 0):
 
         # Interpolate and store stellar intensities
         for i in range(N_spec_T_het):
@@ -488,8 +511,14 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                 # Unlock the shared memory window
               #  win_het.Unlock(rank)
                 
-    # Force cores to wait for all to finish loops 
+    # Force cores to wait for all to finish loops
     comm.Barrier()
+
+    # Release the node-local communicator now that the shared arrays above
+    # are built -- leaving this open until MPI_Finalize can leave a stale
+    # libfabric/OFI domain around on multi-node jobs, which some MPI
+    # implementations then fail to tear down cleanly at process exit
+    node_comm.Free()
 
     return T_phot_grid, T_het_grid, log_g_phot_grid, log_g_het_grid, \
            I_phot_out, I_het_out

@@ -12,7 +12,7 @@ import h5py
 import os 
 import glob
 
-from .utility import shared_memory_array
+from .utility import shared_memory_array, get_node_comm
 from .supported_chemicals import aerosol_supported_species
 
 ############################################################################################
@@ -1343,11 +1343,16 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     # Store number of chemical species
     N_species = len(aerosol_species)
 
-    # Create array to store the log mixing ratios from the grid 
-    sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species, 6, r_m_num, wl_num))
-    
-    # Only first core needs to load the aerosols into shared memory
-    if (rank == 0):
+    # Split communicator into separate communicators for each node, so that
+    # shared_memory_array below only shares real memory within a node
+    node_comm = get_node_comm(comm)
+    node_rank = node_comm.Get_rank()
+
+    # Create array to store the log mixing ratios from the grid
+    sigma_Mie_grid, _ = shared_memory_array(node_rank, node_comm, (N_species, 6, r_m_num, wl_num))
+
+    # Only first core on each node needs to load the aerosols into shared memory
+    if (node_rank == 0):
 
         # Add each aerosol species to mixing ratio array
         for q, species in enumerate(aerosol_species):
@@ -1384,6 +1389,12 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
         
     # Force secondary processors to wait for the primary to finish
     comm.Barrier()
+
+    # Release the node-local communicator now that the shared array above
+    # is built -- leaving this open until MPI_Finalize can leave a stale
+    # libfabric/OFI domain around on multi-node jobs, which some MPI
+    # implementations then fail to tear down cleanly at process exit
+    node_comm.Free()
 
     # Package atmosphere properties
     aerosol_grid = {'grid': grid, 'sigma_Mie_grid': sigma_Mie_grid, 'wl_grid': wl_grid, 'r_m_grid' : r_m_grid}
@@ -1479,13 +1490,14 @@ def interpolate_sigma_Mie_grid(aerosol_grid, wl, r_m_array,
             sigma_Mie_interp_dict[aerosol_species] = interpolate(aerosol_species)
             return sigma_Mie_interp_dict
         for _, species in enumerate(aerosol_species):
+            result = interpolate(species)
             sigma_Mie_interp_dict[species] = {}
-            sigma_Mie_interp_dict[species]['eff_ext'] = interpolate(species)[0]
-            sigma_Mie_interp_dict[species]['eff_abs'] = interpolate(species)[1]
-            sigma_Mie_interp_dict[species]['eff_scat'] = interpolate(species)[2]
-            sigma_Mie_interp_dict[species]['eff_back'] = interpolate(species)[3]
-            sigma_Mie_interp_dict[species]['eff_g'] = interpolate(species)[4]
-            sigma_Mie_interp_dict[species]['eff_w'] = interpolate(species)[5]
+            sigma_Mie_interp_dict[species]['eff_ext'] = result[0]
+            sigma_Mie_interp_dict[species]['eff_abs'] = result[1]
+            sigma_Mie_interp_dict[species]['eff_scat'] = result[2]
+            sigma_Mie_interp_dict[species]['eff_back'] = result[3]
+            sigma_Mie_interp_dict[species]['eff_g'] = result[4]
+            sigma_Mie_interp_dict[species]['eff_w'] = result[5]
         return sigma_Mie_interp_dict
 
 

@@ -197,7 +197,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             I_phot = load_stellar_pysynphot(wl_star, T_eff, Met, log_g, stellar_grid)
 
         # Obtain photosphere spectrum from pymsg
-        elif (interp_backend == 'pymsg'):
+        elif (interp_backend == 'pymsg' and stellar_grid == 'phoenix'):
 
             # Open pymsg grid file
             specgrid = open_pymsg_grid(stellar_grid)
@@ -211,6 +211,15 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
             # Combine spectra segments
             I_phot = np.concatenate([I_phot_1, I_phot_2])
+        
+        elif (interp_backend == 'pymsg' and stellar_grid == 'newera'):
+
+            # Open pymsg grid file
+            specgrid = open_pymsg_grid(stellar_grid)
+
+            # Interpolate stellar grid to compute photosphere intensity
+            I_phot = load_stellar_pymsg(wl_star, specgrid, T_eff,
+                                          Met, log_g, stellar_grid)
 
     # For uniform stellar surfaces
     if (stellar_contam == None): 
@@ -392,6 +401,7 @@ def define_model(model_name, bulk_species, param_species,
                  high_res_method = None, alpha_high_res_option = 'log',
                  fix_alpha_high_res = False, fix_W_conv_high_res = False, 
                  fix_beta_high_res = True, fix_Delta_phi_high_res = True,
+                 vsini = False
                  ):
     '''
     Create the model dictionary defining the configuration of the user-specified 
@@ -646,7 +656,8 @@ def define_model(model_name, bulk_species, param_species,
                                       number_P_knots, PT_penalty, 
                                       high_res_method, alpha_high_res_option,
                                       fix_alpha_high_res, fix_W_conv_high_res, 
-                                      fix_beta_high_res, fix_Delta_phi_high_res)
+                                      fix_beta_high_res, fix_Delta_phi_high_res,
+                                      vsini)
 
     # If cloud_model = Mie, load in the cross section 
     if cloud_model == 'Mie' and aerosol_species != ['free'] and aerosol_species != ['file_read']:
@@ -694,6 +705,7 @@ def define_model(model_name, bulk_species, param_species,
              'PT_penalty' : PT_penalty,
              'high_res_method': high_res_method,
              'high_res_param_names': high_res_param_names,
+             'vsini' : vsini
              }
 
             
@@ -1156,7 +1168,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
                      disable_continuum = False, suppress_print = False,
                      Gauss_quad = 2, use_photosphere_radius = True,
                      device = 'cpu', y_p = np.array([0.0]),
-                     return_albedo = False):
+                     return_albedo = False, vsini = None, epsilon = 0.6):
     '''
     Calculate extinction coefficients, then solve the radiative transfer 
     equation to compute the spectrum of the model atmosphere.
@@ -1201,7 +1213,13 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             is good for all times post second contact and pre third contact.
             Units are in m, not in stellar radii.
         return_albedo (bool):
-            If True, returns spectrum and albedo 
+            If True, returns spectrum and albedo
+        vsini (float):
+            Projected rotational velocity of the planet / brown dwarf (km/s).
+            If None (default), no rotational broadening is applied.
+        epsilon (float):
+            Linear limb-darkening coefficient used by the rotational
+            broadening kernel (only used if vsini is not None).
 
     Returns:
         spectrum (np.array of float):
@@ -1868,7 +1886,11 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
             else:
                 #FpFs_reflected_obs =FpFs_reflected*(1/d)**2
                 spectrum += FpFs_reflected
-        
+
+    # Apply rotational broadening (e.g. for brown dwarfs / directly imaged planets)
+    if (vsini is not None):
+        spectrum = rotational_broadening(wl, spectrum, vsini, epsilon)
+
     # Write spectrum to file
     if (save_spectrum == True):
         write_spectrum(planet['planet_name'], model['model_name'], spectrum, wl)
@@ -2237,6 +2259,7 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
                              'delta_rel_1': [-1.0e-3, 1.0e-3],
                              'delta_rel_2': [-1.0e-3, 1.0e-3],
                              'delta_rel_3': [-1.0e-3, 1.0e-3],
+                             'vsini' : [0, 50], # km/s
                              'b': [np.log10(0.001*np.min(err_data**2)),
                                    np.log10(100.0*np.max(err_data**2))],
                              'x_tol': [0.05, 1.0],
@@ -2500,3 +2523,77 @@ def set_priors(planet, star, model, data, prior_types = {}, prior_ranges = {}):
     priors = {'prior_ranges': prior_ranges, 'prior_types': prior_types}
 
     return priors
+
+def rotational_broadening(wl, flux, vsini, epsilon):
+    '''
+    Apply rotational (v sin i) broadening to a spectrum evaluated on a
+    wavelength grid that is uniformly sampled in log(wavelength) -- i.e.
+    a constant spectral resolution grid such as that produced by
+    wl_grid_constant_R.
+
+    This function exploits the fact that the rotational broadening kernel has a 
+    *constant* width in log(wavelength) space: Delta(ln wl) = v/c to excellent
+    approximation for vsini << c, independent of wavelength. This means a
+    single kernel can be convolved across the whole spectrum with no
+    wavelength-range-dependent approximation error.
+
+    Args:
+        wl (np.array of float):
+            Wavelength grid (um), uniformly spaced in log(wl).
+        flux (np.array of float):
+            Spectrum evaluated on the wl grid (same length as wl).
+        vsini (float):
+            Projected rotational velocity (km/s).
+        epsilon (float):
+            Linear limb-darkening coefficient (0-1).
+
+    Returns:
+        flux_broadened (np.array of float):
+            Rotationally broadened spectrum, sampled on the same wl grid.
+
+    '''
+
+    # No broadening to apply
+    if (vsini is None) or (vsini <= 0.0):
+        return flux
+
+    c = sc.c / 1.0e3   # Speed of light (km/s)
+
+    # Grid spacing in log(wl) (constant, since wl is uniform in log space)
+    log_wl = np.log(wl)
+    d_log_wl = log_wl[1] - log_wl[0]
+
+    # Rotational broadening kernel half-width in log(wl) space (~ vsini/c,
+    # constant across the whole spectrum -- this is the key advantage of
+    # working in log(wl) instead of linear wavelength)
+    vc = vsini / c
+
+    # Number of grid points spanned by the kernel half-width
+    N_half = int(np.floor(vc / d_log_wl)) + 1
+
+    # Build the (symmetric) kernel over log(wl) offsets from line centre
+    n = np.arange(-N_half, N_half + 1)
+    x = (n * d_log_wl) / vc   # Dimensionless position within the kernel
+
+    kernel = np.zeros_like(x)
+    inside = (np.abs(x) < 1.0)
+
+    # Gray (2005) rotational broadening profile, with limb darkening
+    c1 = 2.0 * (1.0 - epsilon) / (np.pi * vc * (1.0 - epsilon/3.0))
+    c2 = epsilon / (2.0 * vc * (1.0 - epsilon/3.0))
+
+    kernel[inside] = c1 * np.sqrt(1.0 - x[inside]**2) + c2 * (1.0 - x[inside]**2)
+
+    # Renormalise to correct for discretisation error (important for mild
+    # broadening, where only a few grid points sample the kernel)
+    kernel /= (np.sum(kernel) * d_log_wl)
+
+    # Pad spectrum edges with the boundary flux values before convolving,
+    # so the output has no zero-padding edge artefacts and is the same
+    # length as the input
+    flux_padded = np.concatenate((np.full(N_half, flux[0]), flux,
+                                  np.full(N_half, flux[-1])))
+
+    flux_broadened = np.convolve(flux_padded, kernel, mode='valid') * d_log_wl
+
+    return flux_broadened

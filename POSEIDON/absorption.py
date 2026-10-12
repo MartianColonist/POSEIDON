@@ -12,7 +12,7 @@ import math
 
 from .species_data import polarisabilities
 from .utility import prior_index, prior_index_V2, closest_index, closest_index_GPU, \
-                     shared_memory_array, mock_missing
+                     shared_memory_array, mock_missing, get_node_comm
 
 try:
     import cupy as cp
@@ -714,17 +714,10 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
     N_nu = len(nu_model)    # Number of wavenumbers on model grid
     N_wl = len(wl_model)    # Number of wavelengths on model grid
         
-    # Identify the 'local rank' within each node
-   # N_nodes, process_id = get_id_within_node(comm, rank)
-
-    # Split communicator into separate communicators for each node
-  #  color = int(rank / N_nodes)
-
-  #  node_comm = comm.Split(color=color)
-  #  node_rank = node_comm.Get_rank()
-
-    node_rank = rank
-    node_comm = comm
+    # Split communicator into separate communicators for each node, so that
+    # shared_memory_array below only shares real memory within a node
+    node_comm = get_node_comm(comm)
+    node_rank = node_comm.Get_rank()
 
     # Initialise output opacity arrays
     cia_stored, _ = shared_memory_array(node_rank, node_comm, (N_cia_pairs, N_T_fine, N_wl))                      # Collision-induced absorption
@@ -959,9 +952,15 @@ def opacity_tables(rank, comm, wl_model, chemical_species, active_species,
     # Force secondary processors to wait for the primary to finish interpolating cross sections
     node_comm.Barrier()
 
-    if (rank == 0): 
+    # Release the node-local communicator now that the shared arrays above
+    # are built -- leaving this open until MPI_Finalize can leave a stale
+    # libfabric/OFI domain around on multi-node jobs, which some MPI
+    # implementations then fail to tear down cleanly at process exit
+    node_comm.Free()
+
+    if (rank == 0):
         print("Opacity pre-interpolation complete.")
-            
+
     return sigma_stored, cia_stored, Rayleigh_stored, eta_stored, ff_stored, bf_stored
 
 
