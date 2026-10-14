@@ -4,6 +4,7 @@ Various miscellaneous functions.
 '''
 
 import os
+import atexit
 import numpy as np
 import pandas as pd
 import pymultinest
@@ -59,6 +60,8 @@ def create_directories(base_dir, planet_name):
         os.mkdir(retrieval_dir + '/results')
     if (os.path.exists(retrieval_dir + '/MultiNest_raw') == False):
         os.mkdir(retrieval_dir + '/MultiNest_raw')
+    if (os.path.exists(retrieval_dir + '/nautilus-output') == False):
+        os.mkdir(retrieval_dir + '/nautilus-output')
     if (os.path.exists(retrieval_dir + '/samples') == False):
         os.mkdir(retrieval_dir + '/samples')
         
@@ -302,40 +305,73 @@ def size_profile(arr):
     print("%d Mb" % ((arr.size * arr.itemsize)/1048576.0))
 
 
-def get_id_within_node(comm, rank):
+def get_node_comm(comm):
+    '''
+    Splits an MPI communicator into sub-communicators whose members reside
+    on the same physical node. Required before calling shared_memory_array,
+    since MPI shared-memory windows (MPI_Win_allocate_shared) only provide
+    genuine shared memory for ranks on the same node -- passing a
+    communicator that spans multiple nodes either errors or silently
+    allocates a separate (non-shared) copy per node.
 
-    nodename =  MPI.Get_processor_name()
-    nodelist = comm.allgather(nodename)
+    '''
 
-    process_id = len([i for i in nodelist[:rank] if i==nodename]) 
+    return comm.Split_type(MPI.COMM_TYPE_SHARED)
 
-    return process_id
+
+# Windows (and their owning communicators) created by shared_memory_array,
+# freed automatically at interpreter exit -- see _free_shared_memory_windows
+# below. These have to stay open for the life of the job (the arrays they
+# back, e.g. the opacity tables, are used throughout a retrieval), so they
+# can't be freed right after creation; but MPI requires every non-predefined
+# Win/Comm to be explicitly freed before MPI_Finalize runs, and Python's
+# garbage collector gives no guarantee of doing that in time on its own --
+# leaving it to the GC is what caused an "OFI domain close failed: Device or
+# resource busy" abort during Finalize on multi-node jobs.
+_shared_memory_windows = []
+
+
+def _free_shared_memory_windows():
+
+    while _shared_memory_windows:
+        win, win_comm = _shared_memory_windows.pop()
+        win.Free()
+        win_comm.Free()
+
+
+# Registered here (rather than left to the interpreter's default cleanup)
+# so it runs before mpi4py's own atexit-registered MPI.Finalize() call --
+# atexit hooks run in LIFO order, and mpi4py registers its Finalize hook
+# when 'from mpi4py import MPI' above executes, which already happened by
+# the time this line runs.
+atexit.register(_free_shared_memory_windows)
 
 
 def shared_memory_array(rank, comm, shape):
-    ''' 
+    '''
     Creates a numpy array shared in memory across multiple cores.
-    
+
     Adapted from :
     https://stackoverflow.com/questions/32485122/shared-memory-in-mpi4py
-    
+
     '''
-    
+
     # Create a shared array of size given by product of each dimension
     size = np.prod(shape)
     dtype = np.float64
     itemsize = dtype().itemsize  # Always 8
 
-    if (rank == 0): 
+    if (rank == 0):
         nbytes = size * itemsize   # Array memory allocated for first process
-    else:  
+    else:
         nbytes = 0   # No memory storage on other processes
-        
+
     # On rank 0, create the shared block
     # On other ranks, get a handle to it (known as a window in MPI speak)
     new_comm = MPI.Comm.Split(comm)
-    win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm) 
- 
+    win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=new_comm)
+    _shared_memory_windows.append((win, new_comm))
+
     # Create a numpy array whose data points to the shared memory
     buf, disp_unit = win.Shared_query(0) 
   #  assert itemsize == MPI.DOUBLE.Get_size() 
@@ -1276,6 +1312,11 @@ def generate_latex_param_names(param_names):
             latex_names += [string]
             continue
 
+        if ('vsini' == param):
+            string = '$v \\sin i$'
+            latex_names += [string]
+            continue
+
         if ('Delta_log_P_' in param):
             if('SiO2' in param):
                 string = '$\\Delta \\, \\log \\, \\mathrm{P} \\, \\mathrm{SiO_2}$'
@@ -1840,7 +1881,7 @@ def write_MultiNest_results(planet, model, data, retrieval_name,
     best_fit_params = best_fit['parameters']
     
     # Load values for error inflation parameters (if included in model)
-    _, _, _, _, _, _, _, \
+    _, _, _, _, _, _, _, _, \
     err_inflation_params, _, _ = split_params(best_fit_params, N_params_cum)
     
     if (model['high_res_method'] is None):

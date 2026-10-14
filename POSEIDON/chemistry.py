@@ -9,7 +9,7 @@ import numpy as np
 from mpi4py import MPI
 from scipy.interpolate import RegularGridInterpolator
 
-from .utility import shared_memory_array
+from .utility import shared_memory_array, get_node_comm
 from .supported_chemicals import supported_species, fastchem_supported_species
 
 
@@ -86,11 +86,16 @@ def load_chemistry_grid(chemical_species, grid = 'fastchem',
     # Store number of chemical species
     N_species = len(chemical_species)
 
-    # Create array to store the log mixing ratios from the grid 
-    log_X_grid, _ = shared_memory_array(rank, comm, (N_species, Met_num, C_O_num, T_num, P_num))
-    
-    # Only first core needs to load the mixing ratios into shared memory
-    if (rank == 0):
+    # Split communicator into separate communicators for each node, so that
+    # shared_memory_array below only shares real memory within a node
+    node_comm = get_node_comm(comm)
+    node_rank = node_comm.Get_rank()
+
+    # Create array to store the log mixing ratios from the grid
+    log_X_grid, _ = shared_memory_array(node_rank, node_comm, (N_species, Met_num, C_O_num, T_num, P_num))
+
+    # Only first core on each node needs to load the mixing ratios into shared memory
+    if (node_rank == 0):
 
         # Add each chemical species to mixing ratio array
         for q, species in enumerate(chemical_species):
@@ -108,8 +113,14 @@ def load_chemistry_grid(chemical_species, grid = 'fastchem',
     # Force secondary processors to wait for the primary to finish
     comm.Barrier()
 
+    # Release the node-local communicator now that the shared array above
+    # is built -- leaving this open until MPI_Finalize can leave a stale
+    # libfabric/OFI domain around on multi-node jobs, which some MPI
+    # implementations then fail to tear down cleanly at process exit
+    node_comm.Free()
+
     # Package atmosphere properties
-    chemistry_grid = {'grid': grid, 'log_X_grid': log_X_grid, 'T_grid': T_grid, 
+    chemistry_grid = {'grid': grid, 'log_X_grid': log_X_grid, 'T_grid': T_grid,
                       'P_grid': P_grid, 'Met_grid': Met_grid, 'C_to_O_grid': C_to_O_grid,
                      }
 

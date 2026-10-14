@@ -4914,16 +4914,16 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
             title_fmt = ".2f"
         elif ('delta_rel' in param):
             title_fmt = ".0f"
-        elif (param == 'R_p_ref'):
-            label_exponent = round_sig_figs(np.floor(np.log10(np.abs(0.5 * (qh - ql)))), 1)
-            if label_exponent == -2.0:
-                title_fmt = ".2f"
-            elif label_exponent == -3.0:
-                title_fmt = ".3f"
-            elif label_exponent == -4.0:
-                title_fmt = ".4f"
-            else:
-                title_fmt = ".2f"
+#         elif (param == 'R_p_ref'):
+#             label_exponent = round_sig_figs(np.floor(np.log10(np.abs(0.5 * (qh - ql)))), 1)
+#             if label_exponent == -2.0:
+#                 title_fmt = ".2f"
+#             elif label_exponent == -3.0:
+#                 title_fmt = ".3f"
+#             elif label_exponent == -4.0:
+#                 title_fmt = ".4f"
+#             else:
+#                 title_fmt = ".2f"
         elif (param == 'd'):
             title_fmt = ".3f"
         else:
@@ -5506,9 +5506,11 @@ def plot_histograms(planet, models, plot_parameters,
                     # Load mixing ratios and mean molecular weight samples
                     for i in range(N_samples):
 
-                        atmosphere_i = get_retrieved_atmosphere(planet, model, np.logspace(np.log10(100.0), np.log10(1e-6), 100),
+                        try:
+                            atmosphere_i = get_retrieved_atmosphere(planet, model, np.logspace(np.log10(100.0), np.log10(1e-6), 100),
                                                                 specific_param_values = samples[i], R_p_ref_set=planet['planet_radius'])
-                        
+                        except:
+                            continue
                         X_stored[i,:] = atmosphere_i['X'][:,0,0,0]
                         mu_stored[i] = atmosphere_i['mu'][0,0,0]/sc.u
 
@@ -5709,9 +5711,9 @@ def plot_histograms(planet, models, plot_parameters,
     # Save figure to file
     if (save_fig == True):
         if (plt_label == None):
-            file_name = (plot_dir + planet_name + '_histograms.png')
+            file_name = (plot_dir + planet_name + '_histograms.pdf')
         else:
-            file_name = (plot_dir + planet_name + '_' + plt_label + '_histograms.png')
+            file_name = (plot_dir + planet_name + '_' + plt_label + '_histograms.pdf')
 
         fig.savefig(file_name, bbox_inches='tight', dpi=800,
                     facecolor = fig.get_facecolor())

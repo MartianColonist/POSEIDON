@@ -16,7 +16,7 @@ import multiprocessing as mp
 from .supported_chemicals import aerosol_supported_species, aerosol_directional_supported_species, \
                                  diamond_supported_species, aerosols_lognormal_logwidth_free
 
-from .utility import shared_memory_array
+from .utility import shared_memory_array, get_node_comm
 from .supported_chemicals import aerosol_supported_species
 
 ############################################################################################
@@ -1563,68 +1563,88 @@ def load_aerosol_grid(aerosol_species, grid = 'aerosol',
     # Store number of chemical species
     N_species = len(aerosol_species)
 
-    # Create array to store the cross sections and scattering properties  from the grid
+    # Split communicator into separate communicators for each node, so that
+    # shared_memory_array below only shares real memory within a node
+    node_comm = get_node_comm(comm)
+    node_rank = node_comm.Get_rank()
+
+    # Create array to store the cross sections and scattering properties from the grid
 
     # If false, just assume log_r_m_std_dev = 0.5
     if lognormal_logwith_free == False:
 
         if (len(sigma_Mie_grid) == 0):
-            sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species, 3, r_m_num, wl_num))
+            sigma_Mie_grid, _ = shared_memory_array(node_rank, node_comm, (N_species, 3, r_m_num, wl_num))
 
-        # Add each aerosol species to mixing ratio array
-        for q, species in enumerate(aerosol_species):
-
-            # Load grid for species q, then reshape into a 2D numpy array
-            try:
-                ext_array = np.array(database[species]['0.5']['eff_ext'])
-            except:
-                raise Exception('You are using the aerosol database from POSEIDON 1.2. ' +
-                                'Please download the input files for POSEIDON 1.3.1 from Zenodo (' +
-                                'https://doi.org/10.5281/zenodo.15711943) and place it in POSEIDON/inputs/opacity/.') 
-
-            # Load grid for species q, then reshape into a 2D numpy array
-            ext_array = np.array(database[species]['0.5']['eff_ext'])
-            ext_array = ext_array.reshape(r_m_num, wl_num)
-
-            g_array = np.array(database[species]['0.5']['eff_g'])
-            g_array = g_array.reshape(r_m_num, wl_num)
-
-            w_array = np.array(database[species]['0.5']['eff_w'])
-            w_array = w_array.reshape(r_m_num, wl_num)
-
-            # Package grid for species q into combined array
-            sigma_Mie_grid[q,0,:,:] = ext_array
-            sigma_Mie_grid[q,1,:,:] = g_array
-            sigma_Mie_grid[q,2,:,:] = w_array
-    
-    # Else, the width is a free param, and its about to get crazy 
-    else:
-        
-        if (len(sigma_Mie_grid) == 0):
-            sigma_Mie_grid, _ = shared_memory_array(rank, comm, (N_species,log_r_m_std_dev_num, 3, r_m_num, wl_num))
-
-        for s, species in enumerate(aerosol_species):
+        # Only first core on each node needs to load the aerosols into shared memory
+        if (node_rank == 0):
 
             # Add each aerosol species to mixing ratio array
-            for q,log_rm_std_dev in enumerate(log_r_m_std_dev_array):
+            for q, species in enumerate(aerosol_species):
 
                 # Load grid for species q, then reshape into a 2D numpy array
-                ext_array = np.array(database[species][str(log_rm_std_dev)]['eff_ext'])
+                try:
+                    ext_array = np.array(database[species]['0.5']['eff_ext'])
+                except:
+                    raise Exception('You are using the aerosol database from POSEIDON 1.2. ' +
+                                    'Please download the input files for POSEIDON 1.3.1 from Zenodo (' +
+                                    'https://doi.org/10.5281/zenodo.15711943) and place it in POSEIDON/inputs/opacity/.')
+
+                # Load grid for species q, then reshape into a 2D numpy array
+                ext_array = np.array(database[species]['0.5']['eff_ext'])
                 ext_array = ext_array.reshape(r_m_num, wl_num)
 
-                g_array = np.array(database[species][str(log_rm_std_dev)]['eff_g'])
+                g_array = np.array(database[species]['0.5']['eff_g'])
                 g_array = g_array.reshape(r_m_num, wl_num)
 
-                w_array = np.array(database[species][str(log_rm_std_dev)]['eff_w'])
+                w_array = np.array(database[species]['0.5']['eff_w'])
                 w_array = w_array.reshape(r_m_num, wl_num)
 
                 # Package grid for species q into combined array
-                sigma_Mie_grid[s,q,0,:,:] = ext_array
-                sigma_Mie_grid[s,q,1,:,:] = g_array
-                sigma_Mie_grid[s,q,2,:,:] = w_array
+                sigma_Mie_grid[q,0,:,:] = ext_array
+                sigma_Mie_grid[q,1,:,:] = g_array
+                sigma_Mie_grid[q,2,:,:] = w_array
+
+    # Else, the width is a free param, and its about to get crazy
+    else:
+
+        if (len(sigma_Mie_grid) == 0):
+            sigma_Mie_grid, _ = shared_memory_array(node_rank, node_comm, (N_species, log_r_m_std_dev_num, 3, r_m_num, wl_num))
+
+        # Only first core on each node needs to load the aerosols into shared memory
+        if (node_rank == 0):
+
+            for s, species in enumerate(aerosol_species):
+
+                # Add each aerosol species to mixing ratio array
+                for q, log_rm_std_dev in enumerate(log_r_m_std_dev_array):
+
+                    # Load grid for species q, then reshape into a 2D numpy array
+                    ext_array = np.array(database[species][str(log_rm_std_dev)]['eff_ext'])
+                    ext_array = ext_array.reshape(r_m_num, wl_num)
+
+                    g_array = np.array(database[species][str(log_rm_std_dev)]['eff_g'])
+                    g_array = g_array.reshape(r_m_num, wl_num)
+
+                    w_array = np.array(database[species][str(log_rm_std_dev)]['eff_w'])
+                    w_array = w_array.reshape(r_m_num, wl_num)
+
+                    # Package grid for species q into combined array
+                    sigma_Mie_grid[s,q,0,:,:] = ext_array
+                    sigma_Mie_grid[s,q,1,:,:] = g_array
+                    sigma_Mie_grid[s,q,2,:,:] = w_array
 
     # Close HDF5 file
     database.close()
+
+    # Force secondary processors to wait for the primary to finish
+    comm.Barrier()
+
+    # Release the node-local communicator now that the shared array above
+    # is built -- leaving this open until MPI_Finalize can leave a stale
+    # libfabric/OFI domain around on multi-node jobs, which some MPI
+    # implementations then fail to tear down cleanly at process exit
+    node_comm.Free()
 
     # Package atmosphere properties if you aren't loading opac
     # If you are, this aerosol_grid dictionary is made later (in reading_opacities in core)
