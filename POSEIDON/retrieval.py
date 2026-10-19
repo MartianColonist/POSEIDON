@@ -7,6 +7,7 @@ import numpy as np
 import time
 import os
 import pymultinest
+from functools import partial
 from mpi4py import MPI
 from scipy.special import ndtri
 from numba.core.decorators import jit
@@ -41,14 +42,29 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                   N_slice_EM = 2, N_slice_DN = 4, constant_gravity = False,
                   spectrum_type = 'transmission', y_p = np.array([0.0]),
                   stellar_T_step = 20, stellar_log_g_step = 0.1, 
-                  N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest', 
+                  N_live = 400, ev_tol = 0.5, sampling_algorithm = 'MultiNest',
                   resume = False, verbose = True, sampling_target = 'parameter',
                   chem_grid = 'fastchem', N_output_samples = 1000,
-                  save_ymodel = False,
+                  save_ymodel = False, N_pool = 1, discard_exploration = False,
+                  n_like_max=np.inf, regenerate_only = False
                   ):
     '''
     ADD DOCSTRING (will hopefully be done before the heat death of the Universe)
+
+    regenerate_only (nautilus only): if True, skip sampler.run() entirely
+    (zero new likelihood evaluations) and just reload the existing
+    outputfiles_basename + 'checkpoint.hdf5', then rewrite the MultiNest-
+    format output files (honouring the current discard_exploration setting)
+    before returning. Used to shrink/de-bias an already-completed run's
+    output without re-running it.
     '''
+
+    # Remember the starting directory so regenerate_only can restore it below
+    # -- Nautilus_retrieval leaves the cwd inside MultiNest_raw/ on return,
+    # and every relative os.chdir() in this function assumes it starts fresh
+    # from here, which matters when run_retrieval is called repeatedly (e.g.
+    # regenerating several checkpoints) in one process.
+    cwd0 = os.getcwd()
 
     # Unpack planet name
     planet_name = planet['planet_name']
@@ -171,12 +187,6 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                sampling_efficiency = sampling_target, 
                                const_efficiency_mode = False)
 
-        # Write retrieval runtime to terminal
-        if (rank == 0):
-            t1 = time.perf_counter()
-            total = round_sig_figs((t1-t0)/3600.0, 2)  # Round to 2 significant figures
-            print('POSEIDON retrieval finished in ' + str(total) + ' hours')
-
         # Compute samples of retrieved P-T, mixing ratio profiles, and spectrum
         # All ranks participate to distribute the forward model evaluations
         T_per_region, \
@@ -202,26 +212,21 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
             write_MultiNest_results(planet, model, data, retrieval_name,
                                     N_live, ev_tol, sampling_algorithm, wl, R,
                                     ymodel_best, spectrum_type)
-                        
+
             # Save sampled spectrum
-            write_retrieved_spectrum(retrieval_name, wl, spec_low2, 
+            write_retrieved_spectrum(retrieval_name, wl, spec_low2,
                                      spec_low1, spec_median, spec_high1, spec_high2)
-            
+
             # Save ymodel samples
             if (save_ymodel and ymodel_samples is not None):
 
                 ymodel_samples_object = np.array(ymodel_samples).T
 
                 np.savetxt('../samples/' + retrieval_name + '_ymodel_samples.txt', ymodel_samples_object.T)
-            
+
             # Only write retrieved P-T profile and mixing ratio arrays if atmosphere enabled
             if (disable_atmosphere == False):
 
-                # Save sampled P-T and mixing ratio profiles for each
-                # atmospheric region. For 1D models the dict has a single
-                # entry keyed by None (no suffix). For 2D/3D models each
-                # region (e.g. dayside/nightside, evening/morning) gets
-                # its own output file.
                 for region_name in T_per_region:
 
                     T_r_low2, T_r_low1, T_r_median, T_r_high1, T_r_high2 = T_per_region[region_name]
@@ -238,6 +243,105 @@ def run_retrieval(planet, star, model, opac, data, priors, wl, P,
                                           region_name = region_name)
 
             print("All done! Output files can be found in " + output_dir + "results/")
+
+    # Run POSEIDON retrieval using nautilus
+    if (sampling_algorithm == 'nautilus'):
+
+        # Change directory into nautilus result file folder
+        os.chdir(output_dir + 'nautilus-output/')
+
+        # Set basename for output files
+        basename = retrieval_name + '-'
+
+        # Begin retrieval timer
+        if (rank == 0):
+            t0 = time.perf_counter()
+
+        # Run nautilus
+        Nautilus_retrieval(planet, star, model, opac, data, prior_types,
+                            prior_ranges, spectrum_type, wl, P, P_ref,
+                            R_p_ref, P_param_set, He_fraction, N_slice_EM,
+                            N_slice_DN, N_params, T_phot_grid, T_het_grid,
+                            log_g_phot_grid, log_g_het_grid, I_phot_grid,
+                            I_het_grid, y_p, F_s_obs, constant_gravity,
+                            chemistry_grid, outputfiles_basename = basename,
+                            n_live_points = N_live, n_pool = N_pool, n_like_max = n_like_max,
+                            resume = resume, verbose = verbose, discard_exploration = discard_exploration,
+                            run_sampler = (not regenerate_only))
+
+        # regenerate_only just reloads the checkpoint and rewrites the raw
+        # MultiNest-format output files above (Nautilus_retrieval already did
+        # that) -- skip the forward-model-heavy post-processing below, since
+        # it isn't needed to shrink/de-bias the raw posterior files. Restore
+        # cwd first (Nautilus_retrieval leaves it inside MultiNest_raw/), so
+        # a caller can safely call run_retrieval again right away.
+        if regenerate_only:
+            os.chdir(cwd0)
+            return
+
+        # Write retrieval runtime to terminal
+        if (rank == 0):
+            t1 = time.perf_counter()
+            total = round_sig_figs((t1-t0)/3600.0, 2)  # Round to 2 significant figures
+            print('POSEIDON retrieval finished in ' + str(total) + ' hours')
+
+        # Compute samples of retrieved P-T, mixing ratio profiles, and spectrum
+        # All ranks participate to distribute the forward model evaluations
+        T_per_region, \
+        log_X_per_region, \
+        spec_low2, spec_low1, \
+        spec_median, spec_high1, \
+        spec_high2, T_best, \
+        spectrum_best, ymodel_best, \
+        ymodel_samples = retrieved_samples(planet, star, model, opac, data,
+                                           retrieval_name, wl, P, P_ref, R_p_ref,
+                                           P_param_set, He_fraction, N_slice_EM,
+                                           N_slice_DN, spectrum_type, T_phot_grid,
+                                           T_het_grid, log_g_phot_grid,
+                                           log_g_het_grid, I_phot_grid,
+                                           I_het_grid, y_p, F_s_obs,
+                                           constant_gravity, chemistry_grid,
+                                           N_output_samples, comm = comm)
+
+        # Write retrieval results to file (rank 0 only)
+        if (rank == 0):
+
+            # Write POSEIDON retrieval output files
+            write_MultiNest_results(planet, model, data, retrieval_name,
+                                    N_live, ev_tol, sampling_algorithm, wl, R,
+                                    ymodel_best, spectrum_type)
+
+            # Save sampled spectrum
+            write_retrieved_spectrum(retrieval_name, wl, spec_low2,
+                                     spec_low1, spec_median, spec_high1, spec_high2)
+
+            # Save ymodel samples
+            if (save_ymodel and ymodel_samples is not None):
+
+                ymodel_samples_object = np.array(ymodel_samples).T
+
+                np.savetxt('../samples/' + retrieval_name + '_ymodel_samples.txt', ymodel_samples_object.T)
+
+            # Only write retrieved P-T profile and mixing ratio arrays if atmosphere enabled
+            if (disable_atmosphere == False):
+
+                for region_name in T_per_region:
+
+                    T_r_low2, T_r_low1, T_r_median, T_r_high1, T_r_high2 = T_per_region[region_name]
+                    log_X_r_low2, log_X_r_low1, log_X_r_median, log_X_r_high1, log_X_r_high2 = log_X_per_region[region_name]
+
+                    write_retrieved_PT(retrieval_name, P,
+                                       T_r_low2, T_r_low1, T_r_median,
+                                       T_r_high1, T_r_high2,
+                                       region_name = region_name)
+
+                    write_retrieved_log_X(retrieval_name, chemical_species, P,
+                                          log_X_r_low2, log_X_r_low1, log_X_r_median,
+                                          log_X_r_high1, log_X_r_high2,
+                                          region_name = region_name)
+
+            print("All done! Output files can be found in " + output_dir + "results/")
+
 
     comm.Barrier()
 
@@ -270,6 +374,7 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     disable_atmosphere = model['disable_atmosphere']
     PT_penalty = model['PT_penalty']
     high_res_method = model['high_res_method']
+    vsini_flag = model['vsini']
 
     # Unpack planet and star properties
     R_p = planet['planet_radius']
@@ -287,8 +392,10 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
     physical_params, PT_params, \
     log_X_params, cloud_params, \
     geometry_params, stellar_params, \
-    offset_params, err_inflation_params, \
-    high_res_params, surface_params = split_params(param_vector, N_params_cum)
+    offset_params, vsini_params, \
+    err_inflation_params, high_res_params, surface_params = split_params(param_vector, N_params_cum)
+
+    vsini_value = vsini_params[0] if vsini_flag else None
 
     # If the atmosphere is disabled
     if ((disable_atmosphere == True) and ('transmission' in spectrum_type)):
@@ -424,10 +531,11 @@ def forward_model(param_vector, planet, star, model, opac, data, wl, P, P_ref_se
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
                                         spectrum_type = ('direct_' + spectrum_type))   # Always Fp (even for secondary eclipse)
 
-        # For transmission spectra
+        # For transmission spectra (and directly imaged emission spectra)
         else:
             spectrum = compute_spectrum(planet, star, model, atmosphere, opac, wl,
-                                        spectrum_type, y_p = y_p)
+                                        spectrum_type, y_p = y_p,
+                                        vsini = (vsini_value if (spectrum_type == 'direct_emission') else None))
 
         # Reject unphysical spectra (forced to be NaN by function above)
         if (np.any(np.isnan(spectrum))):
@@ -1037,7 +1145,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
         
         # Unpack stellar parameters
         _, _, _, _, _, \
-        stellar_params, _, _, _, _ = split_params(cube, N_params_cum)
+        stellar_params, _, _, _, _, _ = split_params(cube, N_params_cum)
 
         # Reject models with spots hotter than faculae (by definition)
         if ((stellar_contam != None) and ('two_spots' in stellar_contam)):
@@ -1075,7 +1183,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
             # Unpack high-resolution retrieval parameters
             _, _, _, _, _, \
-            _, _, _, high_res_params, _ = split_params(cube, N_params_cum)
+            _, _, _, _, high_res_params, _ = split_params(cube, N_params_cum)
 
             # Compute the log-likelihood relevant for high-resolution retrievals
             loglikelihood = loglikelihood_high_res(wl, spectrum, F_s_obs, data,
@@ -1088,7 +1196,7 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         # Unpack offset and error inflation parameters
         _, _, _, _, _, _, \
-        offset_params, err_inflation_params, _, _ = split_params(cube, N_params_cum)
+        offset_params, _, err_inflation_params, _, _ = split_params(cube, N_params_cum)
         
         # Load error bars specified in data files
         err_data = data['err_data']
@@ -1180,14 +1288,875 @@ def PyMultiNest_retrieval(planet, star, model, opac, data, prior_types,
 
         # Add the PT penalty 
         loglikelihood += ln_prior_TP
-                    
+        
         return loglikelihood
     
     # Run PyMultiNest
     pymultinest.run(LogLikelihood, Prior, n_dims, **kwargs)
 
 
-def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P, 
+# Tags used by the MPI worker pool below for nautilus likelihood evaluations
+# and (separately) sampler-calculation dispatch (e.g. neural network training)
+_MPI_POOL_WORK_TAG = 1
+_MPI_POOL_STOP_TAG = 2
+_MPI_POOL_TRAIN_TAG = 3
+
+
+def _nautilus_mpi_worker_loop(comm, loglikelihood_fn):
+    '''
+    Worker-side loop for multi-node nautilus retrievals (used only when
+    Nautilus_retrieval is called with more than one MPI rank in comm).
+
+    Every rank other than rank 0 calls this immediately after building its
+    own local Prior/LogLikelihood/loglikelihood_nautilus closures -- which
+    are identical to rank 0's, since every rank reaches this point via the
+    same call to Nautilus_retrieval with the same arguments, and so already
+    has its own local reference to opac (a real copy on its node's local
+    rank 0, a shared-memory view on every other rank on that node; see
+    get_node_comm in utility.py). This lets each worker evaluate likelihoods
+    using entirely local data: only small parameter vectors and resulting
+    log-likelihoods ever cross MPI, never the multi-GB opacity arrays.
+
+    Also handles _MPI_POOL_TRAIN_TAG messages (dispatched by _MPISamplerPool,
+    used only for nautilus's neural-network training calls): unlike the
+    likelihood case, that payload carries the function to call itself, since
+    it's cheap to pickle (a plain module-level function closing over small,
+    fixed-size arrays) -- see _MPISamplerPool for why this doesn't apply to
+    every function nautilus might dispatch to its sampler-calculations pool.
+
+    Blocks until rank 0 (via _MPINodePool.shutdown) sends a message tagged
+    _MPI_POOL_STOP_TAG, at which point it returns.
+
+    '''
+
+    while True:
+
+        status = MPI.Status()
+        payload = comm.recv(source = 0, tag = MPI.ANY_TAG, status = status)
+        tag = status.Get_tag()
+
+        if tag == _MPI_POOL_STOP_TAG:
+            return
+
+        elif tag == _MPI_POOL_TRAIN_TAG:
+            func, items = payload
+            results = [func(item) for item in items]
+            comm.send(results, dest = 0, tag = _MPI_POOL_TRAIN_TAG)
+
+        else:
+            cubes = payload
+            results = [loglikelihood_fn(cube) for cube in cubes]
+            comm.send(results, dest = 0, tag = _MPI_POOL_WORK_TAG)
+
+
+class _MPINodePool:
+    '''
+    Drop-in pool for nautilus.Sampler's likelihood pool slot (the 'pool_l'
+    argument documented in nautilus.Sampler), dispatching likelihood
+    evaluations to MPI worker ranks -- potentially spread across multiple
+    nodes -- instead of a local multiprocessing.Pool (which cannot cross
+    node boundaries, since its workers are forked children of one process).
+
+    Only usable for nautilus's likelihood pool, not its "sampler
+    calculations" pool: nautilus always calls this pool's map() with the
+    same function reference (its own stored self.likelihood), so map()
+    below ignores the passed-in `func` entirely and instead lets each
+    worker evaluate its own already-built local closure (see
+    _nautilus_mpi_worker_loop) -- this is what avoids ever having to
+    pickle/ship the opacity data captured in that closure.
+
+    '''
+
+    def __init__(self, comm):
+
+        self.comm = comm
+        self.n_workers = comm.Get_size() - 1
+        self.size = self.n_workers   # Read by nautilus to size its batches
+        self._shutdown_sent = False
+
+    def map(self, func, iterable):
+
+        items = list(iterable)
+        n_items = len(items)
+
+        if n_items == 0:
+            return []
+
+        n_workers = min(self.n_workers, n_items)
+        chunks = np.array_split(np.arange(n_items), n_workers)
+
+        # Dispatch with non-blocking sends, so a large chunk can never
+        # deadlock against a worker still finishing its previous batch
+        requests = []
+
+        for w, idx in enumerate(chunks):
+            worker_rank = w + 1
+            payload = [items[i] for i in idx]
+            requests.append(self.comm.isend(payload, dest = worker_rank,
+                                             tag = _MPI_POOL_WORK_TAG))
+
+        MPI.Request.waitall(requests)
+
+        # Gather results back in original order
+        results = [None] * n_items
+
+        for w, idx in enumerate(chunks):
+            worker_rank = w + 1
+            chunk_results = self.comm.recv(source = worker_rank,
+                                           tag = _MPI_POOL_WORK_TAG)
+
+            for local_i, global_i in enumerate(idx):
+                results[global_i] = chunk_results[local_i]
+
+        return results
+
+    def shutdown(self):
+
+        if self._shutdown_sent:
+            return
+
+        for worker_rank in range(1, self.n_workers + 1):
+            self.comm.send(None, dest = worker_rank, tag = _MPI_POOL_STOP_TAG)
+
+        self._shutdown_sent = True
+
+
+class _MPISamplerPool:
+    '''
+    Drop-in pool for nautilus.Sampler's "sampler calculations" slot (the
+    'pool_s' argument documented in nautilus.Sampler), reusing the same MPI
+    worker ranks as _MPINodePool (they're never both dispatching at once,
+    since nautilus calls pool_l and pool_s at different points in its own
+    algorithm -- never concurrently).
+
+    Unlike _MPINodePool, nautilus calls this pool's map() with genuinely
+    different functions at different times, so map() below has to inspect
+    `func` rather than ignore it:
+
+    - Neural network training (nautilus.neural.train_network) is a plain
+      module-level function closing over small, fixed-size numpy arrays --
+      cheap to pickle (by reference for the function itself, by value for
+      the small arrays) -- so it's dispatched over MPI to up to n_networks
+      worker ranks (there's no benefit routing it to more workers than
+      there are independent networks to train).
+    - Resampling from an existing bound (NautilusBound.sample /
+      _reset_and_sample) closes over the *entire* bound object -- ellipsoid
+      geometry plus every trained network on it -- fresh, non-reconstructable
+      state on every call, and expensive to pickle repeatedly. This pool
+      deliberately does not attempt to parallelize that path: anything that
+      isn't a recognised train_network call just runs in a plain local loop.
+
+      This is NOT simply "the same as pool_s=None", though: NautilusBound.
+      sample() branches on `pool is None` vs not, not on what the pool does
+      -- as soon as pool_s is any non-None object, it takes an entirely
+      different code path that splits work into `n_jobs = pool.size` calls
+      to _reset_and_sample, each of which mutates and returns the *same*
+      bound instance (self) rather than an isolated copy (real isolation
+      only exists when each "job" runs in its own forked process, which is
+      what nautilus's local multiprocessing.Pool normally provides, and
+      what this pool deliberately does not attempt for this path). Run
+      locally in a loop, this aliasing makes the merge step
+      `self.points = np.vstack([self.points, bound.points])` double
+      self.points on every iteration (bound is self), i.e. exponential
+      blowup in n_jobs -- confirmed directly: n_jobs=71 exceeds 10 million
+      rows within ~17 iterations and OOM-killed a real 160GB/node job
+      within minutes. self.size is therefore fixed at 1 below (not
+      n_workers), forcing n_jobs=1 -- a single call, correctness-harmless
+      (the same object aliasing then just doubles a small point cache
+      once, not exponentially), regardless of how many MPI workers exist.
+      This does not affect train_network dispatch above, since n_networks
+      is a fixed nautilus parameter never derived from pool.size.
+
+    '''
+
+    def __init__(self, comm, train_network_fn):
+
+        self.comm = comm
+        self.n_workers = comm.Get_size() - 1
+
+        # NOT self.n_workers -- see "Resampling..." above. Read by nautilus
+        # both to size likelihood-adjacent batches in general (harmless
+        # here, unused for this pool) and, critically, to decide how many
+        # parallel "jobs" to split NautilusBound resampling into; anything
+        # above 1 causes unbounded exponential memory growth when those
+        # jobs are run sequentially against a single shared bound object.
+        self.size = 1
+
+        self._train_network_fn = train_network_fn
+
+    def map(self, func, iterable):
+
+        items = list(iterable)
+
+        if (isinstance(func, partial) and func.func is self._train_network_fn):
+            return self._map_mpi(func, items)
+
+        # Anything else (e.g. _reset_and_sample): run locally, matching
+        # today's pool_s = None behaviour exactly -- see class docstring
+        return [func(item) for item in items]
+
+    def _map_mpi(self, func, items):
+
+        n_items = len(items)
+
+        if n_items == 0:
+            return []
+
+        # No benefit dispatching to more workers than there are independent
+        # networks to train (e.g. n_networks = 4 by default)
+        n_workers = min(self.n_workers, n_items)
+        chunks = np.array_split(np.arange(n_items), n_workers)
+
+        requests = []
+
+        for w, idx in enumerate(chunks):
+            worker_rank = w + 1
+            payload = (func, [items[i] for i in idx])
+            requests.append(self.comm.isend(payload, dest = worker_rank,
+                                             tag = _MPI_POOL_TRAIN_TAG))
+
+        MPI.Request.waitall(requests)
+
+        results = [None] * n_items
+
+        for w, idx in enumerate(chunks):
+            worker_rank = w + 1
+            chunk_results = self.comm.recv(source = worker_rank,
+                                           tag = _MPI_POOL_TRAIN_TAG)
+
+            for local_i, global_i in enumerate(idx):
+                results[global_i] = chunk_results[local_i]
+
+        return results
+
+
+def Nautilus_retrieval(planet, star, model, opac, data, prior_types,
+                       prior_ranges, spectrum_type, wl, P, P_ref_set,
+                       R_p_ref_set, P_param_set, He_fraction, N_slice_EM,
+                       N_slice_DN, N_params, T_phot_grid, T_het_grid,
+                       log_g_phot_grid, log_g_het_grid, I_phot_grid,
+                       I_het_grid, y_p, F_s_obs, constant_gravity,
+                       chemistry_grid, outputfiles_basename,
+                       n_live_points = 400, n_pool = 1, resume = False,
+                       verbose = True, discard_exploration = False,
+                       n_like_max = np.inf, run_sampler = True):
+    '''
+    Main function for conducting atmospheric retrievals with nautilus.
+
+    Uses the exact same prior transformation and log-likelihood functions
+    as PyMultiNest_retrieval (see that function for details), so that
+    switching sampling_algorithm between 'MultiNest' and 'nautilus' does
+    not change the underlying physical model or priors in any way.
+
+    If run_sampler is False, sampler.run() is skipped entirely (so this
+    performs zero likelihood evaluations) and the sampler is loaded purely
+    from outputfiles_basename + 'checkpoint.hdf5' via resume = True. This is
+    used to regenerate the MultiNest-format output files for an already
+    completed/checkpointed run (e.g. after changing discard_exploration)
+    without re-running nautilus.
+
+    '''
+
+    from nautilus import Sampler
+    from nautilus.neural import train_network
+
+    # Unpack model properties
+    param_names = model['param_names']
+    param_species = model['param_species']
+    X_params = model['X_param_names']
+    N_params_cum = model['N_params_cum']
+    Atmosphere_dimension = model['Atmosphere_dimension']
+    species_EM_gradient = model['species_EM_gradient']
+    species_DN_gradient = model['species_DN_gradient']
+    error_inflation = model['error_inflation']
+    offsets_applied = model['offsets_applied']
+    stellar_contam = model['stellar_contam']
+    PT_penalty = model['PT_penalty']
+    high_res_method = model['high_res_method']
+    high_res_param_names = model['high_res_param_names']
+
+   # R_p = planet["planet_radius"]
+   # d = planet["system_distance"]
+   # R_s = star["R_s"]
+
+    # Unpack number of free mixing ratio parameters for prior function
+    N_species_params = len(X_params)
+
+    # Assign number of dimensions for nautilus
+    n_dims = N_params
+
+    # Pre-compute normalisation for log-likelihood
+    if (high_res_method is None):   # Not needed for high-res retrievals
+        err_data = data["err_data"]
+        norm_log_default = (-0.5 * np.log(2.0 * np.pi * err_data * err_data)).sum()
+
+    # Create variable governing if a mixing ratio parameter combination lies in
+    # the allowed CLR simplex space (X_i > 10^-12 and sum to 1)
+    global allowed_simplex    # Needs to be global, as prior function has no return
+
+    allowed_simplex = 1    # Only changes to 0 for CLR variables outside prior
+
+    # Define the prior transformation function
+    def Prior(cube, ndim, nparams):
+        '''
+        Transforms the unit cube provided by nautilus into the values of
+        each free parameter used by the forward model.
+
+        '''
+
+        # Assign prior distribution to each free parameter
+        for i, parameter in enumerate(param_names):
+
+            # First deal with all parameters besides mixing ratios
+            if (parameter not in X_params) or (parameter in ['C_to_O', 'log_Met']):
+
+                # Uniform priors
+                if (prior_types[parameter] == 'uniform'):
+
+                    min_value = prior_ranges[parameter][0]
+                    max_value = prior_ranges[parameter][1]
+
+                    cube[i] = ((cube[i] * (max_value - min_value)) + min_value)
+
+                # Gaussian priors
+                elif (prior_types[parameter] == 'gaussian'):
+
+                    mean = prior_ranges[parameter][0]
+                    std = prior_ranges[parameter][1]
+
+                    cube[i] = mean + (std * ndtri(cube[i]))
+
+                # Sine priors
+                elif (prior_types[parameter] == 'sine'):
+
+                    max_value = prior_ranges[parameter][1]
+
+                    if parameter in ['alpha', 'beta']:
+                        cube[i] = (180.0/np.pi)*2.0*np.arcsin(cube[i] * np.sin((np.pi/180.0)*(max_value/2.0)))
+
+                    elif parameter in ['theta_0']:
+                        cube[i] = (180.0/np.pi)*np.arcsin((2.0*cube[i] - 1) * np.sin((np.pi/180.0)*(max_value/2.0)))
+
+            # Draw mixing ratio parameters with uniform priors
+            elif ((parameter in X_params) and (prior_types[parameter] == 'uniform')):
+
+                # Find which chemical species this parameter represents
+                for species_q in param_species:
+                    phrase = '_' + species_q
+                    if ((phrase + '_' in parameter) or (parameter[-len(phrase):] == phrase)):
+                        species = species_q
+
+                # For 1D models, prior just given by mixing ratio prior range
+                if (Atmosphere_dimension == 1):
+
+                    min_value = prior_ranges[parameter][0]
+                    max_value = prior_ranges[parameter][1]
+
+                    cube[i] = ((cube[i] * (max_value - min_value)) + min_value)
+
+                # For 2D models, the prior range for 'Delta' parameters can change to satisfy mixing ratio priors
+                elif (Atmosphere_dimension == 2):
+
+                    # Absolute mixing ratio parameter comes first
+                    if ('Delta' not in parameter):
+
+                        min_value = prior_ranges[parameter][0]
+                        max_value = prior_ranges[parameter][1]
+
+                        last_value = ((cube[i] * (max_value - min_value)) + min_value)
+
+                        cube[i] = last_value
+
+                        # Store name of previous parameter for delta prior
+                        prev_parameter = parameter
+
+                    # Mixing ratio gradient parameter comes second
+                    elif ('Delta' in parameter):
+
+                        # Mixing ratio gradient parameters dynamically update allowed range
+                        min_prior_abs = prior_ranges[prev_parameter][0]
+                        max_prior_abs = prior_ranges[prev_parameter][1]
+
+                        min_prior_delta = prior_ranges[parameter][0]
+                        max_prior_delta = prior_ranges[parameter][1]
+
+                        # Load chosen abundance from previous parameter
+                        sampled_abundance = last_value
+
+                        # Find largest gradient such that the abundances in all
+                        # atmospheric regions satisfy the absolute abundance constraint
+                        largest_delta = 2*min((sampled_abundance - min_prior_abs),
+                                              (max_prior_abs - sampled_abundance))   # This is |Delta|_max
+
+                        # Max / min values governed by the most restrictive of
+                        # delta prior or absolute prior, such that both are satisfied
+                        max_value_delta = min(max_prior_delta, largest_delta)
+                        min_value_delta = max(min_prior_delta, -largest_delta)
+
+                        cube[i] = ((cube[i] * (max_value_delta - min_value_delta)) + min_value_delta)
+
+                # For 3D models, the prior ranges for 'Delta' parameters can change to satisfy mixing ratio priors
+                elif (Atmosphere_dimension == 3):
+
+                    # For species with 3D gradients, sample such that highest and lowest values still satisfy mixing ratio prior
+                    if ((species in species_EM_gradient) and (species in species_DN_gradient)):
+
+                        # Absolute mixing ratio parameter comes first
+                        if ('Delta' not in parameter):
+
+                            min_value = prior_ranges[parameter][0]
+                            max_value = prior_ranges[parameter][1]
+
+                            cube[i] = ((cube[i] * (max_value - min_value)) + min_value)
+
+                            # Store name of previous parameter for next delta prior
+                            prev_parameter = parameter
+
+                        # Terminator mixing ratio gradient parameter comes second
+                        elif (parameter == ('Delta_log_' + species + '_term')):
+
+                            # Mixing ratio gradient parameters dynamically update allowed range
+                            min_prior_abs = prior_ranges[prev_parameter][0]
+                            max_prior_abs = prior_ranges[prev_parameter][1]
+
+                            min_prior_delta = prior_ranges[parameter][0]
+                            max_prior_delta = prior_ranges[parameter][1]
+
+                            # Load chosen abundance from previous parameter
+                            sampled_abundance = cube[i-1]
+
+                            # Find largest gradient such that the abundances in all
+                            # atmospheric regions satisfy the absolute abundance constraint
+                            largest_delta = 2*min((sampled_abundance - min_prior_abs),
+                                                  (max_prior_abs - sampled_abundance))   # This is |Delta|_max
+
+                            # Max / min values governed by the most restrictive of
+                            # delta prior or absolute prior, such that both are satisfied
+                            max_value_delta = min(max_prior_delta, largest_delta)
+                            min_value_delta = max(min_prior_delta, -largest_delta)
+
+                            cube[i] = ((cube[i] * (max_value_delta - min_value_delta)) + min_value_delta)
+
+                            # Store name of previous parameters for next delta prior
+                            prev_prev_parameter = prev_parameter
+                            prev_parameter = parameter
+
+                        # Day-night mixing ratio gradient parameter comes third
+                        elif (parameter == ('Delta_log_' + species + '_DN')):
+
+                            # Mixing ratio gradient parameters dynamically update allowed range
+                            min_prior_abs = prior_ranges[prev_prev_parameter][0]
+                            max_prior_abs = prior_ranges[prev_prev_parameter][1]
+
+                            min_prior_delta_DN = prior_ranges[parameter][0]
+                            max_prior_delta_DN = prior_ranges[parameter][1]
+
+                            # Find minimum and maximum mixing ratio in terminator plane (i.e. evening/morning)
+                            max_term_abundance = cube[i-2] + abs(cube[i-1]/2.0)  # log_X_term_bar + |delta_log_X_term|/2
+                            min_term_abundance = cube[i-2] - abs(cube[i-1]/2.0)  # log_X_term_bar - |delta_log_X_term|/2
+
+                            # Find largest gradient such that the abundances in all
+                            # atmospheric regions satisfy the absolute abundance constraint
+                            largest_delta = 2*min((min_term_abundance - min_prior_abs),
+                                                    (max_prior_abs - max_term_abundance))   # This is |Delta|_max
+
+                            # Max / min values governed by the most restrictive of
+                            # delta priors or absolute prior, such that both are satisfied
+                            max_value_delta_DN = min(max_prior_delta_DN, largest_delta)
+                            min_value_delta_DN = max(min_prior_delta_DN, -largest_delta)
+
+                            cube[i] = ((cube[i] * (max_value_delta_DN - min_value_delta_DN)) + min_value_delta_DN)
+
+                    # Species with a 2D gradient (or no gradient) within a 3D model reduces to the 2D case above
+                    else:
+
+                        # Absolute mixing ratio parameter comes first
+                        if ('Delta' not in parameter):
+
+                            min_value = prior_ranges[parameter][0]
+                            max_value = prior_ranges[parameter][1]
+
+                            last_value = ((cube[i] * (max_value - min_value)) + min_value)
+
+                            cube[i] = last_value
+
+                            # Store name of previous parameter for delta prior
+                            prev_parameter = parameter
+
+                        # Mixing ratio gradient parameter comes second
+                        elif ('Delta' in parameter):
+
+                            # Mixing ratio gradient parameters dynamically update allowed range
+                            min_prior_abs = prior_ranges[prev_parameter][0]
+                            max_prior_abs = prior_ranges[prev_parameter][1]
+
+                            min_prior_delta = prior_ranges[parameter][0]
+                            max_prior_delta = prior_ranges[parameter][1]
+
+                            # Load chosen abundance from previous parameter
+                            sampled_abundance = last_value
+
+                            # Find largest gradient such that the abundances in all
+                            # atmospheric regions satisfy the absolute abundance constraint
+                            largest_delta = 2*min((sampled_abundance - min_prior_abs),
+                                                  (max_prior_abs - sampled_abundance))   # This is |Delta|_max
+
+                            # Max / min values governed by the most restrictive of
+                            # delta prior or absolute prior, such that both are satisfied
+                            max_value_delta = min(max_prior_delta, largest_delta)
+                            min_value_delta = max(min_prior_delta, -largest_delta)
+
+                            cube[i] = ((cube[i] * (max_value_delta - min_value_delta)) + min_value_delta)
+
+        # If mixing ratio parameters have centred-log ratio prior, treat separately
+        if ('CLR' in prior_types.values()):
+
+            # Random numbers from 0 to 1 corresponding to mixing ratio parameters
+            chem_drawn = np.array(cube[N_params_cum[1]:N_params_cum[2]])
+
+            # Load Lower limit on log mixing ratios specified by user
+            limit = prior_ranges[X_params[0]][0]   # Same for all CLR variables, so choose first one
+
+            # Map random numbers to CLR variables, than transform to mixing ratios
+            log_X = CLR_Prior(chem_drawn, limit)
+
+            # Check if this random parameter draw lies in the allowed simplex space (X_i > 10^-12 and sum to 1)
+            global allowed_simplex     # Needs a global, as prior function has no return
+
+            if (log_X[1] == -50.0):
+                allowed_simplex = 0       # Mixing ratios outside allowed simplex space -> model rejected by likelihood
+            elif (log_X[1] != -50.0):
+                allowed_simplex = 1       # Likelihood will be computed for this parameter combination
+
+            # Pass the mixing ratios corresponding to the sampled CLR variables to nautilus
+            for i in range(N_species_params):
+
+                i_prime = N_params_cum[1] + i
+
+                cube[i_prime] = log_X[(1+i)]   # log_X[0] is not a free parameter
+
+
+    # Define the log-likelihood function
+    def LogLikelihood(cube, ndim, nparams):
+        '''
+        Evaluates the log-likelihood for a given point in parameter space.
+
+        Works by generating a PT profile, calculating the opacity in the
+        model atmosphere, computing the resulting spectrum and finally
+        convolving and integrating the spectrum to produce model data
+        points for each instrument.
+
+        The log-likelihood is then evaluated using the difference between
+        the binned spectrum and the actual data points.
+
+        '''
+
+        #***** Check for non-allowed parameter values *****#
+
+        # Immediately reject samples falling outside of mixing ratio simplex (CLR prior only)
+        global allowed_simplex
+        if (allowed_simplex == 0):
+            loglikelihood = -1.0e100
+            return loglikelihood
+
+        # Unpack stellar parameters
+        _, _, _, _, _, \
+        stellar_params, _, _, _, _, _ = split_params(cube, N_params_cum)
+
+        # Reject models with spots hotter than faculae (by definition)
+        if ((stellar_contam != None) and ('two_spots' in stellar_contam)):
+
+            # Unpack stellar contamination parameters
+            _, _, _, _, \
+            T_spot, T_fac, T_phot, \
+            _, _, _, _ = unpack_stellar_params(param_names, star, stellar_params,
+                                               stellar_contam, N_params_cum)
+
+            if ((T_spot > T_phot) or (T_fac < T_phot) or (T_spot > T_fac)):
+                loglikelihood = -1.0e100
+                return loglikelihood
+
+        #***** For valid parameter combinations, run forward model *****#
+
+        ymodel, spectrum, _, ln_prior_TP = forward_model(cube, planet, star, model, opac, data,
+                                                        wl, P, P_ref_set, R_p_ref_set, P_param_set,
+                                                        He_fraction, N_slice_EM, N_slice_DN,
+                                                        spectrum_type, T_phot_grid, T_het_grid,
+                                                        log_g_phot_grid, log_g_het_grid,
+                                                        I_phot_grid, I_het_grid, y_p, F_s_obs,
+                                                        constant_gravity, chemistry_grid)
+
+        # Reject unphysical spectra (forced to be NaN by function above)
+        if (np.any(np.isnan(spectrum))):
+
+            # Assign penalty to likelihood => point ignored in retrieval
+            loglikelihood = -1.0e100
+
+            # Quit if given parameter combination is unphysical
+            return loglikelihood
+
+        if (high_res_method is not None):
+
+            # Unpack high-resolution retrieval parameters
+            _, _, _, _, _, \
+            _, _, _, _, high_res_params, _ = split_params(cube, N_params_cum)
+
+            # Compute the log-likelihood relevant for high-resolution retrievals
+            loglikelihood = loglikelihood_high_res(wl, spectrum, F_s_obs, data,
+                                                   spectrum_type, high_res_method,
+                                                   high_res_params, high_res_param_names)
+
+            return loglikelihood
+
+        #***** Handle error bar inflation and offsets (if optionally enabled) *****#
+
+        # Unpack offset and error inflation parameters
+        _, _, _, _, _, _, \
+        offset_params, _, err_inflation_params, _, _ = split_params(cube, N_params_cum)
+
+        # Load error bars specified in data files
+        err_data = data['err_data']
+
+        # Compute effective error, if unknown systematics included
+        if (error_inflation == None):
+            err_eff_sq = err_data*err_data
+            norm_log = norm_log_default
+        else:
+            if (error_inflation == 'Line15'):
+                err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]))
+                norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+            elif (error_inflation == 'Piette20'):
+                err_eff_sq = (err_data*err_data + (err_inflation_params[0]*ymodel)**2)
+                norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+            elif (('Line15' in error_inflation) and ('Piette20' in error_inflation)):
+                err_eff_sq = (err_data*err_data + np.power(10.0, err_inflation_params[0]) +
+                            ((err_inflation_params[1]*ymodel)**2))
+                norm_log = (-0.5*np.log(2.0*np.pi*err_eff_sq)).sum()
+
+        # Load transit depth data points and indices of any offset ranges
+        ydata = data['ydata']
+        offset_start = data['offset_start']
+        offset_end = data['offset_end']
+
+        offset_1_start = data['offset_1_start']
+        offset_1_end = data['offset_1_end']
+        offset_2_start = data['offset_2_start']
+        offset_2_end = data['offset_2_end']
+        offset_3_start = data['offset_3_start']
+        offset_3_end = data['offset_3_end']
+
+        # Apply relative offset between datasets
+        if (offsets_applied == 'single_dataset'):
+
+            ydata_adjusted = ydata.copy()
+
+            # One offset for one dataset
+            if offset_1_start == 0:
+                ydata_adjusted[offset_start:offset_end] -= offset_params[0]*1e-6  # Convert from ppm to transit depth
+
+            # Else, you have multiple datasets lumped together with a single offset
+            else:
+                for n in range(len(offset_1_start)):
+                    ydata_adjusted[offset_1_start[n]:offset_1_end[n]] -= offset_params[0]*1e-6
+
+        elif (offsets_applied == 'two_datasets'):
+
+            ydata_adjusted = ydata.copy()
+
+            # Two offsets for two datasets
+            if offset_1_start == 0:
+                ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
+                ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
+
+            # Else, you have multiple datasets lumped together in both or either offset
+            else:
+                for n in range(len(offset_1_start)):
+                    ydata_adjusted[offset_1_start[n]:offset_1_end[n]] -= offset_params[0]*1e-6
+                for m in range(len(offset_2_start)):
+                    ydata_adjusted[offset_2_start[m]:offset_2_end[m]] -= offset_params[1]*1e-6
+
+        elif (offsets_applied == 'three_datasets'):
+
+            ydata_adjusted = ydata.copy()
+
+            # Three offsets for three datasets
+            if offset_1_start == 0:
+                ydata_adjusted[offset_start[0]:offset_end[0]] -= offset_params[0]*1e-6
+                ydata_adjusted[offset_start[1]:offset_end[1]] -= offset_params[1]*1e-6
+                ydata_adjusted[offset_start[2]:offset_end[2]] -= offset_params[2]*1e-6
+
+            # Else, you have multiple datasets lumped together in both or either offset
+            else:
+                for n in range(len(offset_1_start)):
+                    ydata_adjusted[offset_1_start[n]:offset_1_end[n]] -= offset_params[0]*1e-6
+                for m in range(len(offset_2_start)):
+                    ydata_adjusted[offset_2_start[m]:offset_2_end[m]] -= offset_params[1]*1e-6
+                for s in range(len(offset_3_start)):
+                    ydata_adjusted[offset_3_start[s]:offset_3_end[s]] -= offset_params[2]*1e-6
+
+        else:
+            ydata_adjusted = ydata
+
+        #***** Calculate ln(likelihood) ****#
+
+        loglikelihood = (-0.5*((ymodel - ydata_adjusted)**2)/err_eff_sq).sum()
+        loglikelihood += norm_log
+
+        # Add the PT penalty
+        loglikelihood += ln_prior_TP
+
+        return loglikelihood
+
+    # Adapt the MultiNest-style cube transform and log-likelihood functions
+    # above (unchanged from PyMultiNest_retrieval) to the array-in / array-out
+    # signature nautilus expects from a prior transform and likelihood
+    def prior_transform(u):
+        cube = np.array(u)
+        Prior(cube, n_dims, n_dims)
+        return cube
+
+    def loglikelihood_nautilus(cube):
+        return LogLikelihood(cube, n_dims, n_dims)
+
+    # Multi-node retrievals: every rank reaches this point and builds the
+    # same Prior / LogLikelihood / loglikelihood_nautilus closures above
+    # (identical on every rank, since every rank calls Nautilus_retrieval
+    # with the same arguments). Worker ranks now peel off into a loop
+    # evaluating likelihoods dispatched by rank 0's nautilus Sampler,
+    # instead of ever constructing a Sampler themselves -- see
+    # _nautilus_mpi_worker_loop and _MPINodePool above. If only one rank is
+    # in use (today's default single-node usage), behaviour is unchanged:
+    # nautilus falls back to its own local multiprocessing.Pool via n_pool.
+    multi_rank = (comm.Get_size() > 1)
+
+    if multi_rank and (rank != 0):
+        _nautilus_mpi_worker_loop(comm, loglikelihood_nautilus)
+        return
+
+    if multi_rank:
+
+        print("Using " + str(comm.Get_size() - 1) + " MPI worker ranks for " +
+              "nautilus likelihood evaluations (N_pool is ignored in this mode).")
+
+        mpi_pool = _MPINodePool(comm)
+        sampler_pool = _MPISamplerPool(comm, train_network)
+        pool = (mpi_pool, sampler_pool)
+        n_batch_use = (comm.Get_size() - 1) * 100
+
+    else:
+        mpi_pool = None
+        pool = n_pool
+        n_batch_use = n_pool * 100
+
+    # Run nautilus
+    sampler = Sampler(prior_transform, loglikelihood_nautilus, n_dim = n_dims,
+                      n_live = n_live_points, pool = pool, n_batch = n_batch_use,
+                      filepath = outputfiles_basename + 'checkpoint.hdf5',
+                      resume = resume)
+
+    try:
+        try:
+            if run_sampler:
+                sampler.run(verbose = verbose, discard_exploration = discard_exploration, n_like_max = n_like_max)
+        finally:
+            if mpi_pool is not None:
+                mpi_pool.shutdown()
+
+        # Discard exploration-phase points from the *output* only. This is a
+        # post-hoc re-slice of samples already on disk (see the discard_exploration
+        # property setter in nautilus' Sampler), not a change to run()'s stopping
+        # criterion, so it costs no extra likelihood evaluations. Without this,
+        # sampler.posterior() below includes every exploration-phase point (used
+        # only to learn the bound, with much noisier importance weights), which
+        # both bloats the written .txt by orders of magnitude and dilutes the
+        # effective sample size of the equal-weighted posterior.
+        # sampler.discard_exploration = True
+
+        # Write the nautilus posterior to disk using the same file formats
+        # PyMultiNest produces, so that pymultinest.Analyzer (and hence
+        # retrieved_samples, write_MultiNest_results, and generate_cornerplot)
+        # can read nautilus results without any changes
+        write_nautilus_files_as_multinest_format(sampler, outputfiles_basename, n_dims)
+
+    except Exception:
+        # In multi-rank mode, every worker rank has already exited (via
+        # mpi_pool.shutdown() in the finally above) and moved on to wait at
+        # run_retrieval's closing comm.Barrier(). If rank 0 dies here with an
+        # unhandled exception (e.g. this block, or discard_exploration /
+        # write_nautilus_files_as_multinest_format above), it would never
+        # reach that barrier, leaving every worker rank permanently blocked
+        # -- silently burning the rest of the job's walltime -- instead of
+        # the whole job failing loudly and immediately. Print the traceback
+        # (Abort can prevent the normal one from ever being flushed) and
+        # abort the whole MPI job rather than leaving stragglers stranded.
+        if multi_rank:
+            import traceback
+            traceback.print_exc()
+            comm.Abort(1)
+        raise
+
+
+def write_nautilus_files_as_multinest_format(sampler, outputfiles_basename, n_params):
+    '''
+    Writes a nautilus posterior to disk using the same file formats
+    produced by PyMultiNest ([prefix].txt, [prefix]post_equal_weights.dat,
+    [prefix]stats.dat). This lets pymultinest.Analyzer read nautilus output
+    directly, so downstream POSEIDON functions that post-process retrieval
+    results stay completely sampler-agnostic.
+
+    '''
+    
+    os.chdir('../MultiNest_raw')
+
+    # Full weighted posterior -> [prefix].txt
+    # Format: sample probability, -2*loglikelihood, then one column per parameter
+    points, log_w, log_l = sampler.posterior()
+
+    weights = np.exp(log_w - log_w.max())
+    weights /= weights.sum()
+
+    full_posterior = np.column_stack([weights, -2.0*log_l, points])
+    np.savetxt(outputfiles_basename + '.txt', full_posterior)
+
+    # Equally-weighted posterior -> [prefix]post_equal_weights.dat
+    # Format: one column per parameter, then loglikelihood
+    points_eq, _, log_l_eq = sampler.posterior(equal_weight = True)
+    equal_weighted_posterior = np.column_stack([points_eq, log_l_eq])
+    np.savetxt(outputfiles_basename + 'post_equal_weights.dat', equal_weighted_posterior)
+
+    # Global evidence and per-parameter mean / best-fit -> [prefix]stats.dat
+    # Written using PyMultiNest's "importance nested sampling" stats.dat
+    # layout, since it requires fewer sections than the standard layout
+    ln_Z = sampler.log_z
+    ln_Z_err = 0.0   # Nautilus does not provide an analogous MC evidence error
+
+    mean = np.average(points, axis = 0, weights = weights)
+    sigma = np.sqrt(np.average((points - mean)**2, axis = 0, weights = weights))
+    best_fit_params = points[np.argmax(log_l)]
+
+    lines = []
+    lines.append('Nested Sampling Global Log-Evidence   :{:20.6f} +/- {:20.6f}'.format(ln_Z, ln_Z_err))
+    lines.append('Nested Importance Sampling Global Log-Evidence   :{:20.6f} +/- {:20.6f}'.format(ln_Z, ln_Z_err))
+    lines.append('')
+    lines.append('Parameters')
+    for i in range(n_params):
+        lines.append(' {}   {:.6f}   {:.6f}'.format(i+1, mean[i], sigma[i]))
+    lines.append('')
+    lines.append('Maximum Likelihood Parameters')
+    lines.append('Dim No.       Parameter')
+    for i in range(n_params):
+        lines.append(' {}   {:.6f}'.format(i+1, best_fit_params[i]))
+    lines.append('')
+    lines.append('MAP Parameters')
+    lines.append('Dim No.       Parameter')
+    for i in range(n_params):
+        lines.append(' {}   {:.6f}'.format(i+1, best_fit_params[i]))
+
+    with open(outputfiles_basename + 'stats.dat', 'w') as f:
+        f.write('\n'.join(lines) + '\n')
+
+
+def retrieved_samples(planet, star, model, opac, data, retrieval_name, wl, P,
                       P_ref_set, R_p_ref_set, P_param_set, He_fraction, 
                       N_slice_EM, N_slice_DN, spectrum_type, T_phot_grid, 
                       T_het_grid, log_g_phot_grid, log_g_het_grid, I_phot_grid, 
@@ -1546,8 +2515,9 @@ def get_retrieved_atmosphere(planet, model, P, P_ref_set = 10, R_p_ref_set = Non
     physical_params, PT_params, \
     log_X_params, cloud_params, \
     geometry_params, stellar_params, \
-    offset_params, err_inflation_params, \
-    highres_params, surface_params = split_params(param_values, N_params_cum)
+    offset_params, _, \
+    err_inflation_params, highres_params, surface_params = split_params(param_values, N_params_cum)
+
     
     # Unpack reference pressure if set as a free parameter
     if ('log_P_ref' in physical_param_names):
