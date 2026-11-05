@@ -87,11 +87,11 @@ Edit the `SIF` and `INPUTS` paths at the top of `poseidon.slurm`. Then, from
 the folder that holds your script, submit:
 
 ```bash
-sbatch poseidon.slurm                   # runs test_container.py
+sbatch poseidon.slurm                   # runs check_container.py
 sbatch poseidon.slurm my_retrieval.py   # runs your retrieval script
 ```
 
-`test_container.py` runs a 2D Gaussian through MultiNest on all MPI ranks and
+`check_container.py` runs a 2D Gaussian through MultiNest on all MPI ranks and
 compares the Bayesian evidence to the analytic value. It then reports which
 input folders and MSG grids the container can see. Copy it next to your job
 script before submitting it.

@@ -5,7 +5,7 @@ Run with several MPI ranks via SLURM (see poseidon.slurm), or as a single
 process via:
 
     apptainer exec --bind /path/to/inputs:/inputs poseidon.sif \
-        python test_container.py
+        python check_container.py
 
 '''
 

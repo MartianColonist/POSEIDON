@@ -12,7 +12,7 @@
 #
 # Usage:
 #
-#   sbatch poseidon.slurm [script.py]     (default: test_container.py)
+#   sbatch poseidon.slurm [script.py]     (default: check_container.py)
 #
 # Edit the paths below before submitting.
 
@@ -30,7 +30,7 @@ INPUTS=/path/to/POSEIDON/inputs
 # stellar_grid = 'phoenix'). Leave empty if not needed.
 MSG_GRIDS=""
 
-SCRIPT=${1:-test_container.py}
+SCRIPT=${1:-check_container.py}
 
 #***** Run *****#
 
