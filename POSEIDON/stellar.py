@@ -197,12 +197,12 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
 
     # Package stellar parameters into PyMSG's expected input dictionary format
     if (stellar_grid.lower() == 'phoenix'):
-        x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met, '[alpha/Fe]': 0.0}
+        x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met}
     elif (stellar_grid.lower() == 'sphinx'):
         x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met, 'C/O': 0.55}   # FIXING stellar C/O to solar (for now)
 
     # Interpolate stellar grid to obtain stellar flux (also handles wl interpolation)
-    F_s = specgrid.flux(x, wl_edges*10000)   # PyMSG expects Angstroms
+    F_s = specgrid.flux(x, 0, wl_edges*10000)   # PyMSG expects Angstroms
     F_s = np.array(F_s) * 1e7   # Convert flux from erg/s/cm^2/A to W/m^2/m
 
     # Calculate average specific intensity
