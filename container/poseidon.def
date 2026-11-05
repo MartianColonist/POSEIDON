@@ -1,0 +1,228 @@
+Bootstrap: docker
+From: rockylinux:9
+
+# Apptainer container for running POSEIDON retrievals on a SLURM cluster.
+#
+# Contents:
+#   - OpenMPI (built from source to match the cluster's OpenMPI version)
+#   - MultiNest 3.12 (https://github.com/farhanferoz/MultiNest), MPI-enabled
+#   - Miniforge conda environment ('poseidon') with Python, mpi4py (built
+#     against the container's OpenMPI), PyMultiNest, POSEIDON, and PyMSG
+#
+# Build (Apptainer >= 1.2, from this folder, ideally on a compute node):
+#
+#   apptainer build poseidon.sif poseidon.def
+#
+# Build arguments can be changed with --build-arg, e.g.
+#
+#   apptainer build --build-arg POSEIDON_BRANCH=main poseidon.sif poseidon.def
+#
+# The POSEIDON input files (~72 GB) are NOT included in the container. Bind
+# them to /inputs at runtime (see README.md).
+
+%arguments
+    OPENMPI_VERSION=5.0.7
+    MULTINEST_COMMIT=cc616c17ed440fbff8d35937997c86256ed4d744
+    PYTHON_VERSION=3.12
+    POSEIDON_REPO=https://github.com/MartianColonist/POSEIDON.git
+    POSEIDON_BRANCH=dev
+    MSG_GRIDS=sphinx
+
+%environment
+    export OMPI_ALLOW_RUN_AS_ROOT=1
+    export OMPI_ALLOW_RUN_AS_ROOT_CONFIRM=1
+    export PATH=/opt/conda/envs/poseidon/bin:/opt/multinest/bin:/opt/openmpi/bin:$PATH
+    export LD_LIBRARY_PATH=/opt/multinest/lib:/opt/openmpi/lib:$LD_LIBRARY_PATH
+
+    # Stop Python packages in the host's ~/.local from shadowing the container's
+    export PYTHONNOUSERSITE=1
+
+    # POSEIDON input files are bind mounted at /inputs at runtime
+    export POSEIDON_input_data=/inputs/
+    export PYSYN_CDBS=/inputs/stellar_grids/
+
+    # MSG installation (grids live in $MSG_DIR/data/grids)
+    export MSG_DIR=/opt/msg
+
+%post
+    set -eo pipefail
+
+    N_JOBS=$(nproc)
+
+    #***** System packages *****#
+
+    # Excluded because updating it conflicts with the base image's file layout
+    # and aborts the whole transaction (a known issue with rockylinux images).
+    dnf -y update --exclude=filesystem
+
+    # lapack-devel/blas-devel/ucx live in EPEL and the CRB repo, neither of
+    # which is enabled by default on a minimal Rocky Linux base image.
+    dnf -y install epel-release
+    dnf config-manager --set-enabled crb
+
+    dnf -y install \
+        gcc \
+        gcc-c++ \
+        gcc-gfortran \
+        cmake \
+        make \
+        git \
+        wget \
+        bzip2 \
+        which \
+        ucx \
+        ucx-devel \
+        lapack-devel \
+        blas-devel \
+        munge \
+        munge-libs \
+        munge-devel
+
+    dnf clean all
+
+    #***** OpenMPI *****#
+
+    # The HPC cluster runs OpenMPI 5.0.7, so build that exact version from
+    # source rather than using the older 4.x release in the Rocky repos.
+    OPENMPI_VERSION={{ OPENMPI_VERSION }}
+    OPENMPI_SERIES=${OPENMPI_VERSION%.*}
+
+    cd /tmp
+    wget -q -O openmpi.tar.gz \
+        https://download.open-mpi.org/release/open-mpi/v${OPENMPI_SERIES}/openmpi-${OPENMPI_VERSION}.tar.gz
+    tar -xf openmpi.tar.gz
+    cd openmpi-${OPENMPI_VERSION}
+
+    ./configure --prefix=/opt/openmpi --with-ucx
+    make -j ${N_JOBS}
+    make install
+
+    cd /tmp
+    rm -rf openmpi.tar.gz openmpi-${OPENMPI_VERSION}
+
+    export PATH=/opt/openmpi/bin:$PATH
+    export LD_LIBRARY_PATH=/opt/openmpi/lib:${LD_LIBRARY_PATH:-}
+
+    #***** MultiNest 3.12 *****#
+
+    # The CMake build of MultiNest 3.12 lives in MultiNest_v3.12_CMake/multinest
+    # (its CMakeLists.txt still labels the library version as 3.11, but the
+    # Fortran sources are those of v3.12).
+    cd /tmp
+    git clone https://github.com/farhanferoz/MultiNest.git
+    cd MultiNest
+    git checkout {{ MULTINEST_COMMIT }}
+    cd MultiNest_v3.12_CMake/multinest
+    mkdir -p build
+    cd build
+
+    # CMAKE_POLICY_VERSION_MINIMUM lets newer CMake versions accept MultiNest's
+    # old cmake_minimum_required(VERSION 2.8)
+    FC=mpifort CC=mpicc CXX=mpicxx \
+    cmake -DCMAKE_INSTALL_PREFIX=/opt/multinest \
+          -DCMAKE_BUILD_TYPE=Release \
+          -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+          ..
+
+    # MultiNest's static/shared/MPI library variants all write Fortran .mod
+    # files into the same src/ directory, so parallel make corrupts them via
+    # a race condition - this must be built single-threaded.
+    make -j1
+    make install
+
+    cd /tmp
+    rm -rf MultiNest
+
+    # Check both the serial and MPI shared libraries were built
+    test -f /opt/multinest/lib/libmultinest.so
+    test -f /opt/multinest/lib/libmultinest_mpi.so
+
+    export LD_LIBRARY_PATH=/opt/multinest/lib:$LD_LIBRARY_PATH
+
+    #***** Conda (Miniforge) environment *****#
+
+    cd /tmp
+    wget -q -O miniforge.sh \
+        https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-$(uname -m).sh
+    bash miniforge.sh -b -p /opt/conda
+    rm -f miniforge.sh
+
+    . /opt/conda/etc/profile.d/conda.sh
+
+    conda create -y -n poseidon -c conda-forge python={{ PYTHON_VERSION }} pip
+    conda activate poseidon
+
+    #***** mpi4py *****#
+
+    # Build mpi4py from source against the container's OpenMPI. A binary wheel
+    # (or conda's mpi4py) would bring its own MPI, which cannot talk to the
+    # cluster's PMIx / SLURM.
+    MPICC=/opt/openmpi/bin/mpicc \
+    python -m pip install --no-cache-dir --no-binary=mpi4py mpi4py
+
+    python -c "import mpi4py; mpi4py.rc.initialize = False; from mpi4py import MPI; print(MPI.Get_library_version())" \
+        | grep -q "Open MPI v${OPENMPI_VERSION}"
+
+    #***** POSEIDON *****#
+
+    # PyMultiNest is pure Python, so the pip version is installed here (the
+    # conda-forge package would pull in conda's own MultiNest and MPI).
+    git clone --branch {{ POSEIDON_BRANCH }} {{ POSEIDON_REPO }} /opt/POSEIDON
+    cd /opt/POSEIDON
+    python -m pip install --no-cache-dir -e .
+
+    #***** PyMSG *****#
+
+    MSG_GRID_ARGS=""
+    for grid in {{ MSG_GRIDS }}; do
+        MSG_GRID_ARGS="$MSG_GRID_ARGS --download-grid $grid"
+    done
+
+    bash /opt/POSEIDON/install_pymsg.sh --msg-dir /opt/msg --jobs ${N_JOBS} \
+                                        ${MSG_GRID_ARGS}
+
+    # Grids not baked into the image (e.g. the 34 GB PHOENIX grid) can be bind
+    # mounted at /msg_grids at runtime. Link them into MSG's grid folder now,
+    # since the container is read-only at runtime.
+    mkdir -p /msg_grids
+    for grid_file in sg-Goettingen-HiRes.h5 sg-SPHINX.h5; do
+        if [ ! -e /opt/msg/data/grids/$grid_file ] && \
+           [ ! -L /opt/msg/data/grids/$grid_file ]; then
+            ln -s /msg_grids/$grid_file /opt/msg/data/grids/$grid_file
+        fi
+    done
+
+    # Mount point for the POSEIDON input files
+    mkdir -p /inputs
+
+    #***** Clean up *****#
+
+    rm -rf /opt/msg/deps/src
+    conda clean -afy
+    rm -rf /tmp/*
+
+%test
+    # Run automatically at the end of 'apptainer build' (skip with --notest)
+    python - << 'EOF'
+import ctypes
+import mpi4py
+mpi4py.rc.initialize = False
+from mpi4py import MPI
+
+print('MPI library: ' + MPI.Get_library_version().splitlines()[0])
+
+# Both MultiNest libraries must be loadable (PyMultiNest picks the MPI one
+# when running on more than one MPI rank)
+ctypes.CDLL('libmultinest.so')
+ctypes.CDLL('libmultinest_mpi.so')
+print('MultiNest libraries: OK')
+EOF
+
+    # POSEIDON calls MPI at import, so this runs as a single (singleton) rank
+    python -c "import pymsg, pymultinest, POSEIDON.core; print('POSEIDON, PyMultiNest, and PyMSG imports: OK')"
+
+%runscript
+    exec "$@"
+
+%labels
+    Description POSEIDON with MultiNest 3.12, OpenMPI, and PyMSG

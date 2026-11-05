@@ -174,6 +174,42 @@ Alternatively, for earlier macOS versions, the default terminal is bash:
 
 Now POSEIDON will know where to find the input files.
 
+Optional: Install PyMSG
+_______________________
+
+`PyMSG <https://msg.readthedocs.io/en/stable/>`_ is an optional stellar grid
+interpolation package, which is *strongly* recommended for models and
+retrievals including unocculted stellar contamination (spots / faculae).
+
+MSG normally requires the MESA SDK. POSEIDON instead provides a script that
+builds MSG using only conda-forge packages, then installs PyMSG into your
+POSEIDON environment. With your POSEIDON conda environment activated, run
+the following from the top-level :code:`POSEIDON` folder:
+
+.. code-block:: bash
+
+   bash install_pymsg.sh --download-grid sphinx
+
+This installs MSG inside your conda environment, sets the :code:`MSG_DIR`
+environment variable, and downloads the SPHINX M dwarf stellar grid (0.1 GB).
+The PHOENIX grid (Goettingen-HiRes, 34 GB) can be downloaded via
+:code:`--download-grid phoenix`. If you have already downloaded MSG grid files
+(:code:`sg-*.h5`), you can reuse them via :code:`--grid-dir /𝗣𝗔𝗧𝗛/𝗧𝗢/𝗚𝗥𝗜𝗗𝗦`.
+
+Once the script finishes, re-activate your environment:
+
+.. code-block:: bash
+
+   conda deactivate
+   conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
+
+You can then use PyMSG by setting :code:`interp_backend = 'pymsg'` when calling
+:code:`create_star()`.
+
+.. note::
+   Please do not run :code:`pip install pymsg`. The PyPI package with that
+   name is unrelated to MSG.
+
 And that, splendidly, is all there is to it. Onwards to the tutorials!
 
 The best place to begin is the quick start guide 
