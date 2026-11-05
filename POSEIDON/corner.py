@@ -188,6 +188,7 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
             ax=None, colour='gray', plot_datapoints=False, plot_density=True,
             plot_contours=True, no_fill_contours=False, fill_contours=True,
             contour_kwargs=None, contourf_kwargs=None, data_kwargs=None,
+            alpha=1.0,
             **kwargs):
     '''
     Internal function called by the 'cornerplot' function to generate a 2D 
@@ -235,6 +236,8 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
         data_kwargs (dict):
             Any additional keyword arguments to pass to the 'plot' method when
             adding the individual data points.
+        alpha (float):
+            Transparency for the 2D density and contours.
     
     Returns:
         None.
@@ -264,8 +267,10 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
 
     # Color map for the density plot, over-plotted to indicate the
     # density of the points near the centre
+    rgba_colour = colorConverter.to_rgba(colour)
+    density_colour = (*rgba_colour[:3], alpha)
     density_cmap = LinearSegmentedColormap.from_list(
-        "density_cmap", [colour, (1, 1, 1, 0)])
+        "density_cmap", [density_colour, (1, 1, 1, 0)])
 
     # Color map used to hide the points at the high density areas
     white_cmap = LinearSegmentedColormap.from_list(
@@ -273,10 +278,10 @@ def _hist2d(x, y, smooth=0.02, span=None, weights=None, levels=None,
 
     # This 'colour map' is the list of colours for the contour levels if the
     # contours are filled
-    rgba_colour = colorConverter.to_rgba(colour)
-    contour_cmap = [list(rgba_colour) for l in levels] + [rgba_colour]
+    contour_cmap = [list(rgba_colour) for l in levels] + [list(rgba_colour)]
+    contour_cmap[-1][-1] *= alpha
     for i, l in enumerate(levels):
-        contour_cmap[i][-1] *= float(i) / (len(levels)+1)
+        contour_cmap[i][-1] *= alpha * float(i) / (len(levels)+1)
 
     # Initialize smoothing
     if (isinstance(smooth, int_type) or isinstance(smooth, float_type)):
@@ -398,7 +403,8 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                max_n_ticks=5, top_ticks=False, use_math_text=False, 
                verbose=False, fig=None, model_idx = None, 
                two_sigma_upper_limits = [], two_sigma_lower_limits = [],
-               title_vertical_padding = 0.1, dark_mode = False):
+               title_vertical_padding = 0.1, dark_mode = False,
+               alpha_hist = 0.4, alpha_hist_edge = 0.7):
     '''
     Generate a corner plot of the 1D and 2D marginalised posteriors.
 
@@ -481,6 +487,11 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         dark_mode (bool):
             If True, uses a dark background with white text and axes.
             Defaults to False (light mode).
+        alpha_hist (float):
+            Transparency for the 1D histograms and 2D correlations. Defaults
+            to 0.4.
+        alpha_hist_edge (float):
+            Transparency for the 1D histogram borders. Defaults to 0.7.
     
     Returns:
         cornerplot (matplotlib figure, matplotlib axes objects):
@@ -506,8 +517,8 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         hist2d_kwargs = dict()
 
     # Set defaults
-  #  hist_kwargs['alpha'] = hist_kwargs.get('alpha', 0.6)
-    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.6)
+    hist_kwargs['alpha'] = hist_kwargs.get('alpha', alpha_hist)
+    hist2d_kwargs['alpha'] = hist2d_kwargs.get('alpha', 0.8)
     truth_kwargs['linestyle'] = truth_kwargs.get('linestyle', 'solid')
     truth_kwargs['linewidth'] = truth_kwargs.get('linewidth', 2)
     truth_kwargs['alpha'] = truth_kwargs.get('alpha', 0.7)
@@ -667,9 +678,9 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
         if isinstance(sx_hist, int_type):
             # If `sx` is an integer, plot a weighted histogram with
             # `sx` bins within the provided bounds.
-            n, b, _ = ax.hist(x, bins=sx_hist, weights=weights, color=colour_plt,
+            n, b, patches = ax.hist(x, bins=sx_hist, weights=weights, color=colour_plt,
                               edgecolor=theme['ax_edge_colour'], lw = 0.8,
-                              range=np.sort(span[i]), alpha = 0.6,
+                              range=np.sort(span[i]),
                               **hist_kwargs)
             # Add border
          #   n, b, _ = ax.hist(x, bins=sx_hist, weights=weights, edgecolor='black',
@@ -685,15 +696,24 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
                                 range=np.sort(span[i]))
             n = norm_kde(n, 10.)
             b0 = 0.5 * (b[1:] + b[:-1])
-            n, b, _ = ax.hist(b0, bins=b, weights=n,
+            n, b, patches = ax.hist(b0, bins=b, weights=n,
                               range=np.sort(span[i]), color=colour_plt,
-                              edgecolor='None', alpha = 0.6,
+                              edgecolor=theme['ax_edge_colour'],
                               **hist_kwargs)
             # Add border
           #  n, b, _ = ax.hist(b0, bins=b, weights=n,
           #                    range=np.sort(span[i]), color='black',
           #                    facecolor='None', lw = 0.8,
           #                    **hist_kwargs)
+
+        for patch in patches:
+            face_colour = patch.get_facecolor()
+            edge_colour = patch.get_edgecolor()
+            if edge_colour[3] == 0.0:
+                edge_colour = matplotlib.colors.to_rgba(theme['ax_edge_colour'])
+            patch.set_alpha(None)
+            patch.set_facecolor((*face_colour[:3], hist_kwargs['alpha']))
+            patch.set_edgecolor((*edge_colour[:3], alpha_hist_edge))
             
         # Set the y-axis limit based on the global maximum value
         if model_idx is not None:
@@ -941,7 +961,8 @@ def generate_cornerplot(planet, model, params_to_plot = None,
                         colour_scheme = '#984ea3', span = None, corner_name = None,
                         two_sigma_upper_limits = [], two_sigma_lower_limits = [],
                         N_bins = 30, dark_mode = False, labels = None, colour_quantile = 'royalblue',
-                        label_kwargs = {'fontsize':18}
+                        label_kwargs = {'fontsize':18},
+                        alpha_hist = 0.5, alpha_hist_edge = 0.7,
                         ):
     '''
     Generate giant triangle plot of doom to visualise the results of a 
@@ -979,6 +1000,11 @@ def generate_cornerplot(planet, model, params_to_plot = None,
         label_kwargs (dict, optional):
             Extra keyword arguments that will be sent to the matplotlib axes
             'set_xlabel' and 'set_ylabel' methods.
+        alpha_hist (float or list of floats, optional):
+            Transparency for the 1D histograms and 2D correlations. A list may contain the
+            transparency for this model as its only element. Defaults to 0.5.
+        alpha_hist_edge (float, optional):
+            Transparency for the 1D histogram borders. Defaults to 0.7.
     
     Returns:
         fig (matplotlib figure object):
@@ -1051,6 +1077,13 @@ def generate_cornerplot(planet, model, params_to_plot = None,
             # Generate LaTeX names for each parameter for plot axes
             labels = generate_latex_param_names(params_to_plot)
         
+        if isinstance(alpha_hist, list):
+            if len(alpha_hist) != 1:
+                raise Exception("For a single model, alpha_hist must be a scalar or a list with one value.")
+            alpha_hist_model = alpha_hist[0]
+        else:
+            alpha_hist_model = alpha_hist
+
         # Generate corner plot
         fig, axes = cornerplot(results, 
                                quantiles=[0.1587, 0.5, 0.8413],  
@@ -1073,6 +1106,8 @@ def generate_cornerplot(planet, model, params_to_plot = None,
                                two_sigma_upper_limits=two_sigma_upper_limits,
                                two_sigma_lower_limits=two_sigma_lower_limits,
                                dark_mode=dark_mode,
+                               alpha_hist=alpha_hist_model,
+                               alpha_hist_edge=alpha_hist_edge,
                               )
 
         # Set plot file name
@@ -1096,6 +1131,8 @@ def generate_overplot(planet, models, params_to_plot = None,
                       external_samples = [], external_param_names = [],
                       title_vertical_padding = 0.1, N_bins = 30,
                       dark_mode = False,
+                      alpha_hist = 0.4,
+                      alpha_hist_edge = 0.7,
                       ):
     '''
     Generate overplotted giant triangle plot of doom to visualise the results 
@@ -1133,6 +1170,11 @@ def generate_overplot(planet, models, params_to_plot = None,
         dark_mode (bool, optional):
             If True, uses a dark background with white text and axes.
             Defaults to False (light mode).
+        alpha_hist (float or list of floats, optional):
+            Transparency for the 1D histograms and 2D correlations. A list sets a separate value
+            for each retrieval model. Defaults to 0.4.
+        alpha_hist_edge (float, optional):
+            Transparency for the 1D histogram borders. Defaults to 0.7.
 
     Returns:
         fig (matplotlib figure object):
@@ -1177,6 +1219,27 @@ def generate_overplot(planet, models, params_to_plot = None,
         for m in range(N_models):
 
             model = models[m]
+
+            if isinstance(alpha_hist, list):
+                if len(alpha_hist) != N_models:
+                    raise Exception("Number of alpha_hist values does not match number of models.")
+                alpha_hist_model = alpha_hist[m]
+            else:
+                alpha_hist_model = alpha_hist
+
+            # Determine if each model has its own separate upper or lower limits
+            is_list_of_lists_upper = all(isinstance(item, list) for item in two_sigma_upper_limits)
+            is_list_of_lists_lower = all(isinstance(item, list) for item in two_sigma_lower_limits)
+
+            if (is_list_of_lists_upper == True) and (len(two_sigma_upper_limits) != 0):
+                two_sigma_upper_limits_m = two_sigma_upper_limits[m]
+            else:
+                two_sigma_upper_limits_m = two_sigma_upper_limits
+
+            if (is_list_of_lists_lower == True) and (len(two_sigma_lower_limits) != 0):
+                two_sigma_lower_limits_m = two_sigma_lower_limits[m]
+            else:
+                two_sigma_lower_limits_m = two_sigma_lower_limits
 
             # For POSEIDON retrieval samples
             if (len(external_samples) == 0):
@@ -1258,9 +1321,11 @@ def generate_overplot(planet, models, params_to_plot = None,
                                                     },
                                       fig=existing_fig,
                                       model_idx=m,
-                                      two_sigma_upper_limits=two_sigma_upper_limits,
-                                      two_sigma_lower_limits=two_sigma_lower_limits,
+                                      two_sigma_upper_limits=two_sigma_upper_limits_m,
+                                      two_sigma_lower_limits=two_sigma_lower_limits_m,
                                       title_vertical_padding=title_vertical_padding,
+                                      alpha_hist=alpha_hist_model,
+                                      alpha_hist_edge=alpha_hist_edge,
                                       dark_mode=dark_mode,
                                      )
 
