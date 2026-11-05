@@ -2339,6 +2339,12 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         # Gaussian smooth P-T profile
         T = T_rough   # No need to Gaussian smooth a user profile
 
+     # Check if any of the values in T are negative
+    if (np.any(T < 0.0)): 
+        
+        # Quit computations if model rejected
+        return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False
+
     # Load number of distinct chemical species in model atmosphere
     N_species = len(bulk_species) + len(param_species)
 
