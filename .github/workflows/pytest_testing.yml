@@ -12,7 +12,7 @@ on:
 
 jobs:
   test:
-    name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }} and NumPy ${{ matrix.numpy-version }}
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -21,6 +21,7 @@ jobs:
       matrix:
         os: [ubuntu-latest]
         python-version: ['3.10', '3.11', '3.12'] 
+        numpy-version: ['<2', '>=2']
     steps:
     - uses: actions/checkout@v4
 
@@ -70,7 +71,8 @@ jobs:
     - name: Install POSEIDON
       run: |
         conda activate test_install || true
-        pip install -e .
+        pip install -e . "numpy${{ matrix.numpy-version }}"
+        python -c "import numpy; print('NumPy version: ' + numpy.__version__)"
 
     - name: Download input files (only CIA opacity for CI tests)
       if: steps.restore_cache.outputs.cache-hit != 'true'

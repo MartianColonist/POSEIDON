@@ -181,7 +181,6 @@ dependencies:
   - pyerfa==2.0.1.4
   - pygments==2.18.0
   - pymsg==1.3
-  - pysynphot==2.0.0
   - pytest==8.3.3
   - python-json-logger==2.0.7
   - pytz==2024.2

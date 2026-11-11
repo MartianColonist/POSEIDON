@@ -16,7 +16,7 @@ import multiprocessing as mp
 from .supported_chemicals import aerosol_supported_species, aerosol_directional_supported_species, \
                                  diamond_supported_species, aerosols_lognormal_logwidth_free
 
-from .utility import shared_memory_array
+from .utility import shared_memory_array, trapezoid
 from .supported_chemicals import aerosol_supported_species
 
 ############################################################################################
@@ -496,10 +496,10 @@ def compute_and_plot_effective_cross_section_constant(wl, r_m, r_i_real, r_i_com
     g_intpl = np.reshape(g_intpl, (len(wl_Mie), len(radii)))
 
     # Effective Cross section is a trapezoidal integral
-    eff_ext_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+    eff_ext_cross_section = trapezoid(probs*geometric_cross_sections*Qext_intpl, z)
 
     # Scattering Cross section 
-    eff_scat_cross_section = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+    eff_scat_cross_section = trapezoid(probs*geometric_cross_sections*Qscat_intpl, z)
 
     # Interpolate the eff_cross_section from wl_Mie back to native wl
     # This can probably be made faster 
@@ -2808,20 +2808,20 @@ def Mie_cloud_free(P, wl, wl_Mie_in, r, H, n, r_m, r_i_real, r_i_complex, cloud_
 
 
     # Effective Cross section is a trapezoidal integral
-    eff_ext_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+    eff_ext_cross_section = trapezoid(probs*geometric_cross_sections*Qext_intpl, z)
 
     # Scattering Cross section 
-    eff_scat_cross_section = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+    eff_scat_cross_section = trapezoid(probs*geometric_cross_sections*Qscat_intpl, z)
 
     # Absorption Cross section
     eff_abs_cross_section = eff_ext_cross_section - eff_scat_cross_section
 
     # BackScatter Cross section 
-    eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+    eff_back_cross_section = trapezoid(probs*geometric_cross_sections*Qback_intpl, z)
 
     # Effective w and g 
     # Fixed thanks to Thomas Kennedy! 
-    eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+    eff_g_cross_section_weighted = trapezoid(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
 
     eff_g = eff_g_cross_section_weighted / eff_scat_cross_section
 
@@ -3123,20 +3123,20 @@ def precompute_cross_sections_one_aerosol_LXMIE(file_name, aerosol_name, saveall
         eff_g = np.full(5011, 1e-250)
 
         # Effective Cross section is a trapezoidal integral
-        eff_ext_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+        eff_ext_cross_section[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qext_intpl, z)
 
         # Scattering Cross section 
-        eff_scat_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+        eff_scat_cross_section[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qscat_intpl, z)
 
         # Absorption Cross section
         eff_abs_cross_section[idx_start:idx_end] = eff_ext_cross_section[idx_start:idx_end] - eff_scat_cross_section[idx_start:idx_end]
 
         # BackScatter Cross section 
-        eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+        eff_back_cross_section[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qback_intpl, z)
 
         # Effective w and g
         # Fixed via Thomas Kennedy 
-        eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+        eff_g_cross_section_weighted = trapezoid(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
 
         eff_g[idx_start:idx_end] = eff_g_cross_section_weighted / eff_scat_cross_section
 
@@ -3454,19 +3454,19 @@ def precompute_cross_sections_one_aerosol_custom_LXMIE(file_name, aerosol_name,
         eff_g = np.full(5011, 1e-250)
 
         # Effective Cross section is a trapezoidal integral
-        eff_ext_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+        eff_ext_cross_section[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qext_intpl, z)
 
         # Scattering Cross section 
-        eff_scat_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+        eff_scat_cross_section[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qscat_intpl, z)
 
         # Absorption Cross section
         eff_abs_cross_section[idx_start:idx_end] = eff_ext_cross_section[idx_start:idx_end] - eff_scat_cross_section[idx_start:idx_end]
 
         # BackScatter Cross section 
-        eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+        eff_back_cross_section[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qback_intpl, z)
 
         # Effective w and g
-        eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+        eff_g_cross_section_weighted = trapezoid(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
 
         eff_g[idx_start:idx_end] = eff_g_cross_section_weighted / eff_scat_cross_section
 
@@ -3645,20 +3645,20 @@ def precompute_cross_sections_from_indices_LXMIE(wl,real_indices_array,imaginary
     g_intpl = np.reshape(g_intpl_array, (len(wavelengths), len(radii)))
 
     # Effective Cross section is a trapezoidal integral
-    eff_ext_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+    eff_ext_cross_section = trapezoid(probs*geometric_cross_sections*Qext_intpl, z)
 
     # Scattering Cross section 
-    eff_scat_cross_section = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+    eff_scat_cross_section = trapezoid(probs*geometric_cross_sections*Qscat_intpl, z)
 
     # Absorption Cross section
     eff_abs_cross_section = eff_ext_cross_section - eff_scat_cross_section
 
     # BackScatter Cross section 
-    eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+    eff_back_cross_section = trapezoid(probs*geometric_cross_sections*Qback_intpl, z)
 
     # Effective w and g
     # Fixed thanks to Thomas Kennedy 
-    eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+    eff_g_cross_section_weighted = trapezoid(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
 
     eff_g = eff_g_cross_section_weighted / eff_scat_cross_section
 
@@ -3760,19 +3760,19 @@ def compute_mie_properties(r_m, wl_Mie, eta_array, r_m_array,
     eff_g_cross_section_weighted = np.full(5011, 1e-250)
 
     # Effective Cross section is a trapezoidal integral
-    eff_ext_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+    eff_ext_cross_section[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qext_intpl, z)
 
     # Scattering Cross section 
-    eff_scat_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+    eff_scat_cross_section[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qscat_intpl, z)
 
     # Absorption Cross section
     eff_abs_cross_section[idx_start:idx_end] = eff_ext_cross_section[idx_start:idx_end] - eff_scat_cross_section[idx_start:idx_end]
 
     # BackScatter Cross section 
-    eff_back_cross_section[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+    eff_back_cross_section[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qback_intpl, z)
 
 
-    eff_g_cross_section_weighted[idx_start:idx_end] = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+    eff_g_cross_section_weighted[idx_start:idx_end] = trapezoid(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
 
     eff_g[idx_start:idx_end] = eff_g_cross_section_weighted[idx_start:idx_end] / eff_scat_cross_section[idx_start:idx_end]
 
@@ -4138,20 +4138,20 @@ def precompute_cross_sections_from_indices_miepython(wl,real_indices_array,imagi
     g_intpl = np.reshape(g_intpl_array, (len(wavelengths), len(radii)))
 
     # Effective Cross section is a trapezoidal integral
-    eff_ext_cross_section = np.trapz(probs*geometric_cross_sections*Qext_intpl, z)
+    eff_ext_cross_section = trapezoid(probs*geometric_cross_sections*Qext_intpl, z)
 
     # Scattering Cross section 
-    eff_scat_cross_section = np.trapz(probs*geometric_cross_sections*Qscat_intpl, z)
+    eff_scat_cross_section = trapezoid(probs*geometric_cross_sections*Qscat_intpl, z)
 
     # Absorption Cross section
     eff_abs_cross_section = eff_ext_cross_section - eff_scat_cross_section
 
     # BackScatter Cross section 
-    eff_back_cross_section = np.trapz(probs*geometric_cross_sections*Qback_intpl, z)
+    eff_back_cross_section = trapezoid(probs*geometric_cross_sections*Qback_intpl, z)
 
     # Effective w and g
     # Fixed thanks to Thomas Kennedy 
-    eff_g_cross_section_weighted = np.trapz(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
+    eff_g_cross_section_weighted = trapezoid(probs*geometric_cross_sections*Qscat_intpl*g_intpl, z)
 
     eff_g = eff_g_cross_section_weighted / eff_scat_cross_section
 

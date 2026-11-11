@@ -25,7 +25,7 @@ plt.rc('font', family = 'serif')
 matplotlib.rcParams['svg.fonttype'] = 'none'
 matplotlib.rcParams['figure.facecolor'] = 'white'
 
-from .utility import closest_index, mock_missing, bin_spectrum
+from .utility import closest_index, mock_missing, bin_spectrum, trapezoid
 from .absorption import extinction, extinction_LBL
 from .transmission import TRIDENT
 from .emission import emission_single_stream, determine_photosphere_radii, \
@@ -585,7 +585,7 @@ def spectral_contribution(planet, star, model, atmosphere, opac, wl,
     # Check if the atmosphere is unphysical (e.g. temperature out of bounds)
     if (check_atmosphere_physical(atmosphere, opac) == False):
         spectrum = np.empty(len(wl))
-        spectrum[:] = np.NaN
+        spectrum[:] = np.nan
         return spectrum   # Unphysical => reject model
 
     # Unpack model properties
@@ -1642,7 +1642,7 @@ def pressure_contribution_compute_spectrum(planet, star, model, atmosphere, opac
     #Check if the atmosphere is unphysical (e.g. temperature out of bounds)
     if (check_atmosphere_physical(atmosphere, opac) == False):
         spectrum = np.empty(len(wl))
-        spectrum[:] = np.NaN
+        spectrum[:] = np.nan
         return spectrum   # Unphysical => reject model
 
     # Unpack model properties
@@ -2434,7 +2434,7 @@ def photometric_contribution_function(wl, P, Contribution,
             temp_row += photometric_contribution[i][j]
             
         # Now to normalize the area to 1 
-        temp_row = temp_row / np.trapz(temp_row)
+        temp_row = temp_row / trapezoid(temp_row)
         photometric_all_wavelengths.append(temp_row)
 
     return photometric_contribution, photometric_all_wavelengths, bins

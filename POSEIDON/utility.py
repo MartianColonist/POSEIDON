@@ -16,6 +16,13 @@ from scipy.interpolate import interp1d as Interp
 
 from .parameters import split_params
 
+# NumPy 2.0 renamed np.trapz to np.trapezoid, so pick the user's version
+if (int(np.__version__.split('.')[0]) >= 2):
+    trapezoid = np.trapezoid
+else:
+    trapezoid = np.trapz
+
+
 def create_directories(base_dir, planet_name):
     ''' 
     Create various directories used by POSEIDON, such as output folders

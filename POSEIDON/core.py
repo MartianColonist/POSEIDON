@@ -27,7 +27,7 @@ from scipy.constants import parsec
 
 from .constants import R_J, R_E, M_J, M_E
 from .utility import create_directories, write_spectrum, read_data
-from .stellar import planck_lambda, load_stellar_pysynphot, load_stellar_pymsg, \
+from .stellar import planck_lambda, load_stellar_stsynphot, load_stellar_pymsg, \
                      open_pymsg_grid
 from .supported_chemicals import supported_species, supported_cia, inactive_species, \
                                  fastchem_supported_species, aerosol_supported_species, \
@@ -82,7 +82,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
                 f_het = None, T_het = None, log_g_het = None, 
                 f_spot = None, f_fac = None, T_spot = None,
                 T_fac = None, log_g_spot = None, log_g_fac = None,
-                wl = [], interp_backend = 'pysynphot', 
+                wl = [], interp_backend = 'stsynphot',
                 user_spectrum = [], user_wl = []):
     '''
     Initialise the stellar dictionary object used by POSEIDON.
@@ -107,8 +107,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             A priori 1-sigma error on stellar log g (log10(cm/s^2)).
         stellar_grid (string):
             Chosen stellar model grid
-            (Options: blackbody / cbk04 [for pysynphot] /
-                      phoenix [for pysynphot or pymsg] / sphinx [for pymsg] /
+            (Options: blackbody / cbk04 [for stsynphot] /
+                      phoenix [for stsynphot or pymsg] / sphinx [for pymsg] /
                       newera [for pymsg] / custom).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
@@ -139,7 +139,7 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             0.2 to 5.4 μm will be used.
         interp_backend (str):
             Stellar grid interpolation package for POSEIDON to use.
-            (Options: pysynphot / pymsg).
+            (Options: stsynphot / pymsg).
         user_wl (np.array of float):
             For stellar_grid is 'custom', the wavelengths of the custom stellar
             spectrum file (μm).
@@ -153,7 +153,11 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
     '''
 
-    # If the user did not specify a wavelength grid for the stellar spectrum 
+    # Older scripts may request the archived pysynphot (now stsynphot)
+    if (interp_backend == 'pysynphot'):
+        interp_backend = 'stsynphot'
+
+    # If the user did not specify a wavelength grid for the stellar spectrum
     if (len(wl) == 0):
 
         # Create fiducial wavelength grid
@@ -194,15 +198,15 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
 
     else:
 
-        if (interp_backend not in ['pysynphot', 'pymsg']):
+        if (interp_backend not in ['stsynphot', 'pymsg']):
             raise Exception("Error: supported stellar grid interpolater backends " +
-                            "are 'pysynphot' or 'pymsg'.")
+                            "are 'stsynphot' or 'pymsg'.")
 
-        # Obtain photosphere spectrum from pysynphot
-        if (interp_backend == 'pysynphot'):
+        # Obtain photosphere spectrum from stsynphot
+        if (interp_backend == 'stsynphot'):
 
-            # Load stellar model from Pysynphot
-            I_phot = load_stellar_pysynphot(wl_star, T_eff, Met, log_g, stellar_grid)
+            # Load stellar model from stsynphot
+            I_phot = load_stellar_stsynphot(wl_star, T_eff, Met, log_g, stellar_grid)
 
         # Obtain photosphere spectrum from pymsg
         elif (interp_backend == 'pymsg'):
@@ -238,8 +242,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
         I_fac = None
 
         # Obtain heterogeneity spectrum
-        if (interp_backend == 'pysynphot'):
-            I_het = load_stellar_pysynphot(wl_star, T_het, Met, log_g_het, stellar_grid)
+        if (interp_backend == 'stsynphot'):
+            I_het = load_stellar_stsynphot(wl_star, T_het, Met, log_g_het, stellar_grid)
         elif (interp_backend == 'pymsg'):
             I_het = load_stellar_pymsg(wl_star, specgrid, T_het, Met, log_g_het,
                                        stellar_grid)
@@ -268,9 +272,9 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
         I_het = None
 
         # Obtain spot and facula spectra
-        if (interp_backend == 'pysynphot'):
-            I_spot = load_stellar_pysynphot(wl_star, T_spot, Met, log_g_spot, stellar_grid)
-            I_fac = load_stellar_pysynphot(wl_star, T_fac, Met, log_g_fac, stellar_grid)
+        if (interp_backend == 'stsynphot'):
+            I_spot = load_stellar_stsynphot(wl_star, T_spot, Met, log_g_spot, stellar_grid)
+            I_fac = load_stellar_stsynphot(wl_star, T_fac, Met, log_g_fac, stellar_grid)
         elif (interp_backend == 'pymsg'):
             I_spot = load_stellar_pymsg(wl_star, specgrid, T_spot, Met, log_g_spot,
                                         stellar_grid)
@@ -1360,7 +1364,7 @@ def compute_spectrum(planet, star, model, atmosphere, opac, wl,
     if (disable_atmosphere == False):
         if (check_atmosphere_physical(atmosphere, opac) == False):
             spectrum = np.empty(len(wl))
-            spectrum[:] = np.NaN
+            spectrum[:] = np.nan
             return spectrum   # Unphysical => reject model
 
     # Unpack model properties

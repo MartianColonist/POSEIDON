@@ -9,12 +9,23 @@ import numpy as np
 from numba.core.decorators import jit
 from spectres import spectres
 import scipy.constants as sc
-with warnings.catch_warnings():
-    warnings.filterwarnings("ignore", message="pkg_resources is deprecated")
-    import pysynphot as psyn
+import astropy.units as u
 from mpi4py import MPI
 
 from .utility import mock_missing, shared_memory_array
+
+# stsynphot (successor to the archived pysynphot) is used for stellar grids
+try:
+    with warnings.catch_warnings():
+
+        # POSEIDON does not use the Vega spectrum, so silence this warning
+        warnings.filterwarnings("ignore", message = "Failed to load Vega")
+        import stsynphot as stsyn
+
+    stsynphot_installed = True
+except ImportError:
+    stsyn = mock_missing('stsynphot')
+    stsynphot_installed = False
 
 try:
     import pymsg as pymsg
@@ -60,12 +71,13 @@ def planck_lambda(T, wl):
     return B_lambda
 
 
-def load_stellar_pysynphot(wl_out, T_eff, Met, log_g, stellar_grid = 'cbk04'):
+def load_stellar_stsynphot(wl_out, T_eff, Met, log_g, stellar_grid = 'cbk04'):
     '''
-    Load a stellar model using pysynphot. Pynshot's ICAT function handles
-    interpolation within the model grid to the specified stellar parameters.
+    Load a stellar model using stsynphot (the STScI successor to pysynphot).
+    The grid_to_spec function handles interpolation within the model grid to
+    the specified stellar parameters.
 
-    Note: Pysynphot's PHOENIX model grids have some bugs for non-solar 
+    Note: Stsynphot's PHOENIX model grids have some bugs for non-solar 
           metallicity. So we default to the Castelli-Kurucz 2004 grids.
 
     Args:
@@ -86,27 +98,64 @@ def load_stellar_pysynphot(wl_out, T_eff, Met, log_g, stellar_grid = 'cbk04'):
             Stellar specific intensity spectrum in SI units (W/m^2/sr/m).
 
     '''
-    
-    # Load Phoenix model interpolated to stellar parameters
+
+    # Check stsynphot is installed
+    if (stsynphot_installed == False):
+        raise Exception("Error: stsynphot is not installed on this machine. " +
+                        "Please install it (pip install stsynphot) or use " +
+                        "stellar_grid = 'blackbody'.")
+
+    # Load stellar model interpolated to stellar parameters
     if (stellar_grid == 'cbk04'):
-        sp = psyn.Icat('ck04models', T_eff, Met, log_g)
+        sp = stsyn.grid_to_spec('ck04models', T_eff, Met, log_g)
     elif (stellar_grid == 'phoenix'):
-        sp = psyn.Icat('phoenix', T_eff, 0.0, log_g)   # Some Phoenix models with Met =/= 0 have issues...
+        sp = stsyn.grid_to_spec('phoenix', T_eff, 0.0, log_g)   # Some Phoenix models with Met =/= 0 have issues...
     else:
-        raise Exception("Error: unsupported stellar grid for pysynphot " +
+        raise Exception("Error: unsupported stellar grid for stsynphot " +
                         "(options: cbk04 / phoenix). The 'sphinx' and " +
                         "'newera' grids require interp_backend = 'pymsg'.")
 
-    sp.convert("um")                # Convert wavelengths to micron
-    sp.convert('flam')              # Convert to flux units (erg/s/cm^2/A)
+    # Evaluate the spectrum on its native wavelength grid
+    wl_grid_A = sp.waveset                              # Wavelengths (Å)
+    F_grid = sp(wl_grid_A, flux_unit = 'flam').value    # Flux (erg/s/cm^2/Å)
 
-    wl_grid = sp.wave                         # Stellar wavelength array (um)
-    I_grid = (sp.flux*1e-7*1e4*1e10)/np.pi    # Convert to W/m^2/sr/m
+    wl_grid = wl_grid_A.to_value(u.um)                  # Stellar wavelength array (μm)
+    I_grid = (F_grid*1.0e-7*1.0e4*1.0e10)/np.pi         # Convert to W/m^2/sr/m
 
     # Bin / interpolate stellar spectrum to output wavelength grid
     I_out = spectres(wl_out, wl_grid, I_grid)
-    
+
     return I_out
+
+
+def load_stellar_pysynphot(wl_out, T_eff, Met, log_g, stellar_grid = 'cbk04'):
+    '''
+    Deprecated alias for load_stellar_stsynphot, kept so older user scripts
+    still run. The archived pysynphot package has been replaced by stsynphot.
+
+    Args:
+        wl_out (np.array of float):
+            Wavelength grid on which to output the stellar spectra (μm).
+        T_eff (float):
+            Effective temperature of star (K).
+        Met (float):
+            Stellar metallicity [log10(Fe/H_star / Fe/H_solar)].
+        log_g (float):
+            Stellar log surface gravity (log10(cm/s^2) by convention).
+        stellar_grid (str):
+            Desired stellar model grid
+            (Options: cbk04 / phoenix).
+
+    Returns:
+        I_out (np.array of float):
+            Stellar specific intensity spectrum in SI units (W/m^2/sr/m).
+
+    '''
+
+    warnings.warn("load_stellar_pysynphot is deprecated, please use " +
+                  "load_stellar_stsynphot instead.", FutureWarning)
+
+    return load_stellar_stsynphot(wl_out, T_eff, Met, log_g, stellar_grid)
 
 
 def open_pymsg_grid(stellar_grid):
@@ -132,7 +181,7 @@ def open_pymsg_grid(stellar_grid):
         raise Exception("PyMSG is not installed on this machine. PyMSG " +
                         "is an optional add-on to POSEIDON, so please " +
                         "either install it or fall back on the default " +
-                        "interpolation scheme interp_backend = 'pysynphot'.")
+                        "interpolation scheme interp_backend = 'stsynphot'.")
     
     # Map POSEIDON's grid names (and aliases) to MSG grid file names
     MSG_grid_names = {'phoenix': 'Goettingen-HiRes',
@@ -268,7 +317,7 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
 def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                                stellar_contam, T_step_interp = 20,
                                log_g_step_interp = 0.10, 
-                               interp_backend = 'pysynphot',
+                               interp_backend = 'stsynphot',
                                ):
     '''
     Precompute a grid of stellar spectra across a range of T_eff and log g.
@@ -296,7 +345,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
             log g step for stellar grid interpolation (uniform priors only).
         interp_backend (str):
             Stellar grid interpolation package for POSEIDON to use.
-            (Options: pysynphot / pymsg).
+            (Options: stsynphot / pymsg).
         comm (MPI communicator):
             Communicator used to allocate shared memory on multiple cores.
     
@@ -327,9 +376,13 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
     log_g_phot = star['log_g']
     stellar_grid = star['stellar_grid']
 
-    if (interp_backend not in ['pysynphot', 'pymsg']):
+    # Older scripts may request the archived pysynphot (now stsynphot)
+    if (interp_backend == 'pysynphot'):
+        interp_backend = 'stsynphot'
+
+    if (interp_backend not in ['stsynphot', 'pymsg']):
         raise Exception("Error: supported stellar grid interpolater backends are " +
-                        "'pysynphot' or 'pymsg'.")
+                        "'stsynphot' or 'pymsg'.")
     
     # If using PyMSG, load spectral grid
     if (interp_backend == 'pymsg'):
@@ -422,8 +475,8 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
             for j in range(N_spec_log_g_phot):
             
                 # Load interpolated stellar spectrum from model grid
-                if (interp_backend == 'pysynphot'):
-                    I_phot_local = load_stellar_pysynphot(wl_out, T_phot_grid[i], 
+                if (interp_backend == 'stsynphot'):
+                    I_phot_local = load_stellar_stsynphot(wl_out, T_phot_grid[i], 
                                                           Met_phot, log_g_phot_grid[j], 
                                                           stellar_grid)
                 elif (interp_backend == 'pymsg'):
@@ -524,8 +577,8 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
             for j in range(N_spec_log_g_het):
             
                 # Load interpolated stellar spectrum from model grid
-                if (interp_backend == 'pysynphot'):
-                    I_het_local = load_stellar_pysynphot(wl_out, T_het_grid[i], 
+                if (interp_backend == 'stsynphot'):
+                    I_het_local = load_stellar_stsynphot(wl_out, T_het_grid[i], 
                                                          Met_phot, log_g_het_grid[j], 
                                                          stellar_grid)
                 elif (interp_backend == 'pymsg'):
@@ -551,7 +604,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
 def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
                                stellar_contam, T_step_interp = 20,
                                log_g_step_interp = 0.10, 
-                               interp_backend = 'pysynphot'):
+                               interp_backend = 'stsynphot'):
     '''
     Precompute a grid of stellar spectra across a range of T_eff and log g.
 
@@ -578,7 +631,7 @@ def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
             log g step for stellar grid interpolation (uniform priors only).
         interp_backend (str):
             Stellar grid interpolation package for POSEIDON to use.
-            (Options: pysynphot / pymsg).
+            (Options: stsynphot / pymsg).
     
     Returns:
         T_phot_grid (np.array of float):
@@ -603,9 +656,13 @@ def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
     log_g_phot = star['log_g']
     stellar_grid = star['stellar_grid']
 
-    if (interp_backend not in ['pysynphot', 'pymsg']):
+    # Older scripts may request the archived pysynphot (now stsynphot)
+    if (interp_backend == 'pysynphot'):
+        interp_backend = 'stsynphot'
+
+    if (interp_backend not in ['stsynphot', 'pymsg']):
         raise Exception("Error: supported stellar grid interpolater backends are " +
-                        "'pysynphot' or 'pymsg'.")
+                        "'stsynphot' or 'pymsg'.")
     
     # If using PyMSG, load spectral grid
     if (interp_backend == 'pymsg'):
@@ -685,8 +742,8 @@ def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
         for j in range(N_spec_log_g_phot):
         
             # Load interpolated stellar spectrum from model grid
-            if (interp_backend == 'pysynphot'):
-                I_phot_out[i,j,:] = load_stellar_pysynphot(wl_out, T_phot_grid[i], 
+            if (interp_backend == 'stsynphot'):
+                I_phot_out[i,j,:] = load_stellar_stsynphot(wl_out, T_phot_grid[i], 
                                                            Met_phot, log_g_phot_grid[j], 
                                                            stellar_grid)
             elif (interp_backend == 'pymsg'):
@@ -767,8 +824,8 @@ def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
         for j in range(N_spec_log_g_het):
         
             # Load interpolated stellar spectrum from model grid
-            if (interp_backend == 'pysynphot'):
-                I_het_out[i,j,:] = load_stellar_pysynphot(wl_out, T_het_grid[i], 
+            if (interp_backend == 'stsynphot'):
+                I_het_out[i,j,:] = load_stellar_stsynphot(wl_out, T_het_grid[i], 
                                                           Met_phot, log_g_het_grid[j], 
                                                           stellar_grid)
             elif (interp_backend == 'pymsg'):

@@ -14,7 +14,7 @@ setup(
     include_package_data=True,
     python_requires="<3.13",
     install_requires=[
-        "numpy<2",
+        "numpy>=1.23",
         "scipy",
         "matplotlib",
         "astropy",
@@ -23,7 +23,7 @@ setup(
         "pandas",
         "tqdm",
         "mpi4py",
-        "pysynphot",
+        "stsynphot",
         "pymultinest",
         "spectres",
         "jupyter",
