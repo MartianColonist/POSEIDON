@@ -21,13 +21,14 @@ jobs:
       # Let every job finish, so one failure does not hide the others
       fail-fast: false
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         python-version: ['3.11', '3.12']
         numpy-version: ['<2', '>=2']
     steps:
     - uses: actions/checkout@v4
 
     - name: Free disk space
+      if: runner.os == 'Linux'
       run: |
         sudo swapoff -a
         sudo rm -f /swapfile
@@ -42,11 +43,23 @@ jobs:
 
     # As in container/poseidon.def: one system MPI (Open MPI), against which
     # MultiNest and mpi4py are both built
-    - name: Install Open MPI and build tools
+    - name: Install Open MPI and build tools (Linux)
+      if: runner.os == 'Linux'
       run: |
         sudo apt-get update
         sudo apt-get install -y gfortran cmake libopenmpi-dev openmpi-bin \
                                 liblapack-dev libblas-dev
+
+    # Homebrew's open-mpi brings gfortran (via gcc); LAPACK comes from Apple's
+    # Accelerate framework
+    - name: Install Open MPI and build tools (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install open-mpi cmake wget
+
+        # Open MPI's session files are Unix sockets, whose paths can be too
+        # long under macOS's default TMPDIR (/var/folders/...)
+        echo "TMPDIR=/tmp" >> $GITHUB_ENV
 
     - name: Build MultiNest 3.12
       run: |
@@ -69,14 +82,27 @@ jobs:
         # make has a race condition - build single-threaded. Only the serial
         # and MPI shared libraries are needed (not the bundled examples).
         make -j1 multinest_shared multinest_mpi_shared
-        mkdir -p $HOME/multinest/lib
-        cp -P ../lib/libmultinest*.so* $HOME/multinest/lib/
 
-        # Check both the serial and MPI shared libraries were built
-        test -f $HOME/multinest/lib/libmultinest.so
-        test -f $HOME/multinest/lib/libmultinest_mpi.so
+        if [[ "$RUNNER_OS" == "macOS" ]]; then
 
-        echo "LD_LIBRARY_PATH=$HOME/multinest/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+          # macOS strips DYLD_LIBRARY_PATH from child processes of system
+          # shells, so put the libraries in ~/lib, which is on the default
+          # library search path (used by PyMultiNest's find_library)
+          mkdir -p $HOME/lib
+          cp -P ../lib/libmultinest*.dylib $HOME/lib/
+          test -f $HOME/lib/libmultinest.dylib
+          test -f $HOME/lib/libmultinest_mpi.dylib
+
+        else
+          mkdir -p $HOME/multinest/lib
+          cp -P ../lib/libmultinest*.so* $HOME/multinest/lib/
+
+          # Check both the serial and MPI shared libraries were built
+          test -f $HOME/multinest/lib/libmultinest.so
+          test -f $HOME/multinest/lib/libmultinest_mpi.so
+
+          echo "LD_LIBRARY_PATH=$HOME/multinest/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+        fi
 
     - name: Install mpi4py and POSEIDON
       run: |
@@ -91,17 +117,28 @@ jobs:
 
     - name: Check MPI, MultiNest, and POSEIDON imports
       run: |
-        cat /etc/os-release
+        if [[ "$RUNNER_OS" == "macOS" ]]; then sw_vers; else cat /etc/os-release; fi
         python - << 'EOF'
+        import sys
         import ctypes
+        import ctypes.util
         from mpi4py import MPI
 
         print('MPI library: ' + MPI.Get_library_version().splitlines()[0])
 
         # Both MultiNest libraries must be loadable (PyMultiNest picks the MPI
-        # one when running on more than one MPI rank)
-        ctypes.CDLL('libmultinest.so')
-        ctypes.CDLL('libmultinest_mpi.so')
+        # one when running on more than one MPI rank). On macOS, find them the
+        # same way PyMultiNest does.
+        for lib in ['multinest', 'multinest_mpi']:
+            if (sys.platform == 'darwin'):
+                lib_path = ctypes.util.find_library(lib)
+                if (lib_path is None):
+                    raise Exception("Error: lib" + lib + ".dylib not found.")
+            else:
+                lib_path = 'lib' + lib + '.so'
+            ctypes.CDLL(lib_path)
+            print('Loaded ' + lib_path)
+
         print('MultiNest libraries: OK')
 
         import pymultinest
@@ -114,8 +151,8 @@ jobs:
       run: |
         mkdir -p inputs/opacity
         mkdir -p inputs/chemistry_grids
-        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
-        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3' -O- | sed -rn 's/.*confirm=([0-9A-Za-z_]+).*/\1\n/p')&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3" -O inputs/chemistry_grids/fastchem_database.hdf5 && rm -rf /tmp/cookies.txt
+        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx' -O- | LC_ALL=C sed -En 's/.*confirm=([0-9A-Za-z_]+).*/\1/p')&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
+        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3' -O- | LC_ALL=C sed -En 's/.*confirm=([0-9A-Za-z_]+).*/\1/p')&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3" -O inputs/chemistry_grids/fastchem_database.hdf5 && rm -rf /tmp/cookies.txt
 
     - name: Set environment variables
       run: |
