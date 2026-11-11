@@ -14,13 +14,15 @@ jobs:
   test:
     name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }} and NumPy ${{ matrix.numpy-version }}
     runs-on: ${{ matrix.os }}
-    defaults:
-      run:
-        shell: bash -l {0}
+    env:
+      # MultiNest 3.12 commit (the same one pinned in container/poseidon.def)
+      MULTINEST_COMMIT: cc616c17ed440fbff8d35937997c86256ed4d744
     strategy:
+      # Let every job finish, so one failure does not hide the others
+      fail-fast: false
       matrix:
         os: [ubuntu-latest]
-        python-version: ['3.11', '3.12'] 
+        python-version: ['3.11', '3.12']
         numpy-version: ['<2', '>=2']
     steps:
     - uses: actions/checkout@v4
@@ -33,46 +35,79 @@ jobs:
         docker rmi $(docker image ls -aq)
         df -h
 
-    - name: Set up Anaconda
-      uses: conda-incubator/setup-miniconda@v3
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        miniconda-version: "latest"
-        channels: conda-forge, defaults
-        auto-update-conda: true
-        auto-activate-base: true
+        python-version: ${{ matrix.python-version }}
 
-    - name: Create conda environment on Ubuntu
-      if: runner.os == 'Linux'
+    # As in container/poseidon.def: one system MPI (Open MPI), against which
+    # MultiNest and mpi4py are both built
+    - name: Install Open MPI and build tools
       run: |
-        echo "begin: PATH=$PATH;" 
-        conda create --name test_install python=${{ matrix.python-version }} --yes
+        sudo apt-get update
+        sudo apt-get install -y gfortran cmake libopenmpi-dev openmpi-bin \
+                                liblapack-dev libblas-dev
 
-    - name: Create conda environment on MacOS
-      if: runner.os == 'macOS'
+    - name: Build MultiNest 3.12
       run: |
-        echo "begin: PATH=$PATH;" 
-        CONDA_SUBDIR=osx-64 conda create --name test_install python=${{ matrix.python-version }} --yes
+        git clone https://github.com/farhanferoz/MultiNest.git $RUNNER_TEMP/MultiNest
+        cd $RUNNER_TEMP/MultiNest
+        git checkout $MULTINEST_COMMIT
+        cd MultiNest_v3.12_CMake/multinest
+        mkdir -p build
+        cd build
 
-    - name: Install mpi4py and pymultinest on Ubuntu
-      if: runner.os == 'Linux'
-      run: |
-        conda activate test_install || true
-        conda install -c conda-forge mpich=4.3.2 mpi4py --yes
-        conda install -c conda-forge pymultinest --yes
+        # CMAKE_POLICY_VERSION_MINIMUM lets newer CMake versions accept
+        # MultiNest's old cmake_minimum_required(VERSION 2.8)
+        FC=mpifort CC=mpicc CXX=mpicxx \
+        cmake -DCMAKE_INSTALL_PREFIX=$HOME/multinest \
+              -DCMAKE_BUILD_TYPE=Release \
+              -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+              ..
 
-    - name: Install mpi4py and pymultinest on MacOS
-      if: runner.os == 'macOS'
-      run: |
-        conda activate test_install || true
-        conda env config vars set CONDA_SUBDIR=osx-64
-        conda install -c conda-forge mpich=4.3.2 mpi4py --yes
-        conda install -c conda-forge pymultinest --yes
+        # MultiNest's library variants share Fortran .mod files, so parallel
+        # make has a race condition - build single-threaded. Only the serial
+        # and MPI shared libraries are needed (not the bundled examples).
+        make -j1 multinest_shared multinest_mpi_shared
+        mkdir -p $HOME/multinest/lib
+        cp -P ../lib/libmultinest*.so* $HOME/multinest/lib/
 
-    - name: Install POSEIDON
+        # Check both the serial and MPI shared libraries were built
+        test -f $HOME/multinest/lib/libmultinest.so
+        test -f $HOME/multinest/lib/libmultinest_mpi.so
+
+        echo "LD_LIBRARY_PATH=$HOME/multinest/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
+
+    - name: Install mpi4py and POSEIDON
       run: |
-        conda activate test_install || true
-        pip install -e . "numpy${{ matrix.numpy-version }}"
+        python -m pip install --upgrade pip
+
+        # Build mpi4py from source against the system Open MPI
+        MPICC=mpicc python -m pip install --no-binary=mpi4py mpi4py
+
+        # PyMultiNest (pure Python) is installed from PyPI via setup.py
+        python -m pip install -e . "numpy${{ matrix.numpy-version }}"
         python -c "import numpy; print('NumPy version: ' + numpy.__version__)"
+
+    - name: Check MPI, MultiNest, and POSEIDON imports
+      run: |
+        cat /etc/os-release
+        python - << 'EOF'
+        import ctypes
+        from mpi4py import MPI
+
+        print('MPI library: ' + MPI.Get_library_version().splitlines()[0])
+
+        # Both MultiNest libraries must be loadable (PyMultiNest picks the MPI
+        # one when running on more than one MPI rank)
+        ctypes.CDLL('libmultinest.so')
+        ctypes.CDLL('libmultinest_mpi.so')
+        print('MultiNest libraries: OK')
+
+        import pymultinest
+        import POSEIDON.core
+        print('PyMultiNest and POSEIDON imports: OK')
+        EOF
 
     - name: Download input files (only CIA opacity for CI tests)
       if: steps.restore_cache.outputs.cache-hit != 'true'
@@ -86,9 +121,7 @@ jobs:
       run: |
         echo "POSEIDON_input_data=$GITHUB_WORKSPACE/inputs/" >> $GITHUB_ENV
         echo "PYSYN_CDBS=$GITHUB_WORKSPACE/inputs/stellar_grids/" >> $GITHUB_ENV
-        echo "LD_LIBRARY_PATH=$HOME/miniconda3/envs/test_install/lib:$LD_LIBRARY_PATH" >> $GITHUB_ENV
 
     - name: Run tests
       run: |
-        conda activate test_install || true
         pytest -rA
