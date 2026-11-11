@@ -188,13 +188,16 @@ the following from the top-level :code:`POSEIDON` folder:
 
 .. code-block:: bash
 
-   bash install_pymsg.sh --download-grid sphinx
+   bash install_pymsg.sh --download-grid newera
 
 This installs MSG inside your conda environment, sets the :code:`MSG_DIR`
-environment variable, and downloads the SPHINX M dwarf stellar grid (0.1 GB).
-The PHOENIX grid (Goettingen-HiRes, 34 GB) can be downloaded via
-:code:`--download-grid phoenix`. If you have already downloaded MSG grid files
-(:code:`sg-*.h5`), you can reuse them via :code:`--grid-dir /𝗣𝗔𝗧𝗛/𝗧𝗢/𝗚𝗥𝗜𝗗𝗦`.
+environment variable, and downloads the NewEra JWST stellar grid (3.7 GB),
+which covers 0.6–28.5 μm. The SPHINX M dwarf grid (0.1 GB) and the PHOENIX
+grid (Goettingen-HiRes, 34 GB) can be downloaded via
+:code:`--download-grid sphinx` and :code:`--download-grid phoenix`, and the
+flag can be given more than once. If you have already downloaded MSG grid
+files (:code:`sg-*.h5`), you can reuse them via
+:code:`--grid-dir /𝗣𝗔𝗧𝗛/𝗧𝗢/𝗚𝗥𝗜𝗗𝗦`.
 
 Once the script finishes, re-activate your environment:
 
@@ -204,7 +207,8 @@ Once the script finishes, re-activate your environment:
    conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
 
 You can then use PyMSG by setting :code:`interp_backend = 'pymsg'` when calling
-:code:`create_star()`.
+:code:`create_star()`, together with :code:`stellar_grid = 'newera'`,
+:code:`'sphinx'`, or :code:`'phoenix'`.
 
 .. note::
    Please do not run :code:`pip install pymsg`. The PyPI package with that

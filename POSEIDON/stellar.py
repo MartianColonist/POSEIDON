@@ -93,7 +93,9 @@ def load_stellar_pysynphot(wl_out, T_eff, Met, log_g, stellar_grid = 'cbk04'):
     elif (stellar_grid == 'phoenix'):
         sp = psyn.Icat('phoenix', T_eff, 0.0, log_g)   # Some Phoenix models with Met =/= 0 have issues...
     else:
-        raise Exception("Unsupported stellar grid")
+        raise Exception("Error: unsupported stellar grid for pysynphot " +
+                        "(options: cbk04 / phoenix). The 'sphinx' and " +
+                        "'newera' grids require interp_backend = 'pymsg'.")
 
     sp.convert("um")                # Convert wavelengths to micron
     sp.convert('flam')              # Convert to flux units (erg/s/cm^2/A)
@@ -114,7 +116,8 @@ def open_pymsg_grid(stellar_grid):
     Args:
         stellar_grid (string):
             Stellar model grid to use
-            (Options: PHOENIX (or Goettingen-HiRes) / SPHINX).
+            (Options: phoenix (or Goettingen-HiRes) / sphinx /
+                      newera (or NewEra-JWST)).
 
     Returns:
         specgrid (pymsg object):
@@ -131,20 +134,34 @@ def open_pymsg_grid(stellar_grid):
                         "either install it or fall back on the default " +
                         "interpolation scheme interp_backend = 'pysynphot'.")
     
-    # Allow alias 'phoenix' for pymsg stellar grid
-    if (stellar_grid.lower() == 'phoenix'):
-        stellar_grid = 'Goettingen-HiRes'   # Alias
-    elif (stellar_grid.lower() == 'sphinx'):
-        stellar_grid = 'SPHINX'
-    else:
-        raise Exception("Unsupported stellar grid for PyMSG")
+    # Map POSEIDON's grid names (and aliases) to MSG grid file names
+    MSG_grid_names = {'phoenix': 'Goettingen-HiRes',
+                      'goettingen-hires': 'Goettingen-HiRes',
+                      'sphinx': 'SPHINX',
+                      'newera': 'NewEra-JWST',
+                      'newera-jwst': 'NewEra-JWST'}
+
+    if (stellar_grid.lower() not in MSG_grid_names):
+        raise Exception("Error: unsupported stellar grid for PyMSG. Supported " +
+                        "grids are 'phoenix', 'sphinx', and 'newera'.")
+
+    MSG_grid_name = MSG_grid_names[stellar_grid.lower()]
 
     # Find user's MSG stellar grid directory
     MSG_DIR = os.environ['MSG_DIR']
     GRID_DIR = os.path.join(MSG_DIR, 'data', 'grids')
 
+    # Check the stellar grid file has been downloaded
+    specgrid_file_name = os.path.join(GRID_DIR, 'sg-' + MSG_grid_name + '.h5')
+
+    if (os.path.exists(specgrid_file_name) == False):
+        raise Exception("Error: the PyMSG stellar grid file " + specgrid_file_name +
+                        " was not found. You can download it by running " +
+                        "'bash install_pymsg.sh --download-grid GRID' from " +
+                        "the top-level POSEIDON folder (GRID options: " +
+                        "phoenix / sphinx / newera).")
+
     # Open stellar grid HDF5 file
-    specgrid_file_name = os.path.join(GRID_DIR, 'sg-' + stellar_grid + '.h5')
     specgrid = pymsg.SpecGrid(specgrid_file_name)
 
     return specgrid
@@ -152,9 +169,12 @@ def open_pymsg_grid(stellar_grid):
 
 def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
     '''
-    Load a stellar model using PyMSG. The MSG package 
+    Load a stellar model using PyMSG. The MSG package
     (https://msg.readthedocs.io/en/stable/index.html) handles
     interpolation within the model grid to the specified stellar parameters.
+
+    Note: outside the wavelength range of the stellar grid (e.g. below 0.6 μm
+    for NewEra), the spectrum is extrapolated as a black body.
 
     Args:
         wl_out (np.array of float):
@@ -169,8 +189,8 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
             Stellar log surface gravity (log10(cm/s^2) by convention).
         stellar_grid (string):
             Stellar model grid to use
-            (Options: phoenix / sphinx).
-    
+            (Options: phoenix / sphinx / newera).
+
     Returns:
         I_grid (np.array of float):
             Stellar specific intensity spectrum in SI units (W/m^2/sr/m).
@@ -187,26 +207,60 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
     wl_edges[-1] = wl_out[-1] + 0.5*(wl_out[-1] - wl_out[-2])
     wl_edges[1:-1] = 0.5*(wl_out[1:] + wl_out[:-1])
 
-    # Check for user's wavelength grid lying outside PyMSG's grid wavelength range
-    if (wl_edges[0] < wl_s_min):
-        raise Exception("Wavelength grid extends lower than PyMSG's minimum " + 
-                        "wavelength for this grid (" + str(wl_s_min) + "μm)")
-    if (wl_edges[-1] > wl_s_max):
-        raise Exception("Wavelength grid extends higher than PyMSG's maximum " + 
-                        "wavelength for this grid (" + str(wl_s_max) + "μm)")
+    # Find the range of wavelength bins lying entirely within the grid's range
+    # (bins below the minimum wavelength are [0, i_min), bins above the maximum
+    # wavelength are [i_max, N_wl))
+    i_min = np.sum(wl_edges[:-1] < wl_s_min)
+    i_max = max(np.sum(wl_edges[1:] <= wl_s_max), i_min)
 
     # Package stellar parameters into PyMSG's expected input dictionary format
-    if (stellar_grid.lower() == 'phoenix'):
-        x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met}
-    elif (stellar_grid.lower() == 'sphinx'):
-        x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met, 'C/O': 0.55}   # FIXING stellar C/O to solar (for now)
+    x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met}
+
+    # For grids including stellar C/O (e.g. SPHINX), fix C/O to solar (for now)
+    if ('C/O' in specgrid.axis_labels):
+        x['C/O'] = 0.55
+
+    # Initialise specific intensity array
+    I_grid = np.zeros(len(wl_out))
 
     # Interpolate stellar grid to obtain stellar flux (also handles wl interpolation)
-    F_s = specgrid.flux(x, 0, wl_edges*10000)   # PyMSG expects Angstroms
-    F_s = np.array(F_s) * 1e7   # Convert flux from erg/s/cm^2/A to W/m^2/m
+    if (i_max > i_min):
 
-    # Calculate average specific intensity
-    I_grid = F_s / np.pi    # W/m^2/sr/m
+        # PyMSG raises ValueError (outside grid) or LookupError (missing models)
+        try:
+            F_s = specgrid.flux(x, 0, wl_edges[i_min:i_max+1]*10000)   # PyMSG expects Angstroms
+        except (ValueError, LookupError) as error:
+
+            # Report the grid's parameter range
+            grid_range = ', '.join(label + ' = ' + str(specgrid.axis_x_min[label]) +
+                                   ' to ' + str(specgrid.axis_x_max[label])
+                                   for label in specgrid.axis_labels)
+
+            if (isinstance(error, ValueError)):
+                reason = "lie outside the grid's parameter range (" + grid_range + ")"
+            else:
+                reason = ("fall in a region of the grid with missing models. " +
+                          "Try a slightly different metallicity or log g " +
+                          "(e.g. [Fe/H] = 0.0), or a different stellar grid")
+
+            raise Exception("Error: PyMSG cannot interpolate the '" + stellar_grid +
+                            "' grid to T_eff = " + str(T_eff) + " K, log g = " +
+                            str(log_g) + ", [Fe/H] = " + str(Met) + ". These " +
+                            "parameters " + reason + ". (PyMSG error: " +
+                            str(error) + ")") from None
+
+        F_s = np.array(F_s) * 1e7   # Convert flux from erg/s/cm^2/A to W/m^2/m
+
+        # Calculate average specific intensity
+        I_grid[i_min:i_max] = F_s / np.pi    # W/m^2/sr/m
+
+    # Extrapolate stellar spectrum as a black body below the grid's lower limit
+    if (i_min > 0):
+        I_grid[:i_min] = planck_lambda(T_eff, wl_out[:i_min])
+
+    # Extrapolate stellar spectrum as a black body beyond the grid's upper limit
+    if (i_max < len(wl_out)):
+        I_grid[i_max:] = planck_lambda(T_eff, wl_out[i_max:])
 
     return I_grid
 
@@ -235,7 +289,7 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
             (Options: one_spot / one_spot_free_log_g / two_spots).
         stellar_grid (str):
             Desired stellar model grid
-            (Options: cbk04 / phoenix / sphinx).
+            (Options: cbk04 / phoenix / sphinx / newera).
         T_step_interp (float):
             Temperature step for stellar grid interpolation (uniform priors only).
         log_g_step_interp (float):
@@ -373,10 +427,8 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                                                           Met_phot, log_g_phot_grid[j], 
                                                           stellar_grid)
                 elif (interp_backend == 'pymsg'):
-                    I_phot_local_1 = load_stellar_pymsg(wl_out[wl_out < 5.499], specgrid, T_phot_grid[i], 
-                                                        Met_phot, log_g_phot_grid[j], stellar_grid)
-                    I_phot_local_2 = planck_lambda(T_phot_grid[i], wl_out[wl_out >= 5.499])
-                    I_phot_local = np.concatenate([I_phot_local_1, I_phot_local_2])
+                    I_phot_local = load_stellar_pymsg(wl_out, specgrid, T_phot_grid[i],
+                                                      Met_phot, log_g_phot_grid[j], stellar_grid)
                     
                 # Lock the shared memory window before copying results
                # win_phot.Lock(rank)
@@ -477,10 +529,8 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
                                                          Met_phot, log_g_het_grid[j], 
                                                          stellar_grid)
                 elif (interp_backend == 'pymsg'):
-                    I_het_local_1 = load_stellar_pymsg(wl_out[wl_out < 5.499], specgrid, T_het_grid[i], 
-                                                       Met_phot, log_g_het_grid[j], stellar_grid)
-                    I_het_local_2 = planck_lambda(T_het_grid[i], wl_out[wl_out >= 5.499])
-                    I_het_local = np.concatenate([I_het_local_1, I_het_local_2])
+                    I_het_local = load_stellar_pymsg(wl_out, specgrid, T_het_grid[i],
+                                                     Met_phot, log_g_het_grid[j], stellar_grid)
                     
                 # Lock the shared memory window before copying results
              #   win_het.Lock(rank)
@@ -521,7 +571,7 @@ def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
             (Options: one_spot / one_spot_free_log_g / two_spots).
         stellar_grid (str):
             Desired stellar model grid
-            (Options: cbk04 / phoenix).
+            (Options: cbk04 / phoenix / sphinx / newera).
         T_step_interp (float):
             Temperature step for stellar grid interpolation (uniform priors only).
         log_g_step_interp (float):

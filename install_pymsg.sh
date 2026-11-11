@@ -19,6 +19,7 @@
 #                         (sg-*.h5). Grids found here are linked into MSG.
 #                         Use this to reuse grids you have already downloaded.
 #   --download-grid NAME  Download a stellar grid used by POSEIDON:
+#                           newera   (NewEra-JWST grid, 0.6-28.5 μm, 3.7 GB)
 #                           sphinx   (SPHINX M dwarf grid, 0.1 GB)
 #                           phoenix  (Goettingen-HiRes PHOENIX grid, 34 GB)
 #                         May be given more than once.
@@ -206,9 +207,10 @@ GRID_DIR=$(cd "$GRID_DIR" && pwd)
 
 for grid in "${DOWNLOAD_GRIDS[@]+"${DOWNLOAD_GRIDS[@]}"}"; do
     case $(echo "$grid" | tr '[:upper:]' '[:lower:]') in
+        newera)  grid_path="NewEra/JWST/sg-NewEra-JWST.h5" ;;
         sphinx)  grid_path="SPHINX/sg-SPHINX.h5" ;;
         phoenix) grid_path="Goettingen/HiRes/v3/sg-Goettingen-HiRes.h5" ;;
-        *) fail "unknown grid '$grid' (options: sphinx / phoenix)." ;;
+        *) fail "unknown grid '$grid' (options: newera / sphinx / phoenix)." ;;
     esac
     info "Downloading $(basename "$grid_path") into $GRID_DIR"
     curl -fL -C - -o "$GRID_DIR/$(basename "$grid_path")" "$GRID_URL/$grid_path"
@@ -240,7 +242,8 @@ flux = specgrid.flux({'Teff': 5000.0, 'log(g)': 4.0}, 0,
 assert (flux[0] > 0.0)
 print('PyMSG works: demo grid interpolation successful.')
 
-for grid, name in [('Goettingen-HiRes', 'phoenix'), ('SPHINX', 'sphinx')]:
+for grid, name in [('NewEra-JWST', 'newera'), ('Goettingen-HiRes', 'phoenix'),
+                   ('SPHINX', 'sphinx')]:
     found = os.path.exists(os.path.join(grid_dir, 'sg-' + grid + '.h5'))
     print("  stellar_grid = '" + name + "': " +
           ('available' if found else 'grid not found (sg-' + grid + '.h5)'))

@@ -107,8 +107,9 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             A priori 1-sigma error on stellar log g (log10(cm/s^2)).
         stellar_grid (string):
             Chosen stellar model grid
-            (Options: blackbody / cbk04 [for pysynphot] / phoenix [for pysynphot] /
-                      Goettingen-HiRes [for pymsg] / user).
+            (Options: blackbody / cbk04 [for pysynphot] /
+                      phoenix [for pysynphot or pymsg] / sphinx [for pymsg] /
+                      newera [for pymsg] / custom).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots).
@@ -210,14 +211,9 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             specgrid = open_pymsg_grid(stellar_grid)
 
             # Interpolate stellar grid to compute photosphere intensity
-            I_phot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_eff,
-                                          Met, log_g, stellar_grid)
-
-            # Extrapolate stellar spectrum as a black body beyond pymsg's upper limit of 5.5 um
-            I_phot_2 = planck_lambda(T_eff, wl_star[wl_star >= 5.499])
-
-            # Combine spectra segments
-            I_phot = np.concatenate([I_phot_1, I_phot_2])
+            # (extrapolated as a black body beyond the grid's upper wavelength limit)
+            I_phot = load_stellar_pymsg(wl_star, specgrid, T_eff, Met, log_g,
+                                        stellar_grid)
 
     # For uniform stellar surfaces
     if (stellar_contam == None): 
@@ -245,10 +241,8 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
         if (interp_backend == 'pysynphot'):
             I_het = load_stellar_pysynphot(wl_star, T_het, Met, log_g_het, stellar_grid)
         elif (interp_backend == 'pymsg'):
-            I_het_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_het, 
-                                         Met, log_g_het, stellar_grid)
-            I_het_2 = planck_lambda(T_het, wl_star[wl_star >= 5.499])
-            I_het = np.concatenate([I_het_1, I_het_2])
+            I_het = load_stellar_pymsg(wl_star, specgrid, T_het, Met, log_g_het,
+                                       stellar_grid)
 
         # Evaluate total stellar flux as a weighted sum of each region 
         F_star = np.pi * ((f_het * I_het) + (1.0 - f_het) * I_phot)
@@ -278,14 +272,10 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             I_spot = load_stellar_pysynphot(wl_star, T_spot, Met, log_g_spot, stellar_grid)
             I_fac = load_stellar_pysynphot(wl_star, T_fac, Met, log_g_fac, stellar_grid)
         elif (interp_backend == 'pymsg'):
-            I_spot_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_spot, 
-                                          Met, log_g_spot, stellar_grid)
-            I_spot_2 = planck_lambda(T_spot, wl_star[wl_star >= 5.499])
-            I_spot = np.concatenate([I_spot_1, I_spot_2])
-            I_fac_1 = load_stellar_pymsg(wl_star[wl_star < 5.499], specgrid, T_fac,
-                                         Met, log_g_fac, stellar_grid)
-            I_fac_2 = planck_lambda(T_fac, wl_star[wl_star >= 5.499])
-            I_fac = np.concatenate([I_fac_1, I_fac_2])
+            I_spot = load_stellar_pymsg(wl_star, specgrid, T_spot, Met, log_g_spot,
+                                        stellar_grid)
+            I_fac = load_stellar_pymsg(wl_star, specgrid, T_fac, Met, log_g_fac,
+                                       stellar_grid)
 
         # Evaluate total stellar flux as a weighted sum of each region 
         F_star = np.pi * ((f_spot * I_spot) + (f_fac * I_fac) + 
