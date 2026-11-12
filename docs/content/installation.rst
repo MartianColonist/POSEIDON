@@ -177,8 +177,13 @@ the following from the top-level :code:`POSEIDON` folder:
    bash install_pymsg.sh --download-grid newera
 
 This installs MSG inside your conda environment, sets the :code:`MSG_DIR`
-environment variable, and downloads the NewEra JWST stellar grid (3.7 GB),
-which covers 0.6–28.5 μm. The SPHINX M dwarf grid (0.1 GB) and the PHOENIX
+environment variable, and downloads the NewEra stellar grids: NewEra-JWST
+(3.7 GB), which covers 0.6–28.5 μm, and NewEra-LowRes (5.2 GB). Downloaded
+grids are stored in :code:`$POSEIDON_input_data/stellar_grids/pymsg` (if
+:code:`POSEIDON_input_data` is set) and linked into MSG. Setting
+:code:`stellar_grid = 'newera'` uses both files: NewEra-LowRes up to 2.5 μm
+(for its higher spectral resolution and coverage below 0.6 μm) and
+NewEra-JWST above 2.5 μm. The SPHINX M dwarf grid (0.1 GB) and the PHOENIX
 grid (Goettingen-HiRes, 34 GB) can be downloaded via
 :code:`--download-grid sphinx` and :code:`--download-grid phoenix`, and the
 flag can be given more than once. If you have already downloaded MSG grid

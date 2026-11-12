@@ -160,17 +160,24 @@ def load_stellar_pysynphot(wl_out, T_eff, Met, log_g, stellar_grid = 'cbk04'):
 
 def open_pymsg_grid(stellar_grid):
     '''
-    Check if pymsg is installed, then opens the HDF5 file for the  grid.
+    Check if pymsg is installed, then open the HDF5 file(s) for the grid.
+
+    The 'newera' grid combines two NewEra grid files: NewEra-LowRes
+    (0.25-2.5 μm, higher spectral resolution) is used up to 2.5 μm, with
+    NewEra-JWST (0.6-28.5 μm) used at longer wavelengths.
 
     Args:
         stellar_grid (string):
             Stellar model grid to use
             (Options: phoenix (or Goettingen-HiRes) / sphinx /
-                      newera (or NewEra-JWST)).
+                      newera (NewEra-LowRes below 2.5 μm, NewEra-JWST above) /
+                      newera-lowres / newera-jwst).
 
     Returns:
-        specgrid (pymsg object):
-            Stellar grid object in pymsg format.
+        specgrid (pymsg object or list of pymsg objects):
+            Stellar grid object in pymsg format. For grids combining
+            several files (e.g. newera), a list of grid objects ordered by
+            wavelength (see load_stellar_pymsg).
     
     '''
 
@@ -183,35 +190,47 @@ def open_pymsg_grid(stellar_grid):
                         "either install it or fall back on the default " +
                         "interpolation scheme interp_backend = 'stsynphot'.")
     
-    # Map POSEIDON's grid names (and aliases) to MSG grid file names
-    MSG_grid_names = {'phoenix': 'Goettingen-HiRes',
-                      'goettingen-hires': 'Goettingen-HiRes',
-                      'sphinx': 'SPHINX',
-                      'newera': 'NewEra-JWST',
-                      'newera-jwst': 'NewEra-JWST'}
+    # Map POSEIDON's grid names (and aliases) to MSG grid file names (ordered
+    # by wavelength for grids combining several files)
+    MSG_grid_names = {'phoenix': ['Goettingen-HiRes'],
+                      'goettingen-hires': ['Goettingen-HiRes'],
+                      'sphinx': ['SPHINX'],
+                      'newera': ['NewEra-LowRes', 'NewEra-JWST'],
+                      'newera-lowres': ['NewEra-LowRes'],
+                      'newera-jwst': ['NewEra-JWST']}
 
     if (stellar_grid.lower() not in MSG_grid_names):
         raise Exception("Error: unsupported stellar grid for PyMSG. Supported " +
                         "grids are 'phoenix', 'sphinx', and 'newera'.")
 
-    MSG_grid_name = MSG_grid_names[stellar_grid.lower()]
-
     # Find user's MSG stellar grid directory
     MSG_DIR = os.environ['MSG_DIR']
     GRID_DIR = os.path.join(MSG_DIR, 'data', 'grids')
 
-    # Check the stellar grid file has been downloaded
-    specgrid_file_name = os.path.join(GRID_DIR, 'sg-' + MSG_grid_name + '.h5')
+    specgrids = []
 
-    if (os.path.exists(specgrid_file_name) == False):
-        raise Exception("Error: the PyMSG stellar grid file " + specgrid_file_name +
-                        " was not found. You can download it by running " +
-                        "'bash install_pymsg.sh --download-grid GRID' from " +
-                        "the top-level POSEIDON folder (GRID options: " +
-                        "phoenix / sphinx / newera).")
+    for MSG_grid_name in MSG_grid_names[stellar_grid.lower()]:
 
-    # Open stellar grid HDF5 file
-    specgrid = pymsg.SpecGrid(specgrid_file_name)
+        # Check the stellar grid file has been downloaded
+        specgrid_file_name = os.path.join(GRID_DIR, 'sg-' + MSG_grid_name + '.h5')
+
+        if (os.path.exists(specgrid_file_name) == False):
+            raise Exception("Error: the PyMSG stellar grid file " + specgrid_file_name +
+                            " was not found. You can download it by running " +
+                            "'bash install_pymsg.sh --download-grid GRID' from " +
+                            "the top-level POSEIDON folder (GRID options: " +
+                            "phoenix / sphinx / newera). Note that " +
+                            "stellar_grid = 'newera' requires both the " +
+                            "NewEra-LowRes and NewEra-JWST grid files.")
+
+        # Open stellar grid HDF5 file
+        specgrids.append(pymsg.SpecGrid(specgrid_file_name))
+
+    # Return a single grid object for grids stored in one file
+    if (len(specgrids) == 1):
+        specgrid = specgrids[0]
+    else:
+        specgrid = specgrids
 
     return specgrid
 
@@ -222,14 +241,21 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
     (https://msg.readthedocs.io/en/stable/index.html) handles
     interpolation within the model grid to the specified stellar parameters.
 
-    Note: outside the wavelength range of the stellar grid (e.g. below 0.6 μm
-    for NewEra), the spectrum is extrapolated as a black body.
+    A list of grid objects, ordered by wavelength, can be provided to combine
+    several grids (e.g. NewEra-LowRes and NewEra-JWST for 'newera'). Each
+    grid then computes the wavelength bins it fully covers, beyond those
+    already computed by the previous grids in the list.
+
+    Note: outside the wavelength range of the stellar grid(s) (e.g. below
+    0.25 μm or above 28.5 μm for NewEra), the spectrum is extrapolated as a
+    black body.
 
     Args:
         wl_out (np.array of float):
             Wavelength grid on which to output the stellar spectra (μm).
-        specgrid (pymsg object):
-            Stellar grid object in pymsg format.
+        specgrid (pymsg object or list of pymsg objects):
+            Stellar grid object in pymsg format, or a list of grid objects
+            ordered by wavelength.
         T_eff (float):
             Effective temperature of star (K).
         Met (float):
@@ -246,44 +272,60 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
 
     '''
 
-    # Load minimum and maximum grid wavelengths
-    wl_s_min = specgrid.lam_min / 10000   # Convert from A to μm
-    wl_s_max = specgrid.lam_max / 10000   # Convert from A to μm
+    # Package a single grid into a list
+    if (isinstance(specgrid, list)):
+        specgrids = specgrid
+    else:
+        specgrids = [specgrid]
+
+    N_wl = len(wl_out)
 
     # Compute array of wavelength grid edges
-    wl_edges = np.zeros(len(wl_out)+1)
+    wl_edges = np.zeros(N_wl+1)
     wl_edges[0] = wl_out[0] - 0.5*(wl_out[1] - wl_out[0])
     wl_edges[-1] = wl_out[-1] + 0.5*(wl_out[-1] - wl_out[-2])
     wl_edges[1:-1] = 0.5*(wl_out[1:] + wl_out[:-1])
 
-    # Find the range of wavelength bins lying entirely within the grid's range
-    # (bins below the minimum wavelength are [0, i_min), bins above the maximum
-    # wavelength are [i_max, N_wl))
-    i_min = np.sum(wl_edges[:-1] < wl_s_min)
-    i_max = max(np.sum(wl_edges[1:] <= wl_s_max), i_min)
-
-    # Package stellar parameters into PyMSG's expected input dictionary format
-    x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met}
-
-    # For grids including stellar C/O (e.g. SPHINX), fix C/O to solar (for now)
-    if ('C/O' in specgrid.axis_labels):
-        x['C/O'] = 0.55
-
     # Initialise specific intensity array
-    I_grid = np.zeros(len(wl_out))
+    I_grid = np.zeros(N_wl)
 
-    # Interpolate stellar grid to obtain stellar flux (also handles wl interpolation)
-    if (i_max > i_min):
+    # Track which wavelength bins have been computed from a stellar grid
+    filled = np.zeros(N_wl, dtype = bool)
 
+    # Index of the first bin not computed by a previous grid
+    i_next = 0
+
+    for grid in specgrids:
+
+        # Load minimum and maximum grid wavelengths
+        wl_s_min = grid.lam_min / 10000   # Convert from A to μm
+        wl_s_max = grid.lam_max / 10000   # Convert from A to μm
+
+        # Find the range of wavelength bins lying entirely within the grid's
+        # range, excluding bins already computed by a previous grid
+        i_min = max(np.sum(wl_edges[:-1] < wl_s_min), i_next)
+        i_max = max(np.sum(wl_edges[1:] <= wl_s_max), i_min)
+
+        if (i_max == i_min):
+            continue
+
+        # Package stellar parameters into PyMSG's expected input dictionary format
+        x = {'Teff': T_eff, 'log(g)': log_g, '[Fe/H]': Met}
+
+        # For grids including stellar C/O (e.g. SPHINX), fix C/O to solar (for now)
+        if ('C/O' in grid.axis_labels):
+            x['C/O'] = 0.55
+
+        # Interpolate stellar grid to obtain stellar flux (also handles wl interpolation)
         # PyMSG raises ValueError (outside grid) or LookupError (missing models)
         try:
-            F_s = specgrid.flux(x, 0, wl_edges[i_min:i_max+1]*10000)   # PyMSG expects Angstroms
+            F_s = grid.flux(x, 0, wl_edges[i_min:i_max+1]*10000)   # PyMSG expects Angstroms
         except (ValueError, LookupError) as error:
 
             # Report the grid's parameter range
-            grid_range = ', '.join(label + ' = ' + str(specgrid.axis_x_min[label]) +
-                                   ' to ' + str(specgrid.axis_x_max[label])
-                                   for label in specgrid.axis_labels)
+            grid_range = ', '.join(label + ' = ' + str(grid.axis_x_min[label]) +
+                                   ' to ' + str(grid.axis_x_max[label])
+                                   for label in grid.axis_labels)
 
             if (isinstance(error, ValueError)):
                 reason = "lie outside the grid's parameter range (" + grid_range + ")"
@@ -302,14 +344,14 @@ def load_stellar_pymsg(wl_out, specgrid, T_eff, Met, log_g, stellar_grid):
 
         # Calculate average specific intensity
         I_grid[i_min:i_max] = F_s / np.pi    # W/m^2/sr/m
+        filled[i_min:i_max] = True
 
-    # Extrapolate stellar spectrum as a black body below the grid's lower limit
-    if (i_min > 0):
-        I_grid[:i_min] = planck_lambda(T_eff, wl_out[:i_min])
+        # Later grids only compute bins beyond this grid's range
+        i_next = i_max
 
-    # Extrapolate stellar spectrum as a black body beyond the grid's upper limit
-    if (i_max < len(wl_out)):
-        I_grid[i_max:] = planck_lambda(T_eff, wl_out[i_max:])
+    # Extrapolate stellar spectrum as a black body outside the grids' range
+    if (np.any(~filled)):
+        I_grid[~filled] = planck_lambda(T_eff, wl_out[~filled])
 
     return I_grid
 
@@ -339,6 +381,8 @@ def precompute_stellar_spectra(comm, wl_out, star, prior_types, prior_ranges,
         stellar_grid (str):
             Desired stellar model grid
             (Options: cbk04 / phoenix / sphinx / newera).
+            newera combines NewEra-LowRes (below 2.5 μm) and NewEra-JWST
+            (above 2.5 μm).
         T_step_interp (float):
             Temperature step for stellar grid interpolation (uniform priors only).
         log_g_step_interp (float):
@@ -625,6 +669,8 @@ def precompute_stellar_spectra_OLD(wl_out, star, prior_types, prior_ranges,
         stellar_grid (str):
             Desired stellar model grid
             (Options: cbk04 / phoenix / sphinx / newera).
+            newera combines NewEra-LowRes (below 2.5 μm) and NewEra-JWST
+            (above 2.5 μm).
         T_step_interp (float):
             Temperature step for stellar grid interpolation (uniform priors only).
         log_g_step_interp (float):

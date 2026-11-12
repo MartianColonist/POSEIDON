@@ -109,7 +109,9 @@ def create_star(R_s, T_eff, log_g, Met, T_eff_error = 100.0, log_g_error = 0.1,
             Chosen stellar model grid
             (Options: blackbody / cbk04 [for stsynphot] /
                       phoenix [for stsynphot or pymsg] / sphinx [for pymsg] /
-                      newera [for pymsg] / custom).
+                      newera [for pymsg] / custom). For pymsg, newera
+                      combines NewEra-LowRes (below 2.5 μm) and NewEra-JWST 
+                      (above 2.5 μm).
         stellar_contam (str):
             Chosen prescription for modelling unocculted stellar contamination
             (Options: one_spot / one_spot_free_log_g / two_spots).

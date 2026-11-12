@@ -17,9 +17,12 @@
 #                         (default: $CONDA_PREFIX/share/msg-<version>).
 #   --grid-dir DIR        Folder holding (or to download) MSG grid files
 #                         (sg-*.h5). Grids found here are linked into MSG.
-#                         Use this to reuse grids you have already downloaded.
+#                         (default: $POSEIDON_input_data/stellar_grids/pymsg,
+#                         or MSG's own grid folder if POSEIDON_input_data
+#                         is not set).
 #   --download-grid NAME  Download a stellar grid used by POSEIDON:
-#                           newera   (NewEra-JWST grid, 0.6-28.5 μm, 3.7 GB)
+#                           newera   (NewEra-JWST, 0.6-28.5 μm, 3.7 GB, and
+#                                     NewEra-LowRes, 5.2 GB)
 #                           sphinx   (SPHINX M dwarf grid, 0.1 GB)
 #                           phoenix  (Goettingen-HiRes PHOENIX grid, 34 GB)
 #                         May be given more than once.
@@ -199,27 +202,40 @@ conda env config vars set --prefix "$CONDA_PREFIX" MSG_DIR="$MSG_DIR_INSTALL" \
 GRIDS_DIR_MSG="$MSG_DIR_INSTALL/data/grids"
 mkdir -p "$GRIDS_DIR_MSG"
 
+# By default, keep grids with POSEIDON's other stellar grids
 if [[ -z "$GRID_DIR" ]]; then
-    GRID_DIR="$GRIDS_DIR_MSG"
+    if [[ -n "${POSEIDON_input_data:-}" ]]; then
+        GRID_DIR="${POSEIDON_input_data%/}/stellar_grids/pymsg"
+    else
+        echo "POSEIDON_input_data is not set, so grids will be stored in" \
+             "$GRIDS_DIR_MSG"
+        GRID_DIR="$GRIDS_DIR_MSG"
+    fi
 fi
 mkdir -p "$GRID_DIR"
 GRID_DIR=$(cd "$GRID_DIR" && pwd)
 
 for grid in "${DOWNLOAD_GRIDS[@]+"${DOWNLOAD_GRIDS[@]}"}"; do
     case $(echo "$grid" | tr '[:upper:]' '[:lower:]') in
-        newera)  grid_path="NewEra/JWST/sg-NewEra-JWST.h5" ;;
-        sphinx)  grid_path="SPHINX/sg-SPHINX.h5" ;;
-        phoenix) grid_path="Goettingen/HiRes/v3/sg-Goettingen-HiRes.h5" ;;
+        newera)  grid_paths=("NewEra/JWST/sg-NewEra-JWST.h5"
+                             "NewEra/LowRes/sg-NewEra-LowRes.h5") ;;
+        sphinx)  grid_paths=("SPHINX/sg-SPHINX.h5") ;;
+        phoenix) grid_paths=("Goettingen/HiRes/v3/sg-Goettingen-HiRes.h5") ;;
         *) fail "unknown grid '$grid' (options: newera / sphinx / phoenix)." ;;
     esac
-    info "Downloading $(basename "$grid_path") into $GRID_DIR"
-    curl -fL -C - -o "$GRID_DIR/$(basename "$grid_path")" "$GRID_URL/$grid_path"
+    for grid_path in "${grid_paths[@]}"; do
+        info "Downloading $(basename "$grid_path") into $GRID_DIR"
+        curl -fL -C - -o "$GRID_DIR/$(basename "$grid_path")" \
+             "$GRID_URL/$grid_path"
+    done
 done
 
 # Link grids from a separate grid folder into MSG's grid folder
 if [[ "$GRID_DIR" != "$GRIDS_DIR_MSG" ]]; then
     for grid_file in "$GRID_DIR"/sg-*.h5; do
         [[ -e "$grid_file" ]] || continue
+        # Keep the demo grid shipped with MSG (used by the test below)
+        [[ "$(basename "$grid_file")" == "sg-demo.h5" ]] && continue
         ln -sf "$grid_file" "$GRIDS_DIR_MSG/$(basename "$grid_file")"
     done
 fi
@@ -242,11 +258,14 @@ flux = specgrid.flux({'Teff': 5000.0, 'log(g)': 4.0}, 0,
 assert (flux[0] > 0.0)
 print('PyMSG works: demo grid interpolation successful.')
 
-for grid, name in [('NewEra-JWST', 'newera'), ('Goettingen-HiRes', 'phoenix'),
-                   ('SPHINX', 'sphinx')]:
-    found = os.path.exists(os.path.join(grid_dir, 'sg-' + grid + '.h5'))
+# stellar_grid = 'newera' needs both NewEra grid files
+for name, grids in [('newera', ['NewEra-LowRes', 'NewEra-JWST']),
+                    ('phoenix', ['Goettingen-HiRes']), ('sphinx', ['SPHINX'])]:
+    missing = ['sg-' + grid + '.h5' for grid in grids if not
+               os.path.exists(os.path.join(grid_dir, 'sg-' + grid + '.h5'))]
     print("  stellar_grid = '" + name + "': " +
-          ('available' if found else 'grid not found (sg-' + grid + '.h5)'))
+          ('available' if (len(missing) == 0) else
+           'grid not found (' + ', '.join(missing) + ')'))
 EOF
 
 info "Done!"
