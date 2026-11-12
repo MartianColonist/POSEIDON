@@ -21,11 +21,11 @@ You can also find all the required input files on `Zenodo
 
    Download the surface_reflectivities.zip folder, unzip it, and add it to your inputs folder. As of 1.4 you should have four top-level folders in inputs: stellar_grids, opacity, chemistry_grids, and surface_reflectivities. 
 
-Step 2: Install mpi4py and PyMultiNest
-______________________________________
+Step 2: Create a conda environment
+__________________________________
 
-While waiting for the input files to download, the next step is the install
-the dependencies for POSEIDON: PyMultiNest and mpi4py.
+While waiting for the input files to download, you can install POSEIDON and
+its dependencies.
 
 .. note::
    For Windows users, we recommend installing `Windows Subsystem for Linux (WSL) 
@@ -35,84 +35,70 @@ the dependencies for POSEIDON: PyMultiNest and mpi4py.
    We recommend using WSL because PyMultiNest does not natively support Windows.
    However, it will work fine if you use WSL to install and run POSEIDON.
 
-We recommend installing POSEIDON in a fresh `Anaconda <https://www.anaconda.com/>`_ 
-environment. The following instructions show you how to create the conda environment
-on either Linux (e.g. Ubuntu) or Mac OS.
-
-Linux conda environment setup
------------------------------
-
-POSEIDON currently supports Python versions up to 3.12. You can create a new 
-anaconda environment with the latest version of Python 3.12 via:
+We recommend installing POSEIDON in a fresh conda environment (e.g. via
+`Miniforge <https://github.com/conda-forge/miniforge>`_ or
+`Anaconda <https://www.anaconda.com/>`_). POSEIDON currently supports Python
+versions up to 3.12. On either Linux (e.g. Ubuntu) or macOS, create and activate a new environment via:
 
 .. code-block:: bash
 
    conda create --name 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.12
-
-Once the basic Python packages are installed in this fresh environment, you
-can activate the environment where POSEIDON will dwell:
-
-.. code-block:: bash
-
    conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
 
-Mac OS conda environment setup
-------------------------------
-
-For Mac OS, you need to set the CONDA_SUBDIR environment variable to osx-64 
-(because PyMultiNest does not currently support ARM chips). You can do this via:
-
-.. code-block:: bash
-
-   CONDA_SUBDIR=osx-64 conda create -n 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘 python=3.12
-   conda activate 𝗬𝗢𝗨𝗥_𝗘𝗡𝗩_𝗡𝗔𝗠𝗘_𝗛𝗘𝗥𝗘
-   conda env config vars set CONDA_SUBDIR=osx-64
-
-Installing PyMultiNest
-----------------------
+Step 3: Install MultiNest
+______________________________________
 
 `MultiNest <https://academic.oup.com/mnras/article/398/4/1601/981502>`_ is the 
-main sampling algorithm used for parameter space exploration in POSEIDON retrievals. 
-MultiNest has a convenient Python wrapper, `PyMultiNest 
-<https://johannesbuchner.github.io/PyMultiNest/>`_.
+main sampling algorithm used for parameter space exploration in POSEIDON
+retrievals, which POSEIDON calls via its Python wrapper `PyMultiNest 
+<https://johannesbuchner.github.io/PyMultiNest/>`_. Retrievals run in parallel
+on multiple cores using MPI (via mpi4py).
 
-You first need to install mpi4py, which is used by PyMultiNest for parallel
-computations on multiple cores. With your conda environment activated, call:
-
-.. code-block:: bash
-
-    conda install -c conda-forge mpi4py
-
-Then you can install *both* MultiNest and PyMultiNest in a single line via 
-conda-forge (you might see way more complicated instructions elsewhere, this
-is the simplest way!).
-
-.. code-block:: bash
-
-    conda install -c conda-forge pymultinest
-   
-
-Step 3: Install POSEIDON from GitHub
-____________________________________
-
-Now you are ready to download and install POSEIDON. You can download 
-`POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON>`_ 
+First, download `POSEIDON from GitHub <https://github.com/MartianColonist/POSEIDON>`_ 
 or clone the repository:
 
 .. code-block:: bash
 		
    git clone https://github.com/MartianColonist/POSEIDON.git
+   cd POSEIDON
 
-Then navigate into the top-level :code:`POSEIDON` directory and install the 
-package via:
+With your conda environment activated, install MultiNest, mpi4py, and
+PyMultiNest using POSEIDON's installation script.
 
 .. code-block:: bash
-		
-   cd POSEIDON
+
+   bash install_multinest.sh
+
+This script builds the latest version of MultiNest (v3.12) against
+the same MPI library used by mpi4py (Open MPI by default). If you are
+using macOS, make sure to reactivate your environment after the script finishes.
+
+.. tip::
+   On a computing cluster, first load the cluster's MPI library (e.g.
+   :code:`module load openmpi`) and then run
+   :code:`bash install_multinest.sh --mpi system`, so retrievals use the
+   cluster's MPI. To use MPICH from conda-forge instead of Open MPI, use
+   :code:`--mpi mpich`.
+
+.. note::
+   If the script does not work on your machine, you can instead install an
+   older version of MultiNest (v3.10) and PyMultiNest directly from
+   conda-forge, then install POSEIDON as above:
+
+   .. code-block:: bash
+
+      conda install -c conda-forge mpi4py pymultinest
+
+Step 4: Install POSEIDON
+______________________________________
+
+Now the time has come to install POSEIDON! 🔱
+
+.. code-block:: bash
+
    pip install -e .
 
-
-Step 4: Configure input files
+Step 5: Configure input files
 ____________________________________________
 
 By this point, the input files should have hopefully finished downloading. 
