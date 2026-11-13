@@ -27,9 +27,11 @@ except ImportError:
     stsyn = mock_missing('stsynphot')
     stsynphot_installed = False
 
+# PyMSG also fails to import if MSG_DIR is unset or wrong, which should not
+# stop POSEIDON from importing (open_pymsg_grid explains the problem later)
 try:
     import pymsg as pymsg
-except ImportError:
+except Exception:
     pymsg = mock_missing('pymsg')
 
 
@@ -184,11 +186,30 @@ def open_pymsg_grid(stellar_grid):
     # Check if pymsg is installed (required for this optional functionality)
     try:
         import pymsg as pymsg
-    except ImportError:
-        raise Exception("PyMSG is not installed on this machine. PyMSG " +
-                        "is an optional add-on to POSEIDON, so please " +
-                        "either install it or fall back on the default " +
-                        "interpolation scheme interp_backend = 'stsynphot'.")
+    except Exception as error:
+
+        # PyMSG package itself is missing
+        if (isinstance(error, ModuleNotFoundError) and (error.name == 'pymsg')):
+            raise Exception("PyMSG is not installed on this machine. PyMSG " +
+                            "is an optional add-on to POSEIDON, so please " +
+                            "either install it (bash install_pymsg.sh) or " +
+                            "fall back on the default interpolation scheme " +
+                            "interp_backend = 'stsynphot'.")
+
+        # PyMSG is installed, but MSG_DIR does not point to the MSG library
+        else:
+            MSG_DIR = os.environ.get('MSG_DIR', None)
+            raise Exception("Error: PyMSG is installed, but could not be " +
+                            "loaded (" + type(error).__name__ + ": " +
+                            str(error) + "). This usually means the MSG_DIR " +
+                            "environment variable (currently " +
+                            ("'" + MSG_DIR + "'" if (MSG_DIR is not None)
+                             else "unset") + ") does not point to the MSG " +
+                            "installation. install_pymsg.sh sets MSG_DIR " +
+                            "when your conda environment is activated, so " +
+                            "re-activate the environment (or restart your " +
+                            "Jupyter kernel from it), and check MSG_DIR is " +
+                            "not overridden elsewhere (e.g. in ~/.bashrc).")
     
     # Map POSEIDON's grid names (and aliases) to MSG grid file names (ordered
     # by wavelength for grids combining several files)
