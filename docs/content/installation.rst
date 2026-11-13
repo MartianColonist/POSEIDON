@@ -35,10 +35,25 @@ its dependencies.
    We recommend using WSL because PyMultiNest does not natively support Windows.
    However, it will work fine if you use WSL to install and run POSEIDON.
 
-We recommend installing POSEIDON in a fresh conda environment (e.g. via
-`Miniforge <https://github.com/conda-forge/miniforge>`_ or
-`Anaconda <https://www.anaconda.com/>`_). POSEIDON currently supports Python
-versions up to 3.12. On either Linux (e.g. Ubuntu) or macOS, create and activate a new environment via:
+We recommend installing POSEIDON in a fresh conda environment, using
+`Miniforge <https://github.com/conda-forge/miniforge>`_. Miniforge installs
+packages from conda-forge (the channel used by POSEIDON's install scripts) and
+includes conda's fast solver. `Anaconda <https://www.anaconda.com/>`_ also
+works, provided your conda version is recent (see below).
+
+.. important::
+   POSEIDON's install scripts (for MultiNest and the optional PyMSG) install
+   compilers, MPI, and other libraries with conda. Older conda versions (before
+   23.10, check with :code:`conda --version`) use a slow solver, which can make
+   these steps take an hour or more. Before continuing, either:
+
+   * Install `Miniforge <https://github.com/conda-forge/miniforge>`_
+     (recommended), which uses conda-forge and the fast solver by default.
+   * Or update an existing Anaconda / Miniconda installation via
+     :code:`conda update -n base conda`.
+
+POSEIDON currently supports Python versions up to 3.12. On either Linux (e.g.
+Ubuntu) or macOS, create and activate a new environment via:
 
 .. code-block:: bash
 
