@@ -30,8 +30,9 @@ print('host = ' + socket.gethostname() + ', rank = ' + str(rank) +
 comm.Barrier()
 
 if (rank == 0):
-    print('\nMPI library: ' + MPI.Get_library_version().splitlines()[0],
-          flush = True)
+    # Strip the trailing null character returned by some MPI libraries
+    mpi_version = MPI.Get_library_version().replace('\x00', '')
+    print('\nMPI library: ' + mpi_version.splitlines()[0], flush = True)
 
 
 #***** Check MultiNest *****#
@@ -107,9 +108,14 @@ if (rank == 0):
     # Check which MSG stellar grids are available
     grid_dir = os.path.join(os.environ['MSG_DIR'], 'data', 'grids')
 
-    for grid, name in [('SPHINX', 'sphinx'), ('Goettingen-HiRes', 'phoenix')]:
-        found = os.path.exists(os.path.join(grid_dir, 'sg-' + grid + '.h5'))
+    # stellar_grid = 'newera' needs both NewEra grid files
+    for name, grids in [('newera', ['NewEra-LowRes', 'NewEra-JWST']),
+                        ('sphinx', ['SPHINX']),
+                        ('phoenix', ['Goettingen-HiRes'])]:
+        missing = ['sg-' + grid + '.h5' for grid in grids if not
+                   os.path.exists(os.path.join(grid_dir, 'sg-' + grid + '.h5'))]
         print("  PyMSG stellar_grid = '" + name + "': " +
-              ('available' if found else 'not found'))
+              ('available' if (len(missing) == 0) else
+               'not found (' + ', '.join(missing) + ')'))
 
     print('\nContainer test complete.')

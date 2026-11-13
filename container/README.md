@@ -20,9 +20,8 @@ in when you run it.
 | Path in container | Contents |
 | --- | --- |
 | `/inputs` | Mount point for the POSEIDON `inputs` folder (`POSEIDON_input_data` points here) |
-| `/msg_grids` | Optional mount point for extra MSG grids (e.g. PHOENIX) |
 | `/opt/POSEIDON` | POSEIDON source (cloned from GitHub at build time) |
-| `/opt/msg` | MSG installation (`MSG_DIR`) |
+| `/opt/msg` | MSG installation (`MSG_DIR`), with grids not in the image linked to `/inputs/stellar_grids/pymsg` |
 
 ## Building
 
@@ -47,12 +46,21 @@ rebuild the image. You can set these build arguments with `--build-arg NAME=valu
 | `PYTHON_VERSION` | `3.12` | Python version (POSEIDON supports up to 3.12) |
 | `OPENMPI_VERSION` | `5.0.7` | Set this to the OpenMPI version on your cluster |
 | `MULTINEST_COMMIT` | `cc616c1…` | farhanferoz/MultiNest commit (pinned for reproducibility) |
-| `MSG_GRIDS` | `sphinx` | MSG grids to include in the image (`"sphinx phoenix"` adds 34 GB) |
+| `MSG_GRIDS` | `sphinx` | MSG grids to include in the image (`newera` adds 8.9 GB, `phoenix` adds 34 GB) |
 
 For example:
 
 ```bash
 apptainer build --build-arg POSEIDON_BRANCH=main poseidon.sif poseidon.def
+```
+
+To build without root, Apptainer uses `--fakeroot`. If the build stops with
+`newuidmap was not found in PATH`, install the `uidmap` package (needs
+sudo), or add `--ignore-subuid` to use Apptainer's bundled `fakeroot`
+instead:
+
+```bash
+apptainer build --fakeroot --ignore-subuid poseidon.sif poseidon.def
 ```
 
 At the end of the build, the `%test` section checks that the MultiNest
@@ -96,20 +104,52 @@ compares the Bayesian evidence to the analytic value. It then reports which
 input folders and MSG grids the container can see. Copy it next to your job
 script before submitting it.
 
-### PHOENIX grid for PyMSG
+### NewEra and PHOENIX grids for PyMSG
 
 By default, only the SPHINX grid (`stellar_grid = 'sphinx'`) is inside the
-image. To use `stellar_grid = 'phoenix'` with `interp_backend = 'pymsg'`,
-download `sg-Goettingen-HiRes.h5` (34 GB) once on the cluster:
+image. To use `stellar_grid = 'newera'` or `'phoenix'` with
+`interp_backend = 'pymsg'`, place the grid file(s) in the `stellar_grids/pymsg`
+folder of your POSEIDON inputs (if they are not already there):
 
 ```bash
-curl -fL -o /path/to/msg_grids/sg-Goettingen-HiRes.h5 \
-    http://user.astro.wisc.edu/~townsend/resource/download/msg/grids/Goettingen/HiRes/v3/sg-Goettingen-HiRes.h5
+GRIDS=http://user.astro.wisc.edu/~townsend/resource/download/msg/grids
+PYMSG_GRIDS=/path/to/POSEIDON/inputs/stellar_grids/pymsg
+mkdir -p $PYMSG_GRIDS
+
+# NewEra grids (JWST: 3.7 GB, 0.6-28.5 μm; LowRes: 5.2 GB)
+curl -fL -o $PYMSG_GRIDS/sg-NewEra-JWST.h5 $GRIDS/NewEra/JWST/sg-NewEra-JWST.h5
+curl -fL -o $PYMSG_GRIDS/sg-NewEra-LowRes.h5 $GRIDS/NewEra/LowRes/sg-NewEra-LowRes.h5
+
+# PHOENIX (Goettingen-HiRes) grid (34 GB)
+curl -fL -o $PYMSG_GRIDS/sg-Goettingen-HiRes.h5 $GRIDS/Goettingen/HiRes/v3/sg-Goettingen-HiRes.h5
 ```
 
-Then bind that folder to `/msg_grids` (in `poseidon.slurm`, set `MSG_GRIDS`).
-The image already links `$MSG_DIR/data/grids/sg-Goettingen-HiRes.h5` to
-`/msg_grids/`, so no other set-up is needed.
+The image links `$MSG_DIR/data/grids/sg-NewEra-JWST.h5`, `sg-NewEra-LowRes.h5`,
+and `sg-Goettingen-HiRes.h5` to `/inputs/stellar_grids/pymsg/`, so binding
+your inputs folder to `/inputs` (as `poseidon.slurm` does) is all that is
+needed. The file names must be kept exactly as above. (Images built before
+this change instead read these grids from a separate `/msg_grids` mount.)
+
+### Using your own POSEIDON code
+
+POSEIDON is installed in editable mode from `/opt/POSEIDON`, so you can run
+an updated or edited POSEIDON without rebuilding the image. Mount your
+checkout (the top-level folder containing `setup.py`) over `/opt/POSEIDON`:
+
+```bash
+git clone -b dev https://github.com/MartianColonist/POSEIDON.git ~/POSEIDON
+
+apptainer exec --bind ~/POSEIDON:/opt/POSEIDON \
+               --bind /path/to/POSEIDON/inputs:/inputs:ro \
+               poseidon.sif python my_script.py
+```
+
+In `poseidon.slurm`, set `POSEIDON_SRC="$HOME/POSEIDON"` instead. The job log then
+records which commit was used. Leave `POSEIDON_SRC` empty to use the
+POSEIDON built into the image.
+
+This works for changes to POSEIDON's own code. If an update adds a new
+dependency to `setup.py`, rebuild the image.
 
 ### Running the POSEIDON test suite
 
@@ -146,5 +186,8 @@ without it. A newer OpenMPI/PMIx/UCX combination may fix the problem.
   host's `~/.local` don't shadow the container's packages.
 - The container is read-only. Numba therefore caches compiled functions in
   your home directory (`~/.cache`) rather than next to the POSEIDON source.
+  If your home directory isn't writable inside the container (e.g. when using
+  `--containall` or `--no-home`), set `NUMBA_CACHE_DIR` to a writable folder,
+  e.g. `apptainer exec --env NUMBA_CACHE_DIR=$PWD/.numba_cache ...`.
 - Don't `pip install pymsg` inside or outside the container. The PyPI package
   with that name is unrelated to MSG.

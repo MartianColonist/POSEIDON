@@ -4,6 +4,7 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=4
 #SBATCH --cpus-per-task=1
+#SBATCH --mem=20G 
 #SBATCH --time=00:15:00
 #SBATCH --output=poseidon-%j.out
 #SBATCH --error=poseidon-%j.err
@@ -23,12 +24,14 @@ set -euo pipefail
 # Container image
 SIF=/path/to/poseidon.sif
 
-# POSEIDON input files (folder containing opacity/, stellar_grids/, etc.)
+# POSEIDON input files (folder containing opacity/, stellar_grids/, etc.).
+# PyMSG grids not built into the image are read from stellar_grids/pymsg/.
 INPUTS=/path/to/POSEIDON/inputs
 
-# Optional: folder holding extra MSG grids (e.g. sg-Goettingen-HiRes.h5 for
-# stellar_grid = 'phoenix'). Leave empty if not needed.
-MSG_GRIDS=""
+# Optional: your own POSEIDON checkout (the top-level folder containing
+# setup.py), used instead of the POSEIDON built into the container.
+# Leave empty to use the container's POSEIDON.
+POSEIDON_SRC=""
 
 SCRIPT=${1:-check_container.py}
 
@@ -43,8 +46,20 @@ unset PYTHONPATH
 export PMIX_MCA_gds=hash
 
 BINDS="--bind ${INPUTS}:/inputs:ro --bind ${PWD}"
-if [[ -n "$MSG_GRIDS" ]]; then
-    BINDS="$BINDS --bind ${MSG_GRIDS}:/msg_grids:ro"
+
+# Mount your POSEIDON checkout over the container's (installed in editable
+# mode from /opt/POSEIDON, so Python then imports your code)
+if [[ -n "$POSEIDON_SRC" ]]; then
+    if [[ ! -f "${POSEIDON_SRC}/setup.py" ]] || [[ ! -d "${POSEIDON_SRC}/POSEIDON" ]]; then
+        echo "Error: POSEIDON_SRC (${POSEIDON_SRC}) must be the top-level" \
+             "POSEIDON folder containing setup.py and POSEIDON/." >&2
+        exit 1
+    fi
+    BINDS="$BINDS --bind ${POSEIDON_SRC}:/opt/POSEIDON"
+    echo "POSEIDON source: ${POSEIDON_SRC}" \
+         "($(git -C "${POSEIDON_SRC}" log -1 --format='%h %s' 2> /dev/null || echo 'not a git repository'))"
+else
+    echo "POSEIDON source: built into the container"
 fi
 
 echo "HOSTNAME=$(hostname)  JOBID=${SLURM_JOB_ID}  NTASKS=${SLURM_NTASKS}"

@@ -41,13 +41,21 @@ From: rockylinux:9
     export POSEIDON_input_data=/inputs/
     export PYSYN_CDBS=/inputs/stellar_grids/
 
-    # MSG installation (grids live in $MSG_DIR/data/grids)
+    # MSG installation (grids live in $MSG_DIR/data/grids, with grids not
+    # baked into the image linked to /inputs/stellar_grids/pymsg)
     export MSG_DIR=/opt/msg
 
 %post
     set -eo pipefail
 
     N_JOBS=$(nproc)
+
+    # Build in a folder inside the container. Apptainer can bind the HOST's
+    # /tmp during %post (e.g. for unprivileged --fakeroot builds), so /tmp
+    # must never be used for build files, or cleaned, in this section.
+    BUILD_DIR=/opt/build
+    mkdir -p ${BUILD_DIR}/tmp
+    export TMPDIR=${BUILD_DIR}/tmp
 
     #***** System packages *****#
 
@@ -70,6 +78,7 @@ From: rockylinux:9
         wget \
         bzip2 \
         which \
+        zlib-devel \
         ucx \
         ucx-devel \
         lapack-devel \
@@ -87,7 +96,7 @@ From: rockylinux:9
     OPENMPI_VERSION={{ OPENMPI_VERSION }}
     OPENMPI_SERIES=${OPENMPI_VERSION%.*}
 
-    cd /tmp
+    cd ${BUILD_DIR}
     wget -q -O openmpi.tar.gz \
         https://download.open-mpi.org/release/open-mpi/v${OPENMPI_SERIES}/openmpi-${OPENMPI_VERSION}.tar.gz
     tar -xf openmpi.tar.gz
@@ -97,7 +106,7 @@ From: rockylinux:9
     make -j ${N_JOBS}
     make install
 
-    cd /tmp
+    cd ${BUILD_DIR}
     rm -rf openmpi.tar.gz openmpi-${OPENMPI_VERSION}
 
     export PATH=/opt/openmpi/bin:$PATH
@@ -108,7 +117,7 @@ From: rockylinux:9
     # The CMake build of MultiNest 3.12 lives in MultiNest_v3.12_CMake/multinest
     # (its CMakeLists.txt still labels the library version as 3.11, but the
     # Fortran sources are those of v3.12).
-    cd /tmp
+    cd ${BUILD_DIR}
     git clone https://github.com/farhanferoz/MultiNest.git
     cd MultiNest
     git checkout {{ MULTINEST_COMMIT }}
@@ -130,7 +139,7 @@ From: rockylinux:9
     make -j1
     make install
 
-    cd /tmp
+    cd ${BUILD_DIR}
     rm -rf MultiNest
 
     # Check both the serial and MPI shared libraries were built
@@ -141,7 +150,7 @@ From: rockylinux:9
 
     #***** Conda (Miniforge) environment *****#
 
-    cd /tmp
+    cd ${BUILD_DIR}
     wget -q -O miniforge.sh \
         https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-$(uname -m).sh
     bash miniforge.sh -b -p /opt/conda
@@ -178,17 +187,21 @@ From: rockylinux:9
         MSG_GRID_ARGS="$MSG_GRID_ARGS --download-grid $grid"
     done
 
-    bash /opt/POSEIDON/install_pymsg.sh --msg-dir /opt/msg --jobs ${N_JOBS} \
-                                        ${MSG_GRID_ARGS}
+    # Grids downloaded here are baked into the image (in MSG's grid folder)
+    bash /opt/POSEIDON/install_pymsg.sh --msg-dir /opt/msg \
+                                        --grid-dir /opt/msg/data/grids \
+                                        --jobs ${N_JOBS} ${MSG_GRID_ARGS}
 
-    # Grids not baked into the image (e.g. the 34 GB PHOENIX grid) can be bind
-    # mounted at /msg_grids at runtime. Link them into MSG's grid folder now,
-    # since the container is read-only at runtime.
-    mkdir -p /msg_grids
-    for grid_file in sg-Goettingen-HiRes.h5 sg-SPHINX.h5; do
+    # Grids not baked into the image (e.g. the 34 GB PHOENIX grid) are read
+    # from the POSEIDON input files bind mounted at runtime, under
+    # /inputs/stellar_grids/pymsg. Link them into MSG's grid folder now, since
+    # the container is read-only at runtime.
+    for grid_file in sg-NewEra-JWST.h5 sg-NewEra-LowRes.h5 \
+                     sg-Goettingen-HiRes.h5 sg-SPHINX.h5; do
         if [ ! -e /opt/msg/data/grids/$grid_file ] && \
            [ ! -L /opt/msg/data/grids/$grid_file ]; then
-            ln -s /msg_grids/$grid_file /opt/msg/data/grids/$grid_file
+            ln -s /inputs/stellar_grids/pymsg/$grid_file \
+                  /opt/msg/data/grids/$grid_file
         fi
     done
 
@@ -199,7 +212,8 @@ From: rockylinux:9
 
     rm -rf /opt/msg/deps/src
     conda clean -afy
-    rm -rf /tmp/*
+    cd /
+    rm -rf ${BUILD_DIR}
 
 %test
     # Run automatically at the end of 'apptainer build' (skip with --notest)
@@ -218,8 +232,16 @@ ctypes.CDLL('libmultinest_mpi.so')
 print('MultiNest libraries: OK')
 EOF
 
+    # The home folder is read-only here, so give Numba and Matplotlib a
+    # temporary writable cache folder
+    TEST_CACHE=$(mktemp -d)
+    export NUMBA_CACHE_DIR=${TEST_CACHE}/numba
+    export MPLCONFIGDIR=${TEST_CACHE}/matplotlib
+
     # POSEIDON calls MPI at import, so this runs as a single (singleton) rank
     python -c "import pymsg, pymultinest, POSEIDON.core; print('POSEIDON, PyMultiNest, and PyMSG imports: OK')"
+
+    rm -rf ${TEST_CACHE}
 
 %runscript
     exec "$@"
