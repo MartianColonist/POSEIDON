@@ -100,6 +100,29 @@ unset MESASDK_ROOT MESASDK_VERSION FFLAGS FCFLAGS CFLAGS CPPFLAGS LDFLAGS
 PATH=$(echo "$PATH" | tr ':' '\n' | grep -v -i mesasdk | paste -sd ':' -)
 export PATH="$CONDA_PREFIX/bin:$PATH"
 
+# Use conda's fast libmamba solver when available (the default since conda
+# 23.10, and optional in earlier versions)
+SOLVER_ARGS=()
+if conda install --help 2> /dev/null | grep -q -- '--solver' &&
+   "${CONDA_PYTHON_EXE:-python}" -c 'import conda_libmamba_solver' \
+       > /dev/null 2>&1; then
+    SOLVER_ARGS=("--solver=libmamba")
+fi
+
+# Conda versions before 23.10 default to the 'classic' solver, which is slow
+# and can fail on environments containing compilers and MPI
+CONDA_VERSION=$(conda --version 2> /dev/null | awk '{print $2}')
+CONDA_MAJOR=${CONDA_VERSION%%.*}
+CONDA_MINOR=$(echo "$CONDA_VERSION" | cut -d. -f2)
+if [[ ${#SOLVER_ARGS[@]} -eq 0 ]] && [[ "$CONDA_MAJOR" =~ ^[0-9]+$ ]] &&
+   { [[ "$CONDA_MAJOR" -lt 23 ]] ||
+     { [[ "$CONDA_MAJOR" -eq 23 ]] && [[ "${CONDA_MINOR:-0}" -lt 10 ]]; }; }; then
+    echo -e "\n\033[1;33mWarning:\033[0m conda $CONDA_VERSION uses the slow " \
+            "'classic' solver, so this may take a while. If installing " \
+            "packages later fails with a solver error, update conda first: " \
+            "conda update -n base conda"
+fi
+
 #***** Install build dependencies from conda-forge *****#
 
 info "Installing build dependencies from conda-forge"
@@ -112,7 +135,10 @@ if [[ "$OS" == "Linux" ]]; then
     CONDA_PKGS+=("gcc=15")
 fi
 
-conda install -y --prefix "$CONDA_PREFIX" -c conda-forge "${CONDA_PKGS[@]}"
+# Only use conda-forge: mixing in Anaconda's 'defaults' channel makes the
+# solve much slower and can pull in incompatible compilers
+conda install -y --prefix "$CONDA_PREFIX" --override-channels -c conda-forge \
+    "${SOLVER_ARGS[@]+"${SOLVER_ARGS[@]}"}" "${CONDA_PKGS[@]}"
 
 #***** Download MSG and LAPACK95 sources *****#
 
