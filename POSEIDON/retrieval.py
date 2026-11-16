@@ -2053,6 +2053,7 @@ def Nautilus_retrieval(planet, star, model, opac, data, prior_types,
                       n_live = n_live_points, pool = pool, n_batch = n_batch_use,
                       filepath = outputfiles_basename + 'checkpoint.hdf5',
                       resume = resume)
+    sampler.discard_exploration = discard_exploration
 
     try:
         try:
@@ -2061,16 +2062,6 @@ def Nautilus_retrieval(planet, star, model, opac, data, prior_types,
         finally:
             if mpi_pool is not None:
                 mpi_pool.shutdown()
-
-        # Discard exploration-phase points from the *output* only. This is a
-        # post-hoc re-slice of samples already on disk (see the discard_exploration
-        # property setter in nautilus' Sampler), not a change to run()'s stopping
-        # criterion, so it costs no extra likelihood evaluations. Without this,
-        # sampler.posterior() below includes every exploration-phase point (used
-        # only to learn the bound, with much noisier importance weights), which
-        # both bloats the written .txt by orders of magnitude and dilutes the
-        # effective sample size of the equal-weighted posterior.
-        # sampler.discard_exploration = True
 
         # Write the nautilus posterior to disk using the same file formats
         # PyMultiNest produces, so that pymultinest.Analyzer (and hence
@@ -2120,7 +2111,7 @@ def write_nautilus_files_as_multinest_format(sampler, outputfiles_basename, n_pa
 
     # Equally-weighted posterior -> [prefix]post_equal_weights.dat
     # Format: one column per parameter, then loglikelihood
-    points_eq, _, log_l_eq = sampler.posterior(equal_weight = True)
+    points_eq, _, log_l_eq = sampler.posterior(equal_weight = True, equal_weight_boost=20.0)
     equal_weighted_posterior = np.column_stack([points_eq, log_l_eq])
     np.savetxt(outputfiles_basename + 'post_equal_weights.dat', equal_weighted_posterior)
 
