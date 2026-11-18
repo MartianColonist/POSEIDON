@@ -113,8 +113,7 @@ def test_continuum_retrieval():
 
     #***** Generate synthetic data *****#
 
-    os.mkdir('./data')
-    os.mkdir('./data/WASP-121b')
+    os.makedirs('./data/WASP-121b', exist_ok = True)
     
     data_dir = './data/WASP-121b'
 
