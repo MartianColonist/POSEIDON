@@ -920,7 +920,17 @@ def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck,
         # If transmittance has not yet been computed for this sector
         if (j_sector_in != j_sector_last):
 
-            Trans[:,j,:] = np.exp(-1.0*np.tensordot(Path[:,j,:,:], tau_vert[:,j,:,:], axes=([2,1],[0,1])))
+            # 1. Calculate the slant optical depth via tensor dot product
+            tau_slant = np.tensordot(Path[:,j,:,:], tau_vert[:,j,:,:], axes=([2,1],[0,1]))
+            
+            # 2. Scrub NaNs and Infinities out of the math, replacing them with 500.0
+            tau_slant = np.nan_to_num(tau_slant, nan=500.0, posinf=500.0, neginf=0.0)
+            
+            # 3. Cap the maximum optical depth to prevent mathematical overflow 
+            tau_slant = np.minimum(tau_slant, 500.0)
+            
+            # 4. Compute the transmittance safely
+            Trans[:,j,:] = np.exp(-1.0 * tau_slant)
         
         # Copy transmittance if sector 'j' is identical to the last
         else:

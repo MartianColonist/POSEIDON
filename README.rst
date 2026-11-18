@@ -51,6 +51,10 @@ If you use POSEIDON in your work, please cite `MacDonald & Madhusudhan (2017)
 <https://ui.adsabs.harvard.edu/abs/2017MNRAS.469.1979M/abstract>`_ and 
 `MacDonald (2023) <https://joss.theoj.org/papers/69710c0498d02fd1c6a0cfa4b01af7c5>`_.
 
+A more specific guide of recommended citations for specfic functionality in 
+POSEIDON is provided in the documentation page: `What to Cite 
+<https://poseidon-retrievals.readthedocs.io/en/latest/content/citations.html>`_.
+
 License
 -------
 
