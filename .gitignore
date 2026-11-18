@@ -13,6 +13,8 @@ CLAUDE.md
 build/
 dist/
 POSEIDON.egg-info/
+POSEIDON_output
+data
 inputs/
 run/
 .vscode
