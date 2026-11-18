@@ -8,6 +8,8 @@ __pycache__
 .DS_Store
 *~
 *.so
+.github/copilot-instructions.md
+CLAUDE.md
 build/
 dist/
 POSEIDON.egg-info/
