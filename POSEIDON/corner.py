@@ -818,7 +818,10 @@ def cornerplot(results, span=None, quantiles=[0.1587, 0.5, 0.8413],
             elif "delta_rel" in param_name:
                 title_fmt = ".0f"
             elif "R_p_ref" in param_name:
-                label_exponent = round_sig_figs(np.floor(np.log10(np.abs(0.5 * (qh - ql)))), 1)
+
+                # Set precision from the 1σ interval (ql / qh may hold 2σ limits)
+                sigma_R_p_ref = 0.5 * np.diff(_quantile(x, [0.16, 0.84], weights=weights))[0]
+                label_exponent = round_sig_figs(np.floor(np.log10(np.abs(sigma_R_p_ref))), 1)
                 if label_exponent == -2.0:
                     title_fmt = ".2f"
                 elif label_exponent == -3.0:

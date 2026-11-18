@@ -4939,7 +4939,11 @@ def plot_retrieved_parameters(axes_in, param_vals, plot_parameters, parameter_co
         elif ('delta_rel' in param):
             title_fmt = ".0f"
         elif (param == 'R_p_ref'):
-            label_exponent = round_sig_figs(np.floor(np.log10(np.abs(0.5 * (qh - ql)))), 1)
+
+            # Set precision from the narrowest 1σ interval across all models
+            sigma_R_p_ref = np.min([0.5 * np.diff(_quantile(param_vals[m][:,q], [0.16, 0.84]))[0]
+                                    for m in range(N_models)])
+            label_exponent = round_sig_figs(np.floor(np.log10(np.abs(sigma_R_p_ref))), 1)
             if label_exponent == -2.0:
                 title_fmt = ".2f"
             elif label_exponent == -3.0:
