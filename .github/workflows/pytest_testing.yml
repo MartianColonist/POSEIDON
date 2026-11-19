@@ -11,8 +11,62 @@ on:
       - 'dev'
 
 jobs:
+  # Fetch the CI input files (CIA opacity + fastchem grid) once per workflow
+  # run and share them with the test jobs as an artifact. Google Drive
+  # serves an HTML error page instead of the file when the same file is
+  # requested by many jobs at once, so the test jobs never download it
+  # themselves. The files are also cached between runs, so Google Drive is
+  # only contacted when the cache has expired (7 days unused).
+  download-inputs:
+    name: Download input files
+    runs-on: ubuntu-latest
+    steps:
+    - name: Restore cached input files
+      id: restore_cache
+      uses: actions/cache@v4
+      with:
+        path: inputs
+        # Bump the version suffix if either input file changes on Google Drive
+        key: ci-inputs-v1
+
+    - name: Download input files (only CIA opacity and fastchem grid for CI tests)
+      if: steps.restore_cache.outputs.cache-hit != 'true'
+      run: |
+        # Download a Google Drive file, retrying if Drive returns an HTML page
+        # (e.g. a download quota warning) instead of an HDF5 file
+        download () {   # $1 = Google Drive file ID, $2 = output path
+          for attempt in 1 2 3; do
+            rm -f "$2" /tmp/cookies.txt
+            wget --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate "https://docs.google.com/uc?export=download&id=$1" -O- | LC_ALL=C sed -En 's/.*confirm=([0-9A-Za-z_]+).*/\1/p')&id=$1" -O "$2" || true
+
+            # All HDF5 files start with the bytes '\x89HDF'
+            if [[ -f "$2" && "$(head -c 4 "$2" | tail -c 3)" == "HDF" ]]; then
+              return 0
+            fi
+            echo "Attempt $attempt: $2 is not an HDF5 file ($(wc -c < "$2" 2>/dev/null || echo 0) bytes), retrying in 60 s"
+            sleep 60
+          done
+          echo "Error: could not download $2 from Google Drive"
+          return 1
+        }
+
+        mkdir -p inputs/opacity
+        mkdir -p inputs/chemistry_grids
+        download 1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx inputs/opacity/Opacity_database_cia.hdf5
+        download 1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3 inputs/chemistry_grids/fastchem_database.hdf5
+        rm -f /tmp/cookies.txt
+        ls -l inputs/opacity inputs/chemistry_grids
+
+    - name: Share input files with the test jobs
+      uses: actions/upload-artifact@v4
+      with:
+        name: ci-inputs
+        path: inputs
+        retention-days: 1
+
   test:
     name: Test on ${{ matrix.os }} with Python ${{ matrix.python-version }}
+    needs: download-inputs
     runs-on: ${{ matrix.os }}
     env:
       # MultiNest 3.12 commit (the same one pinned in container/poseidon.def)
@@ -54,7 +108,7 @@ jobs:
     - name: Install Open MPI and build tools (macOS)
       if: runner.os == 'macOS'
       run: |
-        brew install open-mpi cmake wget
+        brew install open-mpi cmake
 
         # Open MPI's session files are Unix sockets, whose paths can be too
         # long under macOS's default TMPDIR (/var/folders/...)
@@ -145,13 +199,11 @@ jobs:
         print('PyMultiNest and POSEIDON imports: OK')
         EOF
 
-    - name: Download input files (only CIA opacity for CI tests)
-      if: steps.restore_cache.outputs.cache-hit != 'true'
-      run: |
-        mkdir -p inputs/opacity
-        mkdir -p inputs/chemistry_grids
-        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx' -O- | LC_ALL=C sed -En 's/.*confirm=([0-9A-Za-z_]+).*/\1/p')&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
-        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3' -O- | LC_ALL=C sed -En 's/.*confirm=([0-9A-Za-z_]+).*/\1/p')&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3" -O inputs/chemistry_grids/fastchem_database.hdf5 && rm -rf /tmp/cookies.txt
+    - name: Fetch input files
+      uses: actions/download-artifact@v4
+      with:
+        name: ci-inputs
+        path: inputs
 
     - name: Set environment variables
       run: |
@@ -166,6 +218,7 @@ jobs:
   # a conda environment, install_multinest.sh, then pip install -e .
   install-script:
     name: Test install_multinest.sh on ${{ matrix.os }}
+    needs: download-inputs
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -210,18 +263,11 @@ jobs:
         print('PyMultiNest and POSEIDON imports: OK')
         EOF
 
-    - name: Install wget (macOS)
-      if: runner.os == 'macOS'
-      run: |
-        brew install wget
-
-    - name: Download input files (only CIA opacity for CI tests)
-      if: steps.restore_cache.outputs.cache-hit != 'true'
-      run: |
-        mkdir -p inputs/opacity
-        mkdir -p inputs/chemistry_grids
-        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx' -O- | LC_ALL=C sed -En 's/.*confirm=([0-9A-Za-z_]+).*/\1/p')&id=1VxIhlVwOelix4BOZxa7oieV5hbP4Q8Bx" -O inputs/opacity/Opacity_database_cia.hdf5 && rm -rf /tmp/cookies.txt
-        wget --wait=1 --random-wait --continue --load-cookies /tmp/cookies.txt "https://docs.google.com/uc?export=download&confirm=$(wget --quiet --save-cookies /tmp/cookies.txt --keep-session-cookies --no-check-certificate 'https://docs.google.com/uc?export=download&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3' -O- | LC_ALL=C sed -En 's/.*confirm=([0-9A-Za-z_]+).*/\1/p')&id=1ar1u7yMnMvWAp6bLc2kENg2b4khxdww3" -O inputs/chemistry_grids/fastchem_database.hdf5 && rm -rf /tmp/cookies.txt
+    - name: Fetch input files
+      uses: actions/download-artifact@v4
+      with:
+        name: ci-inputs
+        path: inputs
 
     - name: Set environment variables
       run: |
