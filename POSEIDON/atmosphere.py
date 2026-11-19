@@ -2487,8 +2487,8 @@ def profiles(P, R_p, g_0, PT_profile, X_profile, PT_state, P_ref, R_p_ref,
         n, r, r_up, r_low, dr = radial_profiles(P, T, g_0, R_p, P_ref, 
                                                 R_p_ref, mu, N_sectors, N_zones)
 
-     # Check if any of the values in r are negative
-    if (np.any(r < 0.0)): 
+    # Check if any radii are negative or non-finite (e.g. NaN from chemistry grid)
+    if (np.any(r < 0.0) or np.any(~np.isfinite(r_up))):
         
         # Quit computations if model rejected
         return 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, False

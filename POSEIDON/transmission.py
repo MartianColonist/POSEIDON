@@ -861,7 +861,12 @@ def TRIDENT(P, r, r_up, r_low, dr, wl, kappa_clear, kappa_cloud, enable_deck,
         # Evaluate the overlapping area analytically
         A_overlap = (R_max_sq * (phi_1 - 0.5 * np.sin(2.0 * phi_1)) +
                      R_s_sq   * (phi_2 - 0.5 * np.sin(2.0 * phi_2)))
-        
+
+    # Non-finite R_max or d (unphysical atmosphere) => reject model
+    else:
+
+        return np.full(N_wl, np.nan)   # NaN spectrum is rejected by retrievals
+
     #***** Step 3: Calculate the delta_ray matrix *****#
     
     delta_ray = delta_ray_geom(N_phi, N_b, b, b_p, y_p, phi_grid, R_s_sq)
